@@ -298,26 +298,10 @@ const getR2AudioUrl = (episodeId: number, part: number) => {
       </h1>
 
       {/* 레이아웃: 왼쪽 리스트(그리드) + 오른쪽 플레이어 */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "360px 1fr",
-          gap: 14,
-          marginTop: 14,
-        }}
-      >
+      <div className="episodeLayout">
+        
         {/* ✅ 편 리스트 */}
-        <aside
-          style={{
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.04)",
-            borderRadius: 14,
-            padding: 12,
-            height: "fit-content",
-            position: "sticky",
-            top: 16,
-          }}
-        >
+        <aside className="partPanel">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <div style={{ fontWeight: 950, marginBottom: 10 }}>편 목록</div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
@@ -326,7 +310,7 @@ const getR2AudioUrl = (episodeId: number, part: number) => {
           </div>
 
           {/* ✅ 그리드 (6열) */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
+          <div className="partGrid">
             {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
               const p = i + 1;
               const pLocked = !isSubscribed && p > unlockedUntil;
