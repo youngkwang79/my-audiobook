@@ -1,0 +1,67 @@
+export type Episode = {
+  id: number;
+  title: string;
+  locked: boolean; // 1~8 free, 9~30 locked (요청사항)
+  audioUrl: string; // public 폴더 기준 경로
+};
+
+export const episodes: Episode[] = [
+  { id: 1, title: "새벽의 검", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 2, title: "서자의 식사", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 3, title: "할아버지의 기억", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 4, title: "뒷담화", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 5, title: "문주 호출", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 6, title: "결심", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 7, title: "이복형의 방문", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 8, title: "어린 시절의 기억", locked: false, audioUrl: "/audio/myvoice.wav" },
+
+  { id: 9, title: "밤의 약속", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 10, title: "극한의 모욕", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 11, title: "초검계정 — 첫 검이 길을 연다", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 12, title: "여정의 첫날", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 13, title: "길 위의 고독", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 14, title: "청연지요", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 15, title: "청휘각성", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 16, title: "검풍초현(劍風初現) — 10년 만의 검풍", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 17, title: "음영지서", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 18, title: "소년영웅회의 시작", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 19, title: "잠룡초효(潛龍初曉)", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 20, title: "그림자 속의 시선", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 21, title: "종막의 검광(終幕의 劍光)", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 22, title: "산중야습", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 23, title: "귀환", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 24, title: "폭류비경(暴流秘境)", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 25, title: "기연 그리고 오기조원", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 26, title: "달빛 아래의 검, 천검의 탄생", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 27, title: "동쟁이의 아침", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 28, title: "소문과 음모", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 29, title: "불길한 예감(不吉한 豫感)", locked: true, audioUrl: "/audio/myvoice.wav" },
+  { id: 30, title: "봉인의 끝, 시작의 날", locked: true, audioUrl: "/audio/myvoice.wav" },
+
+  // 31~55는 홈에만 표시용(원하면 잠금 규칙 바꾸면 됨)
+  { id: 31, title: "귀환(歸還)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 32, title: "준비의 시간(準備의 時間) (32-1)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 33, title: "문주실의 진실(상)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 34, title: "대비무 전야(前夜)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 35, title: "십 년의 침묵, 깨지다", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 36, title: "십 년의 빛", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 37, title: "검의 대답", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 38, title: "파문(波紋)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 39, title: "검과 검 사이", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 40, title: "검은 진실(黑色 眞實)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 41, title: "취봉진의 밤(翠峰鎭의 夜) — 마교의", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 42, title: "혈로", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 43, title: "어둠의 초대(闇의 招待)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 44, title: "내부의 그림자(內部의 影)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 45, title: "형제의 검", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 46, title: "회복과 맹세", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 47, title: "급보 (개연성 수정판)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 48, title: "화산입성", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 49, title: "천검지시", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 50, title: "귀환(歸還) (49편)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 51, title: "피의 전야", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 52, title: "혈제(血祭)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 53, title: "붕괴 이후, 첫 번째 발걸음", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 54, title: "추격의 끝, 그리고 마왕", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 55, title: "연재중", locked: false, audioUrl: "/audio/myvoice.wav" },
+];
