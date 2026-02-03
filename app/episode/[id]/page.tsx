@@ -149,8 +149,7 @@ export default function EpisodePage() {
   }, [part, unlockedUntil, isSubscribed]);
 
   const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
-const pad3 = (n: number) => String(n).padStart(3, "0");
-const pad2 = (n: number) => String(n).padStart(2, "0");
+
 const getR2AudioUrl = (episodeId: number, part: number) => {
   return `${R2_BASE}/${pad3(episodeId)}/${pad2(part)}.MP3`;
 };
@@ -426,49 +425,53 @@ const mobileCSS = `
             </div>
           </div>
 
-          {/* ✅ 그리드 (6열) */}
-          <div className="partGrid">
-            {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
-              const p = i + 1;
-              const pLocked = !isSubscribed && p > unlockedUntil;
-              const isActive = p === part;
+          {/* ✅ 그리드 (10열: 10개 단위 줄바꿈) */}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(10, minmax(0, 1fr))",
+    gap: 8,
+    alignItems: "stretch",
+    width: "100%",
+    maxWidth: 520, // 너무 길면 줄바꿈이 이상해질 수 있어 상한을 둠(원하면 숫자 키우기)
+  }}
+>
+  {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
+    const p = i + 1;
+    const locked = !isSubscribed && p > unlockedUntil;
+    const isActive = p === part;
 
-              return (
-                <button
-                  key={p}
-                  onClick={() => onSelectPart(p)}
-                  style={{
-                    aspectRatio: "1 / 1",
-                    borderRadius: 14,
-                    border: isActive
-                      ? "1px solid rgba(255,215,120,0.85)"
-                      : "1px solid rgba(255,255,255,0.10)",
-                    background: isActive
-                      ? "linear-gradient(135deg, rgba(255,241,168,0.35), rgba(243,201,105,0.18), rgba(212,162,60,0.16))"
-                      : "rgba(0,0,0,0.22)",
-                    boxShadow: isActive ? "0 0 18px rgba(255,215,120,0.12)" : "none",
-                    color: "white",
-                    cursor: "pointer",
-                    position: "relative",
-                    display: "grid",
-                    placeItems: "center",
-                    fontWeight: 950,
-                    fontSize: 18,
-                    opacity: pLocked ? 0.55 : 1,
-                  }}
-                  aria-label={`${p}편${pLocked ? " 잠김" : ""}`}
-                >
-                  <span style={{ color: isActive ? "#fff1a8" : "white" }}>{p}</span>
+    return (
+      <button
+        key={p}
+        onClick={() => onSelectPart(p)}
+        style={{
+          height: 33,                // ✅ 정사각형을 “확실히” 만들기 위한 기준
+          aspectRatio: "1 / 1",      // ✅ 브라우저가 지원하면 더 안정적
+          borderRadius: 12,
+          border: isActive
+            ? "2px solid rgba(255,215,120,0.9)"
+            : "1px solid rgba(255,255,255,0.18)",
+          background: locked
+            ? "rgba(255,255,255,0.06)"
+            : "rgba(0,0,0,0.25)",
+          color: locked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.92)",
+          fontWeight: isActive ? 900 : 700,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: locked ? "not-allowed" : "pointer",
+          boxShadow: isActive ? "0 0 10px rgba(255,215,120,0.35)" : "none",
+        }}
+        disabled={locked}
+        aria-label={`${p}편`}
+      >
+        {p}
+      </button>
+    );
+  })}
+</div>
 
-                  {pLocked && (
-                    <span style={{ position: "absolute", top: 6, right: 6, fontSize: 14, opacity: 0.95 }}>
-                      🔒
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
             잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
@@ -599,11 +602,7 @@ const mobileCSS = `
                 <div style={{ marginTop: 10, fontSize: 15, fontWeight: 850, opacity: 0.92 }}>
                   무료 이후 파트는 구독 또는 포인트 또는 광고시청이 필요합니다.
                 </div>
-
-                <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
-                  현재 오픈: 1~{unlockedUntil}편
-                </div>
-
+              
                 <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
                   보유 포인트: <b>{points}P</b> · (100P당 1편 해제)
                 </div>
