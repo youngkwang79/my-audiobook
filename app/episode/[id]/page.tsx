@@ -263,12 +263,17 @@ const getR2AudioUrl = (episodeId: number, part: number) => {
   // UI: 바운스
   const bounceCSS = `
     @keyframes bounceIn {
-      0% { transform: translateY(18px) scale(0.96); opacity: 0; }
-      55% { transform: translateY(-6px) scale(1.02); opacity: 1; }
-      78% { transform: translateY(2px) scale(0.995); }
-      100% { transform: translateY(0px) scale(1); }
-    }
-  `;
+    0% { transform: scale(0.95); opacity: 0; }
+    60% { transform: scale(1.02); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+
+  /* ✅ 홈 로그인 버튼과 동일한 금빛 스윕 효과 */
+  @keyframes lightSweep {
+    0% { transform: translateX(-120%); }
+    100% { transform: translateX(120%); }
+  }
+`;
 // ✅ 모바일 UI 개선: 1열 레이아웃 + 하단 고정 플레이어
 const mobileCSS = `
   @media (max-width: 820px) {
@@ -323,7 +328,66 @@ const mobileCSS = `
         </Link>
 
         <div style={{ fontSize: 13, opacity: 0.8, display: "flex", gap: 12, alignItems: "center" }}>
-  <span style={{ opacity: 0.9 }}>보유 포인트: {points}P</span>
+  <div
+  style={{
+    position: "relative",
+    overflow: "hidden",
+    background:
+      "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+    color: "#2b1d00",
+    border: "1px solid rgba(255,215,120,0.65)",
+    padding: "10px 18px",
+    borderRadius: 14,
+    boxShadow: "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
+    minWidth: 140,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: 1.1,
+  }}
+>
+  {/* 🔹 보조 텍스트 */}
+  <div
+    style={{
+      fontSize: 13,
+      fontWeight: 700,
+      opacity: 0.85,
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    }}
+  >
+    보유 포인트
+  </div>
+
+  {/* 🔸 핵심 숫자 */}
+  <div
+    style={{
+      fontSize: 28,
+      fontWeight: 900,
+      letterSpacing: 0.8,
+    }}
+  >
+    {points}P
+  </div>
+
+  {/* ✨ 황금빛 스윕 효과 */}
+  <span
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "60%",
+      height: "100%",
+      background:
+        "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
+      transform: "translateX(-120%)",
+      animation: "lightSweep 1.2s ease infinite",
+      pointerEvents: "none",
+    }}
+  />
+</div>
+
         </div>
       </div>
 
