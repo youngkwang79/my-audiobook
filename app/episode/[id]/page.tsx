@@ -429,7 +429,7 @@ const mobileCSS = `
 <div
   style={{
     display: "grid",
-    gridTemplateColumns: "repeat(8, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
     gap: 2,
     alignItems: "stretch",
     width: "100%",
