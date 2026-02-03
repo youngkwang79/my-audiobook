@@ -269,6 +269,40 @@ const getR2AudioUrl = (episodeId: number, part: number) => {
       100% { transform: translateY(0px) scale(1); }
     }
   `;
+// ✅ 모바일 UI 개선: 1열 레이아웃 + 하단 고정 플레이어
+const mobileCSS = `
+  @media (max-width: 820px) {
+    .episodeMain {
+      padding-bottom: 120px !important; /* 하단 플레이어에 가리지 않게 */
+    }
+
+    .episodeGrid {
+      grid-template-columns: 1fr !important; /* 2열 -> 1열 */
+    }
+
+    .episodeAside {
+      position: static !important; /* sticky 해제 */
+      top: auto !important;
+    }
+
+    .audioDock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9999;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(10, 10, 18, 0.92);
+      border-top: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(10px);
+    }
+
+    .audioDock audio {
+      width: 100% !important;
+      margin-top: 0 !important;
+    }
+  }
+`;
 
   const onSelectPart = (p: number) => {
     setPart(p);
@@ -277,19 +311,19 @@ const getR2AudioUrl = (episodeId: number, part: number) => {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}>
-      <style>{bounceCSS}</style>
+    <main
+  className="episodeMain"
+  style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}
+>
+      <style>{bounceCSS + mobileCSS}</style>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/" style={{ color: "white", textDecoration: "none" }}>
-          ← 홈
+        <Link href="/work/cheonmujin" style={{ color: "white", textDecoration: "none" }}>
+          ← 이전
         </Link>
 
         <div style={{ fontSize: 13, opacity: 0.8, display: "flex", gap: 12, alignItems: "center" }}>
-          <span>
-            {isSubscribed ? "구독중 (전편 이용 가능)" : `현재 오픈: 1~${unlockedUntil}편`}
-          </span>
-          <span style={{ opacity: 0.9 }}>보유 포인트: {points}P</span>
+  <span style={{ opacity: 0.9 }}>보유 포인트: {points}P</span>
         </div>
       </div>
 
@@ -298,13 +332,32 @@ const getR2AudioUrl = (episodeId: number, part: number) => {
       </h1>
 
       {/* 레이아웃: 왼쪽 리스트(그리드) + 오른쪽 플레이어 */}
-      <div className="episodeLayout">
+      <div
+  className="episodeGrid"
+  style={{
+    display: "grid",
+    gridTemplateColumns: "360px 1fr",
+    gap: 14,
+    marginTop: 14,
+  }}
+>
         
         {/* ✅ 편 리스트 */}
-        <aside className="partPanel">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div style={{ fontWeight: 950, marginBottom: 10 }}>편 목록</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
+        <aside
+  className="episodeAside"
+  style={{
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
+    borderRadius: 14,
+    padding: 12,
+    height: "fit-content",
+    position: "sticky",
+    top: 16,
+  }}
+>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline" }}>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>    
               {isSubscribed ? "구독중" : `무료 1~${FREE_PARTS}편`}
             </div>
           </div>
