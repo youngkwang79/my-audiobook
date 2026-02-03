@@ -430,7 +430,7 @@ const mobileCSS = `
   style={{
     display: "grid",
     gridTemplateColumns: "repeat(10, minmax(0, 1fr))",
-    gap: 5,
+    gap: 2,
     alignItems: "stretch",
     width: "100%",
     maxWidth: 520, // 너무 길면 줄바꿈이 이상해질 수 있어 상한을 둠(원하면 숫자 키우기)
