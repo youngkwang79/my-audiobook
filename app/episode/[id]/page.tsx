@@ -424,7 +424,7 @@ const mobileCSS = `
               {isSubscribed ? "구독중" : `무료 1~${FREE_PARTS}편`}
             </div>
           </div>
-
+          
           {/* ✅ 그리드 (10열: 10개 단위 줄바꿈) */}
 <div
   style={{
@@ -443,35 +443,37 @@ const mobileCSS = `
 
     return (
       <button
-        key={p}
-        onClick={() => onSelectPart(p)}
-        style={{
-          height: 33,                // ✅ 정사각형을 “확실히” 만들기 위한 기준
-          aspectRatio: "1 / 1",      // ✅ 브라우저가 지원하면 더 안정적
-          borderRadius: 12,
-          border: isActive
-            ? "2px solid rgba(255,215,120,0.9)"
-            : "1px solid rgba(255,255,255,0.18)",
-          background: locked
-            ? "rgba(255,255,255,0.06)"
-            : "rgba(0,0,0,0.25)",
-          color: locked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.92)",
-          fontWeight: isActive ? 900 : 700,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: locked ? "not-allowed" : "pointer",
-          boxShadow: isActive ? "0 0 10px rgba(255,215,120,0.35)" : "none",
-        }}
-        disabled={locked}
-        aria-label={`${p}편`}
-      >
-        {p}
-      </button>
-    );
-  })}
-</div>
+      key={p}
+      onClick={() => onSelectPart(p)}
+      style={{
+        height: 33,
+        aspectRatio: "1 / 1",
+        borderRadius: 12,
+        border: isActive
+          ? "2px solid rgba(255,215,120,0.9)"
+          : "1px solid rgba(255,255,255,0.18)",
+        background: locked
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(0,0,0,0.25)",
+        color: locked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.92)",
+        fontWeight: isActive ? 900 : 700,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: locked ? "not-allowed" : "pointer",
+        boxShadow: isActive ? "0 0 10px rgba(255,215,120,0.35)" : "none",
+      }}
+      aria-label={`${p}편`}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <span>{p}</span>
+        {locked && <span style={{ fontSize: 12, lineHeight: 1 }}>🔒</span>}
+      </div>
+    </button>
+  );
+})}
 
+</div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
             잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
@@ -479,12 +481,10 @@ const mobileCSS = `
             포인트는 <b>100P당 1편</b> 해제됩니다.
           </div>
         </aside>
-
+      
         {/* 플레이어 영역 */}
         <section
           style={{
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.04)",
             borderRadius: 14,
             padding: 14,
             minHeight: 320,
