@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { works } from "./data/works";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 type LastPlayed = {
   episodeId: number;
@@ -11,6 +13,9 @@ type LastPlayed = {
 };
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading, signOut } = useAuth();
+
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loginHover, setLoginHover] = useState(false);
 
@@ -37,8 +42,6 @@ export default function Home() {
   // ✅ 이어듣기 링크 (part 지원 여부와 무관하게 autoplay=1은 확실히 동작)
   const continueHref = useMemo(() => {
     if (!lastPlayed) return "";
-    // part까지 URL로 넘기고 싶으면 에피소드 페이지에서 part 파라미터 처리 추가하면 됨
-    // return `/episode/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
     return `/episode/${lastPlayed.episodeId}?autoplay=1`;
   }, [lastPlayed]);
 
@@ -85,49 +88,59 @@ export default function Home() {
       >
         <div style={{ fontSize: 44, fontWeight: 900 }}>무협 소설 채널</div>
 
-        {/* ✅ 로그인 버튼도 금빛 + 호버 확장/빛 */}
-        <button
-          onMouseEnter={() => setLoginHover(true)}
-          onMouseLeave={() => setLoginHover(false)}
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            background:
-              "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-            color: "#2b1d00",
-            border: loginHover
-              ? "1px solid rgba(255,215,120,0.95)"
-              : "1px solid rgba(255,215,120,0.55)",
-            padding: "10px 18px",
-            borderRadius: 14,
-            cursor: "pointer",
-            fontSize: 30,
-            fontWeight: 900,
-            transform: loginHover ? "scale(1.06)" : "scale(1)",
-            transition: "transform 180ms ease, box-shadow 180ms ease, border 180ms ease",
-            boxShadow: loginHover
-              ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
-              : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
-          }}
-        >
-          로그인
-
-          {/* 스윕 */}
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "60%",
-              height: "100%",
-              background:
-                "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-              transform: "translateX(-120%)",
-              animation: loginHover ? "lightSweep 0.9s ease forwards" : "none",
-              pointerEvents: "none",
+        {/* ✅ 금빛 로그인 / 로그아웃 버튼 (로그인 상태에 따라 자동 전환) */}
+        {!loading && (
+          <button
+            onMouseEnter={() => setLoginHover(true)}
+            onMouseLeave={() => setLoginHover(false)}
+            onClick={async () => {
+              if (user) {
+                await signOut();
+                router.refresh();
+              } else {
+                router.push("/login");
+              }
             }}
-          />
-        </button>
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              background:
+                "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+              color: "#2b1d00",
+              border: loginHover
+                ? "1px solid rgba(255,215,120,0.95)"
+                : "1px solid rgba(255,215,120,0.55)",
+              padding: "10px 18px",
+              borderRadius: 14,
+              cursor: "pointer",
+              fontSize: 30,
+              fontWeight: 900,
+              transform: loginHover ? "scale(1.06)" : "scale(1)",
+              transition: "transform 180ms ease, box-shadow 180ms ease, border 180ms ease",
+              boxShadow: loginHover
+                ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
+                : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
+            }}
+          >
+            {user ? "로그아웃" : "로그인"}
+
+            {/* 스윕 */}
+            <span
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "60%",
+                height: "100%",
+                background:
+                  "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
+                transform: "translateX(-120%)",
+                animation: loginHover ? "lightSweep 0.9s ease forwards" : "none",
+                pointerEvents: "none",
+              }}
+            />
+          </button>
+        )}
       </div>
 
       {/* ✅ 이어듣기 카드 (최근 시청 기록이 있을 때만 표시) */}

@@ -81,9 +81,11 @@ export default function WorkDetailPage() {
           <div style={{ fontSize: 13, opacity: 0.9, fontWeight: 800 }}>
             총 {total}화 연재 중
           </div>
+       {typeof window !== "undefined" && (
           <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>
             현재 오픈: 1~{unlockedUntil}화
           </div>
+          )}
         </div>
 
         <button
