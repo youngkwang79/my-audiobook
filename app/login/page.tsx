@@ -25,7 +25,7 @@ function toKoreanAuthError(message?: string) {
   return message || "오류가 발생했습니다.";
 }
 
-// 2) 비밀번호 규칙: 8자 이상 + 특수문자 1개 이상
+// 2) 비밀번호 규칙: 8자 이상 + 영문 + 숫자 + 특수문자
 function validatePassword(pw: string) {
   const value = pw.trim();
 
@@ -53,11 +53,13 @@ export default function LoginPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const emailOk = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()), [email]);
+  const emailOk = useMemo(
+    () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
+    [email]
+  );
   const pwCheck = useMemo(() => validatePassword(password), [password]);
 
-  // 로그인은 "기존대로" 6자 이상만 해도 되게 둘 수도 있지만,
-  // 통일감 위해 로그인도 동일 규칙으로 제한하는 게 보통 좋아서 동일 적용함.
+  // 로그인/회원가입 모두 같은 기준으로 활성화(= 금빛 전환)
   const canSubmit = useMemo(() => emailOk && pwCheck.ok, [emailOk, pwCheck.ok]);
 
   useEffect(() => {
@@ -92,11 +94,14 @@ export default function LoginPage() {
     }
   }
 
-  const isGoldActive = mode === "signup" && canSubmit && !busy; // 회원가입 버튼만 황금 특효
+  // ✅ 로그인/회원가입 모두 조건 충족 시 금빛
+  const isGoldActive = canSubmit && !busy;
+
+  // ✅ 비활성일 때 버튼 아래 안내문(헷갈림 방지)
+  const showGuide = !canSubmit && (email.trim().length > 0 || password.length > 0);
 
   return (
     <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 24 }}>
-      {/* CSS(반짝/황금 효과) */}
       <style>{`
         .btnBase {
           padding: 12px 12px;
@@ -104,22 +109,36 @@ export default function LoginPage() {
           border: 1px solid rgba(255,255,255,0.18);
           color: white;
           font-weight: 900;
-          transition: all 180ms ease;
+          transition: all 200ms ease;
+          position: relative;
+          overflow: hidden;
         }
+
+        /* ✅ 비활성 버튼: 확실히 '못 누르는' 느낌 */
         .btnDisabled {
-          background: rgba(255,255,255,0.04);
+          background: rgba(255,255,255,0.03);
+          color: rgba(255,255,255,0.35);
+          border: 1px solid rgba(255,255,255,0.08);
           cursor: not-allowed;
-          opacity: 0.7;
+          filter: grayscale(100%);
+          box-shadow: none;
         }
+        .btnDisabled:hover {
+          transform: none;
+          box-shadow: none;
+        }
+        .btnDisabled::after {
+          display: none;
+        }
+
+        /* 일반 활성 버튼(금빛 전환 전) */
         .btnNormal {
           background: rgba(255,255,255,0.12);
           cursor: pointer;
         }
 
-        /* 황금 + 글로우 + 반짝 */
+        /* ✅ 황금 + 글로우 + 반짝 */
         .btnGold {
-          position: relative;
-          overflow: hidden;
           background: linear-gradient(135deg, #b8860b, #ffd700, #b8860b);
           color: #111;
           border: 1px solid rgba(255, 215, 0, 0.65);
@@ -150,7 +169,7 @@ export default function LoginPage() {
         }
 
         .helpBox {
-          margin-top: 6px;
+          margin-top: 8px;
           padding: 12px;
           border-radius: 12px;
           border: 1px solid rgba(255,255,255,0.12);
@@ -159,14 +178,23 @@ export default function LoginPage() {
           line-height: 1.6;
           white-space: pre-wrap;
         }
+
         .hint {
           font-size: 12px;
-          opacity: 0.85;
+          opacity: 0.9;
           line-height: 1.4;
           margin-top: -2px;
         }
         .hintGood { color: rgba(255,255,255,0.85); }
-        .hintBad { color: rgba(255,160,160,0.95); }
+        .hintBad  { color: rgba(255,160,160,0.95); }
+
+        /* ✅ 비활성 안내(버튼 바로 아래) */
+        .guideLine {
+          margin-top: 6px;
+          font-size: 12px;
+          line-height: 1.45;
+          color: rgba(255,160,160,0.95);
+        }
       `}</style>
 
       <div
@@ -203,6 +231,7 @@ export default function LoginPage() {
           >
             로그인
           </button>
+
           <button
             onClick={() => {
               setMode("signup");
@@ -238,6 +267,7 @@ export default function LoginPage() {
               outline: "none",
             }}
           />
+
           {!emailOk && email.trim().length > 0 && (
             <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>
           )}
@@ -259,31 +289,27 @@ export default function LoginPage() {
 
           {/* 비번 힌트 */}
           {password.length > 0 && (
-  <div className={`hint ${pwCheck.minLenOk ? "hintGood" : "hintBad"}`}>
-    • 8자 이상 {pwCheck.minLenOk ? "충족" : "필요"}
-  </div>
-)}
+            <div className={`hint ${pwCheck.minLenOk ? "hintGood" : "hintBad"}`}>
+              • 8자 이상 {pwCheck.minLenOk ? "충족" : "필요"}
+            </div>
+          )}
+          {password.length > 0 && (
+            <div className={`hint ${pwCheck.hasLetter ? "hintGood" : "hintBad"}`}>
+              • 영문 포함 {pwCheck.hasLetter ? "충족" : "필요"}
+            </div>
+          )}
+          {password.length > 0 && (
+            <div className={`hint ${pwCheck.hasNumber ? "hintGood" : "hintBad"}`}>
+              • 숫자 포함 {pwCheck.hasNumber ? "충족" : "필요"}
+            </div>
+          )}
+          {password.length > 0 && (
+            <div className={`hint ${pwCheck.hasSpecial ? "hintGood" : "hintBad"}`}>
+              • 특수문자 포함 {pwCheck.hasSpecial ? "충족" : "필요"}
+            </div>
+          )}
 
-{password.length > 0 && (
-  <div className={`hint ${pwCheck.hasLetter ? "hintGood" : "hintBad"}`}>
-    • 영문 포함 {pwCheck.hasLetter ? "충족" : "필요"}
-  </div>
-)}
-
-{password.length > 0 && (
-  <div className={`hint ${pwCheck.hasNumber ? "hintGood" : "hintBad"}`}>
-    • 숫자 포함 {pwCheck.hasNumber ? "충족" : "필요"}
-  </div>
-)}
-
-{password.length > 0 && (
-  <div className={`hint ${pwCheck.hasSpecial ? "hintGood" : "hintBad"}`}>
-    • 특수문자 포함 {pwCheck.hasSpecial ? "충족" : "필요"}
-  </div>
-)}
-
-
-          {/* 버튼: 회원가입 모드일 때 활성화하면 황금 특효 */}
+          {/* ✅ 로그인/회원가입 모두: 조건 충족 시 금빛 */}
           <button
             onClick={onSubmit}
             disabled={!canSubmit || busy}
@@ -293,8 +319,23 @@ export default function LoginPage() {
               isGoldActive ? "btnGold" : "",
             ].join(" ")}
           >
-            {busy ? "처리중..." : mode === "login" ? "로그인" : "회원가입"}
+            {busy
+              ? "처리중..."
+              : mode === "login"
+                ? (canSubmit ? "로그인" : "조건을 입력해 주세요")
+                : (canSubmit ? "회원가입" : "조건을 입력해 주세요")}
           </button>
+
+          {/* ✅ 버튼이 비활성인 이유를 바로 보여줘서 헷갈림 방지 */}
+          {showGuide && (
+            <div className="guideLine">
+              {!emailOk ? "이메일 형식을 확인해 주세요. " : ""}
+              {!pwCheck.minLenOk ? "비밀번호는 8자 이상이어야 합니다. " : ""}
+              {!pwCheck.hasLetter ? "알파벳을 포함해 주세요. " : ""}
+              {!pwCheck.hasNumber ? "숫자를 포함해 주세요. " : ""}
+              {!pwCheck.hasSpecial ? "특수문자를 포함해 주세요." : ""}
+            </div>
+          )}
 
           {/* 회원가입 방법 안내문: signup 모드에서만 표시 */}
           {mode === "signup" && (
@@ -304,10 +345,8 @@ export default function LoginPage() {
               {"2. 회원가입 버튼을 누르면 인증 메일이 발송됩니다.\n"}
               {"3. 메일함에서 인증을 완료한 뒤 로그인해 주세요.\n\n"}
               {"비밀번호 안내(보안)\n"}
-              {"비밀번호 안내(보안)\n"}
-{"- 알파벳, 숫자, 특수문자를 조합하여 8자 이상으로 입력해 주세요.\n"}
-{"- 예시: Abcd1234#"}
-
+              {"- 알파벳, 숫자, 특수문자를 조합하여 8자 이상으로 입력해 주세요.\n"}
+              {"- 예시: Abcd1234#"}
             </div>
           )}
 
