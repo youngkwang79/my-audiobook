@@ -158,7 +158,7 @@ export default function Home() {
       {lastPlayed && (
         <div
           style={{
-            maxWidth: 1200,
+            maxWidth: 600,
             borderRadius: 22,
             padding: 18,
             marginBottom: 18,
@@ -173,8 +173,7 @@ export default function Home() {
           }}
         >
           <div>
-            <div style={{ fontSize: 22, fontWeight: 950 }}>이어듣기</div>
-            <div style={{ marginTop: 6, opacity: 0.9, fontSize: 16 }}>
+              <div style={{ marginTop: 6, opacity: 0.9, fontSize: 20, fontWeight: 950 }}>
               {lastPlayed.episodeId}화 · {lastPlayed.part}편부터 이어서 재생
             </div>
           </div>
@@ -249,7 +248,7 @@ export default function Home() {
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "stretch",
-                  maxWidth: 1200,
+                  maxWidth: 600,
                   transform: isHovered ? "scale(1.01)" : "scale(1)",
                   transition: "transform 180ms ease, border 180ms ease",
                 }}
@@ -257,8 +256,8 @@ export default function Home() {
                 {/* 썸네일 */}
                 <div
                   style={{
-                    width: 800,
-                    height: 450,
+                    width: 400,
+                    height: 250,
                     position: "relative",
                     flexShrink: 0,
                     background: "rgba(0,0,0,0.35)",
@@ -340,7 +339,7 @@ export default function Home() {
                       padding: "14px 28px",
                       borderRadius: 22,
                       fontWeight: 950,
-                      fontSize: 36,
+                      fontSize: 26,
                       letterSpacing: "-0.5px",
                       color: "#2b1d00",
 
