@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { works } from "./data/works";
 import { useRouter } from "next/navigation";
+import { works } from "./data/works";
+
 import { useAuth } from "@/app/providers/AuthProvider";
+import { supabase } from "@/lib/supabaseClient";
 
 type LastPlayed = {
   episodeId: number;
@@ -14,7 +16,7 @@ type LastPlayed = {
 
 export default function Home() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loginHover, setLoginHover] = useState(false);
@@ -39,20 +41,26 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ 이어듣기 링크
+  // ✅ 이어듣기 링크 (part 지원 여부와 무관하게 autoplay=1은 확실히 동작)
   const continueHref = useMemo(() => {
     if (!lastPlayed) return "";
+    // part까지 URL로 넘기고 싶으면 에피소드 페이지에서 part 파라미터 처리 추가하면 됨
+    // return `/episode/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
     return `/episode/${lastPlayed.episodeId}?autoplay=1`;
   }, [lastPlayed]);
 
-  // ✅ 로그인 필요 액션(비로그인 -> /login)
-  const goIfLoggedIn = (href: string) => {
-    if (!href) return;
-    if (!user) {
-      router.push("/login");
+  const handleAuthClick = async () => {
+    if (loading) return;
+
+    if (user) {
+      // ✅ 로그아웃
+      await supabase.auth.signOut();
+      router.refresh(); // 홈에서 글씨 즉시 반영
       return;
     }
-    router.push(href);
+
+    // ✅ 로그인 화면으로
+    router.push("/login");
   };
 
   return (
@@ -66,128 +74,29 @@ export default function Home() {
           'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
       }}
     >
-      {/* ✅ 애니메이션 + ✅ 모바일 반응형(안짤리게 핵심) */}
+      {/* 🔥 버튼 빛 효과 애니메이션 */}
       <style>{`
         @keyframes glowPulse {
           0% { box-shadow: 0 0 8px rgba(255,255,255,0.18); }
           50% { box-shadow: 0 0 22px rgba(255,255,255,0.35), 0 0 80px rgba(255,255,255,0.18); }
           100% { box-shadow: 0 0 8px rgba(255,255,255,0.18); }
         }
+
         @keyframes lightSweep {
           0% { transform: translateX(-120%); }
           100% { transform: translateX(120%); }
         }
+
+        /* ✅ 이어듣기 카드용 은은한 글로우 */
         @keyframes goldBreath {
           0% { box-shadow: 0 0 14px rgba(255,215,120,0.20); }
           50% { box-shadow: 0 0 26px rgba(255,215,120,0.35), 0 0 90px rgba(255,200,80,0.18); }
           100% { box-shadow: 0 0 14px rgba(255,215,120,0.20); }
         }
-
-        /* ✅ 카드 레이아웃 클래스 */
-        .workCard {
-          background: rgba(255,255,255,0.06);
-          border-radius: 26px;
-          overflow: hidden;
-          display: flex;
-          align-items: stretch;
-          max-width: 1200px;
-          transition: transform 180ms ease, border 180ms ease;
-        }
-
-        /* ✅ 썸네일 영역: 데스크탑 기본 */
-        .thumbWrap {
-          width: 800px;
-          height: 450px;
-          position: relative;
-          flex-shrink: 0;
-          background: rgba(0,0,0,0.35);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        /* ✅ 이미지: contain 유지하면서도 '안 잘리게' */
-        .thumbImg {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-          padding: 14px;
-          display: block;
-        }
-
-        /* ✅ 모바일에서 안 잘리게 핵심:
-           - 카드가 세로로 쌓임
-           - 썸네일이 화면폭 100%를 따라감
-           - 높이는 자동(비율 유지) */
-        @media (max-width: 900px) {
-          .topBar {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-          }
-
-          .titleText {
-            font-size: 32px !important;
-          }
-
-          .loginBtn {
-            font-size: 22px !important;
-            padding: 10px 16px !important;
-            border-radius: 14px !important;
-          }
-
-          .workCard {
-            flex-direction: column;
-            width: 100%;
-          }
-
-          .thumbWrap {
-            width: 100%;
-            height: auto;
-            aspect-ratio: 16 / 9; /* 화면에 맞춰 비율 유지 */
-          }
-
-          .infoArea {
-            padding: 18px !important;
-          }
-
-          .infoText {
-            font-size: 20px !important;
-            margin-bottom: 16px !important;
-          }
-
-          .episodeBtn {
-            font-size: 24px !important;
-            padding: 12px 20px !important;
-            border-radius: 18px !important;
-          }
-
-          /* 이어듣기 카드도 모바일에서 줄바꿈 */
-          .continueCard {
-            flex-direction: column;
-            align-items: stretch !important;
-            gap: 10px !important;
-          }
-          .continueBtn {
-            width: 100% !important;
-            text-align: center;
-          }
-        }
-
-        /* 아주 작은 폰(선택) */
-        @media (max-width: 420px) {
-          .titleText {
-            font-size: 28px !important;
-          }
-          .episodeBtn {
-            font-size: 22px !important;
-          }
-        }
       `}</style>
 
       {/* 상단 바 */}
       <div
-        className="topBar"
         style={{
           display: "flex",
           alignItems: "center",
@@ -195,14 +104,12 @@ export default function Home() {
           marginBottom: 18,
         }}
       >
-        <div className="titleText" style={{ fontSize: 44, fontWeight: 900 }}>
-          무협 소설 채널
-        </div>
+        <div style={{ fontSize: 44, fontWeight: 900 }}>무협 소설 채널</div>
 
-        {/* ✅ 로그인 버튼: 누르면 /login 이동 */}
+        {/* ✅ 로그인/로그아웃 버튼 (기존 디자인 유지 + 텍스트/동작만 연결) */}
         <button
-          className="loginBtn"
-          onClick={() => router.push("/login")}
+          onClick={handleAuthClick}
+          disabled={loading}
           onMouseEnter={() => setLoginHover(true)}
           onMouseLeave={() => setLoginHover(false)}
           style={{
@@ -216,7 +123,7 @@ export default function Home() {
               : "1px solid rgba(255,215,120,0.55)",
             padding: "10px 18px",
             borderRadius: 14,
-            cursor: "pointer",
+            cursor: loading ? "not-allowed" : "pointer",
             fontSize: 30,
             fontWeight: 900,
             transform: loginHover ? "scale(1.06)" : "scale(1)",
@@ -224,9 +131,12 @@ export default function Home() {
             boxShadow: loginHover
               ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
               : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
+            opacity: loading ? 0.75 : 1,
           }}
         >
-          로그인
+          {loading ? "확인중..." : user ? "로그아웃" : "로그인"}
+
+          {/* 스윕 */}
           <span
             style={{
               position: "absolute",
@@ -244,10 +154,9 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ✅ 이어듣기 카드 */}
+      {/* ✅ 이어듣기 카드 (최근 시청 기록이 있을 때만 표시) */}
       {lastPlayed && (
         <div
-          className="continueCard"
           style={{
             maxWidth: 1200,
             borderRadius: 22,
@@ -270,12 +179,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ✅ 비로그인 -> 로그인으로, 로그인 -> continueHref */}
-          <div
-            className="continueBtn"
-            onClick={() => goIfLoggedIn(continueHref)}
-            style={{ textDecoration: "none" }}
-          >
+          <Link href={continueHref} style={{ textDecoration: "none" }}>
             <div
               style={{
                 position: "relative",
@@ -292,7 +196,6 @@ export default function Home() {
                 border: "1px solid rgba(255,215,120,0.65)",
                 boxShadow: "0 0 18px rgba(255,215,120,0.40)",
                 cursor: "pointer",
-                textAlign: "center",
               }}
             >
               ▶ 이어서 듣기
@@ -311,7 +214,7 @@ export default function Home() {
                 }}
               />
             </div>
-          </div>
+          </Link>
         </div>
       )}
 
@@ -328,26 +231,43 @@ export default function Home() {
           const isHovered = hoveredId === work.id;
 
           return (
-            <div
+            <Link
               key={work.id}
-              style={{ width: "100%" }}
+              href={`/work/${work.id}`}
+              style={{ textDecoration: "none", color: "inherit", width: "100%" }}
               onMouseEnter={() => setHoveredId(work.id)}
               onMouseLeave={() => setHoveredId(null)}
-              onClick={() => goIfLoggedIn(`/work/${work.id}`)} // ✅ 비로그인 -> /login
             >
               <div
-                className="workCard"
                 style={{
+                  background: "rgba(255,255,255,0.06)",
                   border: isHovered
                     ? "1px solid rgba(255,255,255,0.25)"
                     : "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 26,
+                  overflow: "hidden",
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "stretch",
+                  maxWidth: 1200,
                   transform: isHovered ? "scale(1.01)" : "scale(1)",
+                  transition: "transform 180ms ease, border 180ms ease",
                 }}
               >
                 {/* 썸네일 */}
-                <div className="thumbWrap">
-                  {/* 썸네일 그라데이션 오버레이 */}
+                <div
+                  style={{
+                    width: 800,
+                    height: 450,
+                    position: "relative",
+                    flexShrink: 0,
+                    background: "rgba(0,0,0,0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {/* 🔥 썸네일 그라데이션 오버레이 */}
                   <div
                     style={{
                       position: "absolute",
@@ -377,12 +297,21 @@ export default function Home() {
                     연재중
                   </div>
 
-                  <img src={work.thumbnail} alt={work.title} className="thumbImg" />
+                  <img
+                    src={work.thumbnail}
+                    alt={work.title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      padding: 14,
+                      display: "block",
+                    }}
+                  />
                 </div>
 
                 {/* 정보 영역 */}
                 <div
-                  className="infoArea"
                   style={{
                     padding: 28,
                     flex: 1,
@@ -392,7 +321,6 @@ export default function Home() {
                   }}
                 >
                   <div
-                    className="infoText"
                     style={{
                       fontSize: 30,
                       opacity: 0.9,
@@ -403,9 +331,8 @@ export default function Home() {
                     총 {work.totalEpisodes}화 연재 중
                   </div>
 
-                  {/* 금빛 에피소드 보기 버튼(시각 요소) */}
+                  {/* ✨ 금빛으로 빛나는 에피소드 보기 버튼 */}
                   <div
-                    className="episodeBtn"
                     style={{
                       position: "relative",
                       overflow: "hidden",
@@ -416,21 +343,28 @@ export default function Home() {
                       fontSize: 36,
                       letterSpacing: "-0.5px",
                       color: "#2b1d00",
+
                       background:
                         "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+
                       border: isHovered
                         ? "1px solid rgba(255,215,120,0.95)"
                         : "1px solid rgba(255,215,120,0.55)",
+
                       boxShadow: isHovered
                         ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
                         : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
+
                       animation: isHovered ? "none" : "glowPulse 2.8s ease-in-out infinite",
+
                       transform: isHovered ? "scale(1.06)" : "scale(1)",
                       transition:
                         "transform 180ms ease, box-shadow 180ms ease, border 180ms ease",
                     }}
                   >
                     에피소드 보기
+
+                    {/* 🌟 빛이 흐르는 스윕 효과 */}
                     <span
                       style={{
                         position: "absolute",
@@ -448,7 +382,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
