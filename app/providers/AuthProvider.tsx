@@ -23,6 +23,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function init() {
+      if (!supabase) {
+    setLoading(false);
+    return;
+  }
+
+
       const { data, error } = await supabase.auth.getSession();
       if (!mounted) return;
 
