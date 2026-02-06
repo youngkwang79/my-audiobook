@@ -1,17 +1,8 @@
+// app/providers/AuthProvider.tsx
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import type {
-  Session,
-  User,
-  AuthChangeEvent,
-} from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 
 type AuthContextValue = {
@@ -32,43 +23,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function init() {
-      // ✅ supabase가 없으면 (prod에서 env 문제 등)
-      // 빌드는 살리고 인증만 비활성화
-      if (!supabase) {
-        setLoading(false);
-        return;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (error) {
+          console.error("getSession error:", error);
+        }
+
+        setSession(data.session ?? null);
+        setUser(data.session?.user ?? null);
+      } catch (e) {
+        console.error("init(getSession) failed:", e);
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      const { data, error } = await supabase.auth.getSession();
-      if (!mounted) return;
-
-      if (error) {
-        console.error("getSession error:", error);
-      }
-
-      setSession(data.session ?? null);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
     }
 
     init();
 
-    // ✅ 타입 명시 (Vercel TypeScript 빌드 에러 방지)
-    const { data: listener } = supabase
-      ? supabase.auth.onAuthStateChange(
-          (_event: AuthChangeEvent, newSession: Session | null) => {
-            setSession(newSession);
-            setUser(newSession?.user ?? null);
-            setLoading(false);
-          }
-        )
-      : { data: null };
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, newSession: Session | null) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        setLoading(false);
+      }
+    );
 
     return () => {
       mounted = false;
-      if (listener) {
-        listener.subscription.unsubscribe();
-      }
+      listener.subscription.unsubscribe();
     };
   }, []);
 
@@ -78,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       loading,
       signOut: async () => {
-        if (!supabase) return;
         await supabase.auth.signOut();
       },
     }),
@@ -90,8 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

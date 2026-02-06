@@ -1,27 +1,21 @@
+// lib/supabaseClient.ts
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-/**
- * ✅ 핵심 포인트
- * - production(Vercel 빌드)에서는 에러를 던지지 않는다
- * - 개발 환경에서만 설정 누락을 알려준다
- */
-if (
-  (!supabaseUrl || !supabaseAnonKey) &&
-  process.env.NODE_ENV !== "production"
-) {
+if (!supabaseUrl || !supabaseAnonKey) {
+  // 로컬/배포 어디서든 바로 원인 보이게 에러를 강하게 띄움
   throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL 또는 NEXT_PUBLIC_SUPABASE_ANON_KEY가 설정되지 않았습니다."
+    "Missing env: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
+      "Check .env.local and Vercel Environment Variables (Production)."
   );
 }
 
-/**
- * ✅ prod에서 혹시라도 환경변수가 없으면
- *   빌드는 살리고, 런타임에서만 문제를 확인할 수 있게 한다
- */
-export const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : (null as any);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
