@@ -246,11 +246,10 @@ export default function Home() {
 
           return (
             <Link
-              key={work.id}
-              href="/login"
-              style={{ textDecoration: "none", color: "inherit", width: "100%" }}
-              onMouseEnter={() => setHoveredId(work.id)}
-              onMouseLeave={() => setHoveredId(null)}
+              href={user ? `/work/${work.id}` : `/login?redirect=${encodeURIComponent(`/work/${work.id}`)}`}
+  style={{ textDecoration: "none", color: "inherit", width: "100%" }}
+  onMouseEnter={() => setHoveredId(work.id)}
+  onMouseLeave={() => setHoveredId(null)}
             >
               <div
                 className="workCard"
