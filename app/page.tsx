@@ -173,7 +173,7 @@ export default function Home() {
           }}
         >
           <div>
-              <div style={{ marginTop: 6, opacity: 0.9, fontSize: 20, fontWeight: 950 }}>
+              <div style={{ marginTop: 6, opacity: 0.9, fontSize: 15, fontWeight: 950 }}>
               {lastPlayed.episodeId}화 · {lastPlayed.part}편부터 이어서 재생
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function Home() {
                 padding: "12px 20px",
                 borderRadius: 999,
                 fontWeight: 950,
-                fontSize: 20,
+                fontSize: 15,
                 letterSpacing: "-0.3px",
                 color: "#2b1d00",
                 background:
