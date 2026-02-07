@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { episodes } from "../../data/episodes";
+
+// ✅ (로그인 연동용) AuthProvider + supabaseClient 사용
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -18,29 +19,16 @@ function getUnlockedUntil(): number {
 export default function WorkDetailPage() {
   const params = useParams();
   const router = useRouter();
+
   const { user, loading } = useAuth();
 
-  const workId = String(params.id);
+  const workId = String((params as any).id);
   const workTitle = workId === "cheonmujin" ? "천무진 봉인된 천재" : "알 수 없는 작품";
 
   const total = episodes.length;
+  const unlockedUntil = getUnlockedUntil();
 
-  const [unlockedUntil, setUnlockedUntil] = useState(DEFAULT_FREE_UNTIL);
-
-  useEffect(() => {
-    setUnlockedUntil(getUnlockedUntil());
-  }, []);
-
-  const goIfLoggedIn = (fn: () => void) => {
-    if (loading) return;
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    fn();
-  };
-
-  const onClickAuthButton = async () => {
+  const onAuthClick = async () => {
     if (loading) return;
 
     if (user) {
@@ -48,29 +36,9 @@ export default function WorkDetailPage() {
       router.refresh();
       return;
     }
+
     router.push("/login");
   };
-
-  const goldBtnStyle = (hovered: boolean) => ({
-    position: "relative" as const,
-    overflow: "hidden" as const,
-    background:
-      "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-    color: "#2b1d00",
-    border: hovered ? "1px solid rgba(255,215,120,0.95)" : "1px solid rgba(255,215,120,0.55)",
-    padding: "10px 18px",
-    borderRadius: 14,
-    cursor: loading ? "not-allowed" : "pointer",
-    fontWeight: 900,
-    boxShadow: hovered
-      ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
-      : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
-    opacity: loading ? 0.6 : 1,
-    transition: "transform 180ms ease, box-shadow 180ms ease, border 180ms ease",
-    transform: hovered ? "scale(1.06)" : "scale(1)",
-  });
-
-  const [authHover, setAuthHover] = useState(false);
 
   return (
     <main
@@ -83,13 +51,6 @@ export default function WorkDetailPage() {
           'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
       }}
     >
-      <style>{`
-        @keyframes lightSweep {
-          0% { transform: translateX(-120%); }
-          100% { transform: translateX(120%); }
-        }
-      `}</style>
-
       {/* 상단 바 */}
       <div
         style={{
@@ -99,37 +60,28 @@ export default function WorkDetailPage() {
           marginBottom: 16,
           gap: 12,
           flexWrap: "wrap",
-          position: "relative",
-          zIndex: 50,
         }}
       >
         <Link href="/" style={{ color: "white", textDecoration: "none" }}>
           ← 홈
         </Link>
 
-        {/* ✅ 홈이랑 같은 금빛 로그인/로그아웃 */}
+        {/* ✅ 원래 alert 로그인 버튼(유실되던 부분)을 실제 로그인/로그아웃으로 교체 */}
         <button
-          onClick={onClickAuthButton}
-          onMouseEnter={() => setAuthHover(true)}
-          onMouseLeave={() => setAuthHover(false)}
-          disabled={loading}
-          style={goldBtnStyle(authHover)}
+          style={{
+            background: user
+              ? "rgba(0,0,0,0.25)"
+              : "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+            color: user ? "white" : "#1a1200",
+            border: user ? "1px solid rgba(255,255,255,0.2)" : "1px solid rgba(255,215,120,0.7)",
+            padding: "10px 16px",
+            borderRadius: 14,
+            cursor: "pointer",
+            fontWeight: 900,
+          }}
+          onClick={onAuthClick}
         >
-          {loading ? "확인중..." : user ? "로그아웃" : "로그인"}
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "60%",
-              height: "100%",
-              background:
-                "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-              transform: "translateX(-120%)",
-              animation: authHover ? "lightSweep 0.9s ease forwards" : "none",
-              pointerEvents: "none",
-            }}
-          />
+          {loading ? "..." : user ? "로그아웃" : "로그인"}
         </button>
       </div>
 
@@ -160,7 +112,6 @@ export default function WorkDetailPage() {
           )}
         </div>
 
-        {/* ✅ “에피소드 보기”는 로그인 체크 후 스크롤 */}
         <button
           style={{
             background: "rgba(0,0,0,0.35)",
@@ -170,11 +121,10 @@ export default function WorkDetailPage() {
             borderRadius: 14,
             fontWeight: 800,
             cursor: "pointer",
+            whiteSpace: "nowrap",
           }}
           onClick={() =>
-            goIfLoggedIn(() =>
-              document.getElementById("episode-list")?.scrollIntoView({ behavior: "smooth" })
-            )
+            document.getElementById("episode-list")?.scrollIntoView({ behavior: "smooth" })
           }
         >
           에피소드 보기
@@ -190,7 +140,6 @@ export default function WorkDetailPage() {
         <div style={{ display: "grid", gap: 10 }}>
           {episodes.map((ep) => {
             const isLocked = ep.id > unlockedUntil;
-
             const href = isLocked ? `/episode/${ep.id}` : `/episode/${ep.id}?autoplay=1`;
 
             return (
@@ -204,6 +153,7 @@ export default function WorkDetailPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    gap: 12,
                     opacity: isLocked ? 0.75 : 1,
                   }}
                 >
@@ -237,6 +187,7 @@ export default function WorkDetailPage() {
                       padding: "8px 12px",
                       borderRadius: 12,
                       fontWeight: 800,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {isLocked ? "잠금" : "재생"}
