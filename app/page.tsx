@@ -330,56 +330,7 @@ export default function Home() {
                     총 {work.totalEpisodes}화 연재 중
                   </div>
 
-                  {/* ✨ 금빛으로 빛나는 에피소드 보기 버튼 */}
-                  <div
-                    style={{
-                      position: "relative",
-                      overflow: "hidden",
-                      width: "fit-content",
-                      padding: "14px 28px",
-                      borderRadius: 22,
-                      fontWeight: 950,
-                      fontSize: 26,
-                      letterSpacing: "-0.5px",
-                      color: "#2b1d00",
-
-                      background:
-                        "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-
-                      border: isHovered
-                        ? "1px solid rgba(255,215,120,0.95)"
-                        : "1px solid rgba(255,215,120,0.55)",
-
-                      boxShadow: isHovered
-                        ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
-                        : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
-
-                      animation: isHovered ? "none" : "glowPulse 2.8s ease-in-out infinite",
-
-                      transform: isHovered ? "scale(1.06)" : "scale(1)",
-                      transition:
-                        "transform 180ms ease, box-shadow 180ms ease, border 180ms ease",
-                    }}
-                  >
-                    에피소드 보기
-
-                    {/* 🌟 빛이 흐르는 스윕 효과 */}
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "60%",
-                        height: "100%",
-                        background:
-                          "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-                        transform: "translateX(-120%)",
-                        animation: isHovered ? "lightSweep 0.9s ease forwards" : "none",
-                        pointerEvents: "none",
-                      }}
-                    />
-                  </div>
-                </div>
+                 </div>
               </div>
             </Link>
           );
