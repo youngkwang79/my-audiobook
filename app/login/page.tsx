@@ -9,18 +9,10 @@ import { useAuth } from "@/app/providers/AuthProvider";
 function toKoreanAuthError(message?: string) {
   const msg = (message || "").toLowerCase();
 
-  if (msg.includes("invalid login credentials")) {
-    return "로그인 정보가 올바르지 않습니다.";
-  }
-  if (msg.includes("email not confirmed")) {
-    return "이메일 인증이 필요합니다. 받은 메일함에서 인증을 완료해 주세요.";
-  }
-  if (msg.includes("user already registered")) {
-    return "이미 가입된 이메일입니다.";
-  }
-  if (msg.includes("password")) {
-    return "비밀번호 조건을 확인해 주세요.";
-  }
+  if (msg.includes("invalid login credentials")) return "로그인 정보가 올바르지 않습니다.";
+  if (msg.includes("email not confirmed")) return "이메일 인증이 필요합니다. 받은 메일함에서 인증을 완료해 주세요.";
+  if (msg.includes("user already registered")) return "이미 가입된 이메일입니다.";
+  if (msg.includes("password")) return "비밀번호 조건을 확인해 주세요.";
 
   return message || "오류가 발생했습니다.";
 }
@@ -53,14 +45,11 @@ export default function LoginPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const emailOk = useMemo(
-    () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
-    [email]
-  );
+  const emailOk = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()), [email]);
   const pwCheck = useMemo(() => validatePassword(password), [password]);
 
-  // 로그인/회원가입 모두 같은 기준으로 활성화(= 금빛 전환)
-  const canSubmit = useMemo(() => emailOk && pwCheck.ok, [emailOk, pwCheck.ok]);
+  // ✅ supabase가 null이면 제출 자체를 막음
+  const canSubmit = useMemo(() => !!supabase && emailOk && pwCheck.ok, [emailOk, pwCheck.ok]);
 
   useEffect(() => {
     if (!loading && user) router.replace("/");
@@ -68,6 +57,19 @@ export default function LoginPage() {
 
   async function onSubmit() {
     setMsg(null);
+
+    // ✅ 여기서부터 “온라인에서 터지는 문제” 방어
+    if (!supabase) {
+      setMsg(
+        [
+          "로그인 설정이 아직 배포에 반영되지 않았습니다.",
+          "Vercel 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) 저장 후",
+          "반드시 Redeploy(재배포) 해주세요.",
+        ].join("\n")
+      );
+      return;
+    }
+
     setBusy(true);
 
     try {
@@ -94,14 +96,12 @@ export default function LoginPage() {
     }
   }
 
-  // ✅ 로그인/회원가입 모두 조건 충족 시 금빛
+  // ✅ 로그인/회원가입 둘 다 조건 충족하면 금빛 (원하면 signup만 금빛으로 바꿔도 됨)
   const isGoldActive = canSubmit && !busy;
-
-  // ✅ 비활성일 때 버튼 아래 안내문(헷갈림 방지)
-  const showGuide = !canSubmit && (email.trim().length > 0 || password.length > 0);
 
   return (
     <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 24 }}>
+      {/* CSS(반짝/황금 효과) */}
       <style>{`
         .btnBase {
           padding: 12px 12px;
@@ -109,41 +109,28 @@ export default function LoginPage() {
           border: 1px solid rgba(255,255,255,0.18);
           color: white;
           font-weight: 900;
-          transition: all 200ms ease;
-          position: relative;
-          overflow: hidden;
+          transition: all 180ms ease;
         }
-
-        /* ✅ 비활성 버튼: 확실히 '못 누르는' 느낌 */
         .btnDisabled {
-          background: rgba(255,255,255,0.03);
-          color: rgba(255,255,255,0.35);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.04);
           cursor: not-allowed;
-          filter: grayscale(100%);
-          box-shadow: none;
+          opacity: 0.7;
         }
-        .btnDisabled:hover {
-          transform: none;
-          box-shadow: none;
-        }
-        .btnDisabled::after {
-          display: none;
-        }
-
-        /* 일반 활성 버튼(금빛 전환 전) */
         .btnNormal {
           background: rgba(255,255,255,0.12);
           cursor: pointer;
         }
 
-        /* ✅ 황금 + 글로우 + 반짝 */
+        /* 황금 + 글로우 + 반짝 */
         .btnGold {
+          position: relative;
+          overflow: hidden;
           background: linear-gradient(135deg, #b8860b, #ffd700, #b8860b);
           color: #111;
           border: 1px solid rgba(255, 215, 0, 0.65);
           box-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
           transform: translateY(-1px);
+          cursor: pointer;
         }
         .btnGold:hover {
           box-shadow: 0 0 26px rgba(255, 215, 0, 0.45);
@@ -169,7 +156,7 @@ export default function LoginPage() {
         }
 
         .helpBox {
-          margin-top: 8px;
+          margin-top: 6px;
           padding: 12px;
           border-radius: 12px;
           border: 1px solid rgba(255,255,255,0.12);
@@ -178,23 +165,14 @@ export default function LoginPage() {
           line-height: 1.6;
           white-space: pre-wrap;
         }
-
         .hint {
           font-size: 12px;
-          opacity: 0.9;
+          opacity: 0.85;
           line-height: 1.4;
           margin-top: -2px;
         }
         .hintGood { color: rgba(255,255,255,0.85); }
-        .hintBad  { color: rgba(255,160,160,0.95); }
-
-        /* ✅ 비활성 안내(버튼 바로 아래) */
-        .guideLine {
-          margin-top: 6px;
-          font-size: 12px;
-          line-height: 1.45;
-          color: rgba(255,160,160,0.95);
-        }
+        .hintBad { color: rgba(255,160,160,0.95); }
       `}</style>
 
       <div
@@ -211,6 +189,13 @@ export default function LoginPage() {
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>
           {mode === "login" ? "로그인" : "회원가입"}
         </h1>
+
+        {!supabase && (
+          <div className="helpBox" style={{ borderColor: "rgba(255,180,180,0.35)" }}>
+            현재 배포 환경에서 Supabase 설정이 감지되지 않았습니다.
+            {"\n"}Vercel 환경변수 저장 후 Redeploy를 해주세요.
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button
@@ -231,7 +216,6 @@ export default function LoginPage() {
           >
             로그인
           </button>
-
           <button
             onClick={() => {
               setMode("signup");
@@ -267,10 +251,7 @@ export default function LoginPage() {
               outline: "none",
             }}
           />
-
-          {!emailOk && email.trim().length > 0 && (
-            <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>
-          )}
+          {!emailOk && email.trim().length > 0 && <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>}
 
           <input
             value={password}
@@ -287,83 +268,40 @@ export default function LoginPage() {
             }}
           />
 
-          {/* 비번 힌트 */}
           {password.length > 0 && (
-            <div className={`hint ${pwCheck.minLenOk ? "hintGood" : "hintBad"}`}>
-              • 8자 이상 {pwCheck.minLenOk ? "충족" : "필요"}
-            </div>
-          )}
-          {password.length > 0 && (
-            <div className={`hint ${pwCheck.hasLetter ? "hintGood" : "hintBad"}`}>
-              • 영문 포함 {pwCheck.hasLetter ? "충족" : "필요"}
-            </div>
-          )}
-          {password.length > 0 && (
-            <div className={`hint ${pwCheck.hasNumber ? "hintGood" : "hintBad"}`}>
-              • 숫자 포함 {pwCheck.hasNumber ? "충족" : "필요"}
-            </div>
-          )}
-          {password.length > 0 && (
-            <div className={`hint ${pwCheck.hasSpecial ? "hintGood" : "hintBad"}`}>
-              • 특수문자 포함 {pwCheck.hasSpecial ? "충족" : "필요"}
-            </div>
+            <>
+              <div className={`hint ${pwCheck.minLenOk ? "hintGood" : "hintBad"}`}>
+                • 8자 이상 {pwCheck.minLenOk ? "충족" : "필요"}
+              </div>
+              <div className={`hint ${pwCheck.hasLetter ? "hintGood" : "hintBad"}`}>
+                • 영문 포함 {pwCheck.hasLetter ? "충족" : "필요"}
+              </div>
+              <div className={`hint ${pwCheck.hasNumber ? "hintGood" : "hintBad"}`}>
+                • 숫자 포함 {pwCheck.hasNumber ? "충족" : "필요"}
+              </div>
+              <div className={`hint ${pwCheck.hasSpecial ? "hintGood" : "hintBad"}`}>
+                • 특수문자 포함 {pwCheck.hasSpecial ? "충족" : "필요"}
+              </div>
+            </>
           )}
 
-          {/* ✅ 로그인/회원가입 모두: 조건 충족 시 금빛 */}
           <button
-            onClick={onSubmit}
-            disabled={!canSubmit || busy}
             className={[
               "btnBase",
-              !canSubmit || busy ? "btnDisabled" : "btnNormal",
-              isGoldActive ? "btnGold" : "",
+              busy || !canSubmit ? "btnDisabled" : isGoldActive ? "btnGold" : "btnNormal",
             ].join(" ")}
+            onClick={onSubmit}
+            disabled={busy || !canSubmit}
           >
-            {busy
-              ? "처리중..."
-              : mode === "login"
-                ? (canSubmit ? "로그인" : "조건을 입력해 주세요")
-                : (canSubmit ? "회원가입" : "조건을 입력해 주세요")}
+            {mode === "login" ? (busy ? "로그인 중..." : "로그인") : busy ? "가입 중..." : "회원가입"}
           </button>
-
-          {/* ✅ 버튼이 비활성인 이유를 바로 보여줘서 헷갈림 방지 */}
-          {showGuide && (
-            <div className="guideLine">
-              {!emailOk ? "이메일 형식을 확인해 주세요. " : ""}
-              {!pwCheck.minLenOk ? "비밀번호는 8자 이상이어야 합니다. " : ""}
-              {!pwCheck.hasLetter ? "알파벳을 포함해 주세요. " : ""}
-              {!pwCheck.hasNumber ? "숫자를 포함해 주세요. " : ""}
-              {!pwCheck.hasSpecial ? "특수문자를 포함해 주세요." : ""}
-            </div>
-          )}
-
-          {/* 회원가입 방법 안내문: signup 모드에서만 표시 */}
-          {mode === "signup" && (
-            <div className="helpBox">
-              {"회원가입 방법\n"}
-              {"1. 이메일과 비밀번호를 입력해 주세요.\n"}
-              {"2. 회원가입 버튼을 누르면 인증 메일이 발송됩니다.\n"}
-              {"3. 메일함에서 인증을 완료한 뒤 로그인해 주세요.\n\n"}
-              {"비밀번호 안내(보안)\n"}
-              {"- 알파벳, 숫자, 특수문자를 조합하여 8자 이상으로 입력해 주세요.\n"}
-              {"- 예시: Abcd1234#"}
-            </div>
-          )}
 
           {msg && <div className="helpBox">{msg}</div>}
 
           <button
+            className="btnBase btnNormal"
             onClick={() => router.push("/")}
-            style={{
-              marginTop: 6,
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(255,255,255,0.06)",
-              color: "white",
-              fontWeight: 800,
-              cursor: "pointer",
-            }}
+            style={{ marginTop: 4 }}
           >
             홈으로
           </button>
