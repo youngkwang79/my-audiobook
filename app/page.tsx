@@ -41,11 +41,9 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ 이어듣기 링크 (part 지원 여부와 무관하게 autoplay=1은 확실히 동작)
+  // ✅ 이어듣기 링크
   const continueHref = useMemo(() => {
     if (!lastPlayed) return "";
-    // part까지 URL로 넘기고 싶으면 에피소드 페이지에서 part 파라미터 처리 추가하면 됨
-    // return `/episode/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
     return `/episode/${lastPlayed.episodeId}?autoplay=1`;
   }, [lastPlayed]);
 
@@ -53,13 +51,11 @@ export default function Home() {
     if (loading) return;
 
     if (user) {
-      // ✅ 로그아웃
       await supabase.auth.signOut();
-      router.refresh(); // 홈에서 글씨 즉시 반영
+      router.refresh();
       return;
     }
 
-    // ✅ 로그인 화면으로
     router.push("/login");
   };
 
@@ -74,24 +70,39 @@ export default function Home() {
           'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
       }}
     >
-      {/* 🔥 버튼 빛 효과 애니메이션 */}
+      {/* ✅ 공통 스타일 (모바일 대응 포함) */}
       <style>{`
-        @keyframes glowPulse {
-          0% { box-shadow: 0 0 8px rgba(255,255,255,0.18); }
-          50% { box-shadow: 0 0 22px rgba(255,255,255,0.35), 0 0 80px rgba(255,255,255,0.18); }
-          100% { box-shadow: 0 0 8px rgba(255,255,255,0.18); }
-        }
-
         @keyframes lightSweep {
           0% { transform: translateX(-120%); }
           100% { transform: translateX(120%); }
         }
 
-        /* ✅ 이어듣기 카드용 은은한 글로우 */
         @keyframes goldBreath {
           0% { box-shadow: 0 0 14px rgba(255,215,120,0.20); }
           50% { box-shadow: 0 0 26px rgba(255,215,120,0.35), 0 0 90px rgba(255,200,80,0.18); }
           100% { box-shadow: 0 0 14px rgba(255,215,120,0.20); }
+        }
+
+        /* ✅ 작품 카드: 모바일에서는 세로로 쌓이게 */
+        @media (max-width: 640px) {
+          .workCard {
+            flex-direction: column !important;
+            max-width: 100% !important;
+          }
+          .thumbWrap {
+            width: 100% !important;
+            height: auto !important;
+          }
+          .thumbInner {
+            width: 100% !important;
+          }
+          .topTitle {
+            font-size: 34px !important;
+          }
+          .authBtn {
+            font-size: 22px !important;
+            padding: 10px 14px !important;
+          }
         }
       `}</style>
 
@@ -102,12 +113,16 @@ export default function Home() {
           alignItems: "center",
           justifyContent: "space-between",
           marginBottom: 18,
+          gap: 12,
         }}
       >
-        <div style={{ fontSize: 44, fontWeight: 900 }}>무협 소설 채널</div>
+        <div className="topTitle" style={{ fontSize: 44, fontWeight: 900 }}>
+          무협 소설 채널
+        </div>
 
-        {/* ✅ 로그인/로그아웃 버튼 (기존 디자인 유지 + 텍스트/동작만 연결) */}
+        {/* 로그인/로그아웃 버튼 */}
         <button
+          className="authBtn"
           onClick={handleAuthClick}
           disabled={loading}
           onMouseEnter={() => setLoginHover(true)}
@@ -132,11 +147,11 @@ export default function Home() {
               ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
               : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
             opacity: loading ? 0.75 : 1,
+            whiteSpace: "nowrap",
           }}
         >
           {loading ? "확인중..." : user ? "로그아웃" : "로그인"}
 
-          {/* 스윕 */}
           <span
             style={{
               position: "absolute",
@@ -154,7 +169,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ✅ 이어듣기 카드 (최근 시청 기록이 있을 때만 표시) */}
+      {/* 이어듣기 카드 */}
       {lastPlayed && (
         <div
           style={{
@@ -170,12 +185,11 @@ export default function Home() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
+            flexWrap: "wrap",
           }}
         >
-          <div>
-              <div style={{ marginTop: 6, opacity: 0.9, fontSize: 15, fontWeight: 950 }}>
-              {lastPlayed.episodeId}화 · {lastPlayed.part}편부터 이어서 재생
-            </div>
+          <div style={{ opacity: 0.9, fontSize: 15, fontWeight: 950 }}>
+            {lastPlayed.episodeId}화 · {lastPlayed.part}편부터 이어서 재생
           </div>
 
           <Link href={continueHref} style={{ textDecoration: "none" }}>
@@ -195,6 +209,7 @@ export default function Home() {
                 border: "1px solid rgba(255,215,120,0.65)",
                 boxShadow: "0 0 18px rgba(255,215,120,0.40)",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               ▶ 이어서 듣기
@@ -238,6 +253,7 @@ export default function Home() {
               onMouseLeave={() => setHoveredId(null)}
             >
               <div
+                className="workCard"
                 style={{
                   background: "rgba(255,255,255,0.06)",
                   border: isHovered
@@ -253,63 +269,45 @@ export default function Home() {
                   transition: "transform 180ms ease, border 180ms ease",
                 }}
               >
-                {/* 썸네일 */}
+                {/* ✅ 썸네일 영역: 박스가 이미지에 맞게 (안 짤리고, 모바일에서도 100%) */}
                 <div
+                  className="thumbWrap"
                   style={{
-                    width: 400,
-                    height: 250,
-                    position: "relative",
+                    width: 350,
                     flexShrink: 0,
                     background: "rgba(0,0,0,0.35)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    padding: 14,
+                    boxSizing: "border-box",
                   }}
                 >
-                  {/* 🔥 썸네일 그라데이션 오버레이 */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 70%, rgba(0,0,0,0.7) 100%)",
-                      pointerEvents: "none",
-                    }}
-                  />
+                  <div className="thumbInner" style={{ width: "100%" }}>
+                    <img
+                      src={work.thumbnail}
+                      alt={work.title}
+                      style={{
+                        width: "100%",
+                        height: "auto",          // ✅ 핵심: 이미지 비율 유지 + 짤림 방지
+                        display: "block",
+                        objectFit: "contain",
+                        borderRadius: 18,
+                      }}
+                    />
 
-                  {/* 연재중 배지 */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 16,
-                      left: 16,
-                      padding: "10px 14px",
-                      borderRadius: 999,
-                      fontSize: 18,
-                      fontWeight: 900,
-                      background: "rgba(0,0,0,0.6)",
-                      border: "1px solid rgba(255,255,255,0.3)",
-                      backdropFilter: "blur(6px)",
-                      zIndex: 2,
-                    }}
-                  >
-                    연재중
+                    {/* ✅ “55화 연재중”을 썸네일 밑으로 (글씨 크기 15) */}
+                    <div
+                      style={{
+                        marginTop: 10,
+                        fontSize: 15,
+                        fontWeight: 800,
+                        opacity: 0.9,
+                      }}
+                    >
+                      {work.totalEpisodes}화 연재중
+                    </div>
                   </div>
-
-                  <img
-                    src={work.thumbnail}
-                    alt={work.title}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      padding: 14,
-                      display: "block",
-                    }}
-                  />
                 </div>
 
-                {/* 정보 영역 */}
+                {/* 정보 영역 (기존 구조 유지: 나중에 텍스트/버튼 추가 가능) */}
                 <div
                   style={{
                     padding: 28,
@@ -318,19 +316,7 @@ export default function Home() {
                     flexDirection: "column",
                     justifyContent: "center",
                   }}
-                >
-                  <div
-                    style={{
-                      fontSize: 30,
-                      opacity: 0.9,
-                      fontWeight: 700,
-                      marginBottom: 30,
-                    }}
-                  >
-                    총 {work.totalEpisodes}화 연재 중
-                  </div>
-
-                 </div>
+                ></div>
               </div>
             </Link>
           );
