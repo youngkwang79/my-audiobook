@@ -192,7 +192,7 @@ export default function Home() {
             {lastPlayed.episodeId}화 · {lastPlayed.part}편부터 이어서 재생
           </div>
 
-          <Link href={continueHref} style={{ textDecoration: "none" }}>
+          <Link href={user ? continueHref : "/login"} style={{ textDecoration: "none" }}>
             <div
               style={{
                 position: "relative",
@@ -247,7 +247,7 @@ export default function Home() {
           return (
             <Link
               key={work.id}
-              href={`/work/${work.id}`}
+              href="/login"
               style={{ textDecoration: "none", color: "inherit", width: "100%" }}
               onMouseEnter={() => setHoveredId(work.id)}
               onMouseLeave={() => setHoveredId(null)}
