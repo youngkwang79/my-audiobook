@@ -1,5 +1,6 @@
 "use client";
 
+import TopBar from "@/app/components/TopBar";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { episodes } from "../../data/episodes";
@@ -51,40 +52,9 @@ export default function WorkDetailPage() {
           'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
       }}
     >
-      {/* 상단 바 */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <Link href="/" style={{ color: "white", textDecoration: "none" }}>
-          ← 홈
-        </Link>
-
-        {/* ✅ 원래 alert 로그인 버튼(유실되던 부분)을 실제 로그인/로그아웃으로 교체 */}
-        <button
-          style={{
-            background: user
-              ? "rgba(0,0,0,0.25)"
-              : "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-            color: user ? "white" : "#1a1200",
-            border: user ? "1px solid rgba(255,255,255,0.2)" : "1px solid rgba(255,215,120,0.7)",
-            padding: "10px 16px",
-            borderRadius: 14,
-            cursor: "pointer",
-            fontWeight: 900,
-          }}
-          onClick={onAuthClick}
-        >
-          {loading ? "..." : user ? "로그아웃" : "로그인"}
-        </button>
-      </div>
-
+      
+          <TopBar />
+      
       {/* 작품 카드 */}
       <div
         style={{

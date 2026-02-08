@@ -1,5 +1,6 @@
 "use client";
 
+import TopBar from "@/app/components/TopBar";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -360,67 +361,13 @@ export default function EpisodePage() {
 
   return (
     <main
+    
       className="episodeMain"
       style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}
     >
       <style>{bounceCSS + mobileCSS}</style>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/work/cheonmujin" style={{ color: "white", textDecoration: "none" }}>
-          ← 이전
-        </Link>
-
-        <div style={{ fontSize: 13, opacity: 0.8, display: "flex", gap: 12, alignItems: "center" }}>
-          <div
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              background:
-                "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-              color: "#2b1d00",
-              border: "1px solid rgba(255,215,120,0.65)",
-              padding: "10px 18px",
-              borderRadius: 14,
-              boxShadow: "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
-              minWidth: 140,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              lineHeight: 1.1,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                opacity: 0.85,
-                letterSpacing: 0.5,
-                marginBottom: 4,
-              }}
-            >
-              보유 포인트
-            </div>
-
-            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.8 }}>{points}P</div>
-
-            <span
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "60%",
-                height: "100%",
-                background:
-                  "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-                transform: "translateX(-120%)",
-                animation: "lightSweep 1.2s ease infinite",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
-        </div>
-      </div>
+      <TopBar />
 
       <h1 style={{ marginTop: 14 }}>
         {episodeKey}화 - {part}편

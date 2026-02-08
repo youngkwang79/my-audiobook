@@ -1,5 +1,7 @@
 "use client";
 
+
+import TopBar from "@/app/components/TopBar";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -70,7 +72,10 @@ export default function Home() {
           'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
       }}
     >
-      {/* ✅ 공통 스타일 (모바일 대응 포함) */}
+
+      <TopBar />
+
+            {/* ✅ 공통 스타일 (모바일 대응 포함) */}
       <style>{`
         @keyframes lightSweep {
           0% { transform: translateX(-120%); }
@@ -106,70 +111,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* 상단 바 */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 18,
-          gap: 12,
-        }}
-      >
-        <div className="topTitle" style={{ fontSize: 44, fontWeight: 900 }}>
-          무협 소설 채널
-        </div>
-
-        {/* 로그인/로그아웃 버튼 */}
-        <button
-          className="authBtn"
-          onClick={handleAuthClick}
-          disabled={loading}
-          onMouseEnter={() => setLoginHover(true)}
-          onMouseLeave={() => setLoginHover(false)}
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            background:
-              "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-            color: "#2b1d00",
-            border: loginHover
-              ? "1px solid rgba(255,215,120,0.95)"
-              : "1px solid rgba(255,215,120,0.55)",
-            padding: "10px 18px",
-            borderRadius: 14,
-            cursor: loading ? "not-allowed" : "pointer",
-            fontSize: 30,
-            fontWeight: 900,
-            transform: loginHover ? "scale(1.06)" : "scale(1)",
-            transition: "transform 180ms ease, box-shadow 180ms ease, border 180ms ease",
-            boxShadow: loginHover
-              ? "0 0 20px rgba(255,215,120,0.75), 0 0 80px rgba(255,200,80,0.45)"
-              : "0 0 14px rgba(255,215,120,0.45), 0 0 50px rgba(255,200,80,0.25)",
-            opacity: loading ? 0.75 : 1,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {loading ? "확인중..." : user ? "로그아웃" : "로그인"}
-
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "60%",
-              height: "100%",
-              background:
-                "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-              transform: "translateX(-120%)",
-              animation: loginHover ? "lightSweep 0.9s ease forwards" : "none",
-              pointerEvents: "none",
-            }}
-          />
-        </button>
-      </div>
-
-      {/* 이어듣기 카드 */}
+          {/* 이어듣기 카드 */}
       {lastPlayed && (
         <div
           style={{
@@ -246,6 +188,7 @@ export default function Home() {
 
           return (
             <Link
+            key={work.id}
               href={user ? `/work/${work.id}` : `/login?redirect=${encodeURIComponent(`/work/${work.id}`)}`}
   style={{ textDecoration: "none", color: "inherit", width: "100%" }}
   onMouseEnter={() => setHoveredId(work.id)}
