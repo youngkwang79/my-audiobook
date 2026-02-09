@@ -42,6 +42,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [capsOn, setCapsOn] = useState(false); // ✅ CapsLock 표시
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -101,7 +102,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 24 }}>
-      {/* CSS(반짝/황금 효과) */}
+      {/* CSS(반짝/황금 효과) */} 
       <style>{`
         .btnBase {
           padding: 12px 12px;
@@ -236,6 +237,19 @@ export default function LoginPage() {
           </button>
         </div>
 
+        {/* ✅ 회원가입 진행방법 (다시 복구) */}
+        {mode === "signup" && (
+          <div className="helpBox">
+            {"회원가입 진행방법\n"}
+            {"1. 이메일과 비밀번호를 입력해 주세요.\n"}
+            {"2. 회원가입 버튼을 누르면 인증 메일이 발송됩니다.\n"}
+            {"3. 메일함에서 인증을 완료한 뒤 로그인해 주세요.\n\n"}
+            {"비밀번호 안내(보안)\n"}
+            {"- 알파벳, 숫자, 특수문자를 조합하여 8자 이상으로 입력해 주세요.\n"}
+            {"- 예시: Abcd1234#"}
+          </div>
+        )}
+
         <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
           <input
             value={email}
@@ -251,11 +265,15 @@ export default function LoginPage() {
               outline: "none",
             }}
           />
-          {!emailOk && email.trim().length > 0 && <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>}
+          {!emailOk && email.trim().length > 0 && (
+            <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>
+          )}
 
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => setCapsOn(e.getModifierState?.("CapsLock") ?? false)}
+            onKeyUp={(e) => setCapsOn(e.getModifierState?.("CapsLock") ?? false)}
             placeholder="비밀번호(8자 이상, 영문+숫자+특수문자 포함)"
             type="password"
             style={{
@@ -267,6 +285,9 @@ export default function LoginPage() {
               outline: "none",
             }}
           />
+
+          {/* ✅ CapsLock 경고 */}
+          {capsOn && <div className="hint hintBad">Caps Lock이 켜져 있습니다.</div>}
 
           {password.length > 0 && (
             <>
@@ -298,11 +319,7 @@ export default function LoginPage() {
 
           {msg && <div className="helpBox">{msg}</div>}
 
-          <button
-            className="btnBase btnNormal"
-            onClick={() => router.push("/")}
-            style={{ marginTop: 4 }}
-          >
+          <button className="btnBase btnNormal" onClick={() => router.push("/")} style={{ marginTop: 4 }}>
             홈으로
           </button>
         </div>
