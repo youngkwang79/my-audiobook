@@ -52,9 +52,12 @@ export default function TopBar() {
 )}
 
         {/* 타이틀 */}
-        <div style={{ fontSize: 32, fontWeight: 900 }}>
-          무협 소설 채널
-        </div>
+   
+{pathname === "/" && (
+  <div style={{ fontSize: 32, fontWeight: 900 }}>
+    무협 소설 채널
+  </div>
+)}
       </div>
 
       {/* 오른쪽 버튼 */}
