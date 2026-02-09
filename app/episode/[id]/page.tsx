@@ -11,8 +11,8 @@ const DEFAULT_TOTAL_PARTS = 30;
 // ✅ 무료 파트 기준(원래 1~8 무료)
 const DEFAULT_FREE_PARTS = 8;
 
-// ✅ 포인트 정책: 100포인트당 1편 해제
-const POINTS_PER_PART = 100;
+// ✅ 포인트 정책: 60포인트당 1편 해제
+const POINTS_PER_PART = 60;
 
 // ✅ 작품/파일명 프리픽스(남겨둠)
 const SERIES_PREFIX = "cheonmujin";
@@ -292,7 +292,7 @@ export default function EpisodePage() {
     router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
   };
 
-  // ✅ 포인트 100으로 1편 해제
+  // ✅ 포인트 60으로 1편 해제
   const unlockWithPoints = () => {
     const current = getPoints();
 
@@ -449,7 +449,7 @@ export default function EpisodePage() {
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
             잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
             <br />
-            포인트는 <b>100P당 1편</b> 해제됩니다.
+            포인트는 <b>60P당 1편</b> 해제됩니다.
           </div>
         </aside>
 
@@ -562,11 +562,11 @@ export default function EpisodePage() {
                 </div>
 
                 <div style={{ marginTop: 10, fontSize: 15, fontWeight: 850, opacity: 0.92 }}>
-                  무료 이후 파트는 구독 또는 포인트 또는 광고시청이 필요합니다.
+                  무료 이후 파트는 포인트/광고시청이 필요합니다.
                 </div>
 
-                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
-                  보유 포인트: <b>{points}P</b> · (100P당 1편 해제)
+                <div style={{ marginTop: 6, fontSize: 20, opacity: 0.9 }}>
+                  보유 포인트: <b>{points}P</b> · (60P당 1편 해제)
                 </div>
 
                 <div style={{ height: 14 }} />
@@ -584,39 +584,9 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    💰 포인트 100으로 1편 해제
+                    💰 포인트 60으로 1편 해제
                   </button>
-
-                  <button
-                    onClick={() => unlockMoreParts(1)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(255,255,255,0.35)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    간단 광고로 1편 오픈
-                  </button>
-
-                  <button
-                    onClick={() => unlockMoreParts(5)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(0,0,0,0.10)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    광고 참여로 5편 연속 오픈
-                  </button>
-
+                  
                   <button
                     onClick={unlockAllParts}
                     style={{
@@ -644,23 +614,10 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    월 구독하기
+                    월 구독하기(준비중)
                   </button>
 
-                  <button
-                    onClick={() => addTestPoints(500)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(0,0,0,0.18)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    🧪 포인트 500 지급(테스트)
-                  </button>
+                  
                 </div>
 
                 <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
