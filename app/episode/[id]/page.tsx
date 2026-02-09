@@ -447,7 +447,7 @@ export default function EpisodePage() {
           </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
-            잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
+            잠긴 편(무료 이후)은 포인트/광고로 오픈됩니다.
             <br />
             포인트는 <b>60P당 1편</b> 해제됩니다.
           </div>

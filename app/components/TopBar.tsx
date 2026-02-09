@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -7,6 +8,7 @@ import { useEffect, useState } from "react";
 
 export default function TopBar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading } = useAuth();
   const [points, setPoints] = useState<number>(0);
 
@@ -43,9 +45,11 @@ export default function TopBar() {
       {/* 왼쪽 영역 */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {/* 뒤로가기 버튼 */}
-        <button onClick={() => router.back()} style={goldStyle}>
-          ← 이전
-        </button>
+        {pathname !== "/" && (
+  <button onClick={() => router.back()} style={goldStyle}>
+    ← 이전
+  </button>
+)}
 
         {/* 타이틀 */}
         <div style={{ fontSize: 32, fontWeight: 900 }}>
