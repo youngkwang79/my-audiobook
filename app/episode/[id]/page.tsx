@@ -403,7 +403,22 @@ export default function EpisodePage() {
         gap: 10px !important;
       }
       .lockBtns button { width: 100% !important; }
+        /* ✅ 가로(옆) 넘침 방지 추가 */
+    html, body { overflow-x: hidden; }
+
+    .episodeMain {
+      overflow-x: hidden !important;
+      max-width: 100vw !important;
     }
+
+    .partGrid {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      max-width: 100% !important;
+    }
+
+    button { max-width: 100% !important; }
+    .lockCard * { word-break: keep-all; }
+    .lockBtns button { white-space: normal !important; }    
   `;
 
   const onSelectPart = (p: number) => {
