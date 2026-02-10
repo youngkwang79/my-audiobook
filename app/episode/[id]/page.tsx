@@ -490,6 +490,7 @@ export default function EpisodePage() {
                     height: 33,
                     aspectRatio: "1 / 1",
                     borderRadius: 12,
+                    position: "relative",
                     border: isActive
                       ? "2px solid rgba(255,215,120,0.9)"
                       : "1px solid rgba(255,255,255,0.18)",
@@ -504,17 +505,32 @@ export default function EpisodePage() {
                   }}
                   aria-label={`${p}편`}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>{p}</span>
-                    {isLocked && <span style={{ fontSize: 12, lineHeight: 1 }}>🔒</span>}
-                  </div>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{p}</span>
+
+{isLocked && (
+  <span
+    style={{
+      position: "absolute",
+      right: 6,
+      bottom: 5,
+      fontSize: 12,
+      lineHeight: 1,
+      opacity: 0.9,
+      pointerEvents: "none",
+    }}
+    aria-hidden="true"
+  >
+    🔒
+  </span>
+)}
+
                 </button>
               );
             })}
           </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
-            잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
+            잠긴 편(무료 이후)은 포인트/광고로 오픈됩니다.
             <br />
             포인트는 <b>{POINTS_PER_PART}P당 1편</b> 해제됩니다.
           </div>
