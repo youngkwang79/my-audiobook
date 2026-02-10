@@ -1,27 +1,25 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
-import { useEffect, useState } from "react";
 
 export default function TopBar() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading } = useAuth();
+
   const [points, setPoints] = useState<number>(0);
 
-  // ✅ 보유 포인트 읽기 (현재는 localStorage 기준)
+  // ✅ 의존성 배열은 항상 "같은 길이"로 유지해야 함 → [user?.id]
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = Number(localStorage.getItem("points") || 0);
-    setPoints(p);
-  }, []);
+    setPoints(Number.isFinite(p) ? p : 0);
+  }, [user?.id]);
 
-  if (loading) return null;
-
-  const goldStyle = {
+  const goldStyle: React.CSSProperties = {
     background:
       "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
     color: "#2b1d00",
@@ -30,7 +28,27 @@ export default function TopBar() {
     borderRadius: 14,
     fontWeight: 900,
     cursor: "pointer",
-    whiteSpace: "nowrap" as const,
+    whiteSpace: "nowrap",
+    pointerEvents: "auto",
+    WebkitTapHighlightColor: "transparent",
+  };
+
+  const goBackSmart = () => {
+    if (typeof window === "undefined") return;
+
+    // 히스토리 있으면 back
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    // 히스토리 없으면 fallback
+    if (pathname.startsWith("/episode") || pathname.startsWith("/work")) {
+      router.push("/work/cheonmujin");
+      return;
+    }
+
+    router.push("/");
   };
 
   return (
@@ -40,40 +58,46 @@ export default function TopBar() {
         alignItems: "center",
         justifyContent: "space-between",
         marginBottom: 18,
+        position: "relative",
+        zIndex: 10000,
       }}
     >
-      {/* 왼쪽 영역 */}
+      {/* 왼쪽 */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {/* 뒤로가기 버튼 */}
+        {/* 홈에서는 이전 버튼 숨김 */}
         {pathname !== "/" && (
-  <button onClick={() => router.back()} style={goldStyle}>
-    ← 이전
-  </button>
-)}
-
-        {/* 타이틀 */}
-   
-{pathname === "/" && (
-  <div style={{ fontSize: 32, fontWeight: 900 }}>
-    무협 소설 채널
-  </div>
-)}
-      </div>
-
-      {/* 오른쪽 버튼 */}
-      <div style={{ display: "flex", gap: 12 }}>
-        {/* 로그인 전 */}
-        {!user && (
-          <button onClick={() => router.push("/login")} style={goldStyle}>
-            로그인
+          <button onClick={goBackSmart} style={goldStyle}>
+            ← 이전
           </button>
         )}
 
-        {/* 로그인 후 */}
-        {user && (
+        {/* 타이틀은 홈에서만 */}
+        {pathname === "/" && (
+          <div style={{ fontSize: 36, fontWeight: 900 }}>무협 소설 채널</div>
+        )}
+      </div>
+
+      {/* 오른쪽 */}
+      <div style={{ display: "flex", gap: 12 }}>
+        {/* loading 중에는 버튼만 최소로(훅 구조 안정) */}
+        {loading ? (
+          <button style={{ ...goldStyle, opacity: 0.7, cursor: "default" }} disabled>
+            로딩중
+          </button>
+        ) : !user ? (
+          <button onClick={() => router.push("/login")} style={goldStyle}>
+            로그인
+          </button>
+        ) : (
           <>
-            {/* 보유 포인트 표시 */}
-            <button onClick={() => router.push("/points")} style={goldStyle}>
+            <button
+              onClick={() => router.push("/points")}
+              style={{
+                ...goldStyle,
+                fontSize: 20,
+                letterSpacing: 0.3,
+              }}
+            >
               {points.toLocaleString()}P
             </button>
 

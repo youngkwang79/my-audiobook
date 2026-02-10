@@ -84,12 +84,10 @@ function pad3(n: number) {
 }
 
 // ✅ "32-1" 같은 id도 R2 폴더명으로 안전하게 바꿈
-// - 숫자만: 3자리 (예: "3" -> "003")
-// - 하이픈 포함: 앞 숫자만 3자리 + "-뒤" (예: "32-1" -> "032-1")
 function getEpisodeFolder(episodeKey: string) {
   if (/^\d+$/.test(episodeKey)) return pad3(Number(episodeKey));
   const m = episodeKey.match(/^(\d+)-(.*)$/);
-  if (!m) return episodeKey; // 예외 케이스는 그대로
+  if (!m) return episodeKey;
   return `${pad3(Number(m[1]))}-${m[2]}`;
 }
 
@@ -98,10 +96,8 @@ function getTotalParts(episodeKey: string) {
 }
 
 function getFreeParts(episodeKey: string) {
-  // ✅ 전체 파트 무료(완전 오픈)
-  return getTotalParts(episodeKey);
+  return Math.min(DEFAULT_FREE_PARTS, getTotalParts(episodeKey));
 }
-
 
 // ✅ (예전 public/audio 방식용 - 지금은 R2 사용중) 남겨둠
 function getAudioPath(episodeKey: string, part: number) {
@@ -111,7 +107,7 @@ function getAudioPath(episodeKey: string, part: number) {
 }
 
 // -------------------------
-// ✅ UnlockedUntil (에피소드별) - "32-1" 대응 위해 key를 문자열로 저장
+// ✅ UnlockedUntil (에피소드별)
 // -------------------------
 const getUnlockedPartUntil = (episodeKey: string) => {
   const total = getTotalParts(episodeKey);
@@ -156,6 +152,13 @@ const setPoints = (p: number) => {
   localStorage.setItem("points", String(Math.max(0, p)));
 };
 
+// ✅ 숫자 화의 마지막 번호(자동 다음화 이동 안전장치)
+const LAST_NUM_EPISODE = Math.max(
+  ...Object.keys(EPISODE_TOTAL_PARTS)
+    .filter((k) => /^\d+$/.test(k))
+    .map((k) => Number(k))
+);
+
 export default function EpisodePage() {
   const params = useParams();
   const router = useRouter();
@@ -170,6 +173,12 @@ export default function EpisodePage() {
   const FREE_PARTS = useMemo(() => getFreeParts(episodeKey), [episodeKey]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // ✅ 중복 이동 방지(보험)
+  const isNavigatingRef = useRef(false);
+  useEffect(() => {
+    isNavigatingRef.current = false; // 화가 바뀌면 초기화
+  }, [episodeKey]);
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [unlockedUntil, setUnlockedUntilState] = useState(FREE_PARTS);
@@ -208,7 +217,10 @@ export default function EpisodePage() {
   }, [episodeKey, searchParams, TOTAL_PARTS]);
 
   // ✅ 잠금 여부: 구독이면 항상 false
- const locked = false; // ✅ 완전 오픈: 잠금 UI/팝업 절대 안 뜸
+  const locked = useMemo(() => {
+    if (isSubscribed) return false;
+    return part > unlockedUntil;
+  }, [part, unlockedUntil, isSubscribed]);
 
   // ✅ R2 경로
   const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
@@ -255,11 +267,36 @@ export default function EpisodePage() {
     setStatus("일시정지");
   };
 
-  const goNextPart = () => {
-    if (part >= TOTAL_PARTS) {
-      setStatus("이 화의 마지막 편입니다.");
+  // ✅✅✅ 추가 기능: 마지막 편이면 다음 화 1편으로 자동 이동 + 자동재생
+  const goNextEpisode = () => {
+    if (isNavigatingRef.current) return;
+
+    if (!/^\d+$/.test(episodeKey)) {
+      setStatus("다음 화 자동이동은 숫자 화에서만 지원됩니다.");
       return;
     }
+
+    const currentEp = Number(episodeKey);
+    if (!Number.isFinite(currentEp) || currentEp >= LAST_NUM_EPISODE) {
+      setStatus("마지막 화입니다.");
+      return;
+    }
+
+    isNavigatingRef.current = true;
+    const nextEpisodeKey = String(currentEp + 1);
+
+    // 다음 화 1편으로 이동 + 자동재생
+    router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+  };
+
+  const goNextPart = () => {
+    // ✅ 마지막 파트면 다음 화로
+    if (part >= TOTAL_PARTS) {
+      setStatus("다음 화로 넘어가는 중...");
+      goNextEpisode();
+      return;
+    }
+
     const next = part + 1;
     setPart(next);
 
@@ -360,7 +397,6 @@ export default function EpisodePage() {
 
   return (
     <main
-    
       className="episodeMain"
       style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}
     >
@@ -446,9 +482,9 @@ export default function EpisodePage() {
           </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
-            잠긴 편(무료 이후)은 포인트/광고로 오픈됩니다.
+            잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
             <br />
-            포인트는 <b>60P당 1편</b> 해제됩니다.
+            포인트는 <b>{POINTS_PER_PART}P당 1편</b> 해제됩니다.
           </div>
         </aside>
 
@@ -530,14 +566,13 @@ export default function EpisodePage() {
                 onPause={() => setStatus("일시정지")}
                 onError={() => setStatus(`오디오 로드 실패: ${audioSrc}`)}
                 onEnded={() => {
-                  setStatus("다음 편으로 넘어가는 중...");
+                  setStatus("다음으로 넘어가는 중...");
                   goNextPart();
                 }}
               />
             </>
           )}
 
-          {/* ✅ 여기: 잠긴 편 눌렀을 때 보이는 "골드 잠금 박스" */}
           {locked && (
             <div style={{ minHeight: 300, display: "grid", placeItems: "center", padding: 10 }}>
               <div
@@ -561,11 +596,11 @@ export default function EpisodePage() {
                 </div>
 
                 <div style={{ marginTop: 10, fontSize: 15, fontWeight: 850, opacity: 0.92 }}>
-                  무료 이후 파트는 포인트/광고시청이 필요합니다.
+                  무료 이후 파트는 구독 또는 포인트 또는 광고시청이 필요합니다.
                 </div>
 
                 <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
-                  보유 포인트: <b>{points}P</b> · (60P당 1편 해제)
+                  보유 포인트: <b>{points}P</b> · ({POINTS_PER_PART}P당 1편 해제)
                 </div>
 
                 <div style={{ height: 14 }} />
@@ -583,9 +618,39 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    💰 포인트 60으로 1편 해제
+                    포인트 {POINTS_PER_PART}로 1편 해제
                   </button>
-                  
+
+                  <button
+                    onClick={() => unlockMoreParts(1)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 16,
+                      border: "1px solid rgba(43,29,0,0.25)",
+                      background: "rgba(255,255,255,0.35)",
+                      color: "#2b1d00",
+                      fontWeight: 950,
+                      cursor: "pointer",
+                    }}
+                  >
+                    간단 광고로 1편 오픈
+                  </button>
+
+                  <button
+                    onClick={() => unlockMoreParts(5)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 16,
+                      border: "1px solid rgba(43,29,0,0.25)",
+                      background: "rgba(0,0,0,0.10)",
+                      color: "#2b1d00",
+                      fontWeight: 950,
+                      cursor: "pointer",
+                    }}
+                  >
+                    광고 참여로 5편 연속 오픈
+                  </button>
+
                   <button
                     onClick={unlockAllParts}
                     style={{
@@ -598,7 +663,7 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    🔥 프리미엄 광고로 이 화 전편 오픈
+                    프리미엄 광고로 이 화 전편 오픈
                   </button>
 
                   <button
@@ -616,7 +681,20 @@ export default function EpisodePage() {
                     월 구독하기(준비중)
                   </button>
 
-                  
+                  <button
+                    onClick={() => addTestPoints(500)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 16,
+                      border: "1px solid rgba(43,29,0,0.25)",
+                      background: "rgba(0,0,0,0.18)",
+                      color: "#2b1d00",
+                      fontWeight: 950,
+                      cursor: "pointer",
+                    }}
+                  >
+                    포인트 500 지급(테스트)
+                  </button>
                 </div>
 
                 <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
