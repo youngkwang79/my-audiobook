@@ -267,7 +267,7 @@ export default function EpisodePage() {
     setStatus("일시정지");
   };
 
-  // ✅✅✅ 추가 기능: 마지막 편이면 다음 화 1편으로 자동 이동 + 자동재생
+  // ✅✅✅ 마지막 편이면 다음 화 1편으로 자동 이동 + 자동재생
   const goNextEpisode = () => {
     if (isNavigatingRef.current) return;
 
@@ -285,12 +285,10 @@ export default function EpisodePage() {
     isNavigatingRef.current = true;
     const nextEpisodeKey = String(currentEp + 1);
 
-    // 다음 화 1편으로 이동 + 자동재생
     router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
   };
 
   const goNextPart = () => {
-    // ✅ 마지막 파트면 다음 화로
     if (part >= TOTAL_PARTS) {
       setStatus("다음 화로 넘어가는 중...");
       goNextEpisode();
@@ -350,7 +348,7 @@ export default function EpisodePage() {
     router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
   };
 
-  // ✅ 테스트용: 포인트 지급
+  // ✅ 테스트용: 포인트 지급(남겨둠 - 다른 기능 유지)
   const addTestPoints = (amount: number) => {
     const current = getPoints();
     const next = current + amount;
@@ -359,20 +357,16 @@ export default function EpisodePage() {
     alert(`테스트용 포인트 ${amount} 지급! (현재 ${next}P)`);
   };
 
-  // UI: 바운스 + 스윕
+  // UI: 바운스
   const bounceCSS = `
     @keyframes bounceIn {
       0% { transform: scale(0.95); opacity: 0; }
       60% { transform: scale(1.02); opacity: 1; }
       100% { transform: scale(1); }
     }
-    @keyframes lightSweep {
-      0% { transform: translateX(-120%); }
-      100% { transform: translateX(120%); }
-    }
   `;
 
-  // ✅ 모바일 UI 개선: 1열 레이아웃 + 하단 고정 플레이어
+  // ✅ 모바일 UI 개선: 1열 레이아웃 + 하단 고정 플레이어 + 잠금팝업(안 잘리게)
   const mobileCSS = `
     @media (max-width: 820px) {
       .episodeMain { padding-bottom: 120px !important; }
@@ -386,6 +380,29 @@ export default function EpisodePage() {
         backdrop-filter: blur(10px);
       }
       .audioDock audio { width: 100% !important; margin-top: 0 !important; }
+    }
+
+    /* ✅ 잠금 팝업이 모바일에서 잘리지 않게 */
+    .lockCard {
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    @media (max-width: 820px) {
+      .lockWrap {
+        min-height: auto !important;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+      }
+      .lockCard {
+        width: min(720px, 94vw) !important;
+        max-height: calc(100vh - 140px) !important;
+      }
+      .lockBtns {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+      }
+      .lockBtns button { width: 100% !important; }
     }
   `;
 
@@ -574,8 +591,12 @@ export default function EpisodePage() {
           )}
 
           {locked && (
-            <div style={{ minHeight: 300, display: "grid", placeItems: "center", padding: 10 }}>
+            <div
+              className="lockWrap"
+              style={{ minHeight: 300, display: "grid", placeItems: "center", padding: 10 }}
+            >
               <div
+                className="lockCard"
                 style={{
                   width: "min(720px, 94vw)",
                   borderRadius: 24,
@@ -589,7 +610,7 @@ export default function EpisodePage() {
                   color: "#2b1d00",
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>🔒 잠금 편</div>
+                <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>잠금 편</div>
 
                 <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>
                   {episodeKey}화 {part}편은 잠겨 있어요
@@ -605,7 +626,8 @@ export default function EpisodePage() {
 
                 <div style={{ height: 14 }} />
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {/* ✅ 버튼 4개만 */}
+                <div className="lockBtns" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
                     onClick={unlockWithPoints}
                     style={{
@@ -622,22 +644,7 @@ export default function EpisodePage() {
                   </button>
 
                   <button
-                    onClick={() => unlockMoreParts(1)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(255,255,255,0.35)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    간단 광고로 1편 오픈
-                  </button>
-
-                  <button
-                    onClick={() => unlockMoreParts(5)}
+                    onClick={unlockAllParts}
                     style={{
                       padding: "12px 14px",
                       borderRadius: 16,
@@ -648,26 +655,11 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    광고 참여로 5편 연속 오픈
+                    광고로 이 화 전편 오픈
                   </button>
 
                   <button
-                    onClick={unlockAllParts}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(255,255,255,0.75)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    프리미엄 광고로 이 화 전편 오픈
-                  </button>
-
-                  <button
-                    onClick={() => alert("구독 결제 연결은 다음 단계에서 붙일게요!")}
+                    onClick={() => alert("월 구독은 준비 중입니다!")}
                     style={{
                       padding: "12px 14px",
                       borderRadius: 16,
@@ -682,19 +674,24 @@ export default function EpisodePage() {
                   </button>
 
                   <button
-                    onClick={() => addTestPoints(500)}
+                    onClick={() => router.push("/points")}
                     style={{
                       padding: "12px 14px",
                       borderRadius: 16,
                       border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(0,0,0,0.18)",
+                      background: "rgba(255,255,255,0.75)",
                       color: "#2b1d00",
                       fontWeight: 950,
                       cursor: "pointer",
                     }}
                   >
-                    포인트 500 지급(테스트)
+                    포인트 충전하러 가기
                   </button>
+                </div>
+
+                {/* ✅ 테스트 포인트 버튼은 “유지”하되, UI에는 안 보이게 숨김(기능 유실 방지용) */}
+                <div style={{ display: "none" }}>
+                  <button onClick={() => addTestPoints(500)}>포인트 500 지급(테스트)</button>
                 </div>
 
                 <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
