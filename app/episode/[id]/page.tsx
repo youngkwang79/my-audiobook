@@ -470,7 +470,7 @@ export default function EpisodePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
               gap: 2,
               alignItems: "stretch",
               width: "100%",
