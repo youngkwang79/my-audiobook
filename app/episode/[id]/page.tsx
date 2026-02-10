@@ -208,10 +208,7 @@ export default function EpisodePage() {
   }, [episodeKey, searchParams, TOTAL_PARTS]);
 
   // ✅ 잠금 여부: 구독이면 항상 false
-  const locked = useMemo(() => {
-    if (isSubscribed) return false;
-    return part > unlockedUntil;
-  }, [part, unlockedUntil, isSubscribed]);
+ const locked = false; // ✅ 완전 오픈: 잠금 UI/팝업 절대 안 뜸
 
   // ✅ R2 경로
   const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
