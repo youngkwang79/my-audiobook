@@ -98,8 +98,10 @@ function getTotalParts(episodeKey: string) {
 }
 
 function getFreeParts(episodeKey: string) {
-  return Math.min(DEFAULT_FREE_PARTS, getTotalParts(episodeKey));
+  // ✅ 전체 파트 무료(완전 오픈)
+  return getTotalParts(episodeKey);
 }
+
 
 // ✅ (예전 public/audio 방식용 - 지금은 R2 사용중) 남겨둠
 function getAudioPath(episodeKey: string, part: number) {
@@ -565,7 +567,7 @@ export default function EpisodePage() {
                   무료 이후 파트는 포인트/광고시청이 필요합니다.
                 </div>
 
-                <div style={{ marginTop: 6, fontSize: 20, opacity: 0.9 }}>
+                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
                   보유 포인트: <b>{points}P</b> · (60P당 1편 해제)
                 </div>
 
