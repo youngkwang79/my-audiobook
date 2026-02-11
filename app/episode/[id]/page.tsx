@@ -655,7 +655,7 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    포인트 {POINTS_PER_PART}로 1편 해제
+                    포인트 {POINTS_PER_PART}로 1편 오픈
                   </button>
 
                   <button
@@ -670,7 +670,7 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    광고로 이 화 전편 오픈
+                    광고로 전체 오픈
                   </button>
 
                   <button
@@ -700,7 +700,7 @@ export default function EpisodePage() {
                       cursor: "pointer",
                     }}
                   >
-                    포인트 충전하러 가기
+                    포인트 충전하기
                   </button>
                 </div>
 
