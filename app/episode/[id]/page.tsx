@@ -394,7 +394,7 @@ export default function EpisodePage() {
         padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
       }
       .lockCard {
-        width: min(720px, 94vw) !important;
+        width: min(480px, 84vw) !important;
         max-height: calc(100vh - 140px) !important;
       }
       .lockBtns {
