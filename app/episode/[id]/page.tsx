@@ -1,7 +1,6 @@
 "use client";
 
 import TopBar from "@/app/components/TopBar";
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -106,51 +105,22 @@ function getAudioPath(episodeKey: string, part: number) {
   return `/audio/${SERIES_PREFIX}_${epFolder}_${pt}.mp3`;
 }
 
-// -------------------------
-// ✅ UnlockedUntil (에피소드별)
-// -------------------------
-const getUnlockedPartUntil = (episodeKey: string) => {
-  const total = getTotalParts(episodeKey);
-  const free = getFreeParts(episodeKey);
-
-  if (typeof window === "undefined") return free;
-
-  const v = Number(localStorage.getItem(`unlockedPartUntil:${episodeKey}`) || free);
-  if (!Number.isFinite(v)) return free;
-
-  return Math.max(free, Math.min(total, v));
+type EntitlementPayload = {
+  points: number;
+  is_subscribed: boolean;
+  unlocked_until_part: number | null;
 };
 
-const setUnlockedPartUntil = (episodeKey: string, n: number) => {
-  const total = getTotalParts(episodeKey);
-  const free = getFreeParts(episodeKey);
+async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload> {
+  const qs = new URLSearchParams({
+    work_id: SERIES_PREFIX,
+    episode_id: episodeKey,
+  });
 
-  if (typeof window === "undefined") return;
-  const safe = Math.max(free, Math.min(total, n));
-  localStorage.setItem(`unlockedPartUntil:${episodeKey}`, String(safe));
-};
-
-// -------------------------
-// ✅ 구독 여부 (테스트용)
-// -------------------------
-const getIsSubscribed = () => {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem("isSubscribed") === "true";
-};
-
-// -------------------------
-// ✅ 포인트 (로컬스토리지 기반)
-// -------------------------
-const getPoints = () => {
-  if (typeof window === "undefined") return 0;
-  const v = Number(localStorage.getItem("points") || 0);
-  return Number.isFinite(v) ? Math.max(0, v) : 0;
-};
-
-const setPoints = (p: number) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("points", String(Math.max(0, p)));
-};
+  const res = await fetch(`/api/me/entitlements?${qs.toString()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("failed_to_fetch_entitlements");
+  return res.json();
+}
 
 // ✅ 숫자 화의 마지막 번호(자동 다음화 이동 안전장치)
 const LAST_NUM_EPISODE = Math.max(
@@ -180,17 +150,17 @@ export default function EpisodePage() {
     isNavigatingRef.current = false; // 화가 바뀌면 초기화
   }, [episodeKey]);
 
+  // ✅ DB 기반 상태
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [unlockedUntil, setUnlockedUntilState] = useState(FREE_PARTS);
-
-  // ✅ 포인트 상태(화면 표시용)
   const [points, setPointsState] = useState(0);
 
   // ✅ 현재 선택된 “편(파트)”
   const [part, setPart] = useState(1);
   const [status, setStatus] = useState("");
+  const [entBusy, setEntBusy] = useState(false);
 
-  // ✅ 마지막 재생 저장
+  // ✅ 마지막 재생 저장(화면용 캐시 유지)
   useEffect(() => {
     if (!episodeKey) return;
     if (!Number.isFinite(part)) return;
@@ -205,16 +175,44 @@ export default function EpisodePage() {
     );
   }, [episodeKey, part]);
 
-  // ✅ 초기 로드: URL part 기준으로 시작
+  // ✅ URL part 기준으로 시작 (이건 유지)
   useEffect(() => {
-    setIsSubscribed(getIsSubscribed());
-    setUnlockedUntilState(getUnlockedPartUntil(episodeKey));
-    setPointsState(getPoints());
-
     const p = Number(searchParams.get("part") || 1);
     const safeP = Math.max(1, Math.min(TOTAL_PARTS, Number.isFinite(p) ? p : 1));
     setPart(safeP);
   }, [episodeKey, searchParams, TOTAL_PARTS]);
+
+  // ✅ DB에서 권한/포인트/구독 상태 로드
+  useEffect(() => {
+    let alive = true;
+    setEntBusy(true);
+
+    (async () => {
+      try {
+        const data = await fetchEntitlement(episodeKey);
+        if (!alive) return;
+
+        setIsSubscribed(!!data.is_subscribed);
+
+        const serverUnlocked = data.unlocked_until_part ?? FREE_PARTS;
+        const safeUnlocked = Math.max(FREE_PARTS, Math.min(TOTAL_PARTS, serverUnlocked));
+        setUnlockedUntilState(safeUnlocked);
+
+        setPointsState(Number.isFinite(data.points) ? Math.max(0, data.points) : 0);
+      } catch {
+        // 실패 시: 최소한 무료까지만
+        setIsSubscribed(false);
+        setUnlockedUntilState(FREE_PARTS);
+        setPointsState(0);
+      } finally {
+        if (alive) setEntBusy(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [episodeKey, FREE_PARTS, TOTAL_PARTS]);
 
   // ✅ 잠금 여부: 구독이면 항상 false
   const locked = useMemo(() => {
@@ -310,51 +308,45 @@ export default function EpisodePage() {
     router.replace(`/episode/${episodeKey}?part=${prev}${prevLocked ? "" : "&autoplay=1"}`);
   };
 
-  // ✅ 광고/포인트/구독 “테스트용 오픈”
-  const unlockMoreParts = (count: number) => {
-    const base = getUnlockedPartUntil(episodeKey);
-    const next = Math.max(base, Math.min(TOTAL_PARTS, part + count));
-    setUnlockedPartUntil(episodeKey, next);
-    setUnlockedUntilState(next);
-
-    router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
-  };
-
+  // ✅ 광고로 전체 오픈 (지금은 뼈대: 나중에 광고 리워드 완료 후 서버 API로 변경)
   const unlockAllParts = () => {
-    setUnlockedPartUntil(episodeKey, TOTAL_PARTS);
-    setUnlockedUntilState(TOTAL_PARTS);
-    router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
+    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
   };
 
-  // ✅ 포인트 60으로 1편 해제
-  const unlockWithPoints = () => {
-    const current = getPoints();
+  // ✅ 포인트 60으로 1편 해제 (서버 API)
+  const unlockWithPoints = async () => {
+    const next = Math.min(TOTAL_PARTS, unlockedUntil + 1);
 
-    if (current < POINTS_PER_PART) {
-      alert(`포인트가 부족합니다. (${POINTS_PER_PART}포인트 필요)`);
-      return;
+    try {
+      const res = await fetch("/api/unlock/with-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          work_id: SERIES_PREFIX,
+          episode_id: episodeKey,
+          target_unlock_until_part: next,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data?.error === "not_enough_points") {
+          alert(`포인트가 부족합니다. (${data?.need ?? POINTS_PER_PART}포인트 필요)`);
+          return;
+        }
+        alert("오류가 발생했습니다.");
+        return;
+      }
+
+      // ✅ 서버가 확정한 값으로만 갱신
+      setPointsState(data.points_left);
+      setUnlockedUntilState(data.unlocked_until_part);
+
+      router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
+    } catch {
+      alert("네트워크 오류가 발생했습니다.");
     }
-
-    const base = getUnlockedPartUntil(episodeKey);
-    const next = Math.min(TOTAL_PARTS, base + 1);
-
-    setUnlockedPartUntil(episodeKey, next);
-    setUnlockedUntilState(next);
-
-    const left = current - POINTS_PER_PART;
-    setPoints(left);
-    setPointsState(left);
-
-    router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
-  };
-
-  // ✅ 테스트용: 포인트 지급(남겨둠 - 다른 기능 유지)
-  const addTestPoints = (amount: number) => {
-    const current = getPoints();
-    const next = current + amount;
-    setPoints(next);
-    setPointsState(next);
-    alert(`테스트용 포인트 ${amount} 지급! (현재 ${next}P)`);
   };
 
   // UI: 바운스
@@ -464,6 +456,7 @@ export default function EpisodePage() {
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline" }}>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
               {isSubscribed ? "구독중" : `무료 1~${FREE_PARTS}편`}
+              {entBusy && <span style={{ marginLeft: 8, opacity: 0.7 }}>불러오는 중...</span>}
             </div>
           </div>
 
@@ -606,10 +599,7 @@ export default function EpisodePage() {
           )}
 
           {locked && (
-            <div
-              className="lockWrap"
-              style={{ minHeight: 300, display: "grid", placeItems: "center", padding: 10 }}
-            >
+            <div className="lockWrap" style={{ minHeight: 300, display: "grid", placeItems: "center", padding: 10 }}>
               <div
                 className="lockCard"
                 style={{
@@ -620,8 +610,7 @@ export default function EpisodePage() {
                   background:
                     "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
                   border: "1px solid rgba(255,215,120,0.9)",
-                  boxShadow:
-                    "0 0 22px rgba(255,215,120,0.55), 0 0 120px rgba(255,200,80,0.25)",
+                  boxShadow: "0 0 22px rgba(255,215,120,0.55), 0 0 120px rgba(255,200,80,0.25)",
                   color: "#2b1d00",
                 }}
               >
@@ -641,7 +630,6 @@ export default function EpisodePage() {
 
                 <div style={{ height: 14 }} />
 
-                {/* ✅ 버튼 4개만 */}
                 <div className="lockBtns" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
                     onClick={unlockWithPoints}
@@ -704,13 +692,8 @@ export default function EpisodePage() {
                   </button>
                 </div>
 
-                {/* ✅ 테스트 포인트 버튼은 “유지”하되, UI에는 안 보이게 숨김(기능 유실 방지용) */}
-                <div style={{ display: "none" }}>
-                  <button onClick={() => addTestPoints(500)}>포인트 500 지급(테스트)</button>
-                </div>
-
                 <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
-                  ※ 지금은 테스트용(로컬스토리지) 포인트/오픈입니다.
+                  ※ 이제부터 포인트/오픈은 DB 기준입니다. (클라 조작으로 풀리지 않아요)
                 </div>
               </div>
             </div>
