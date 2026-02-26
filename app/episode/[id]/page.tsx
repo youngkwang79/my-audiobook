@@ -129,6 +129,11 @@ const LAST_NUM_EPISODE = Math.max(
     .map((k) => Number(k))
 );
 
+// =========================
+// ✅ 자막 타입
+// =========================
+type Segment = { start: number; end: number; text: string };
+
 export default function EpisodePage() {
   const params = useParams();
   const router = useRouter();
@@ -159,6 +164,14 @@ export default function EpisodePage() {
   const [part, setPart] = useState(1);
   const [status, setStatus] = useState("");
   const [entBusy, setEntBusy] = useState(false);
+
+  // =========================
+  // ✅ 자막 상태
+  // =========================
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [caption, setCaption] = useState<string>("");
+  const [captionStatus, setCaptionStatus] = useState<string>("");
+  const segIndexRef = useRef<number>(0);
 
   // ✅ 마지막 재생 저장(화면용 캐시 유지)
   useEffect(() => {
@@ -227,8 +240,171 @@ export default function EpisodePage() {
     return `${R2_BASE}/${folder}/${pad2(part)}.MP3`;
   };
 
+  // ✅ 자막 JSON 경로 (Worker가 R2에 저장한 파일)
+  const getR2CaptionUrl = (episodeKey: string, part: number) => {
+    const folder = getEpisodeFolder(episodeKey);
+    return `${R2_BASE}/${folder}/${pad2(part)}.json`;
+  };
+
+  // ✅ Worker(생성용) URL
+  const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
+  const getWorkerUrl = (episodeKey: string, part: number) =>
+    `${WORKER_BASE}/?episode=${encodeURIComponent(episodeKey)}&part=${encodeURIComponent(String(part))}`;
+
   // ✅ 오디오 경로 (R2 사용)
   const audioSrc = !locked ? getR2AudioUrl(episodeKey, part) : null;
+
+    // =========================
+  // ✅ 자막 로드: R2 json 먼저 읽고, 없으면 Worker 호출로 생성 후 다시 읽기
+  //    (안전 버전: JSON 파싱 실패/HTML/XML 응답도 자동 복구)
+  // =========================
+  useEffect(() => {
+    let alive = true;
+
+    async function fetchJsonSafe(url: string) {
+      // ✅ 캐시/음수캐시 방지용 쿼리
+      const u = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+
+      const res = await fetch(u, { cache: "no-store" });
+      const text = await res.text(); // ✅ 무조건 text로 먼저 받기
+
+      // 200이어도 HTML/XML이면 여기서 잡힘
+      if (!res.ok) {
+        return { ok: false as const, status: res.status, text };
+      }
+
+      try {
+        const data = JSON.parse(text);
+        return { ok: true as const, status: res.status, data };
+      } catch {
+        return { ok: false as const, status: res.status, text };
+      }
+    }
+
+    async function loadCaptions() {
+      setSegments([]);
+      setCaption("");
+      segIndexRef.current = 0;
+
+      if (locked) {
+        setCaptionStatus("");
+        return;
+      }
+
+      setCaptionStatus("자막 불러오는 중...");
+
+      const jsonUrl = getR2CaptionUrl(episodeKey, part);
+
+      // 1) R2에서 먼저 시도 (안전 파싱)
+      const r2 = await fetchJsonSafe(jsonUrl);
+      if (!alive) return;
+
+      if (r2.ok) {
+        const parsed = parseSegmentsFromSavedJson(r2.data);
+        setSegments(parsed);
+        setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+        return;
+      }
+
+      // ✅ 여기까지 왔다는 건:
+      // - 404(없음) 이거나
+      // - 200인데 HTML/XML/깨진 JSON이라 파싱 실패한 경우
+      // → Worker로 재생성 시도
+      setCaptionStatus("자막 생성 중(처음 1회)...");
+
+      const workerRes = await fetch(getWorkerUrl(episodeKey, part), { cache: "no-store" });
+      if (!workerRes.ok) {
+        if (!alive) return;
+        setCaptionStatus("자막 생성 실패(Worker 오류)");
+        return;
+      }
+
+      // 3) 생성 후 R2 JSON 다시 읽기(안전 파싱)
+      const r2b = await fetchJsonSafe(jsonUrl);
+      if (!alive) return;
+
+      if (!r2b.ok) {
+        // 디버깅용: 어떤 내용이 내려오는지 상태에 표시(짧게)
+        const preview = (r2b.text || "").slice(0, 80).replace(/\s+/g, " ");
+        setCaptionStatus(`자막 파일 파싱 실패(R2) ${r2b.status}: ${preview}`);
+        return;
+      }
+
+      const parsed2 = parseSegmentsFromSavedJson(r2b.data);
+      setSegments(parsed2);
+      setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+    }
+
+    loadCaptions().catch((e) => {
+      if (!alive) return;
+      setCaptionStatus("자막 로드 중 오류");
+      console.error("[caption] load error:", e);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [episodeKey, part, locked]);
+
+
+  // ✅ 저장된 json에서 segments 추출 (aiResp 안에 있을 수도, 다른 형태일 수도 있어서 안전하게)
+  function parseSegmentsFromSavedJson(saved: any): Segment[] {
+    // 우리가 저장한 형식: { aiResp: ... }
+    const aiResp = saved?.aiResp ?? saved;
+
+    // 후보 1) aiResp.segments
+    const segs = aiResp?.segments;
+    if (Array.isArray(segs)) {
+      return segs
+        .map((s: any) => ({
+          start: Number(s.start ?? s.t0 ?? 0),
+          end: Number(s.end ?? s.t1 ?? 0),
+          text: String(s.text ?? s.transcript ?? ""),
+        }))
+        .filter((s: Segment) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.text.trim().length > 0);
+    }
+
+    // 후보 2) aiResp.text만 있는 경우: 통문으로 보여주기(타임 싱크는 불가)
+    const text = aiResp?.text;
+    if (typeof text === "string" && text.trim()) {
+      return [{ start: 0, end: 999999, text }];
+    }
+
+    return [];
+  }
+
+  // =========================
+  // ✅ 현재 재생 시간에 맞춰 자막 업데이트
+  // =========================
+  const updateCaptionByTime = (t: number) => {
+    const segs = segments;
+    if (!segs.length) {
+      setCaption("");
+      return;
+    }
+
+    // 현재 인덱스 기준으로 앞/뒤만 조금 움직여서 빠르게 찾기
+    let i = segIndexRef.current;
+    i = Math.max(0, Math.min(i, segs.length - 1));
+
+    // 앞으로 진행
+    while (i < segs.length - 1 && t > segs[i].end) i++;
+    // 뒤로 이동(사용자가 되감기 한 경우)
+    while (i > 0 && t < segs[i].start) i--;
+
+    segIndexRef.current = i;
+
+    const s = segs[i];
+    if (t >= s.start && t <= s.end) setCaption(s.text);
+    else setCaption("");
+  };
+
+  // ✅ 오디오 이벤트에 연결
+  const onTimeUpdate = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    updateCaptionByTime(a.currentTime);
+  };
 
   // ✅ 자동재생
   useEffect(() => {
@@ -594,7 +770,35 @@ export default function EpisodePage() {
                   setStatus("다음으로 넘어가는 중...");
                   goNextPart();
                 }}
+                onTimeUpdate={onTimeUpdate}
               />
+
+              {/* ✅ 자막 표시 영역 */}
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: "rgba(255,255,255,0.05)",
+                  minHeight: 72,
+                }}
+              >
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                  자막: {captionStatus || "대기"}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 900,
+                    lineHeight: 1.5,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {caption || " "}
+                </div>
+              </div>
             </>
           )}
 
