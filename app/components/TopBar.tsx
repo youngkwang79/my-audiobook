@@ -51,6 +51,20 @@ export default function TopBar() {
     router.push("/");
   };
 
+  const onLogout = async () => {
+    const sb = supabase; // ✅ 로컬 변수로 잡아야 TS가 null 체크를 확실히 인식함
+    if (!sb) {
+      alert(
+        "Supabase 설정이 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 재배포(Redeploy) 해주세요."
+      );
+      router.push("/login");
+      return;
+    }
+
+    await sb.auth.signOut();
+    router.push("/");
+  };
+
   return (
     <div
       style={{
@@ -101,13 +115,7 @@ export default function TopBar() {
               {points.toLocaleString()}P
             </button>
 
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.push("/");
-              }}
-              style={goldStyle}
-            >
+            <button onClick={onLogout} style={goldStyle}>
               로그아웃
             </button>
           </>
