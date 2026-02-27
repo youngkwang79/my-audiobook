@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -12,14 +13,14 @@ export default function TopBar() {
 
   const [points, setPoints] = useState<number>(0);
 
-  // ✅ 의존성 배열은 항상 "같은 길이"로 유지해야 함 → [user?.id]
+  // ✅ 로컬 포인트 읽기 (유저가 바뀌면 갱신)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = Number(localStorage.getItem("points") || 0);
     setPoints(Number.isFinite(p) ? p : 0);
   }, [user?.id]);
 
-  const goldStyle: React.CSSProperties = {
+  const goldStyle: CSSProperties = {
     background:
       "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
     color: "#2b1d00",
@@ -52,17 +53,21 @@ export default function TopBar() {
   };
 
   const onLogout = async () => {
-    const sb = supabase; // ✅ 로컬 변수로 잡아야 TS가 null 체크를 확실히 인식함
-    if (!sb) {
+    // ✅ 핵심: supabase가 null일 수 있으니 방어
+    if (!supabase) {
       alert(
-        "Supabase 설정이 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 재배포(Redeploy) 해주세요."
+        "Supabase 설정이 아직 준비되지 않았습니다.\nVercel 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) 확인 후 재배포하세요."
       );
-      router.push("/login");
       return;
     }
 
-    await sb.auth.signOut();
+    await supabase.auth.signOut();
     router.push("/");
+    router.refresh();
+  };
+
+  const onLogin = () => {
+    router.push("/login");
   };
 
   return (
@@ -92,29 +97,18 @@ export default function TopBar() {
       </div>
 
       {/* 오른쪽 */}
-      <div style={{ display: "flex", gap: 12 }}>
-        {/* loading 중에는 버튼만 최소로(훅 구조 안정) */}
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         {loading ? (
           <button style={{ ...goldStyle, opacity: 0.7, cursor: "default" }} disabled>
             로딩중
           </button>
         ) : !user ? (
-          <button onClick={() => router.push("/login")} style={goldStyle}>
+          <button onClick={onLogin} style={goldStyle}>
             로그인
           </button>
         ) : (
           <>
-            <button
-              onClick={() => router.push("/points")}
-              style={{
-                ...goldStyle,
-                fontSize: 20,
-                letterSpacing: 0.3,
-              }}
-            >
-              {points.toLocaleString()}P
-            </button>
-
+            <div style={{ opacity: 0.9, fontWeight: 900 }}>포인트 {points}P</div>
             <button onClick={onLogout} style={goldStyle}>
               로그아웃
             </button>

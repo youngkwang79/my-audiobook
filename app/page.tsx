@@ -53,10 +53,19 @@ export default function Home() {
     if (loading) return;
 
     if (user) {
-      await supabase.auth.signOut();
-      router.refresh();
-      return;
-    }
+  const sb = supabase;
+  if (!sb) {
+    alert(
+      "Supabase 설정이 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 재배포(Redeploy) 해주세요."
+    );
+    router.push("/login");
+    return;
+  }
+
+  await sb.auth.signOut();
+  router.refresh();
+  return;
+}
 
     router.push("/login");
   };
