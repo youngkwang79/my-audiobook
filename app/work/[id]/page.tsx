@@ -50,7 +50,16 @@ export default function WorkDetailPage() {
     if (loading) return;
 
     if (user) {
-      await supabase.auth.signOut();
+      const sb = supabase;
+if (!sb) {
+  // supabase 설정이 없으면 로그아웃 대신 로그인 페이지로 보내거나 그냥 종료
+  router.push("/login");
+  return;
+}
+
+await sb.auth.signOut();
+router.refresh();
+return;
       router.refresh();
       return;
     }

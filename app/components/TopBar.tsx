@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -13,14 +12,13 @@ export default function TopBar() {
 
   const [points, setPoints] = useState<number>(0);
 
-  // ✅ 로컬 포인트 읽기 (유저가 바뀌면 갱신)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = Number(localStorage.getItem("points") || 0);
     setPoints(Number.isFinite(p) ? p : 0);
   }, [user?.id]);
 
-  const goldStyle: CSSProperties = {
+  const goldStyle: React.CSSProperties = {
     background:
       "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
     color: "#2b1d00",
@@ -37,13 +35,11 @@ export default function TopBar() {
   const goBackSmart = () => {
     if (typeof window === "undefined") return;
 
-    // 히스토리 있으면 back
     if (window.history.length > 1) {
       router.back();
       return;
     }
 
-    // 히스토리 없으면 fallback
     if (pathname.startsWith("/episode") || pathname.startsWith("/work")) {
       router.push("/work/cheonmujin");
       return;
@@ -52,22 +48,15 @@ export default function TopBar() {
     router.push("/");
   };
 
-  const onLogout = async () => {
-    // ✅ 핵심: supabase가 null일 수 있으니 방어
-    if (!supabase) {
-      alert(
-        "Supabase 설정이 아직 준비되지 않았습니다.\nVercel 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) 확인 후 재배포하세요."
-      );
+  const handleLogout = async () => {
+    const sb = supabase;
+    if (!sb) {
+      alert("Supabase 환경변수가 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 Redeploy 해주세요.");
+      router.push("/login");
       return;
     }
-
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     router.push("/");
-    router.refresh();
-  };
-
-  const onLogin = () => {
-    router.push("/login");
   };
 
   return (
@@ -83,33 +72,37 @@ export default function TopBar() {
     >
       {/* 왼쪽 */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {/* 홈에서는 이전 버튼 숨김 */}
         {pathname !== "/" && (
           <button onClick={goBackSmart} style={goldStyle}>
             ← 이전
           </button>
         )}
 
-        {/* 타이틀은 홈에서만 */}
         {pathname === "/" && (
           <div style={{ fontSize: 36, fontWeight: 900 }}>무협 소설 채널</div>
         )}
       </div>
 
       {/* 오른쪽 */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 12 }}>
         {loading ? (
           <button style={{ ...goldStyle, opacity: 0.7, cursor: "default" }} disabled>
             로딩중
           </button>
         ) : !user ? (
-          <button onClick={onLogin} style={goldStyle}>
+          <button onClick={() => router.push("/login")} style={goldStyle}>
             로그인
           </button>
         ) : (
           <>
-            <div style={{ opacity: 0.9, fontWeight: 900 }}>포인트 {points}P</div>
-            <button onClick={onLogout} style={goldStyle}>
+            <button
+              onClick={() => router.push("/points")}
+              style={{ ...goldStyle, fontSize: 20, letterSpacing: 0.3 }}
+            >
+              {points.toLocaleString()}P
+            </button>
+
+            <button onClick={handleLogout} style={goldStyle}>
               로그아웃
             </button>
           </>

@@ -1,7 +1,13 @@
 // app/providers/AuthProvider.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -22,28 +28,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    async function init() {
+    // ✅ supabaseClient가 null일 수도 있으니 여기서 딱 1번만 잡고 시작
+    const sb = supabase;
+
+    // ✅ 배포 환경에서 env 빠졌을 때도 "빌드가 죽지 않게" 안전 종료
+    if (!sb) {
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    // ✅ 즉시 세션 로드
+    (async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await sb.auth.getSession();
+
         if (!mounted) return;
 
         if (error) {
-          console.error("getSession error:", error);
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(session ?? null);
+          setUser(session?.user ?? null);
         }
-
-        setSession(data.session ?? null);
-        setUser(data.session?.user ?? null);
-      } catch (e) {
-        console.error("init(getSession) failed:", e);
+      } catch {
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
       } finally {
-        if (mounted) setLoading(false);
+        if (!mounted) return;
+        setLoading(false);
       }
-    }
+    })();
 
-    init();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    // ✅ 로그인/로그아웃 변화를 구독
+    const {
+      data: { subscription },
+    } = sb.auth.onAuthStateChange(
       (_event: AuthChangeEvent, newSession: Session | null) => {
+        if (!mounted) return;
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
@@ -52,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
-      listener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -62,7 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       loading,
       signOut: async () => {
-        await supabase.auth.signOut();
+        const sb = supabase;
+        if (!sb) return;
+        await sb.auth.signOut();
       },
     }),
     [user, session, loading]
