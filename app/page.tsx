@@ -50,25 +50,25 @@ export default function Home() {
   }, [lastPlayed]);
 
   const handleAuthClick = async () => {
-    if (loading) return;
+  if (loading) return;
 
-    if (user) {
-  const sb = supabase;
-  if (!sb) {
-    alert(
-      "Supabase 설정이 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 재배포(Redeploy) 해주세요."
-    );
-    router.push("/login");
+  if (user) {
+    const sb = supabase;
+    if (!sb) {
+      alert(
+        "Supabase 설정이 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 재배포(Redeploy) 해주세요."
+      );
+      router.push("/login");
+      return;
+    }
+
+    await sb.auth.signOut();
+    router.refresh(); // 또는 router.push("/") 로 바꿔도 됨
     return;
   }
 
-  await sb.auth.signOut();
-  router.refresh();
-  return;
-}
-
-    router.push("/login");
-  };
+  router.push("/login");
+};
 
   return (
     <main
