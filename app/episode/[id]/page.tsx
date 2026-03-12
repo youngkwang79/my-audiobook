@@ -238,15 +238,10 @@ export default function EpisodePage() {
     return `${R2_BASE}/${folder}/${pad2(partValue)}.MP3`;
   };
 
-  const getR2ImageCandidates = (episodeKeyValue: string, partValue: number) => {
+  const getR2ImageCandidates = (episodeKeyValue: string, _partValue: number) => {
     const folder = getEpisodeFolder(episodeKeyValue);
     const base = `${R2_BASE}/${folder}/01`;
-    return [
-      `${base}.jpg`,
-      `${base}.jpeg`,
-      `${base}.png`,
-      `${base}.webp`,
-    ];
+    return [`${base}.jpg`, `${base}.jpeg`, `${base}.png`, `${base}.webp`];
   };
 
   const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
@@ -425,24 +420,6 @@ export default function EpisodePage() {
     return () => clearTimeout(t);
   }, [autoplay, locked, episodeKey, part]);
 
-  const playNow = async () => {
-    const a = audioRef.current;
-    if (!a) return;
-    try {
-      await a.play();
-      setStatus("재생 중");
-    } catch {
-      setStatus("재생이 차단됐어요. 브라우저 설정에서 자동재생을 허용해 주세요.");
-    }
-  };
-
-  const pauseNow = () => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.pause();
-    setStatus("일시정지");
-  };
-
   const goNextEpisode = () => {
     if (isNavigatingRef.current) return;
 
@@ -474,14 +451,6 @@ export default function EpisodePage() {
 
     const nextLocked = !isSubscribed && next > unlockedUntil;
     router.replace(`/episode/${episodeKey}?part=${next}${nextLocked ? "" : "&autoplay=1"}`);
-  };
-
-  const goPrevPart = () => {
-    const prev = Math.max(1, part - 1);
-    setPart(prev);
-
-    const prevLocked = !isSubscribed && prev > unlockedUntil;
-    router.replace(`/episode/${episodeKey}?part=${prev}${prevLocked ? "" : "&autoplay=1"}`);
   };
 
   const unlockAllParts = () => {
@@ -575,14 +544,6 @@ export default function EpisodePage() {
       .episodeMain { padding-bottom: 120px !important; }
       .episodeGrid { grid-template-columns: 1fr !important; }
       .episodeAside { position: static !important; top: auto !important; }
-      .audioDock {
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999;
-        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-        background: rgba(10, 10, 18, 0.92);
-        border-top: 1px solid rgba(255,255,255,0.10);
-        backdrop-filter: blur(10px);
-      }
-      .audioDock audio { width: 100% !important; margin-top: 0 !important; }
       .lockCard {
         width: min(420px, 94%) !important;
         max-height: 82% !important;
@@ -693,9 +654,68 @@ export default function EpisodePage() {
         </aside>
 
         <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
+          {!locked && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: "14px 18px",
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                자막: {captionStatus || "대기"}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 900,
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  minHeight: 40,
+                }}
+              >
+                {caption || " "}
+              </div>
+            </div>
+          )}
+
+          {!locked && (
+            <audio
+              key={`${episodeKey}-${part}`}
+              ref={audioRef}
+              src={audioSrc!}
+              controls
+              preload="auto"
+              style={{ width: "100%", marginBottom: 16 }}
+              onPlay={() => setStatus("재생 중")}
+              onPause={() => setStatus("일시정지")}
+              onError={() => setStatus(`오디오 로드 실패: ${audioSrc}`)}
+              onEnded={() => {
+                setStatus("다음으로 넘어가는 중...");
+                goNextPart();
+              }}
+              onTimeUpdate={onTimeUpdate}
+            />
+          )}
+
+          {!locked && status && (
+            <div
+              style={{
+                marginBottom: 12,
+                fontSize: 12,
+                opacity: 0.75,
+              }}
+            >
+              {status}
+            </div>
+          )}
+
           <div
             style={{
-              marginBottom: 14,
               borderRadius: 18,
               overflow: "hidden",
               border: "1px solid rgba(255,255,255,0.10)",
@@ -709,9 +729,7 @@ export default function EpisodePage() {
               onError={() => {
                 if (imageErrorCount < imageCandidates.length) {
                   setImageErrorCount((prev) => prev + 1);
-                  setImageIndex((prev) =>
-                    Math.min(prev + 1, imageCandidates.length - 1)
-                  );
+                  setImageIndex((prev) => Math.min(prev + 1, imageCandidates.length - 1));
                 }
               }}
               style={{
@@ -724,51 +742,6 @@ export default function EpisodePage() {
                 transition: "filter 180ms ease",
               }}
             />
-{!locked && (
-  <div
-    style={{
-      position: "absolute",
-      left: "50%",
-      bottom: 18,
-      transform: "translateX(-50%)",
-      width: "min(92%, 900px)",
-      zIndex: 4,
-      pointerEvents: "none",
-      display: "flex",
-      justifyContent: "center",
-    }}
-  >
-    <div
-      style={{
-        width: "100%",
-        padding: "12px 16px",
-        borderRadius: 16,
-        background: "rgba(0,0,0,0.55)",
-        border: "1px solid rgba(255,255,255,0.10)",
-        backdropFilter: "blur(8px)",
-        textAlign: "center",
-      }}
-    >
-      <div style={{ fontSize: 12, opacity: 0.72, marginBottom: 6 }}>
-        자막: {captionStatus || "대기"}
-      </div>
-
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 900,
-          lineHeight: 1.5,
-          whiteSpace: "pre-wrap",
-          color: "white",
-          textShadow: "0 2px 10px rgba(0,0,0,0.45)",
-          minHeight: 34,
-        }}
-      >
-        {caption || " "}
-      </div>
-    </div>
-  </div>
-)}
 
             {locked && (
               <>
@@ -909,29 +882,6 @@ export default function EpisodePage() {
               </>
             )}
           </div>
-
-          {!locked && (
-            <>
-              
-              <audio
-                key={`${episodeKey}-${part}`}
-                ref={audioRef}
-                src={audioSrc!}
-                controls
-                preload="auto"
-                style={{ width: "100%", marginTop: 12 }}
-                onPlay={() => setStatus("재생 중")}
-                onPause={() => setStatus("일시정지")}
-                onError={() => setStatus(`오디오 로드 실패: ${audioSrc}`)}
-                onEnded={() => {
-                  setStatus("다음으로 넘어가는 중...");
-                  goNextPart();
-                }}
-                onTimeUpdate={onTimeUpdate}
-              />
-
-            </>
-          )}
         </section>
       </div>
     </main>
