@@ -1,323 +1,285 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopBar from "@/app/components/TopBar";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { supabase } from "@/lib/supabaseClient";
 
-type Pack = {
-  id: string;
-  priceLabel: string;
-  pointsLabel: string;
-  price: number;
-  points: number;
-  bonus?: string;
-};
-
-function formatWon(n: number) {
-  return "₩" + n.toLocaleString("ko-KR");
-}
 function formatP(n: number) {
-  return n.toLocaleString("ko-KR") + "P";
+  try {
+    return n.toLocaleString("ko-KR") + "P";
+  } catch {
+    return String(n) + "P";
+  }
 }
 
-type EntitlementPayload = {
-  points: number;
-  is_subscribed: boolean;
-  unlocked_until_part: number | null;
-};
-
-async function fetchMyPoints(): Promise<number> {
-  // ✅ episode_id는 필수라서, points 페이지에서는 더미로 1을 넣어도 되지만
-  // 더 깔끔하게 하려면 /api/me/wallet 같은 엔드포인트를 따로 만드는게 정석.
-  // 일단 뼈대 단계에서는 episode_id=1로 고정.
-  const qs = new URLSearchParams({
-    work_id: "cheonmujin",
-    episode_id: "1",
-  });
-
-  const res = await fetch(`/api/me/entitlements?${qs.toString()}`, { cache: "no-store" });
-  if (!res.ok) throw new Error("failed_to_fetch_points");
-  const data: EntitlementPayload = await res.json();
-  return data.points ?? 0;
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const sb = supabase;
+  if (!sb) return {};
+  const { data } = await sb.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export default function PointsPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
-  const packs: Pack[] = useMemo(
+  const [currentPoints, setCurrentPoints] = useState<number>(0);
+  const [selected, setSelected] = useState<number>(1000);
+
+  const plans = useMemo(
     () => [
-      { id: "p1", price: 1000, points: 1000, priceLabel: formatWon(1000), pointsLabel: formatP(1000) },
-      { id: "p2", price: 3000, points: 3300, bonus: "보너스 +10%", priceLabel: formatWon(3000), pointsLabel: formatP(3300) },
-      { id: "p3", price: 5000, points: 5800, bonus: "보너스 +16%", priceLabel: formatWon(5000), pointsLabel: formatP(5800) },
-      { id: "p4", price: 10000, points: 12000, bonus: "보너스 +20%", priceLabel: formatWon(10000), pointsLabel: formatP(12000) },
+      { price: 1000, points: 1000, bonusText: "" },
+      { price: 3000, points: 3300, bonusText: "보너스 +10%" },
+      { price: 5000, points: 5800, bonusText: "보너스 +16%" },
+      { price: 10000, points: 12000, bonusText: "보너스 +20%" },
     ],
     []
   );
 
-  const [selectedId, setSelectedId] = useState(packs[0]?.id ?? "p1");
-  const selected = useMemo(() => packs.find((p) => p.id === selectedId) ?? packs[0], [packs, selectedId]);
+  const refreshPoints = async () => {
+    // 1) localStorage 우선 반영
+    try {
+      const v = Number(localStorage.getItem("points") || "0");
+      if (Number.isFinite(v)) setCurrentPoints(v);
+    } catch {}
 
-  const [currentPoints, setCurrentPoints] = useState(0);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+    // 2) 서버 우선 시도
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/me/entitlements", {
+        method: "GET",
+        headers,
+        cache: "no-store",
+      });
+      const json = await res.json().catch(() => null);
 
-  // 로그인 전이면 들어오자마자 로그인으로 보내기
+      const serverPoints =
+        typeof json?.points === "number"
+          ? json.points
+          : typeof json?.data?.points === "number"
+          ? json.data.points
+          : typeof json?.currentPoints === "number"
+          ? json.currentPoints
+          : null;
+
+      if (typeof serverPoints === "number") {
+        setCurrentPoints(serverPoints);
+        try {
+          localStorage.setItem("points", String(serverPoints));
+        } catch {}
+      }
+    } catch {}
+  };
+
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login?redirect=/points");
+    if (!user) {
+      setCurrentPoints(0);
+      return;
     }
-  }, [loading, user, router]);
 
-  // ✅ DB에서 포인트 로드
-  useEffect(() => {
     let alive = true;
 
-    (async () => {
-      try {
-        const pts = await fetchMyPoints();
-        if (!alive) return;
-        setCurrentPoints(pts);
-      } catch {
-        if (!alive) return;
-        setCurrentPoints(0);
+    refreshPoints();
+
+    // 포인트 변경 이벤트 수신
+    const onPointsUpdate = (e: any) => {
+      const p = e?.detail?.points;
+      if (typeof p === "number") {
+        setCurrentPoints(p);
+        try {
+          localStorage.setItem("points", String(p));
+        } catch {}
+      } else {
+        refreshPoints();
       }
-    })();
+    };
+    window.addEventListener("points:update", onPointsUpdate);
+
+    // 포커스 돌아오면 재조회
+    const onFocus = () => refreshPoints();
+    window.addEventListener("focus", onFocus);
+
+    // 주기적으로도 localStorage 반영(TopBar처럼)
+    const t = setInterval(() => {
+      if (!alive) return;
+      try {
+        const v = Number(localStorage.getItem("points") || "0");
+        if (Number.isFinite(v)) setCurrentPoints(v);
+      } catch {}
+    }, 800);
 
     return () => {
       alive = false;
+      clearInterval(t);
+      window.removeEventListener("points:update", onPointsUpdate);
+      window.removeEventListener("focus", onFocus);
     };
-  }, []);
-
-  /**
-   * ✅ PG 연결 뼈대
-   * STEP A) 서버에 주문 생성 요청: /api/payments/create-order
-   * STEP B) (PG 결제창 오픈) - PG사 정하면 여기에 붙임
-   * STEP C) 결제 성공 후 /api/payments/confirm 호출 → DB points 증가
-   */
-  const startPayment = async () => {
-    if (!selected) return;
-
-    setMsg(null);
-    setBusy(true);
-
-    try {
-      // 1) 주문 생성(서버)
-      const createRes = await fetch("/api/payments/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          work_id: "cheonmujin",
-          pack_id: selected.id,
-          amount: selected.price,
-          points: selected.points,
-        }),
-      });
-
-      const createData = await createRes.json();
-      if (!createRes.ok) {
-        setMsg("주문 생성에 실패했습니다.");
-        return;
-      }
-
-      /**
-       * createData 예시(뼈대):
-       * {
-       *   order_id: "...",
-       *   amount: 3000,
-       *   provider: "toss",
-       *   client_secret: "...(선택)"
-       * }
-       */
-      const { order_id } = createData;
-
-      // 2) 여기서 PG 결제창을 열어야 함
-      // - 토스/아임포트 등 PG사 확정되면, 이 구간을 실제 결제 SDK로 교체
-      alert("PG사(토스/아임포트 등) 확정되면 여기서 결제창이 열립니다. 지금은 뼈대 단계입니다.");
-
-      // 3) 결제 성공했다고 가정하고 confirm 호출(뼈대)
-      // 실제로는 결제 SDK가 주는 paymentKey/imp_uid 같은 값을 함께 보내야 함
-      const confirmRes = await fetch("/api/payments/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_id,
-          // payment_key: "...", // PG 확정되면 추가
-        }),
-      });
-
-      const confirmData = await confirmRes.json();
-      if (!confirmRes.ok) {
-        setMsg("결제 확정(검증)에 실패했습니다.");
-        return;
-      }
-
-      // ✅ 결제 확정 후 DB 포인트 다시 로드
-      const pts = await fetchMyPoints();
-      setCurrentPoints(pts);
-      setMsg("결제가 완료되었습니다. 포인트가 반영되었습니다.");
-    } catch {
-      setMsg("네트워크 오류가 발생했습니다.");
-    } finally {
-      setBusy(false);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}>
+    <>
       <TopBar />
 
-      <div style={{ maxWidth: 820, margin: "0 auto" }}>
-        <h1 style={{ margin: "8px 0 12px", fontSize: 28, fontWeight: 950 }}>포인트 충전</h1>
-
-        <div
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0b0b12",
+          color: "white",
+          padding: "28px 16px 60px",
+        }}
+      >
+        <button
+          onClick={() => router.back()}
           style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 14,
+            position: "fixed",
+            top: 20,
+            left: 24,
+            background: "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
+            border: "1px solid rgba(255,215,120,0.9)",
             borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(255,255,255,0.04)",
+            padding: "10px 14px",
+            fontWeight: 800,
+            cursor: "pointer",
+            zIndex: 9999,
           }}
         >
-          <div>
-            <div style={{ fontSize: 20, opacity: 0.8, marginBottom: 6 }}>현재 보유 포인트</div>
-            <div style={{ fontSize: 28, fontWeight: 950 }}>{currentPoints.toLocaleString("ko-KR")}P</div>
-          </div>
+          ← 이전
+        </button>
 
-          <button
-            onClick={() => router.push("/")}
+        <div style={{ maxWidth: 980, margin: "0 auto", paddingTop: 70 }}>
+          <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 18 }}>포인트 충전</h1>
+
+          <div
             style={{
-              background: "transparent",
-              color: "rgba(255,255,255,0.9)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              padding: "10px 14px",
-              borderRadius: 14,
-              cursor: "pointer",
-              fontWeight: 800,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 18,
+              padding: 18,
+              marginBottom: 18,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
             }}
           >
-            홈으로
-          </button>
-        </div>
+            <div>
+              <div style={{ opacity: 0.85, fontWeight: 700 }}>현재 보유 포인트</div>
+              <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>
+                {formatP(currentPoints)}
+              </div>
+            </div>
 
-        <div style={{ height: 14 }} />
+            <button
+              onClick={() => refreshPoints()}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 14,
+                padding: "10px 14px",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 800,
+              }}
+              title="포인트 새로고침"
+            >
+              새로고침
+            </button>
+          </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-          {packs.map((p) => {
-            const active = p.id === selectedId;
-            return (
-              <button
-                key={p.id}
-                onClick={() => setSelectedId(p.id)}
-                style={{
-                  textAlign: "left",
-                  padding: 14,
-                  borderRadius: 16,
-                  border: active
-                    ? "2px solid rgba(255,215,120,0.9)"
-                    : "1px solid rgba(255,255,255,0.12)",
-                  background: active ? "rgba(255,215,120,0.10)" : "rgba(255,255,255,0.04)",
-                  color: "white",
-                  cursor: "pointer",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 18, fontWeight: 950 }}>
-                    {p.priceLabel} <span style={{ opacity: 0.75, fontWeight: 800 }}>→</span> {p.pointsLabel}
-                  </div>
-                  {p.bonus && <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{p.bonus}</div>}
-                </div>
-
-                <div
+          <div style={{ display: "grid", gap: 12 }}>
+            {plans.map((p) => {
+              const active = selected === p.price;
+              return (
+                <button
+                  key={p.price}
+                  onClick={() => setSelected(p.price)}
                   style={{
-                    minWidth: 86,
-                    textAlign: "center",
-                    borderRadius: 14,
-                    padding: "8px 10px",
-                    fontWeight: 950,
-                    background:
-                      "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-                    color: "#2b1d00",
-                    border: "1px solid rgba(255,215,120,0.65)",
+                    textAlign: "left",
+                    padding: 18,
+                    borderRadius: 18,
+                    cursor: "pointer",
+                    background: active ? "rgba(255,215,120,0.08)" : "rgba(255,255,255,0.04)",
+                    border: active
+                      ? "2px solid rgba(255,215,120,0.65)"
+                      : "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  선택
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 20, fontWeight: 900 }}>
+                        ₩{p.price.toLocaleString("ko-KR")} → {formatP(p.points).replace("P", "P")}
+                      </div>
+                      {p.bonusText ? (
+                        <div style={{ opacity: 0.8, marginTop: 6 }}>{p.bonusText}</div>
+                      ) : (
+                        <div style={{ opacity: 0.5, marginTop: 6 }}> </div>
+                      )}
+                    </div>
 
-        <div style={{ height: 14 }} />
-
-        <div
-          style={{
-            padding: 14,
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(0,0,0,0.25)",
-          }}
-        >
-          <div style={{ fontSize: 13, opacity: 0.85 }}>선택한 충전</div>
-          <div style={{ marginTop: 6, fontSize: 20, fontWeight: 950 }}>
-            {selected?.priceLabel} → {selected?.pointsLabel}
+                    <div
+                      style={{
+                        alignSelf: "center",
+                        background:
+                          "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
+                        border: "1px solid rgba(255,215,120,0.9)",
+                        borderRadius: 16,
+                        padding: "10px 16px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      선택
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ height: 12 }} />
-
-          <button
-            onClick={startPayment}
-            disabled={busy}
+          <div
             style={{
-              width: "100%",
-              background:
-                "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-              color: "#2b1d00",
-              border: "1px solid rgba(255,215,120,0.7)",
-              padding: "12px 16px",
-              borderRadius: 16,
-              fontWeight: 950,
-              cursor: busy ? "not-allowed" : "pointer",
-              fontSize: 16,
-              opacity: busy ? 0.7 : 1,
+              marginTop: 18,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 18,
+              padding: 18,
             }}
           >
-            {busy ? "처리 중..." : "결제하기"}
-          </button>
+            <div style={{ opacity: 0.85, fontWeight: 800 }}>선택한 충전</div>
+            <div style={{ fontSize: 22, fontWeight: 900, marginTop: 8 }}>
+              ₩{selected.toLocaleString("ko-KR")} →
+              {" "}
+              {formatP(plans.find((x) => x.price === selected)?.points ?? selected)}
+            </div>
 
-          {msg && (
-            <div
+            <button
+              onClick={() => alert("결제 연결(PortOne) 단계에서 여기 버튼을 실제 결제로 연결하면 됩니다!")}
               style={{
-                marginTop: 10,
-                padding: 12,
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.06)",
-                whiteSpace: "pre-wrap",
-                fontSize: 13,
-                opacity: 0.9,
+                marginTop: 14,
+                width: "100%",
+                height: 56,
+                borderRadius: 18,
+                fontWeight: 900,
+                fontSize: 18,
+                cursor: "pointer",
+                background:
+                  "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
+                border: "1px solid rgba(255,215,120,0.9)",
               }}
             >
-              {msg}
-            </div>
-          )}
+              결제하기 (준비중)
+            </button>
 
-          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
-            • 결제 성공 후 포인트 반영은 서버에서만 처리됩니다.
-            <br />
-            • 다음 단계에서 PG사 확정(토스/아임포트 등)하면 결제창 + 웹훅 검증까지 붙입니다.
+            <div style={{ opacity: 0.65, fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
+              • 포인트는 서버(DB) 기준으로 관리하는 걸 추천합니다. <br />
+              • 지금 화면의 “보유 포인트”는 서버(/api/me/entitlements) 값을 우선으로 표시합니다.
+            </div>
           </div>
         </div>
       </div>
-    </main>
+    </>
   );
 }

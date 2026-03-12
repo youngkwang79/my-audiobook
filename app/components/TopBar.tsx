@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
 
 export default function TopBar() {
   const router = useRouter();
@@ -13,9 +12,22 @@ export default function TopBar() {
   const [points, setPoints] = useState<number>(0);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const p = Number(localStorage.getItem("points") || 0);
-    setPoints(Number.isFinite(p) ? p : 0);
+    if (!user) {
+      setPoints(0);
+      return;
+    }
+
+    const load = async () => {
+      const res = await fetch(
+        `/api/me/entitlements?work_id=cheonmujin&episode_id=1`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setPoints(data.points ?? 0);
+    };
+
+    load();
   }, [user?.id]);
 
   const goldStyle: React.CSSProperties = {
@@ -27,66 +39,19 @@ export default function TopBar() {
     borderRadius: 14,
     fontWeight: 900,
     cursor: "pointer",
-    whiteSpace: "nowrap",
-    pointerEvents: "auto",
-    WebkitTapHighlightColor: "transparent",
-  };
-
-  const goBackSmart = () => {
-    if (typeof window === "undefined") return;
-
-    if (window.history.length > 1) {
-      router.back();
-      return;
-    }
-
-    if (pathname.startsWith("/episode") || pathname.startsWith("/work")) {
-      router.push("/work/cheonmujin");
-      return;
-    }
-
-    router.push("/");
-  };
-
-  const handleLogout = async () => {
-    const sb = supabase;
-    if (!sb) {
-      alert("Supabase 환경변수가 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 Redeploy 해주세요.");
-      router.push("/login");
-      return;
-    }
-    await sb.auth.signOut();
-    router.push("/");
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 18,
-        position: "relative",
-        zIndex: 10000,
-      }}
-    >
-      {/* 왼쪽 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {pathname !== "/" && (
-          <button onClick={goBackSmart} style={goldStyle}>
-            ← 이전
-          </button>
-        )}
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
+      {pathname !== "/" && (
+        <button onClick={() => router.back()} style={goldStyle}>
+          ← 이전
+        </button>
+      )}
 
-        {pathname === "/" && (
-          <div style={{ fontSize: 36, fontWeight: 900 }}>무협 소설 채널</div>
-        )}
-      </div>
-
-      {/* 오른쪽 */}
       <div style={{ display: "flex", gap: 12 }}>
         {loading ? (
-          <button style={{ ...goldStyle, opacity: 0.7, cursor: "default" }} disabled>
+          <button style={{ ...goldStyle, opacity: 0.7 }} disabled>
             로딩중
           </button>
         ) : !user ? (
@@ -97,12 +62,18 @@ export default function TopBar() {
           <>
             <button
               onClick={() => router.push("/points")}
-              style={{ ...goldStyle, fontSize: 20, letterSpacing: 0.3 }}
+              style={{ ...goldStyle, fontSize: 20 }}
             >
               {points.toLocaleString()}P
             </button>
 
-            <button onClick={handleLogout} style={goldStyle}>
+            <button
+              onClick={async () => {
+                await fetch("/api/logout");
+                router.push("/");
+              }}
+              style={goldStyle}
+            >
               로그아웃
             </button>
           </>

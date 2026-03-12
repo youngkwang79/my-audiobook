@@ -16,6 +16,9 @@ const POINTS_PER_PART = 60;
 // ✅ 작품/파일명 프리픽스(남겨둠)
 const SERIES_PREFIX = "cheonmujin";
 
+// ✅ 작품 기본 썸네일(fallback)
+const WORK_THUMBNAIL = "/thumbnails/cheonmujin.jpg";
+
 // ✅ 화별 파트 수(분량) 설정 (사용자 제공값 반영: 1~54 + 32-1)
 const EPISODE_TOTAL_PARTS: Record<string, number> = {
   "1": 4,
@@ -152,7 +155,7 @@ export default function EpisodePage() {
   // ✅ 중복 이동 방지(보험)
   const isNavigatingRef = useRef(false);
   useEffect(() => {
-    isNavigatingRef.current = false; // 화가 바뀌면 초기화
+    isNavigatingRef.current = false;
   }, [episodeKey]);
 
   // ✅ DB 기반 상태
@@ -173,6 +176,12 @@ export default function EpisodePage() {
   const [captionStatus, setCaptionStatus] = useState<string>("");
   const segIndexRef = useRef<number>(0);
 
+  // =========================
+  // ✅ 이미지 상태
+  // =========================
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imageErrorCount, setImageErrorCount] = useState(0);
+
   // ✅ 마지막 재생 저장(화면용 캐시 유지)
   useEffect(() => {
     if (!episodeKey) return;
@@ -188,7 +197,7 @@ export default function EpisodePage() {
     );
   }, [episodeKey, part]);
 
-  // ✅ URL part 기준으로 시작 (이건 유지)
+  // ✅ URL part 기준으로 시작
   useEffect(() => {
     const p = Number(searchParams.get("part") || 1);
     const safeP = Math.max(1, Math.min(TOTAL_PARTS, Number.isFinite(p) ? p : 1));
@@ -213,7 +222,6 @@ export default function EpisodePage() {
 
         setPointsState(Number.isFinite(data.points) ? Math.max(0, data.points) : 0);
       } catch {
-        // 실패 시: 최소한 무료까지만
         setIsSubscribed(false);
         setUnlockedUntilState(FREE_PARTS);
         setPointsState(0);
@@ -235,12 +243,25 @@ export default function EpisodePage() {
 
   // ✅ R2 경로
   const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
+
   const getR2AudioUrl = (episodeKey: string, part: number) => {
     const folder = getEpisodeFolder(episodeKey);
     return `${R2_BASE}/${folder}/${pad2(part)}.MP3`;
   };
 
-  // ✅ 자막 JSON 경로 (Worker가 R2에 저장한 파일)
+  // ✅ 이미지 후보 경로
+  const getR2ImageCandidates = (episodeKey: string, part: number) => {
+    const folder = getEpisodeFolder(episodeKey);
+    const base = `${R2_BASE}/${folder}/${pad2(part)}`;
+    return [
+      `${base}.jpg`,
+      `${base}.jpeg`,
+      `${base}.png`,
+      `${base}.webp`,
+    ];
+  };
+
+  // ✅ 자막 JSON 경로
   const getR2CaptionUrl = (episodeKey: string, part: number) => {
     const folder = getEpisodeFolder(episodeKey);
     return `${R2_BASE}/${folder}/${pad2(part)}.json`;
@@ -254,21 +275,32 @@ export default function EpisodePage() {
   // ✅ 오디오 경로 (R2 사용)
   const audioSrc = !locked ? getR2AudioUrl(episodeKey, part) : null;
 
-    // =========================
+  // ✅ 이미지 후보 계산
+  const imageCandidates = useMemo(() => getR2ImageCandidates(episodeKey, part), [episodeKey, part]);
+
+  // ✅ 화/편 바뀌면 이미지 후보 탐색 초기화
+  useEffect(() => {
+    setImageIndex(0);
+    setImageErrorCount(0);
+  }, [episodeKey, part]);
+
+  // ✅ 현재 이미지 src
+  const currentImageSrc =
+    imageErrorCount >= imageCandidates.length
+      ? WORK_THUMBNAIL
+      : imageCandidates[imageIndex] || WORK_THUMBNAIL;
+
+  // =========================
   // ✅ 자막 로드: R2 json 먼저 읽고, 없으면 Worker 호출로 생성 후 다시 읽기
-  //    (안전 버전: JSON 파싱 실패/HTML/XML 응답도 자동 복구)
   // =========================
   useEffect(() => {
     let alive = true;
 
     async function fetchJsonSafe(url: string) {
-      // ✅ 캐시/음수캐시 방지용 쿼리
       const u = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
-
       const res = await fetch(u, { cache: "no-store" });
-      const text = await res.text(); // ✅ 무조건 text로 먼저 받기
+      const text = await res.text();
 
-      // 200이어도 HTML/XML이면 여기서 잡힘
       if (!res.ok) {
         return { ok: false as const, status: res.status, text };
       }
@@ -295,7 +327,6 @@ export default function EpisodePage() {
 
       const jsonUrl = getR2CaptionUrl(episodeKey, part);
 
-      // 1) R2에서 먼저 시도 (안전 파싱)
       const r2 = await fetchJsonSafe(jsonUrl);
       if (!alive) return;
 
@@ -306,10 +337,6 @@ export default function EpisodePage() {
         return;
       }
 
-      // ✅ 여기까지 왔다는 건:
-      // - 404(없음) 이거나
-      // - 200인데 HTML/XML/깨진 JSON이라 파싱 실패한 경우
-      // → Worker로 재생성 시도
       setCaptionStatus("자막 생성 중(처음 1회)...");
 
       const workerRes = await fetch(getWorkerUrl(episodeKey, part), { cache: "no-store" });
@@ -319,12 +346,10 @@ export default function EpisodePage() {
         return;
       }
 
-      // 3) 생성 후 R2 JSON 다시 읽기(안전 파싱)
       const r2b = await fetchJsonSafe(jsonUrl);
       if (!alive) return;
 
       if (!r2b.ok) {
-        // 디버깅용: 어떤 내용이 내려오는지 상태에 표시(짧게)
         const preview = (r2b.text || "").slice(0, 80).replace(/\s+/g, " ");
         setCaptionStatus(`자막 파일 파싱 실패(R2) ${r2b.status}: ${preview}`);
         return;
@@ -346,13 +371,9 @@ export default function EpisodePage() {
     };
   }, [episodeKey, part, locked]);
 
-
-  // ✅ 저장된 json에서 segments 추출 (aiResp 안에 있을 수도, 다른 형태일 수도 있어서 안전하게)
   function parseSegmentsFromSavedJson(saved: any): Segment[] {
-    // 우리가 저장한 형식: { aiResp: ... }
     const aiResp = saved?.aiResp ?? saved;
 
-    // 후보 1) aiResp.segments
     const segs = aiResp?.segments;
     if (Array.isArray(segs)) {
       return segs
@@ -364,7 +385,6 @@ export default function EpisodePage() {
         .filter((s: Segment) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.text.trim().length > 0);
     }
 
-    // 후보 2) aiResp.text만 있는 경우: 통문으로 보여주기(타임 싱크는 불가)
     const text = aiResp?.text;
     if (typeof text === "string" && text.trim()) {
       return [{ start: 0, end: 999999, text }];
@@ -383,13 +403,10 @@ export default function EpisodePage() {
       return;
     }
 
-    // 현재 인덱스 기준으로 앞/뒤만 조금 움직여서 빠르게 찾기
     let i = segIndexRef.current;
     i = Math.max(0, Math.min(i, segs.length - 1));
 
-    // 앞으로 진행
     while (i < segs.length - 1 && t > segs[i].end) i++;
-    // 뒤로 이동(사용자가 되감기 한 경우)
     while (i > 0 && t < segs[i].start) i--;
 
     segIndexRef.current = i;
@@ -399,7 +416,6 @@ export default function EpisodePage() {
     else setCaption("");
   };
 
-  // ✅ 오디오 이벤트에 연결
   const onTimeUpdate = () => {
     const a = audioRef.current;
     if (!a) return;
@@ -441,7 +457,6 @@ export default function EpisodePage() {
     setStatus("일시정지");
   };
 
-  // ✅✅✅ 마지막 편이면 다음 화 1편으로 자동 이동 + 자동재생
   const goNextEpisode = () => {
     if (isNavigatingRef.current) return;
 
@@ -484,12 +499,10 @@ export default function EpisodePage() {
     router.replace(`/episode/${episodeKey}?part=${prev}${prevLocked ? "" : "&autoplay=1"}`);
   };
 
-  // ✅ 광고로 전체 오픈 (지금은 뼈대: 나중에 광고 리워드 완료 후 서버 API로 변경)
   const unlockAllParts = () => {
     alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
   };
 
-  // ✅ 포인트 60으로 1편 해제 (서버 API)
   const unlockWithPoints = async () => {
     const next = Math.min(TOTAL_PARTS, unlockedUntil + 1);
 
@@ -515,7 +528,6 @@ export default function EpisodePage() {
         return;
       }
 
-      // ✅ 서버가 확정한 값으로만 갱신
       setPointsState(data.points_left);
       setUnlockedUntilState(data.unlocked_until_part);
 
@@ -525,7 +537,6 @@ export default function EpisodePage() {
     }
   };
 
-  // UI: 바운스
   const bounceCSS = `
     @keyframes bounceIn {
       0% { transform: scale(0.95); opacity: 0; }
@@ -534,7 +545,6 @@ export default function EpisodePage() {
     }
   `;
 
-  // ✅ 모바일 UI 개선: 1열 레이아웃 + 하단 고정 플레이어 + 잠금팝업(안 잘리게)
   const mobileCSS = `
     @media (max-width: 820px) {
       .episodeMain { padding-bottom: 120px !important; }
@@ -550,12 +560,12 @@ export default function EpisodePage() {
       .audioDock audio { width: 100% !important; margin-top: 0 !important; }
     }
 
-    /* ✅ 잠금 팝업이 모바일에서 잘리지 않게 */
     .lockCard {
       max-height: calc(100vh - 180px);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
+
     @media (max-width: 820px) {
       .lockWrap {
         min-height: auto !important;
@@ -571,22 +581,23 @@ export default function EpisodePage() {
         gap: 10px !important;
       }
       .lockBtns button { width: 100% !important; }
-        /* ✅ 가로(옆) 넘침 방지 추가 */
-    html, body { overflow-x: hidden; }
 
-    .episodeMain {
-      overflow-x: hidden !important;
-      max-width: 100vw !important;
+      html, body { overflow-x: hidden; }
+
+      .episodeMain {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+      }
+
+      .partGrid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        max-width: 100% !important;
+      }
+
+      button { max-width: 100% !important; }
+      .lockCard * { word-break: keep-all; }
+      .lockBtns button { white-space: normal !important; }
     }
-
-    .partGrid {
-      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-      max-width: 100% !important;
-    }
-
-    button { max-width: 100% !important; }
-    .lockCard * { word-break: keep-all; }
-    .lockBtns button { white-space: normal !important; }    
   `;
 
   const onSelectPart = (p: number) => {
@@ -637,6 +648,7 @@ export default function EpisodePage() {
           </div>
 
           <div
+            className="partGrid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
@@ -690,6 +702,35 @@ export default function EpisodePage() {
         </aside>
 
         <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
+          {/* ✅ 이미지 영역: 잠긴 편이어도 보이게 */}
+          <div
+            style={{
+              marginBottom: 14,
+              borderRadius: 18,
+              overflow: "hidden",
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.04)",
+            }}
+          >
+            <img
+              src={currentImageSrc}
+              alt={`${episodeKey}화 ${part}편 이미지`}
+              onError={() => {
+                if (imageErrorCount < imageCandidates.length) {
+                  setImageErrorCount((prev) => prev + 1);
+                  setImageIndex((prev) => Math.min(prev + 1, imageCandidates.length - 1));
+                }
+              }}
+              style={{
+                width: "100%",
+                display: "block",
+                maxHeight: 560,
+                objectFit: "contain",
+                background: "#111",
+              }}
+            />
+          </div>
+
           {!locked && (
             <>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -773,7 +814,6 @@ export default function EpisodePage() {
                 onTimeUpdate={onTimeUpdate}
               />
 
-              {/* ✅ 자막 표시 영역 */}
               <div
                 style={{
                   marginTop: 12,
