@@ -252,7 +252,7 @@ export default function EpisodePage() {
   // ✅ 이미지 후보 경로
   const getR2ImageCandidates = (episodeKey: string, part: number) => {
     const folder = getEpisodeFolder(episodeKey);
-    const base = `${R2_BASE}/${folder}/${pad2(part)}`;
+    const base = `${R2_BASE}/${folder}/01`;
     return [
       `${base}.jpg`,
       `${base}.jpeg`,
