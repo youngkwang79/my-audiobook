@@ -3,23 +3,14 @@
 import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
-// ✅ 기본값: 아직 파트 수 확정 안 된 화는 일단 30으로
 const DEFAULT_TOTAL_PARTS = 30;
-
-// ✅ 무료 파트 기준(원래 1~8 무료)
 const DEFAULT_FREE_PARTS = 8;
-
-// ✅ 포인트 정책: 60포인트당 1편 해제
 const POINTS_PER_PART = 60;
-
-// ✅ 작품/파일명 프리픽스(남겨둠)
 const SERIES_PREFIX = "cheonmujin";
-
-// ✅ 작품 기본 썸네일(fallback)
 const WORK_THUMBNAIL = "/thumbnails/cheonmujin.jpg";
 
-// ✅ 화별 파트 수(분량) 설정 (사용자 제공값 반영: 1~54 + 32-1)
 const EPISODE_TOTAL_PARTS: Record<string, number> = {
   "1": 4,
   "2": 6,
@@ -78,14 +69,26 @@ const EPISODE_TOTAL_PARTS: Record<string, number> = {
   "54": 15,
 };
 
+type EntitlementPayload = {
+  points: number;
+  is_subscribed: boolean;
+  unlocked_until_part: number | null;
+};
+
+type Segment = {
+  start: number;
+  end: number;
+  text: string;
+};
+
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
+
 function pad3(n: number) {
   return String(n).padStart(3, "0");
 }
 
-// ✅ "32-1" 같은 id도 R2 폴더명으로 안전하게 바꿈
 function getEpisodeFolder(episodeKey: string) {
   if (/^\d+$/.test(episodeKey)) return pad3(Number(episodeKey));
   const m = episodeKey.match(/^(\d+)-(.*)$/);
@@ -101,88 +104,76 @@ function getFreeParts(episodeKey: string) {
   return Math.min(DEFAULT_FREE_PARTS, getTotalParts(episodeKey));
 }
 
-// ✅ (예전 public/audio 방식용 - 지금은 R2 사용중) 남겨둠
-function getAudioPath(episodeKey: string, part: number) {
-  const epFolder = getEpisodeFolder(episodeKey);
-  const pt = pad2(part);
-  return `/audio/${SERIES_PREFIX}_${epFolder}_${pt}.mp3`;
-}
-
-type EntitlementPayload = {
-  points: number;
-  is_subscribed: boolean;
-  unlocked_until_part: number | null;
-};
-
 async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    throw new Error("unauthorized");
+  }
+
   const qs = new URLSearchParams({
     work_id: SERIES_PREFIX,
     episode_id: episodeKey,
   });
 
-  const res = await fetch(`/api/me/entitlements?${qs.toString()}`, { cache: "no-store" });
-  if (!res.ok) throw new Error("failed_to_fetch_entitlements");
+  const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("failed_to_fetch_entitlements");
+  }
+
   return res.json();
 }
 
-// ✅ 숫자 화의 마지막 번호(자동 다음화 이동 안전장치)
 const LAST_NUM_EPISODE = Math.max(
   ...Object.keys(EPISODE_TOTAL_PARTS)
     .filter((k) => /^\d+$/.test(k))
     .map((k) => Number(k))
 );
 
-// =========================
-// ✅ 자막 타입
-// =========================
-type Segment = { start: number; end: number; text: string };
-
 export default function EpisodePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ 핵심: id를 문자열로 유지 (예: "32-1")
   const episodeKey = String(params.id);
   const autoplay = searchParams.get("autoplay") === "1";
 
-  // ✅ 이 화의 총 파트/무료 파트
   const TOTAL_PARTS = useMemo(() => getTotalParts(episodeKey), [episodeKey]);
   const FREE_PARTS = useMemo(() => getFreeParts(episodeKey), [episodeKey]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // ✅ 중복 이동 방지(보험)
   const isNavigatingRef = useRef(false);
-  useEffect(() => {
-    isNavigatingRef.current = false;
-  }, [episodeKey]);
+  const segIndexRef = useRef(0);
 
-  // ✅ DB 기반 상태
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [unlockedUntil, setUnlockedUntilState] = useState(FREE_PARTS);
   const [points, setPointsState] = useState(0);
 
-  // ✅ 현재 선택된 “편(파트)”
   const [part, setPart] = useState(1);
   const [status, setStatus] = useState("");
   const [entBusy, setEntBusy] = useState(false);
 
-  // =========================
-  // ✅ 자막 상태
-  // =========================
   const [segments, setSegments] = useState<Segment[]>([]);
-  const [caption, setCaption] = useState<string>("");
-  const [captionStatus, setCaptionStatus] = useState<string>("");
-  const segIndexRef = useRef<number>(0);
+  const [caption, setCaption] = useState("");
+  const [captionStatus, setCaptionStatus] = useState("");
 
-  // =========================
-  // ✅ 이미지 상태
-  // =========================
   const [imageIndex, setImageIndex] = useState(0);
   const [imageErrorCount, setImageErrorCount] = useState(0);
 
-  // ✅ 마지막 재생 저장(화면용 캐시 유지)
+  useEffect(() => {
+    isNavigatingRef.current = false;
+  }, [episodeKey]);
+
   useEffect(() => {
     if (!episodeKey) return;
     if (!Number.isFinite(part)) return;
@@ -197,14 +188,12 @@ export default function EpisodePage() {
     );
   }, [episodeKey, part]);
 
-  // ✅ URL part 기준으로 시작
   useEffect(() => {
     const p = Number(searchParams.get("part") || 1);
     const safeP = Math.max(1, Math.min(TOTAL_PARTS, Number.isFinite(p) ? p : 1));
     setPart(safeP);
   }, [episodeKey, searchParams, TOTAL_PARTS]);
 
-  // ✅ DB에서 권한/포인트/구독 상태 로드
   useEffect(() => {
     let alive = true;
     setEntBusy(true);
@@ -221,7 +210,9 @@ export default function EpisodePage() {
         setUnlockedUntilState(safeUnlocked);
 
         setPointsState(Number.isFinite(data.points) ? Math.max(0, data.points) : 0);
-      } catch {
+      } catch (error) {
+        console.error(error);
+        if (!alive) return;
         setIsSubscribed(false);
         setUnlockedUntilState(FREE_PARTS);
         setPointsState(0);
@@ -235,23 +226,20 @@ export default function EpisodePage() {
     };
   }, [episodeKey, FREE_PARTS, TOTAL_PARTS]);
 
-  // ✅ 잠금 여부: 구독이면 항상 false
   const locked = useMemo(() => {
     if (isSubscribed) return false;
     return part > unlockedUntil;
   }, [part, unlockedUntil, isSubscribed]);
 
-  // ✅ R2 경로
   const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
 
-  const getR2AudioUrl = (episodeKey: string, part: number) => {
-    const folder = getEpisodeFolder(episodeKey);
-    return `${R2_BASE}/${folder}/${pad2(part)}.MP3`;
+  const getR2AudioUrl = (episodeKeyValue: string, partValue: number) => {
+    const folder = getEpisodeFolder(episodeKeyValue);
+    return `${R2_BASE}/${folder}/${pad2(partValue)}.MP3`;
   };
 
-  // ✅ 이미지 후보 경로
-  const getR2ImageCandidates = (episodeKey: string, part: number) => {
-    const folder = getEpisodeFolder(episodeKey);
+  const getR2ImageCandidates = (episodeKeyValue: string, partValue: number) => {
+    const folder = getEpisodeFolder(episodeKeyValue);
     const base = `${R2_BASE}/${folder}/01`;
     return [
       `${base}.jpg`,
@@ -261,38 +249,59 @@ export default function EpisodePage() {
     ];
   };
 
-  // ✅ 자막 JSON 경로
-  const getR2CaptionUrl = (episodeKey: string, part: number) => {
-    const folder = getEpisodeFolder(episodeKey);
-    return `${R2_BASE}/${folder}/${pad2(part)}.json`;
+  const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
+    const folder = getEpisodeFolder(episodeKeyValue);
+    return `${R2_BASE}/${folder}/${pad2(partValue)}.json`;
   };
 
-  // ✅ Worker(생성용) URL
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
-  const getWorkerUrl = (episodeKey: string, part: number) =>
-    `${WORKER_BASE}/?episode=${encodeURIComponent(episodeKey)}&part=${encodeURIComponent(String(part))}`;
+  const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
+    `${WORKER_BASE}/?episode=${encodeURIComponent(episodeKeyValue)}&part=${encodeURIComponent(String(partValue))}`;
 
-  // ✅ 오디오 경로 (R2 사용)
   const audioSrc = !locked ? getR2AudioUrl(episodeKey, part) : null;
 
-  // ✅ 이미지 후보 계산
-  const imageCandidates = useMemo(() => getR2ImageCandidates(episodeKey, part), [episodeKey, part]);
+  const imageCandidates = useMemo(
+    () => getR2ImageCandidates(episodeKey, part),
+    [episodeKey, part]
+  );
 
-  // ✅ 화/편 바뀌면 이미지 후보 탐색 초기화
   useEffect(() => {
     setImageIndex(0);
     setImageErrorCount(0);
   }, [episodeKey, part]);
 
-  // ✅ 현재 이미지 src
   const currentImageSrc =
     imageErrorCount >= imageCandidates.length
       ? WORK_THUMBNAIL
       : imageCandidates[imageIndex] || WORK_THUMBNAIL;
 
-  // =========================
-  // ✅ 자막 로드: R2 json 먼저 읽고, 없으면 Worker 호출로 생성 후 다시 읽기
-  // =========================
+  function parseSegmentsFromSavedJson(saved: any): Segment[] {
+    const aiResp = saved?.aiResp ?? saved;
+    const segs = aiResp?.segments;
+
+    if (Array.isArray(segs)) {
+      return segs
+        .map((s: any) => ({
+          start: Number(s.start ?? s.t0 ?? 0),
+          end: Number(s.end ?? s.t1 ?? 0),
+          text: String(s.text ?? s.transcript ?? ""),
+        }))
+        .filter(
+          (s: Segment) =>
+            Number.isFinite(s.start) &&
+            Number.isFinite(s.end) &&
+            s.text.trim().length > 0
+        );
+    }
+
+    const text = aiResp?.text;
+    if (typeof text === "string" && text.trim()) {
+      return [{ start: 0, end: 999999, text }];
+    }
+
+    return [];
+  }
+
   useEffect(() => {
     let alive = true;
 
@@ -339,7 +348,10 @@ export default function EpisodePage() {
 
       setCaptionStatus("자막 생성 중(처음 1회)...");
 
-      const workerRes = await fetch(getWorkerUrl(episodeKey, part), { cache: "no-store" });
+      const workerRes = await fetch(getWorkerUrl(episodeKey, part), {
+        cache: "no-store",
+      });
+
       if (!workerRes.ok) {
         if (!alive) return;
         setCaptionStatus("자막 생성 실패(Worker 오류)");
@@ -360,10 +372,10 @@ export default function EpisodePage() {
       setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
     }
 
-    loadCaptions().catch((e) => {
+    loadCaptions().catch((error) => {
       if (!alive) return;
+      console.error("[caption] load error:", error);
       setCaptionStatus("자막 로드 중 오류");
-      console.error("[caption] load error:", e);
     });
 
     return () => {
@@ -371,31 +383,6 @@ export default function EpisodePage() {
     };
   }, [episodeKey, part, locked]);
 
-  function parseSegmentsFromSavedJson(saved: any): Segment[] {
-    const aiResp = saved?.aiResp ?? saved;
-
-    const segs = aiResp?.segments;
-    if (Array.isArray(segs)) {
-      return segs
-        .map((s: any) => ({
-          start: Number(s.start ?? s.t0 ?? 0),
-          end: Number(s.end ?? s.t1 ?? 0),
-          text: String(s.text ?? s.transcript ?? ""),
-        }))
-        .filter((s: Segment) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.text.trim().length > 0);
-    }
-
-    const text = aiResp?.text;
-    if (typeof text === "string" && text.trim()) {
-      return [{ start: 0, end: 999999, text }];
-    }
-
-    return [];
-  }
-
-  // =========================
-  // ✅ 현재 재생 시간에 맞춰 자막 업데이트
-  // =========================
   const updateCaptionByTime = (t: number) => {
     const segs = segments;
     if (!segs.length) {
@@ -422,7 +409,6 @@ export default function EpisodePage() {
     updateCaptionByTime(a.currentTime);
   };
 
-  // ✅ 자동재생
   useEffect(() => {
     if (!autoplay) return;
     if (locked) return;
@@ -473,7 +459,6 @@ export default function EpisodePage() {
 
     isNavigatingRef.current = true;
     const nextEpisodeKey = String(currentEp + 1);
-
     router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
   };
 
@@ -504,12 +489,26 @@ export default function EpisodePage() {
   };
 
   const unlockWithPoints = async () => {
-    const next = Math.min(TOTAL_PARTS, unlockedUntil + 1);
-
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        alert("로그인이 필요합니다.");
+        router.push(`/login?redirect=/episode/${episodeKey}?part=${part}`);
+        return;
+      }
+
+      const next = Math.min(TOTAL_PARTS, unlockedUntil + 1);
+
       const res = await fetch("/api/unlock/with-points", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           work_id: SERIES_PREFIX,
           episode_id: episodeKey,
@@ -517,24 +516,50 @@ export default function EpisodePage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
         if (data?.error === "not_enough_points") {
           alert(`포인트가 부족합니다. (${data?.need ?? POINTS_PER_PART}포인트 필요)`);
           return;
         }
-        alert("오류가 발생했습니다.");
+
+        if (data?.error === "unauthorized") {
+          alert("로그인이 필요합니다.");
+          router.push(`/login?redirect=/episode/${episodeKey}?part=${part}`);
+          return;
+        }
+
+        if (data?.error === "invalid_target") {
+          alert("이미 열렸거나 순서가 맞지 않습니다. 새로고침 후 다시 시도해주세요.");
+          return;
+        }
+
+        alert(`오류가 발생했습니다. (${data?.error ?? "unknown_error"})`);
         return;
       }
 
-      setPointsState(data.points_left);
-      setUnlockedUntilState(data.unlocked_until_part);
+      const nextPoints = Number(data?.points_left ?? points);
+      const nextUnlocked = Number(data?.unlocked_until_part ?? unlockedUntil);
 
-      router.replace(`/episode/${episodeKey}?part=${part}&autoplay=1`);
-    } catch {
+      setPointsState(nextPoints);
+      setUnlockedUntilState(nextUnlocked);
+
+      window.dispatchEvent(new Event("wallet-updated"));
+
+      const targetPart = Math.max(part, nextUnlocked);
+      setPart(targetPart);
+      router.replace(`/episode/${episodeKey}?part=${targetPart}&autoplay=1`);
+    } catch (error) {
+      console.error(error);
       alert("네트워크 오류가 발생했습니다.");
     }
+  };
+
+  const onSelectPart = (p: number) => {
+    setPart(p);
+    const pLocked = !isSubscribed && p > unlockedUntil;
+    router.replace(`/episode/${episodeKey}?part=${p}${pLocked ? "" : "&autoplay=1"}`);
   };
 
   const bounceCSS = `
@@ -558,53 +583,19 @@ export default function EpisodePage() {
         backdrop-filter: blur(10px);
       }
       .audioDock audio { width: 100% !important; margin-top: 0 !important; }
-    }
-
-    .lockCard {
-      max-height: calc(100vh - 180px);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    @media (max-width: 820px) {
-      .lockWrap {
-        min-height: auto !important;
-        padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
-      }
       .lockCard {
-        width: min(480px, 84vw) !important;
-        max-height: calc(100vh - 140px) !important;
+        width: min(420px, 94%) !important;
+        max-height: 82% !important;
       }
       .lockBtns {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important;
+        grid-template-columns: 1fr !important;
       }
-      .lockBtns button { width: 100% !important; }
+    }
 
-      html, body { overflow-x: hidden; }
-
-      .episodeMain {
-        overflow-x: hidden !important;
-        max-width: 100vw !important;
-      }
-
-      .partGrid {
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        max-width: 100% !important;
-      }
-
-      button { max-width: 100% !important; }
-      .lockCard * { word-break: keep-all; }
-      .lockBtns button { white-space: normal !important; }
+    html, body {
+      overflow-x: hidden;
     }
   `;
-
-  const onSelectPart = (p: number) => {
-    setPart(p);
-    const pLocked = !isSubscribed && p > unlockedUntil;
-    router.replace(`/episode/${episodeKey}?part=${p}${pLocked ? "" : "&autoplay=1"}`);
-  };
 
   return (
     <main
@@ -680,7 +671,7 @@ export default function EpisodePage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: isLocked ? "not-allowed" : "pointer",
+                    cursor: "pointer",
                     boxShadow: isActive ? "0 0 10px rgba(255,215,120,0.35)" : "none",
                   }}
                   aria-label={`${p}편`}
@@ -702,7 +693,6 @@ export default function EpisodePage() {
         </aside>
 
         <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
-          {/* ✅ 이미지 영역: 잠긴 편이어도 보이게 */}
           <div
             style={{
               marginBottom: 14,
@@ -710,6 +700,7 @@ export default function EpisodePage() {
               overflow: "hidden",
               border: "1px solid rgba(255,255,255,0.10)",
               background: "rgba(255,255,255,0.04)",
+              position: "relative",
             }}
           >
             <img
@@ -718,7 +709,9 @@ export default function EpisodePage() {
               onError={() => {
                 if (imageErrorCount < imageCandidates.length) {
                   setImageErrorCount((prev) => prev + 1);
-                  setImageIndex((prev) => Math.min(prev + 1, imageCandidates.length - 1));
+                  setImageIndex((prev) =>
+                    Math.min(prev + 1, imageCandidates.length - 1)
+                  );
                 }
               }}
               style={{
@@ -727,76 +720,199 @@ export default function EpisodePage() {
                 maxHeight: 560,
                 objectFit: "contain",
                 background: "#111",
+                filter: locked ? "brightness(0.72)" : "none",
+                transition: "filter 180ms ease",
               }}
             />
+{!locked && (
+  <div
+    style={{
+      position: "absolute",
+      left: "50%",
+      bottom: 18,
+      transform: "translateX(-50%)",
+      width: "min(92%, 900px)",
+      zIndex: 4,
+      pointerEvents: "none",
+      display: "flex",
+      justifyContent: "center",
+    }}
+  >
+    <div
+      style={{
+        width: "100%",
+        padding: "12px 16px",
+        borderRadius: 16,
+        background: "rgba(0,0,0,0.55)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        backdropFilter: "blur(8px)",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 12, opacity: 0.72, marginBottom: 6 }}>
+        자막: {captionStatus || "대기"}
+      </div>
+
+      <div
+        style={{
+          fontSize: 22,
+          fontWeight: 900,
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          color: "white",
+          textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+          minHeight: 34,
+        }}
+      >
+        {caption || " "}
+      </div>
+    </div>
+  </div>
+)}
+
+            {locked && (
+              <>
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(0,0,0,0.34)",
+                    zIndex: 2,
+                  }}
+                />
+
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 3,
+                    display: "grid",
+                    placeItems: "center",
+                    padding: 20,
+                  }}
+                >
+                  <div
+                    className="lockCard"
+                    style={{
+                      width: "min(520px, 92%)",
+                      maxHeight: "88%",
+                      overflowY: "auto",
+                      borderRadius: 24,
+                      padding: 22,
+                      background:
+                        "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
+                      border: "1px solid rgba(255,215,120,0.95)",
+                      boxShadow: "0 18px 40px rgba(0,0,0,0.35), 0 0 30px rgba(255,215,120,0.35)",
+                      color: "#2b1d00",
+                      animation: "bounceIn 520ms ease-out both",
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>
+                      잠금 편
+                    </div>
+
+                    <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>
+                      {episodeKey}화 {part}편은 잠겨 있어요
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 10,
+                        fontSize: 15,
+                        fontWeight: 850,
+                        opacity: 0.92,
+                      }}
+                    >
+                      무료 이후 파트는 구독 또는 포인트 또는 광고시청이 필요합니다.
+                    </div>
+
+                    <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
+                      보유 포인트: <b>{points}P</b> · ({POINTS_PER_PART}P당 1편 해제)
+                    </div>
+
+                    <div style={{ height: 14 }} />
+
+                    <div
+                      className="lockBtns"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <button
+                        onClick={unlockWithPoints}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 16,
+                          border: "1px solid rgba(43,29,0,0.25)",
+                          background: "rgba(255,255,255,0.75)",
+                          color: "#2b1d00",
+                          fontWeight: 950,
+                          cursor: "pointer",
+                        }}
+                      >
+                        포인트 {POINTS_PER_PART}로 1편 오픈
+                      </button>
+
+                      <button
+                        onClick={unlockAllParts}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 16,
+                          border: "1px solid rgba(43,29,0,0.25)",
+                          background: "rgba(0,0,0,0.10)",
+                          color: "#2b1d00",
+                          fontWeight: 950,
+                          cursor: "pointer",
+                        }}
+                      >
+                        광고로 전체 오픈
+                      </button>
+
+                      <button
+                        onClick={() => alert("월 구독은 준비 중입니다!")}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 16,
+                          border: "1px solid rgba(43,29,0,0.25)",
+                          background: "rgba(255,255,255,0.55)",
+                          color: "#2b1d00",
+                          fontWeight: 950,
+                          cursor: "pointer",
+                        }}
+                      >
+                        월 구독하기(준비중)
+                      </button>
+
+                      <button
+                        onClick={() => router.push("/points")}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 16,
+                          border: "1px solid rgba(43,29,0,0.25)",
+                          background: "rgba(255,255,255,0.75)",
+                          color: "#2b1d00",
+                          fontWeight: 950,
+                          cursor: "pointer",
+                        }}
+                      >
+                        포인트 충전하기
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
+                      ※ 이제부터 포인트/오픈은 DB 기준입니다. (클라 조작으로 풀리지 않아요)
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {!locked && (
             <>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  onClick={playNow}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    background: "rgba(0,0,0,0.35)",
-                    color: "white",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  ▶ 바로 재생
-                </button>
-
-                <button
-                  onClick={pauseNow}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    background: "transparent",
-                    color: "white",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  ⏸ 일시정지
-                </button>
-
-                <button
-                  onClick={goPrevPart}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    background: "rgba(255,255,255,0.08)",
-                    color: "white",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  ← 이전편
-                </button>
-
-                <button
-                  onClick={goNextPart}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    background: "rgba(255,255,255,0.10)",
-                    color: "white",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  다음편 →
-                </button>
-
-                <span style={{ alignSelf: "center", opacity: 0.85 }}>{status}</span>
-              </div>
-
+              
               <audio
                 key={`${episodeKey}-${part}`}
                 ref={audioRef}
@@ -814,133 +930,7 @@ export default function EpisodePage() {
                 onTimeUpdate={onTimeUpdate}
               />
 
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: "rgba(255,255,255,0.05)",
-                  minHeight: 72,
-                }}
-              >
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                  자막: {captionStatus || "대기"}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 900,
-                    lineHeight: 1.5,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {caption || " "}
-                </div>
-              </div>
             </>
-          )}
-
-          {locked && (
-            <div className="lockWrap" style={{ minHeight: 300, display: "grid", placeItems: "center", padding: 10 }}>
-              <div
-                className="lockCard"
-                style={{
-                  width: "min(420px, 84vw)",
-                  borderRadius: 24,
-                  padding: 22,
-                  animation: "bounceIn 520ms ease-out both",
-                  background:
-                    "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
-                  border: "1px solid rgba(255,215,120,0.9)",
-                  boxShadow: "0 0 22px rgba(255,215,120,0.55), 0 0 120px rgba(255,200,80,0.25)",
-                  color: "#2b1d00",
-                }}
-              >
-                <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>잠금 편</div>
-
-                <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>
-                  {episodeKey}화 {part}편은 잠겨 있어요
-                </div>
-
-                <div style={{ marginTop: 10, fontSize: 15, fontWeight: 850, opacity: 0.92 }}>
-                  무료 이후 파트는 구독 또는 포인트 또는 광고시청이 필요합니다.
-                </div>
-
-                <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
-                  보유 포인트: <b>{points}P</b> · ({POINTS_PER_PART}P당 1편 해제)
-                </div>
-
-                <div style={{ height: 14 }} />
-
-                <div className="lockBtns" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    onClick={unlockWithPoints}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(255,255,255,0.75)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    포인트 {POINTS_PER_PART}로 1편 오픈
-                  </button>
-
-                  <button
-                    onClick={unlockAllParts}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(0,0,0,0.10)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    광고로 전체 오픈
-                  </button>
-
-                  <button
-                    onClick={() => alert("월 구독은 준비 중입니다!")}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(255,255,255,0.55)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    월 구독하기(준비중)
-                  </button>
-
-                  <button
-                    onClick={() => router.push("/points")}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 16,
-                      border: "1px solid rgba(43,29,0,0.25)",
-                      background: "rgba(255,255,255,0.75)",
-                      color: "#2b1d00",
-                      fontWeight: 950,
-                      cursor: "pointer",
-                    }}
-                  >
-                    포인트 충전하기
-                  </button>
-                </div>
-
-                <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
-                  ※ 이제부터 포인트/오픈은 DB 기준입니다. (클라 조작으로 풀리지 않아요)
-                </div>
-              </div>
-            </div>
           )}
         </section>
       </div>
