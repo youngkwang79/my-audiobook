@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
 
 export default function TopBar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const { user, session, loading, signOut } = useAuth();
 
   const [points, setPoints] = useState<number>(0);
 
@@ -17,17 +16,7 @@ export default function TopBar() {
 
     const loadPoints = async () => {
       try {
-        if (!user) {
-          if (alive) setPoints(0);
-          return;
-        }
-
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        const token = session?.access_token;
-        if (!token) {
+        if (!user || !session?.access_token) {
           if (alive) setPoints(0);
           return;
         }
@@ -35,7 +24,7 @@ export default function TopBar() {
         const res = await fetch("/api/me/wallet", {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           cache: "no-store",
         });
@@ -47,7 +36,9 @@ export default function TopBar() {
           return;
         }
 
-        if (alive) setPoints(Number(data?.points ?? 0));
+        if (alive) {
+          setPoints(Number(data?.points ?? 0));
+        }
       } catch (error) {
         console.error(error);
         if (alive) setPoints(0);
@@ -66,7 +57,7 @@ export default function TopBar() {
       alive = false;
       window.removeEventListener("wallet-updated", handleWalletUpdated);
     };
-  }, [user?.id]);
+  }, [user?.id, session?.access_token]);
 
   const goldStyle: React.CSSProperties = {
     background:
@@ -99,7 +90,7 @@ export default function TopBar() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     router.push("/");
   };
 

@@ -21,7 +21,17 @@ function formatWon(n: number) {
 function formatP(n: number) {
   return n.toLocaleString("ko-KR") + "P";
 }
+async function getAccessToken() {
+  if (!supabase) return null;
 
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) return null;
+  return session?.access_token ?? null;
+}
 export default function PointsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -49,16 +59,13 @@ export default function PointsPage() {
   }, [loading, user, router]);
 
   const loadWallet = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  try {
+    const token = await getAccessToken();
 
-      const token = session?.access_token;
-      if (!token) {
-        setCurrentPoints(0);
-        return;
-      }
+    if (!token) {
+      setCurrentPoints(0);
+      return;
+    }
 
       const res = await fetch("/api/me/wallet", {
         method: "GET",
@@ -88,19 +95,16 @@ export default function PointsPage() {
   }, [user?.id]);
 
   const simulateCharge = async () => {
-    if (!selected) return;
+  if (!selected) return;
 
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  try {
+    const token = await getAccessToken();
 
-      const token = session?.access_token;
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        router.push("/login?redirect=/points");
-        return;
-      }
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      router.push("/login?redirect=/points");
+      return;
+    }
 
       const res = await fetch("/api/dev/credit-points", {
         method: "POST",

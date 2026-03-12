@@ -104,13 +104,21 @@ function getFreeParts(episodeKey: string) {
   return Math.min(DEFAULT_FREE_PARTS, getTotalParts(episodeKey));
 }
 
-async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload> {
+async function getAccessToken() {
+  if (!supabase) return null;
+
   const {
     data: { session },
-    error: sessionError,
+    error,
   } = await supabase.auth.getSession();
 
-  if (sessionError || !session?.access_token) {
+  if (error) return null;
+  return session?.access_token ?? null;
+}
+async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload> {
+  const token = await getAccessToken();
+
+  if (!token) {
     throw new Error("unauthorized");
   }
 
@@ -122,7 +130,7 @@ async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload>
   const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${token}`,
     },
     cache: "no-store",
   });
@@ -458,17 +466,14 @@ export default function EpisodePage() {
   };
 
   const unlockWithPoints = async () => {
-    try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+  try {
+    const token = await getAccessToken();
 
-      if (sessionError || !session?.access_token) {
-        alert("로그인이 필요합니다.");
-        router.push(`/login?redirect=/episode/${episodeKey}?part=${part}`);
-        return;
-      }
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      router.push(`/login?redirect=/episode/${episodeKey}?part=${part}`);
+      return;
+    }
 
       const next = Math.min(TOTAL_PARTS, unlockedUntil + 1);
 
@@ -476,7 +481,7 @@ export default function EpisodePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           work_id: SERIES_PREFIX,
