@@ -693,7 +693,42 @@ return true;
       style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}
     >
      
+<style>{`
+  @media (max-width: 820px) {
+    .episodeMain {
+      padding: 12px !important;
+    }
 
+    .episodeGrid {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+    }
+
+    .episodeAside {
+      position: static !important;
+      top: auto !important;
+      width: 100% !important;
+    }
+
+    .partGrid {
+      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      max-width: 100% !important;
+    }
+
+    .lockCard {
+      width: min(420px, 94%) !important;
+      max-height: 82% !important;
+    }
+
+    .lockBtns {
+      grid-template-columns: 1fr !important;
+    }
+
+    html, body {
+      overflow-x: hidden;
+    }
+  }
+`}</style>
       <TopBar />
 
       <h1 style={{ marginTop: 14 }}>
