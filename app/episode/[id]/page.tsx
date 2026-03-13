@@ -660,33 +660,42 @@ export default function EpisodePage() {
 
         <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
           {!locked && (
-            <div
-              style={{
-                marginBottom: 14,
-                padding: "14px 18px",
-                borderRadius: 16,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                자막: {captionStatus || "대기"}
-              </div>
+  <div
+    style={{
+      marginBottom: 14,
+      padding: "14px 18px",
+      borderRadius: 16,
+      background: "rgba(255,255,255,0.06)",
+      border: "1px solid rgba(255,255,255,0.10)",
+      textAlign: "center",
+      minHeight: 170, // 바깥 박스 높이 고정
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+      자막: {captionStatus || "대기"}
+    </div>
 
-              <div
-                style={{
-                  fontSize: 22,
-                  fontWeight: 900,
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                  minHeight: 40,
-                }}
-              >
-                {caption || " "}
-              </div>
-            </div>
-          )}
+    <div
+      style={{
+        fontSize: 22,
+        fontWeight: 900,
+        lineHeight: 1.6,
+        whiteSpace: "pre-wrap",
+        height: 106,              // 자막 영역 높이 고정
+        overflow: "hidden",       // 넘치면 박스는 안 커짐
+        display: "-webkit-box",
+        WebkitLineClamp: 3,       // 최대 3줄
+        WebkitBoxOrient: "vertical",
+        wordBreak: "keep-all",
+      }}
+    >
+      {caption || " "}
+    </div>
+  </div>
+)}
 
           {!locked && (
             <audio
