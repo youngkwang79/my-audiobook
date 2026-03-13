@@ -11,6 +11,7 @@ const POINTS_PER_PART = 60;
 const SERIES_PREFIX = "cheonmujin";
 const WORK_THUMBNAIL = "/thumbnails/cheonmujin.jpg";
 
+
 const EPISODE_TOTAL_PARTS: Record<string, number> = {
   "1": 4,
   "2": 6,
@@ -119,7 +120,11 @@ async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload>
   const token = await getAccessToken();
 
   if (!token) {
-    throw new Error("unauthorized");
+    return {
+      points: 0,
+      is_subscribed: false,
+      unlocked_until_part: null,
+    };
   }
 
   const qs = new URLSearchParams({
@@ -135,8 +140,17 @@ async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload>
     cache: "no-store",
   });
 
+  if (res.status === 401) {
+    return {
+      points: 0,
+      is_subscribed: false,
+      unlocked_until_part: null,
+    };
+  }
+
   if (!res.ok) {
-    throw new Error("failed_to_fetch_entitlements");
+    const text = await res.text().catch(() => "");
+    throw new Error(`failed_to_fetch_entitlements: ${res.status} ${text}`);
   }
 
   return res.json();
@@ -152,7 +166,10 @@ export default function EpisodePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-
+  const [captionFontSize, setCaptionFontSize] = useState(22);
+const [autoUnlockBusy, setAutoUnlockBusy] = useState(false);
+const [lockNotice, setLockNotice] = useState("");
+  
   const episodeKey = String(params.id);
   const autoplay = searchParams.get("autoplay") === "1";
 
@@ -162,6 +179,7 @@ export default function EpisodePage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isNavigatingRef = useRef(false);
   const segIndexRef = useRef(0);
+  const pendingAutoplayRef = useRef(false);
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [unlockedUntil, setUnlockedUntilState] = useState(FREE_PARTS);
@@ -178,6 +196,7 @@ export default function EpisodePage() {
   const [imageIndex, setImageIndex] = useState(0);
   const [imageErrorCount, setImageErrorCount] = useState(0);
 
+  
   useEffect(() => {
     isNavigatingRef.current = false;
   }, [episodeKey]);
@@ -413,71 +432,80 @@ export default function EpisodePage() {
   };
 
   useEffect(() => {
-    if (!autoplay) return;
-    if (locked) return;
+  if (!autoplay && !pendingAutoplayRef.current) return;
+  if (locked) return;
 
-    const t = setTimeout(() => {
-      const a = audioRef.current;
-      if (!a) return;
+  const t = setTimeout(() => {
+    const a = audioRef.current;
+    if (!a) return;
 
-      a.play()
-        .then(() => setStatus("재생 중"))
-        .catch(() => setStatus("자동재생이 차단됐어요. 재생 버튼을 한 번 눌러주세요."));
-    }, 50);
+    a.play()
+      .then(() => {
+        setStatus("재생 중");
+        pendingAutoplayRef.current = false;
+      })
+      .catch(() => {
+        setStatus("자동재생이 차단됐어요. 재생 버튼을 한 번 눌러주세요.");
+      });
+  }, 120);
 
-    return () => clearTimeout(t);
-  }, [autoplay, locked, episodeKey, part]);
+  return () => clearTimeout(t);
+}, [autoplay, locked, episodeKey, part, audioSrc]);
 
-  const goNextEpisode = () => {
-    if (isNavigatingRef.current) return;
+  const goNextEpisode = async () => {
+  if (isNavigatingRef.current) return;
 
-    if (!/^\d+$/.test(episodeKey)) {
-      setStatus("다음 화 자동이동은 숫자 화에서만 지원됩니다.");
-      return;
-    }
+  if (!/^\d+$/.test(episodeKey)) {
+    setStatus("다음 화 자동이동은 숫자 화에서만 지원됩니다.");
+    return;
+  }
 
-    const currentEp = Number(episodeKey);
-    if (!Number.isFinite(currentEp) || currentEp >= LAST_NUM_EPISODE) {
-      setStatus("마지막 화입니다.");
-      return;
-    }
+  const currentEp = Number(episodeKey);
+  if (!Number.isFinite(currentEp) || currentEp >= LAST_NUM_EPISODE) {
+    setStatus("마지막 화입니다.");
+    return;
+  }
 
-    isNavigatingRef.current = true;
-    const nextEpisodeKey = String(currentEp + 1);
-    router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
-  };
+  isNavigatingRef.current = true;
+  const nextEpisodeKey = String(currentEp + 1);
 
-  const goNextPart = () => {
-    if (part >= TOTAL_PARTS) {
-      setStatus("다음 화로 넘어가는 중...");
-      goNextEpisode();
-      return;
-    }
-
-    const next = part + 1;
-    setPart(next);
-
-    const nextLocked = !isSubscribed && next > unlockedUntil;
-    router.replace(`/episode/${episodeKey}?part=${next}${nextLocked ? "" : "&autoplay=1"}`);
-  };
-
-  const unlockAllParts = () => {
-    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
-  };
-
-  const unlockWithPoints = async () => {
   try {
     const token = await getAccessToken();
 
     if (!token) {
-      alert("로그인이 필요합니다.");
-      router.push(`/login?redirect=/episode/${episodeKey}?part=${part}`);
+      router.replace(`/episode/${nextEpisodeKey}?part=1`);
       return;
     }
 
-      const next = Math.min(TOTAL_PARTS, unlockedUntil + 1);
+    const qs = new URLSearchParams({
+      work_id: SERIES_PREFIX,
+      episode_id: nextEpisodeKey,
+    });
 
-      const res = await fetch("/api/unlock/with-points", {
+    const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    const data = await res.json().catch(() => null);
+
+    const nextUnlockedUntil = Number(data?.unlocked_until_part ?? 0);
+    const nextPoints = Number(data?.points ?? points);
+    const nextLocked = !Number(data?.is_subscribed) && 1 > nextUnlockedUntil;
+
+    if (!nextLocked) {
+      pendingAutoplayRef.current = true;
+      router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+      return;
+    }
+
+    if (nextPoints >= POINTS_PER_PART) {
+      setStatus(`다음 화 1편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
+
+      const unlockRes = await fetch("/api/unlock/with-points", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -485,90 +513,186 @@ export default function EpisodePage() {
         },
         body: JSON.stringify({
           work_id: SERIES_PREFIX,
-          episode_id: episodeKey,
-          target_unlock_until_part: next,
+          episode_id: nextEpisodeKey,
+          target_unlock_until_part: 1,
         }),
       });
 
-      const data = await res.json().catch(() => null);
+      const unlockData = await unlockRes.json().catch(() => null);
 
-      if (!res.ok) {
-        if (data?.error === "not_enough_points") {
-          alert(`포인트가 부족합니다. (${data?.need ?? POINTS_PER_PART}포인트 필요)`);
-          return;
-        }
+      if (unlockRes.ok) {
+        const nextPointBalance = Number(unlockData?.points_left ?? nextPoints);
 
-        if (data?.error === "unauthorized") {
-          alert("로그인이 필요합니다.");
-          router.push(`/login?redirect=/episode/${episodeKey}?part=${part}`);
-          return;
-        }
+        try {
+          localStorage.setItem("points", String(nextPointBalance));
+        } catch {}
 
-        if (data?.error === "invalid_target") {
-          alert("이미 열렸거나 순서가 맞지 않습니다. 새로고침 후 다시 시도해주세요.");
-          return;
-        }
-
-        alert(`오류가 발생했습니다. (${data?.error ?? "unknown_error"})`);
+        window.dispatchEvent(new Event("wallet-updated"));
+        pendingAutoplayRef.current = true;
+        router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
         return;
       }
-
-      const nextPoints = Number(data?.points_left ?? points);
-      const nextUnlocked = Number(data?.unlocked_until_part ?? unlockedUntil);
-
-      setPointsState(nextPoints);
-      setUnlockedUntilState(nextUnlocked);
-
-      window.dispatchEvent(new Event("wallet-updated"));
-
-      const targetPart = Math.max(part, nextUnlocked);
-      setPart(targetPart);
-      router.replace(`/episode/${episodeKey}?part=${targetPart}&autoplay=1`);
-    } catch (error) {
-      console.error(error);
-      alert("네트워크 오류가 발생했습니다.");
     }
+
+    router.replace(`/episode/${nextEpisodeKey}?part=1`);
+  } finally {
+    isNavigatingRef.current = false;
+  }
+};
+
+  const goNextPart = async () => {
+  if (part >= TOTAL_PARTS) {
+    setStatus("다음 화로 넘어가는 중...");
+    goNextEpisode();
+    return;
+  }
+
+  const next = part + 1;
+  const nextLocked = !isSubscribed && next > unlockedUntil;
+
+  if (!nextLocked) {
+    setPart(next);
+    pendingAutoplayRef.current = true;
+    router.replace(`/episode/${episodeKey}?part=${next}&autoplay=1`);
+    return;
+  }
+
+  if (points >= POINTS_PER_PART && !autoUnlockBusy) {
+    setStatus(`다음 편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
+    setAutoUnlockBusy(true);
+
+    try {
+      const ok = await unlockWithPoints(next);
+      if (!ok) {
+        setPart(next);
+        router.replace(`/episode/${episodeKey}?part=${next}`);
+      }
+    } finally {
+      setAutoUnlockBusy(false);
+    }
+    return;
+  }
+
+  setStatus("다음 편은 잠겨 있고 포인트가 부족합니다.");
+  setPart(next);
+  router.replace(`/episode/${episodeKey}?part=${next}`);
+};
+
+  const unlockAllParts = () => {
+    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
   };
 
-  const onSelectPart = (p: number) => {
-    setPart(p);
-    const pLocked = !isSubscribed && p > unlockedUntil;
-    router.replace(`/episode/${episodeKey}?part=${p}${pLocked ? "" : "&autoplay=1"}`);
-  };
 
-  const bounceCSS = `
-    @keyframes bounceIn {
-      0% { transform: scale(0.95); opacity: 0; }
-      60% { transform: scale(1.02); opacity: 1; }
-      100% { transform: scale(1); }
+const unlockWithPoints = async (targetPart = part) => {
+  try {
+    const token = await getAccessToken();
+
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
+      return false;
     }
-  `;
 
-  const mobileCSS = `
-    @media (max-width: 820px) {
-      .episodeMain { padding-bottom: 120px !important; }
-      .episodeGrid { grid-template-columns: 1fr !important; }
-      .episodeAside { position: static !important; top: auto !important; }
-      .lockCard {
-        width: min(420px, 94%) !important;
-        max-height: 82% !important;
+    const res = await fetch("/api/unlock/with-points", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        work_id: SERIES_PREFIX,
+        episode_id: episodeKey,
+        target_unlock_until_part: targetPart,
+      }),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      if (data?.error === "not_enough_points") {
+        alert(`포인트가 부족합니다. (${data?.need ?? POINTS_PER_PART}포인트 필요)`);
+        return false;
       }
-      .lockBtns {
-        grid-template-columns: 1fr !important;
+
+      if (data?.error === "unauthorized") {
+        alert("로그인이 필요합니다.");
+        router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
+        return false;
       }
+
+      if (data?.error === "invalid_target") {
+        alert("이미 열렸거나 순서가 맞지 않습니다. 새로고침 후 다시 시도해주세요.");
+        return false;
+      }
+
+      alert(`오류가 발생했습니다. (${data?.error ?? "unknown_error"})`);
+      return false;
     }
 
-    html, body {
-      overflow-x: hidden;
-    }
-  `;
+    const nextPoints = Number(data?.points_left ?? points);
+    const nextUnlocked = Number(data?.unlocked_until_part ?? unlockedUntil);
 
+    setPointsState(nextPoints);
+setUnlockedUntilState(nextUnlocked);
+setPart(targetPart);
+pendingAutoplayRef.current = true;
+
+try {
+  localStorage.setItem("points", String(nextPoints));
+} catch {}
+
+window.dispatchEvent(new Event("wallet-updated"));
+
+router.replace(`/episode/${episodeKey}?part=${targetPart}&autoplay=1`);
+
+setTimeout(() => {
+  const a = audioRef.current;
+  if (!a) return;
+
+  a.play()
+    .then(() => {
+      setStatus("재생 중");
+      pendingAutoplayRef.current = false;
+    })
+    .catch(() => {
+      // 최종 재생은 위 useEffect가 한 번 더 시도
+    });
+}, 180);
+
+return true;
+  } catch (error) {
+    console.error(error);
+    alert("네트워크 오류가 발생했습니다.");
+    return false;
+  }
+};
+
+  const onSelectPart = async (p: number) => {
+  setPart(p);
+
+  const pLocked = !isSubscribed && p > unlockedUntil;
+
+  if (!pLocked) {
+    router.replace(`/episode/${episodeKey}?part=${p}&autoplay=1`);
+    return;
+  }
+
+  if (points >= POINTS_PER_PART) {
+    const ok = await unlockWithPoints(p);
+    if (!ok) {
+      router.replace(`/episode/${episodeKey}?part=${p}`);
+    }
+    return;
+  }
+
+  router.replace(`/episode/${episodeKey}?part=${p}`);
+};
   return (
     <main
       className="episodeMain"
       style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}
     >
-      <style>{bounceCSS + mobileCSS}</style>
+     
 
       <TopBar />
 
@@ -659,61 +783,132 @@ export default function EpisodePage() {
         </aside>
 
         <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
-          {!locked && (
+        
+  <div
+  style={{
+    marginBottom: 10,
+    padding: "18px 20px",
+    borderRadius: 16,
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    textAlign: "center",
+   height: 380,
+overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+  }}
+>
   <div
     style={{
-      marginBottom: 14,
-      padding: "14px 18px",
-      borderRadius: 16,
-      background: "rgba(255,255,255,0.06)",
-      border: "1px solid rgba(255,255,255,0.10)",
-      textAlign: "center",
-      minHeight: 170, // 바깥 박스 높이 고정
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
+      fontSize: captionFontSize,
+      fontWeight: 900,
+      lineHeight: 1.6,
+      whiteSpace: "pre-wrap",
+      wordBreak: "keep-all",
+      display: "-webkit-box",
+      WebkitLineClamp: 10,
+      WebkitBoxOrient: "vertical",
+      overflow: "hidden",
+      color: "rgba(255,255,255,0.92)",
     }}
   >
-    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-      자막: {captionStatus || "대기"}
-    </div>
-
-    <div
-      style={{
-        fontSize: 22,
-        fontWeight: 900,
-        lineHeight: 1.6,
-        whiteSpace: "pre-wrap",
-        height: 106,              // 자막 영역 높이 고정
-        overflow: "hidden",       // 넘치면 박스는 안 커짐
-        display: "-webkit-box",
-        WebkitLineClamp: 3,       // 최대 3줄
-        WebkitBoxOrient: "vertical",
-        wordBreak: "keep-all",
-      }}
-    >
-      {caption || " "}
-    </div>
+    {caption || " "}
   </div>
-)}
+</div>
+<div
+  style={{
+    marginBottom: 16,
+    padding: "10px 14px",
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  }}
+>
+  <span
+    style={{
+      fontSize: 12,
+      color: "rgba(255,255,255,0.58)",
+      minWidth: 42,
+    }}
+  >
+    작게
+  </span>
 
+  <input
+    type="range"
+    min={16}
+    max={36}
+    step={1}
+    value={captionFontSize}
+    onChange={(e) => setCaptionFontSize(Number(e.target.value))}
+    style={{
+      flex: 1,
+      accentColor: "#6f7684",
+      cursor: "pointer",
+      filter: "brightness(0.85)",
+    }}
+  />
+
+  <span
+    style={{
+      fontSize: 12,
+      color: "rgba(255,255,255,0.58)",
+      minWidth: 42,
+      textAlign: "right",
+    }}
+  >
+    크게
+  </span>
+
+  <span
+    style={{
+      fontSize: 13,
+      fontWeight: 700,
+      color: "rgba(255,255,255,0.78)",
+      minWidth: 28,
+      textAlign: "right",
+    }}
+  >
+    {captionFontSize}
+  </span>
+</div>
           {!locked && (
             <audio
-              key={`${episodeKey}-${part}`}
-              ref={audioRef}
-              src={audioSrc!}
-              controls
-              preload="auto"
-              style={{ width: "100%", marginBottom: 16 }}
-              onPlay={() => setStatus("재생 중")}
-              onPause={() => setStatus("일시정지")}
-              onError={() => setStatus(`오디오 로드 실패: ${audioSrc}`)}
-              onEnded={() => {
-                setStatus("다음으로 넘어가는 중...");
-                goNextPart();
-              }}
-              onTimeUpdate={onTimeUpdate}
-            />
+  key={`${episodeKey}-${part}`}
+  ref={audioRef}
+  src={audioSrc!}
+  controls
+  preload="auto"
+  autoPlay
+  style={{ width: "100%", marginBottom: 16 }}
+  onLoadedMetadata={() => {
+    if (!pendingAutoplayRef.current && !autoplay) return;
+
+    const a = audioRef.current;
+    if (!a) return;
+
+    a.play()
+      .then(() => {
+        setStatus("재생 중");
+        pendingAutoplayRef.current = false;
+      })
+      .catch(() => {
+        setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
+      });
+  }}
+  onPlay={() => setStatus("재생 중")}
+  onPause={() => setStatus("일시정지")}
+  onError={() => setStatus(`오디오 로드 실패: ${audioSrc}`)}
+  onEnded={() => {
+    setStatus("다음으로 넘어가는 중...");
+    goNextPart();
+  }}
+  onTimeUpdate={onTimeUpdate}
+/>
           )}
 
           {!locked && status && (
@@ -828,7 +1023,7 @@ export default function EpisodePage() {
                       }}
                     >
                       <button
-                        onClick={unlockWithPoints}
+                        onClick={() => unlockWithPoints(part)}
                         style={{
                           padding: "12px 14px",
                           borderRadius: 16,
