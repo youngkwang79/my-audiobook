@@ -45,9 +45,9 @@ export default function Home() {
 
   // ✅ 이어듣기 링크
   const continueHref = useMemo(() => {
-    if (!lastPlayed) return "";
-    return `/episode/${lastPlayed.episodeId}?autoplay=1`;
-  }, [lastPlayed]);
+  if (!lastPlayed) return "";
+  return `/episode/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
+}, [lastPlayed]);
 
   const handleAuthClick = async () => {
   if (loading) return;

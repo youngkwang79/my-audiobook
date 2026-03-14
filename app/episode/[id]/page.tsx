@@ -11,7 +11,6 @@ const POINTS_PER_PART = 60;
 const SERIES_PREFIX = "cheonmujin";
 const WORK_THUMBNAIL = "/thumbnails/cheonmujin.jpg";
 
-
 const EPISODE_TOTAL_PARTS: Record<string, number> = {
   "1": 4,
   "2": 6,
@@ -116,6 +115,7 @@ async function getAccessToken() {
   if (error) return null;
   return session?.access_token ?? null;
 }
+
 async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload> {
   const token = await getAccessToken();
 
@@ -166,17 +166,35 @@ export default function EpisodePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [captionFontSize, setCaptionFontSize] = useState(22);
-const [autoUnlockBusy, setAutoUnlockBusy] = useState(false);
-const [lockNotice, setLockNotice] = useState("");
-  
+
   const episodeKey = String(params.id);
   const autoplay = searchParams.get("autoplay") === "1";
 
   const TOTAL_PARTS = useMemo(() => getTotalParts(episodeKey), [episodeKey]);
   const FREE_PARTS = useMemo(() => getFreeParts(episodeKey), [episodeKey]);
 
+  const [captionFontSize, setCaptionFontSize] = useState(22);
+  const [showPartList, setShowPartList] = useState(false);
+  const [showPartMenuCinema, setShowPartMenuCinema] = useState(false);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [playerLandscapeMode, setPlayerLandscapeMode] = useState(false);
+  const [autoUnlockBusy, setAutoUnlockBusy] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [autoEnteredCinema, setAutoEnteredCinema] = useState(false);
+  const cinemaFont =
+  '"Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif';
+
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [resumeTime, setResumeTime] = useState(0);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [showPlayerUi, setShowPlayerUi] = useState(true);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isNavigatingRef = useRef(false);
   const segIndexRef = useRef(0);
   const pendingAutoplayRef = useRef(false);
@@ -196,10 +214,58 @@ const [lockNotice, setLockNotice] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
   const [imageErrorCount, setImageErrorCount] = useState(0);
 
-  
+  const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
+  const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
+
+  const getR2AudioUrl = (episodeKeyValue: string, partValue: number) => {
+    const folder = getEpisodeFolder(episodeKeyValue);
+    return `${R2_BASE}/${folder}/${pad2(partValue)}.MP3`;
+  };
+
+  const getR2ImageCandidates = (episodeKeyValue: string, _partValue: number) => {
+    const folder = getEpisodeFolder(episodeKeyValue);
+    const base = `${R2_BASE}/${folder}/01`;
+    return [`${base}.jpg`, `${base}.jpeg`, `${base}.png`, `${base}.webp`];
+  };
+
+  const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
+    const folder = getEpisodeFolder(episodeKeyValue);
+    return `${R2_BASE}/${folder}/${pad2(partValue)}.json`;
+  };
+
+  const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
+    `${WORKER_BASE}/?episode=${encodeURIComponent(episodeKeyValue)}&part=${encodeURIComponent(String(partValue))}`;
+
+  const audioSrc = !lockedMemo(isSubscribed, part, unlockedUntil) ? getR2AudioUrl(episodeKey, part) : null;
+
+  const imageCandidates = useMemo(
+    () => getR2ImageCandidates(episodeKey, part),
+    [episodeKey, part]
+  );
+
+  const currentImageSrc =
+    imageErrorCount >= imageCandidates.length
+      ? WORK_THUMBNAIL
+      : imageCandidates[imageIndex] || WORK_THUMBNAIL;
+
+  const locked = useMemo(() => {
+    if (isSubscribed) return false;
+    return part > unlockedUntil;
+  }, [isSubscribed, part, unlockedUntil]);
+
   useEffect(() => {
     isNavigatingRef.current = false;
   }, [episodeKey]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 820);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!episodeKey) return;
@@ -253,51 +319,13 @@ const [lockNotice, setLockNotice] = useState("");
     };
   }, [episodeKey, FREE_PARTS, TOTAL_PARTS]);
 
-  const locked = useMemo(() => {
-    if (isSubscribed) return false;
-    return part > unlockedUntil;
-  }, [part, unlockedUntil, isSubscribed]);
-
-  const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
-
-  const getR2AudioUrl = (episodeKeyValue: string, partValue: number) => {
-    const folder = getEpisodeFolder(episodeKeyValue);
-    return `${R2_BASE}/${folder}/${pad2(partValue)}.MP3`;
-  };
-
-  const getR2ImageCandidates = (episodeKeyValue: string, _partValue: number) => {
-    const folder = getEpisodeFolder(episodeKeyValue);
-    const base = `${R2_BASE}/${folder}/01`;
-    return [`${base}.jpg`, `${base}.jpeg`, `${base}.png`, `${base}.webp`];
-  };
-
-  const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
-    const folder = getEpisodeFolder(episodeKeyValue);
-    return `${R2_BASE}/${folder}/${pad2(partValue)}.json`;
-  };
-
-  const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
-  const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
-    `${WORKER_BASE}/?episode=${encodeURIComponent(episodeKeyValue)}&part=${encodeURIComponent(String(partValue))}`;
-
-  const audioSrc = !locked ? getR2AudioUrl(episodeKey, part) : null;
-
-  const imageCandidates = useMemo(
-    () => getR2ImageCandidates(episodeKey, part),
-    [episodeKey, part]
-  );
-
   useEffect(() => {
     setImageIndex(0);
     setImageErrorCount(0);
   }, [episodeKey, part]);
 
-  const currentImageSrc =
-    imageErrorCount >= imageCandidates.length
-      ? WORK_THUMBNAIL
-      : imageCandidates[imageIndex] || WORK_THUMBNAIL;
-
   function parseSegmentsFromSavedJson(saved: any): Segment[] {
+    
     const aiResp = saved?.aiResp ?? saved;
     const segs = aiResp?.segments;
 
@@ -323,7 +351,50 @@ const [lockNotice, setLockNotice] = useState("");
 
     return [];
   }
+function groupSegmentsForReading(input: Segment[]): Segment[] {
+  if (!input.length) return [];
 
+  const out: Segment[] = [];
+  let current: Segment = {
+    start: input[0].start,
+    end: input[0].end,
+    text: String(input[0].text || "").trim(),
+  };
+
+  for (let i = 1; i < input.length; i++) {
+    const next = input[i];
+    const nextText = String(next.text || "").trim();
+    if (!nextText) continue;
+
+    const currentDuration = current.end - current.start;
+    const gap = next.start - current.end;
+    const punctuationCount = (current.text.match(/[.!?。！？]/g) || []).length;
+
+    const shouldMerge =
+      gap <= 0.45 &&
+      currentDuration < 4.2 &&
+      current.text.length < 110 &&
+      punctuationCount < 3;
+
+    if (shouldMerge) {
+      current = {
+        start: current.start,
+        end: next.end,
+        text: `${current.text} ${nextText}`.replace(/\s+/g, " ").trim(),
+      };
+    } else {
+      out.push(current);
+      current = {
+        start: next.start,
+        end: next.end,
+        text: nextText,
+      };
+    }
+  }
+
+  out.push(current);
+  return out;
+}
   useEffect(() => {
     let alive = true;
 
@@ -362,8 +433,9 @@ const [lockNotice, setLockNotice] = useState("");
       if (!alive) return;
 
       if (r2.ok) {
-        const parsed = parseSegmentsFromSavedJson(r2.data);
-        setSegments(parsed);
+       const parsed = parseSegmentsFromSavedJson(r2.data);
+const grouped = groupSegmentsForReading(parsed);
+setSegments(grouped);
         setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
         return;
       }
@@ -390,7 +462,8 @@ const [lockNotice, setLockNotice] = useState("");
       }
 
       const parsed2 = parseSegmentsFromSavedJson(r2b.data);
-      setSegments(parsed2);
+const grouped2 = groupSegmentsForReading(parsed2);
+setSegments(grouped2);
       setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
     }
 
@@ -420,92 +493,357 @@ const [lockNotice, setLockNotice] = useState("");
 
     segIndexRef.current = i;
 
-    const s = segs[i];
-    if (t >= s.start && t <= s.end) setCaption(s.text);
-    else setCaption("");
+    const current = segs[i];
+    if (!(t >= current.start && t <= current.end + 0.2)) {
+  return;
+}
+
+    let merged = "";
+    let sentenceCount = 0;
+
+    for (let j = i; j < segs.length; j++) {
+      const text = String(segs[j].text || "").trim();
+      if (!text) continue;
+
+      merged += (merged ? " " : "") + text;
+
+      const matches = text.match(/[.!?。！？]/g);
+      sentenceCount += matches ? matches.length : 0;
+
+      if (sentenceCount >= 3) break;
+      if (merged.length > 140) break;
+    }
+
+    setCaption(merged.trim());
   };
 
   const onTimeUpdate = () => {
     const a = audioRef.current;
     if (!a) return;
+
+    setCurrentTime(a.currentTime || 0);
     updateCaptionByTime(a.currentTime);
   };
 
-  useEffect(() => {
-  if (!autoplay && !pendingAutoplayRef.current) return;
-  if (locked) return;
+  function formatTime(sec: number) {
+    const safe = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(safe / 60);
+    const s = safe % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
 
-  const t = setTimeout(() => {
+  const resetHideTimer = () => {
+    setShowPlayerUi(true);
+
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+
+    hideTimerRef.current = setTimeout(() => {
+      setShowPlayerUi(false);
+    }, 2000);
+  };
+
+  const handlePlayerInteraction = () => {
+    resetHideTimer();
+  };
+
+  useEffect(() => {
+    if (locked) return;
+
+    resetHideTimer();
+
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, [locked, episodeKey, part, playerLandscapeMode]);
+
+  useEffect(() => {
+    const onUserAction = () => {
+      resetHideTimer();
+    };
+
+    window.addEventListener("touchstart", onUserAction);
+    window.addEventListener("mousemove", onUserAction);
+    window.addEventListener("click", onUserAction);
+
+    return () => {
+      window.removeEventListener("touchstart", onUserAction);
+      window.removeEventListener("mousemove", onUserAction);
+      window.removeEventListener("click", onUserAction);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!autoplay && !pendingAutoplayRef.current) return;
+    if (locked) return;
+
+    const t = setTimeout(() => {
+      const a = audioRef.current;
+      if (!a) return;
+
+      a.play()
+        .then(async () => {
+          setIsPlaying(true);
+          setStatus("재생 중");
+          pendingAutoplayRef.current = false;
+
+          if (isMobile && !autoEnteredCinema) {
+            setAutoEnteredCinema(true);
+            await enterCinemaMode();
+          }
+        })
+        .catch(() => {
+          setIsPlaying(false);
+          setStatus("자동재생이 차단됐어요. 재생 버튼을 한 번 눌러주세요.");
+        });
+    }, 120);
+
+    return () => clearTimeout(t);
+  }, [autoplay, locked, episodeKey, part, audioSrc, isMobile, autoEnteredCinema]);
+
+  const enterCinemaMode = async () => {
+    setPlayerLandscapeMode(true);
+    resetHideTimer();
+
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {}
+  };
+
+  const exitCinemaMode = async () => {
+    setPlayerLandscapeMode(false);
+    setShowSpeedMenu(false);
+    setShowPartMenuCinema(false);
+
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  };
+
+  const toggleLandscapePlayer = async () => {
+    if (playerLandscapeMode) {
+      await exitCinemaMode();
+      return;
+    }
+
+    const a = audioRef.current;
+    if (a) {
+      setResumeTime(a.currentTime || 0);
+    }
+
+    await enterCinemaMode();
+  };
+
+  const togglePlayPause = async () => {
     const a = audioRef.current;
     if (!a) return;
 
-    a.play()
-      .then(() => {
-        setStatus("재생 중");
-        pendingAutoplayRef.current = false;
-      })
-      .catch(() => {
-        setStatus("자동재생이 차단됐어요. 재생 버튼을 한 번 눌러주세요.");
-      });
-  }, 120);
+    try {
+      if (a.paused) {
+        await a.play();
+        setIsPlaying(true);
 
-  return () => clearTimeout(t);
-}, [autoplay, locked, episodeKey, part, audioSrc]);
+        if (isMobile && !autoEnteredCinema) {
+          setAutoEnteredCinema(true);
+          await enterCinemaMode();
+        }
+      } else {
+        a.pause();
+        setIsPlaying(false);
+      }
+    } catch {}
+
+    resetHideTimer();
+  };
+
+  const seekBy = (delta: number) => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    const next = Math.max(0, Math.min(a.duration || 0, (a.currentTime || 0) + delta));
+    a.currentTime = next;
+    setCurrentTime(next);
+    updateCaptionByTime(next);
+    resetHideTimer();
+  };
+
+  const handleSeek = (value: number) => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    a.currentTime = value;
+    setCurrentTime(value);
+    updateCaptionByTime(value);
+    resetHideTimer();
+  };
+
+  const changePlaybackRate = (rate: number) => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    a.playbackRate = rate;
+    setPlaybackRate(rate);
+    setShowSpeedMenu(false);
+    resetHideTimer();
+  };
+
+  const handleVolumeChange = (value: number) => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    a.volume = value;
+    setVolume(value);
+    resetHideTimer();
+  };
 
   const goNextEpisode = async () => {
-  if (isNavigatingRef.current) return;
+    if (isNavigatingRef.current) return;
 
-  if (!/^\d+$/.test(episodeKey)) {
-    setStatus("다음 화 자동이동은 숫자 화에서만 지원됩니다.");
-    return;
-  }
-
-  const currentEp = Number(episodeKey);
-  if (!Number.isFinite(currentEp) || currentEp >= LAST_NUM_EPISODE) {
-    setStatus("마지막 화입니다.");
-    return;
-  }
-
-  isNavigatingRef.current = true;
-  const nextEpisodeKey = String(currentEp + 1);
-
-  try {
-    const token = await getAccessToken();
-
-    if (!token) {
-      router.replace(`/episode/${nextEpisodeKey}?part=1`);
+    if (!/^\d+$/.test(episodeKey)) {
+      setStatus("다음 화 자동이동은 숫자 화에서만 지원됩니다.");
       return;
     }
 
-    const qs = new URLSearchParams({
-      work_id: SERIES_PREFIX,
-      episode_id: nextEpisodeKey,
-    });
+    const currentEp = Number(episodeKey);
+    if (!Number.isFinite(currentEp) || currentEp >= LAST_NUM_EPISODE) {
+      setStatus("마지막 화입니다.");
+      return;
+    }
 
-    const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
+    isNavigatingRef.current = true;
+    const nextEpisodeKey = String(currentEp + 1);
 
-    const data = await res.json().catch(() => null);
+    try {
+      const token = await getAccessToken();
 
-    const nextUnlockedUntil = Number(data?.unlocked_until_part ?? 0);
-    const nextPoints = Number(data?.points ?? points);
-    const nextLocked = !Number(data?.is_subscribed) && 1 > nextUnlockedUntil;
+      if (!token) {
+        router.replace(`/episode/${nextEpisodeKey}?part=1`);
+        return;
+      }
+
+      const qs = new URLSearchParams({
+        work_id: SERIES_PREFIX,
+        episode_id: nextEpisodeKey,
+      });
+
+      const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+
+      const data = await res.json().catch(() => null);
+
+      const nextUnlockedUntil = Number(data?.unlocked_until_part ?? 0);
+      const nextPoints = Number(data?.points ?? points);
+      const nextLocked = !Number(data?.is_subscribed) && 1 > nextUnlockedUntil;
+
+      if (!nextLocked) {
+        pendingAutoplayRef.current = true;
+        router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+        return;
+      }
+
+      if (nextPoints >= POINTS_PER_PART) {
+        setStatus(`다음 화 1편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
+
+        const unlockRes = await fetch("/api/unlock/with-points", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            work_id: SERIES_PREFIX,
+            episode_id: nextEpisodeKey,
+            target_unlock_until_part: 1,
+          }),
+        });
+
+        const unlockData = await unlockRes.json().catch(() => null);
+
+        if (unlockRes.ok) {
+          const nextPointBalance = Number(unlockData?.points_left ?? nextPoints);
+
+          try {
+            localStorage.setItem("points", String(nextPointBalance));
+          } catch {}
+
+          window.dispatchEvent(new Event("wallet-updated"));
+          pendingAutoplayRef.current = true;
+          router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+          return;
+        }
+      }
+
+      router.replace(`/episode/${nextEpisodeKey}?part=1`);
+    } finally {
+      isNavigatingRef.current = false;
+    }
+  };
+
+  const goNextPart = async () => {
+    if (part >= TOTAL_PARTS) {
+      setStatus("다음 화로 넘어가는 중...");
+      goNextEpisode();
+      return;
+    }
+
+    const next = part + 1;
+    const nextLocked = !isSubscribed && next > unlockedUntil;
 
     if (!nextLocked) {
+      setPart(next);
       pendingAutoplayRef.current = true;
-      router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+      router.replace(`/episode/${episodeKey}?part=${next}&autoplay=1`);
       return;
     }
 
-    if (nextPoints >= POINTS_PER_PART) {
-      setStatus(`다음 화 1편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
+    if (points >= POINTS_PER_PART && !autoUnlockBusy) {
+      setStatus(`다음 편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
+      setAutoUnlockBusy(true);
 
-      const unlockRes = await fetch("/api/unlock/with-points", {
+      try {
+        const ok = await unlockWithPoints(next);
+        if (!ok) {
+          setPart(next);
+          router.replace(`/episode/${episodeKey}?part=${next}`);
+        }
+      } finally {
+        setAutoUnlockBusy(false);
+      }
+      return;
+    }
+
+    setStatus("다음 편은 잠겨 있고 포인트가 부족합니다.");
+    setPart(next);
+    router.replace(`/episode/${episodeKey}?part=${next}`);
+  };
+
+  const unlockAllParts = () => {
+    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
+  };
+
+  const unlockWithPoints = async (targetPart = part) => {
+    try {
+      const token = await getAccessToken();
+
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
+        return false;
+      }
+
+      const res = await fetch("/api/unlock/with-points", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -513,223 +851,98 @@ const [lockNotice, setLockNotice] = useState("");
         },
         body: JSON.stringify({
           work_id: SERIES_PREFIX,
-          episode_id: nextEpisodeKey,
-          target_unlock_until_part: 1,
+          episode_id: episodeKey,
+          target_unlock_until_part: targetPart,
         }),
       });
 
-      const unlockData = await unlockRes.json().catch(() => null);
+      const data = await res.json().catch(() => null);
 
-      if (unlockRes.ok) {
-        const nextPointBalance = Number(unlockData?.points_left ?? nextPoints);
+      if (!res.ok) {
+        if (data?.error === "not_enough_points") {
+          alert(`포인트가 부족합니다. (${data?.need ?? POINTS_PER_PART}포인트 필요)`);
+          return false;
+        }
 
-        try {
-          localStorage.setItem("points", String(nextPointBalance));
-        } catch {}
+        if (data?.error === "unauthorized") {
+          alert("로그인이 필요합니다.");
+          router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
+          return false;
+        }
 
-        window.dispatchEvent(new Event("wallet-updated"));
-        pendingAutoplayRef.current = true;
-        router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
-        return;
+        if (data?.error === "invalid_target") {
+          alert("이미 열렸거나 순서가 맞지 않습니다. 새로고침 후 다시 시도해주세요.");
+          return false;
+        }
+
+        alert(`오류가 발생했습니다. (${data?.error ?? "unknown_error"})`);
+        return false;
       }
+
+      const nextPoints = Number(data?.points_left ?? points);
+      const nextUnlocked = Number(data?.unlocked_until_part ?? unlockedUntil);
+
+      setPointsState(nextPoints);
+      setUnlockedUntilState(nextUnlocked);
+      setPart(targetPart);
+      pendingAutoplayRef.current = true;
+
+      try {
+        localStorage.setItem("points", String(nextPoints));
+      } catch {}
+
+      window.dispatchEvent(new Event("wallet-updated"));
+      router.replace(`/episode/${episodeKey}?part=${targetPart}&autoplay=1`);
+      return true;
+    } catch (error) {
+      console.error(error);
+      alert("네트워크 오류가 발생했습니다.");
+      return false;
     }
-
-    router.replace(`/episode/${nextEpisodeKey}?part=1`);
-  } finally {
-    isNavigatingRef.current = false;
-  }
-};
-
-  const goNextPart = async () => {
-  if (part >= TOTAL_PARTS) {
-    setStatus("다음 화로 넘어가는 중...");
-    goNextEpisode();
-    return;
-  }
-
-  const next = part + 1;
-  const nextLocked = !isSubscribed && next > unlockedUntil;
-
-  if (!nextLocked) {
-    setPart(next);
-    pendingAutoplayRef.current = true;
-    router.replace(`/episode/${episodeKey}?part=${next}&autoplay=1`);
-    return;
-  }
-
-  if (points >= POINTS_PER_PART && !autoUnlockBusy) {
-    setStatus(`다음 편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
-    setAutoUnlockBusy(true);
-
-    try {
-      const ok = await unlockWithPoints(next);
-      if (!ok) {
-        setPart(next);
-        router.replace(`/episode/${episodeKey}?part=${next}`);
-      }
-    } finally {
-      setAutoUnlockBusy(false);
-    }
-    return;
-  }
-
-  setStatus("다음 편은 잠겨 있고 포인트가 부족합니다.");
-  setPart(next);
-  router.replace(`/episode/${episodeKey}?part=${next}`);
-};
-
-  const unlockAllParts = () => {
-    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
   };
 
-
-const unlockWithPoints = async (targetPart = part) => {
-  try {
-    const token = await getAccessToken();
-
-    if (!token) {
-      alert("로그인이 필요합니다.");
-      router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
-      return false;
-    }
-
-    const res = await fetch("/api/unlock/with-points", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        work_id: SERIES_PREFIX,
-        episode_id: episodeKey,
-        target_unlock_until_part: targetPart,
-      }),
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      if (data?.error === "not_enough_points") {
-        alert(`포인트가 부족합니다. (${data?.need ?? POINTS_PER_PART}포인트 필요)`);
-        return false;
-      }
-
-      if (data?.error === "unauthorized") {
-        alert("로그인이 필요합니다.");
-        router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
-        return false;
-      }
-
-      if (data?.error === "invalid_target") {
-        alert("이미 열렸거나 순서가 맞지 않습니다. 새로고침 후 다시 시도해주세요.");
-        return false;
-      }
-
-      alert(`오류가 발생했습니다. (${data?.error ?? "unknown_error"})`);
-      return false;
-    }
-
-    const nextPoints = Number(data?.points_left ?? points);
-    const nextUnlocked = Number(data?.unlocked_until_part ?? unlockedUntil);
-
-    setPointsState(nextPoints);
-setUnlockedUntilState(nextUnlocked);
-setPart(targetPart);
-pendingAutoplayRef.current = true;
-
-try {
-  localStorage.setItem("points", String(nextPoints));
-} catch {}
-
-window.dispatchEvent(new Event("wallet-updated"));
-
-router.replace(`/episode/${episodeKey}?part=${targetPart}&autoplay=1`);
-
-setTimeout(() => {
-  const a = audioRef.current;
-  if (!a) return;
-
-  a.play()
-    .then(() => {
-      setStatus("재생 중");
-      pendingAutoplayRef.current = false;
-    })
-    .catch(() => {
-      // 최종 재생은 위 useEffect가 한 번 더 시도
-    });
-}, 180);
-
-return true;
-  } catch (error) {
-    console.error(error);
-    alert("네트워크 오류가 발생했습니다.");
-    return false;
-  }
-};
-
   const onSelectPart = async (p: number) => {
-  setPart(p);
+    setShowPartList(false);
+    setShowPartMenuCinema(false);
+    setPart(p);
 
-  const pLocked = !isSubscribed && p > unlockedUntil;
+    const pLocked = !isSubscribed && p > unlockedUntil;
 
-  if (!pLocked) {
-    router.replace(`/episode/${episodeKey}?part=${p}&autoplay=1`);
-    return;
-  }
-
-  if (points >= POINTS_PER_PART) {
-    const ok = await unlockWithPoints(p);
-    if (!ok) {
-      router.replace(`/episode/${episodeKey}?part=${p}`);
+    if (!pLocked) {
+      router.replace(`/episode/${episodeKey}?part=${p}&autoplay=1`);
+      return;
     }
-    return;
-  }
 
-  router.replace(`/episode/${episodeKey}?part=${p}`);
-};
+    if (points >= POINTS_PER_PART) {
+      const ok = await unlockWithPoints(p);
+      if (!ok) {
+        router.replace(`/episode/${episodeKey}?part=${p}`);
+      }
+      return;
+    }
+
+    router.replace(`/episode/${episodeKey}?part=${p}`);
+  };
+
   return (
     <main
       className="episodeMain"
-      style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}
+      style={{
+        minHeight: "100vh",
+        background: "#0b0b12",
+        color: "white",
+        padding: 20,
+      }}
     >
-     
-<style>{`
-  @media (max-width: 820px) {
-    .episodeMain {
-      padding: 12px !important;
-    }
+      <style>{`
+        @media (max-width: 820px) {
+          .episodeMain {
+            padding: 12px !important;
+          }
+        }
+      `}</style>
 
-    .episodeGrid {
-      grid-template-columns: 1fr !important;
-      gap: 12px !important;
-    }
-
-    .episodeAside {
-      position: static !important;
-      top: auto !important;
-      width: 100% !important;
-    }
-
-    .partGrid {
-      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-      max-width: 100% !important;
-    }
-
-    .lockCard {
-      width: min(420px, 94%) !important;
-      max-height: 82% !important;
-    }
-
-    .lockBtns {
-      grid-template-columns: 1fr !important;
-    }
-
-    html, body {
-      overflow-x: hidden;
-    }
-  }
-`}</style>
-      <TopBar />
+      {!playerLandscapeMode && <TopBar />}
 
       <h1 style={{ marginTop: 14 }}>
         {episodeKey}화 - {part}편
@@ -739,211 +952,298 @@ return true;
         className="episodeGrid"
         style={{
           display: "grid",
-          gridTemplateColumns: "360px 1fr",
+          gridTemplateColumns: "1fr",
           gap: 14,
           marginTop: 14,
         }}
       >
-        <aside
-          className="episodeAside"
-          style={{
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.04)",
-            borderRadius: 14,
-            padding: 12,
-            height: "fit-content",
-            position: "sticky",
-            top: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline" }}>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              {isSubscribed ? "구독중" : `무료 1~${FREE_PARTS}편`}
-              {entBusy && <span style={{ marginLeft: 8, opacity: 0.7 }}>불러오는 중...</span>}
-            </div>
+        <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
+          
+
+          <div style={{ marginBottom: 10 }}>
+            <button
+              onClick={() => setShowPartList((v) => !v)}
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                fontWeight: 900,
+                fontSize: 16,
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              현재 재생: {part}편 {showPartList ? "▲" : "▼"}
+            </button>
+
+            {showPartList && (
+              <div
+                style={{
+                  maxHeight: isMobile ? 240 : 320,
+                  overflowY: "auto",
+                  borderRadius: 16,
+                  background: "#15151d",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+                  padding: 8,
+                  marginTop: 8,
+                }}
+              >
+                {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
+                  const p = i + 1;
+                  const isLocked = !isSubscribed && p > unlockedUntil;
+                  const isActive = p === part;
+
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => onSelectPart(p)}
+                      style={{
+                        width: "100%",
+                        minHeight: 48,
+                        marginBottom: 6,
+                        borderRadius: 12,
+                        border: isActive
+                          ? "2px solid rgba(255,215,120,0.9)"
+                          : "1px solid rgba(255,255,255,0.16)",
+                        background: isActive
+                          ? "rgba(255,215,120,0.12)"
+                          : "rgba(255,255,255,0.04)",
+                        color: isLocked ? "rgba(255,255,255,0.38)" : "white",
+                        fontWeight: isActive ? 900 : 700,
+                        fontSize: 17,
+                        cursor: "pointer",
+                        textAlign: "left",
+                        padding: "0 14px",
+                      }}
+                    >
+                      {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div
-            className="partGrid"
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-              gap: 2,
-              alignItems: "stretch",
-              width: "100%",
-              maxWidth: 620,
+              marginBottom: 10,
+              padding: "18px 20px",
+              borderRadius: 16,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              textAlign: "center",
+              height: 380,
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
             }}
           >
-            {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
-              const p = i + 1;
-              const isLocked = !isSubscribed && p > unlockedUntil;
-              const isActive = p === part;
+            <div
+              style={{
+                fontSize: captionFontSize,
+                fontWeight: 900,
+                lineHeight: 1.6,
+                whiteSpace: "pre-wrap",
+                wordBreak: "keep-all",
+                display: "-webkit-box",
+                WebkitLineClamp: 10,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                color: "rgba(255,255,255,0.92)",
+              }}
+            >
+              {caption || " "}
+            </div>
 
-              return (
-                <button
-                  key={p}
-                  onClick={() => onSelectPart(p)}
-                  style={{
-                    height: 33,
-                    aspectRatio: "1 / 1",
-                    borderRadius: 12,
-                    border: isActive
-                      ? "2px solid rgba(255,215,120,0.9)"
-                      : "1px solid rgba(255,255,255,0.18)",
-                    background: isLocked ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.25)",
-                    color: isLocked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.92)",
-                    fontWeight: isActive ? 900 : 700,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: isActive ? "0 0 10px rgba(255,215,120,0.35)" : "none",
-                  }}
-                  aria-label={`${p}편`}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>{p}</span>
-                    {isLocked && <span style={{ fontSize: 12, lineHeight: 1 }}>🔒</span>}
-                  </div>
-                </button>
-              );
-            })}
+            {!!captionStatus && (
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  opacity: 0.66,
+                }}
+              >
+                {captionStatus}
+              </div>
+            )}
           </div>
 
-          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.4 }}>
-            잠긴 편(무료 이후)은 구독/포인트/광고로 오픈됩니다.
-            <br />
-            포인트는 <b>{POINTS_PER_PART}P당 1편</b> 해제됩니다.
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "10px 14px",
+              borderRadius: 14,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                color: "rgba(255,255,255,0.58)",
+                minWidth: 42,
+              }}
+            >
+              작게
+            </span>
+
+            <input
+              type="range"
+              min={16}
+              max={36}
+              step={1}
+              value={captionFontSize}
+              onChange={(e) => setCaptionFontSize(Number(e.target.value))}
+              style={{
+                flex: 1,
+                accentColor: "#6f7684",
+                cursor: "pointer",
+                filter: "brightness(0.85)",
+              }}
+            />
+
+            <span
+              style={{
+                fontSize: 12,
+                color: "rgba(255,255,255,0.58)",
+                minWidth: 42,
+                textAlign: "right",
+              }}
+            >
+              크게
+            </span>
+
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.78)",
+                minWidth: 28,
+                textAlign: "right",
+              }}
+            >
+              {captionFontSize}
+            </span>
           </div>
-        </aside>
+{!locked && (
+  <audio
+    key={`${episodeKey}-${part}`}
+    ref={audioRef}
+    src={audioSrc!}
+    controls={!playerLandscapeMode}
+    preload="auto"
+    autoPlay
+    style={
+      playerLandscapeMode
+        ? {
+            position: "fixed",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+            left: -9999,
+            top: -9999,
+          }
+        : {
+            width: "100%",
+            marginBottom: 16,
+          }
+    }
+    onLoadedMetadata={() => {
+      const a = audioRef.current;
+      if (!a) return;
 
-        <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
-        
-  <div
-  style={{
-    marginBottom: 10,
-    padding: "18px 20px",
-    borderRadius: 16,
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    textAlign: "center",
-   height: 380,
-overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-  }}
->
-  <div
-    style={{
-      fontSize: captionFontSize,
-      fontWeight: 900,
-      lineHeight: 1.6,
-      whiteSpace: "pre-wrap",
-      wordBreak: "keep-all",
-      display: "-webkit-box",
-      WebkitLineClamp: 10,
-      WebkitBoxOrient: "vertical",
-      overflow: "hidden",
-      color: "rgba(255,255,255,0.92)",
-    }}
-  >
-    {caption || " "}
-  </div>
-</div>
-<div
-  style={{
-    marginBottom: 16,
-    padding: "10px 14px",
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  }}
->
-  <span
-    style={{
-      fontSize: 12,
-      color: "rgba(255,255,255,0.58)",
-      minWidth: 42,
-    }}
-  >
-    작게
-  </span>
+      setDuration(a.duration || 0);
+      a.playbackRate = playbackRate;
+      a.volume = volume;
 
-  <input
-    type="range"
-    min={16}
-    max={36}
-    step={1}
-    value={captionFontSize}
-    onChange={(e) => setCaptionFontSize(Number(e.target.value))}
-    style={{
-      flex: 1,
-      accentColor: "#6f7684",
-      cursor: "pointer",
-      filter: "brightness(0.85)",
+      if (resumeTime > 0) {
+        a.currentTime = resumeTime;
+        setCurrentTime(resumeTime);
+      }
+
+      if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
+
+      a.play()
+        .then(async () => {
+          setIsPlaying(true);
+          setStatus("재생 중");
+          pendingAutoplayRef.current = false;
+
+          if (isMobile && !autoEnteredCinema) {
+            setAutoEnteredCinema(true);
+            await enterCinemaMode();
+          }
+        })
+        .catch(() => {
+          setIsPlaying(false);
+          setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
+        });
     }}
+    onPlay={() => {
+      setIsPlaying(true);
+      setStatus("재생 중");
+    }}
+    onPause={() => {
+      setIsPlaying(false);
+      setStatus("일시정지");
+    }}
+    onError={() => {
+      setIsPlaying(false);
+      setStatus(`오디오 로드 실패: ${audioSrc}`);
+    }}
+    onEnded={() => {
+      setIsPlaying(false);
+      setStatus("다음으로 넘어가는 중...");
+      goNextPart();
+    }}
+    onTimeUpdate={onTimeUpdate}
   />
-
-  <span
-    style={{
-      fontSize: 12,
-      color: "rgba(255,255,255,0.58)",
-      minWidth: 42,
-      textAlign: "right",
-    }}
-  >
-    크게
-  </span>
-
-  <span
-    style={{
-      fontSize: 13,
-      fontWeight: 700,
-      color: "rgba(255,255,255,0.78)",
-      minWidth: 28,
-      textAlign: "right",
-    }}
-  >
-    {captionFontSize}
-  </span>
-</div>
+)}
           {!locked && (
-            <audio
-  key={`${episodeKey}-${part}`}
-  ref={audioRef}
-  src={audioSrc!}
-  controls
-  preload="auto"
-  autoPlay
-  style={{ width: "100%", marginBottom: 16 }}
-  onLoadedMetadata={() => {
-    if (!pendingAutoplayRef.current && !autoplay) return;
+            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <button
+                onClick={togglePlayPause}
+                style={{
+                  flex: 1,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  fontWeight: 900,
+                  fontSize: 16,
+                  cursor: "pointer",
+                }}
+              >
+                {isPlaying ? "일시정지" : "재생"}
+              </button>
 
-    const a = audioRef.current;
-    if (!a) return;
-
-    a.play()
-      .then(() => {
-        setStatus("재생 중");
-        pendingAutoplayRef.current = false;
-      })
-      .catch(() => {
-        setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
-      });
-  }}
-  onPlay={() => setStatus("재생 중")}
-  onPause={() => setStatus("일시정지")}
-  onError={() => setStatus(`오디오 로드 실패: ${audioSrc}`)}
-  onEnded={() => {
-    setStatus("다음으로 넘어가는 중...");
-    goNextPart();
-  }}
-  onTimeUpdate={onTimeUpdate}
-/>
+              <button
+                onClick={toggleLandscapePlayer}
+                style={{
+                  flex: 1,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  fontWeight: 900,
+                  fontSize: 16,
+                  cursor: "pointer",
+                }}
+              >
+                시네마 모드
+              </button>
+            </div>
           )}
 
           {!locked && status && (
@@ -1024,9 +1324,7 @@ overflowY: "auto",
                       animation: "bounceIn 520ms ease-out both",
                     }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>
-                      잠금 편
-                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>잠금 편</div>
 
                     <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>
                       {episodeKey}화 {part}편은 잠겨 있어요
@@ -1128,6 +1426,506 @@ overflowY: "auto",
           </div>
         </section>
       </div>
+
+      {playerLandscapeMode && !locked && (
+        <div
+          onMouseMove={handlePlayerInteraction}
+          onTouchStart={handlePlayerInteraction}
+          onClick={handlePlayerInteraction}
+          style={{
+  position: "fixed",
+  inset: 0,
+  zIndex: 9999,
+  background: "#000",
+  overflow: "hidden",
+  fontFamily: cinemaFont,
+}}
+        >
+          <img
+            src={currentImageSrc}
+            alt={`${episodeKey}화 ${part}편`}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "brightness(0.42)",
+            }}
+          />
+
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
+            }}
+          />
+
+          {showPlayerUi && (
+            <button
+  onClick={(e) => {
+    e.stopPropagation();
+    exitCinemaMode();
+  }}
+  style={{
+    position: "absolute",
+    top: 18,
+    right: 18,
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(15,15,15,0.42)",
+    color: "rgba(255,255,255,0.94)",
+    fontSize: 26,
+    fontWeight: 500,
+    lineHeight: 1,
+    cursor: "pointer",
+    zIndex: 4,
+    backdropFilter: "blur(8px)",
+    fontFamily: cinemaFont,
+  }}
+>
+  ×
+</button>
+          )}
+
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 140,
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+              zIndex: 3,
+            }}
+          >
+            <div
+  style={{
+    maxWidth: 980,
+    textAlign: "center",
+    fontSize: captionFontSize + 4,
+    fontWeight: 700,
+    lineHeight: 1.58,
+    letterSpacing: "-0.025em",
+    color: "rgba(255,255,255,0.98)",
+    textShadow: "0 2px 8px rgba(0,0,0,0.78)",
+    whiteSpace: "pre-wrap",
+    wordBreak: "keep-all",
+    padding: "0 18px",
+    margin: "0 auto",
+    fontFamily: cinemaFont,
+  }}
+>
+  {caption || " "}
+</div>
+          </div>
+
+          {showPlayerUi && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 34,
+                pointerEvents: "none",
+                zIndex: 4,
+              }}
+            >
+              <button
+  onClick={(e) => {
+    e.stopPropagation();
+    seekBy(-10);
+  }}
+  style={{
+    pointerEvents: "auto",
+    width: 82,
+    height: 82,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(18,18,18,0.38)",
+    color: "rgba(255,255,255,0.96)",
+    fontSize: 18,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    cursor: "pointer",
+    backdropFilter: "blur(8px)",
+    fontFamily: cinemaFont,
+  }}
+>
+  -10
+</button>
+
+              <button
+  onClick={(e) => {
+    e.stopPropagation();
+    togglePlayPause();
+  }}
+  style={{
+    pointerEvents: "auto",
+    width: 104,
+    height: 104,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "rgba(255,255,255,0.12)",
+    color: "white",
+    fontSize: 28,
+    fontWeight: 700,
+    cursor: "pointer",
+    backdropFilter: "blur(10px)",
+    fontFamily: cinemaFont,
+  }}
+>
+  {isPlaying ? "❚❚" : "▶"}
+</button>
+
+              <button
+  onClick={(e) => {
+    e.stopPropagation();
+    seekBy(10);
+  }}
+  style={{
+    pointerEvents: "auto",
+    width: 82,
+    height: 82,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(18,18,18,0.38)",
+    color: "rgba(255,255,255,0.96)",
+    fontSize: 18,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    cursor: "pointer",
+    backdropFilter: "blur(8px)",
+    fontFamily: cinemaFont,
+  }}
+>
+  +10
+</button>
+            </div>
+          )}
+
+          {showPlayerUi && (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                padding: "16px 18px 18px",
+                zIndex: 4,
+                color: "white",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <span
+  style={{
+    minWidth: 46,
+    fontSize: 13,
+    fontWeight: 500,
+    letterSpacing: "-0.01em",
+    color: "rgba(255,255,255,0.88)",
+    fontFamily: cinemaFont,
+  }}
+>
+  {formatTime(currentTime)}
+</span>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(duration, 0)}
+                  step={1}
+                  value={Math.min(currentTime, duration || 0)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    height: 6,
+                    accentColor: "#e50914",
+                    cursor: "pointer",
+                  }}
+                />
+
+                <span
+  style={{
+    minWidth: 46,
+    fontSize: 13,
+    fontWeight: 500,
+    letterSpacing: "-0.01em",
+    textAlign: "right",
+    color: "rgba(255,255,255,0.88)",
+    fontFamily: cinemaFont,
+  }}
+>
+  {formatTime(duration)}
+</span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 14,
+                  flexWrap: "wrap",
+                  position: "relative",
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPartMenuCinema((v) => !v);
+                    resetHideTimer();
+                  }}
+                  style={{
+  padding: "11px 16px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(10,10,10,0.40)",
+  color: "rgba(255,255,255,0.95)",
+  fontSize: 14,
+  fontWeight: 700,
+  letterSpacing: "-0.02em",
+  cursor: "pointer",
+  backdropFilter: "blur(8px)",
+  fontFamily: cinemaFont,
+                  }}
+                >
+                  회차
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSpeedMenu((v) => !v);
+                    resetHideTimer();
+                  }}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.30)",
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  속도({playbackRate}x)
+                </button>
+
+                <div
+                   style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "11px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(10,10,10,0.40)",
+    backdropFilter: "blur(8px)",
+    fontFamily: cinemaFont,
+                  }}
+                >
+                  <span
+  style={{
+    fontSize: 14,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    color: "rgba(255,255,255,0.95)",
+    fontFamily: cinemaFont,
+  }}
+>
+  음량
+</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    defaultValue={1}
+                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                    style={{ width: 120, accentColor: "#e50914" }}
+                  />
+                </div>
+
+                <div
+                    style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "11px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(10,10,10,0.40)",
+    backdropFilter: "blur(8px)",
+    fontFamily: cinemaFont,
+                  }}
+                >
+                  <span
+  style={{
+    fontSize: 14,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    color: "rgba(255,255,255,0.95)",
+    fontFamily: cinemaFont,
+  }}
+>
+  자막
+</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCaptionFontSize((v) => Math.max(16, v - 2));
+                      resetHideTimer();
+                    }}
+                    style={{
+    minWidth: 34,
+    height: 34,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.07)",
+    color: "rgba(255,255,255,0.95)",
+    cursor: "pointer",
+    fontSize: 16,
+    fontWeight: 700,
+    fontFamily: cinemaFont,
+                    }}
+                  >
+                    -
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCaptionFontSize((v) => Math.min(40, v + 2));
+                      resetHideTimer();
+                    }}
+                    style={{
+    minWidth: 34,
+    height: 34,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.07)",
+    color: "rgba(255,255,255,0.95)",
+    cursor: "pointer",
+    fontSize: 16,
+    fontWeight: 700,
+    fontFamily: cinemaFont,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {showSpeedMenu && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 58,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      minWidth: 200,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.88)",
+                      padding: 10,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    {[0.8, 1, 1.2, 1.5].map((rate) => (
+                      <button
+                        key={rate}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          changePlaybackRate(rate);
+                        }}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border:
+                            playbackRate === rate
+                              ? "1px solid rgba(229,9,20,0.8)"
+                              : "1px solid rgba(255,255,255,0.10)",
+                          background:
+                            playbackRate === rate
+                              ? "rgba(229,9,20,0.18)"
+                              : "rgba(255,255,255,0.04)",
+                          color: "white",
+                          fontSize: 15,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {rate}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {showPartMenuCinema && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 58,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "min(420px, 90vw)",
+                      maxHeight: 260,
+                      overflowY: "auto",
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.88)",
+                      padding: 10,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
+                      const p = i + 1;
+                      const isLocked = !isSubscribed && p > unlockedUntil;
+                      const isActive = p === part;
+
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => onSelectPart(p)}
+                          style={{
+                            padding: "12px 14px",
+                            borderRadius: 12,
+                            border: isActive
+                              ? "2px solid rgba(255,215,120,0.9)"
+                              : "1px solid rgba(255,255,255,0.14)",
+                            background: isActive
+                              ? "rgba(255,215,120,0.12)"
+                              : "rgba(255,255,255,0.04)",
+                            color: isLocked ? "rgba(255,255,255,0.38)" : "white",
+                            fontWeight: isActive ? 900 : 700,
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
+}
+
+function lockedMemo(isSubscribed: boolean, part: number, unlockedUntil: number) {
+  if (isSubscribed) return false;
+  return part > unlockedUntil;
 }
