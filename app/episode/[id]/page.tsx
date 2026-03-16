@@ -351,50 +351,7 @@ export default function EpisodePage() {
 
     return [];
   }
-function groupSegmentsForReading(input: Segment[]): Segment[] {
-  if (!input.length) return [];
 
-  const out: Segment[] = [];
-  let current: Segment = {
-    start: input[0].start,
-    end: input[0].end,
-    text: String(input[0].text || "").trim(),
-  };
-
-  for (let i = 1; i < input.length; i++) {
-    const next = input[i];
-    const nextText = String(next.text || "").trim();
-    if (!nextText) continue;
-
-    const currentDuration = current.end - current.start;
-    const gap = next.start - current.end;
-    const punctuationCount = (current.text.match(/[.!?。！？]/g) || []).length;
-
-    const shouldMerge =
-      gap <= 0.45 &&
-      currentDuration < 4.2 &&
-      current.text.length < 110 &&
-      punctuationCount < 3;
-
-    if (shouldMerge) {
-      current = {
-        start: current.start,
-        end: next.end,
-        text: `${current.text} ${nextText}`.replace(/\s+/g, " ").trim(),
-      };
-    } else {
-      out.push(current);
-      current = {
-        start: next.start,
-        end: next.end,
-        text: nextText,
-      };
-    }
-  }
-
-  out.push(current);
-  return out;
-}
   useEffect(() => {
     let alive = true;
 
@@ -433,12 +390,11 @@ function groupSegmentsForReading(input: Segment[]): Segment[] {
       if (!alive) return;
 
       if (r2.ok) {
-       const parsed = parseSegmentsFromSavedJson(r2.data);
-const grouped = groupSegmentsForReading(parsed);
-setSegments(grouped);
-        setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
-        return;
-      }
+  const parsed = parseSegmentsFromSavedJson(r2.data);
+  setSegments(parsed);
+  setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+  return;
+}
 
       setCaptionStatus("자막 생성 중(처음 1회)...");
 
@@ -461,10 +417,10 @@ setSegments(grouped);
         return;
       }
 
-      const parsed2 = parseSegmentsFromSavedJson(r2b.data);
-const grouped2 = groupSegmentsForReading(parsed2);
-setSegments(grouped2);
-      setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+     
+const parsed2 = parseSegmentsFromSavedJson(r2b.data);
+setSegments(parsed2);
+setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
     }
 
     loadCaptions().catch((error) => {
@@ -479,43 +435,28 @@ setSegments(grouped2);
   }, [episodeKey, part, locked]);
 
   const updateCaptionByTime = (t: number) => {
-    const segs = segments;
-    if (!segs.length) {
-      setCaption("");
-      return;
-    }
+  const segs = segments;
+  if (!segs.length) {
+    setCaption("");
+    return;
+  }
 
-    let i = segIndexRef.current;
-    i = Math.max(0, Math.min(i, segs.length - 1));
+  let i = segIndexRef.current;
+  i = Math.max(0, Math.min(i, segs.length - 1));
 
-    while (i < segs.length - 1 && t > segs[i].end) i++;
-    while (i > 0 && t < segs[i].start) i--;
+  while (i < segs.length - 1 && t > segs[i].end) i++;
+  while (i > 0 && t < segs[i].start) i--;
 
-    segIndexRef.current = i;
+  segIndexRef.current = i;
 
-    const current = segs[i];
-    if (!(t >= current.start && t <= current.end + 0.2)) {
-  return;
-}
+  const current = segs[i];
+  if (!(t >= current.start && t <= current.end + 0.2)) {
+    setCaption("");
+    return;
+  }
 
-    let merged = "";
-    let sentenceCount = 0;
-
-    for (let j = i; j < segs.length; j++) {
-      const text = String(segs[j].text || "").trim();
-      if (!text) continue;
-
-      merged += (merged ? " " : "") + text;
-
-      const matches = text.match(/[.!?。！？]/g);
-      sentenceCount += matches ? matches.length : 0;
-
-      if (sentenceCount >= 3) break;
-      if (merged.length > 140) break;
-    }
-
-    setCaption(merged.trim());
-  };
+  setCaption(String(current.text || "").trim());
+};
 
   const onTimeUpdate = () => {
     const a = audioRef.current;
@@ -1098,7 +1039,7 @@ setSegments(grouped2);
             <input
               type="range"
               min={16}
-              max={36}
+              max={66}
               step={1}
               value={captionFontSize}
               onChange={(e) => setCaptionFontSize(Number(e.target.value))}

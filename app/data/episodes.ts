@@ -39,8 +39,9 @@ export const episodes: Episode[] = [
   { id: 30, title: "봉인의 끝, 시작의 날", locked: true, audioUrl: "/audio/myvoice.wav" },
 
   // 31~55는 홈에만 표시용(원하면 잠금 규칙 바꾸면 됨)
-  { id: 31, title: "귀환(歸還)", locked: false, audioUrl: "/audio/myvoice.wav" },
-  { id: 32, title: "준비의 시간(準備의 時間) (32-1)", locked: false, audioUrl: "/audio/myvoice.wav" },
+ { id: 31, title: "귀환(歸還)", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 32, title: "준비의 시간-상편", locked: false, audioUrl: "/audio/myvoice.wav" },
+  { id: 32-1, title: "준비의 시간-하편", locked: false, audioUrl: "/audio/myvoice.wav" },
   { id: 33, title: "문주실의 진실(상)", locked: false, audioUrl: "/audio/myvoice.wav" },
   { id: 34, title: "대비무 전야(前夜)", locked: false, audioUrl: "/audio/myvoice.wav" },
   { id: 35, title: "십 년의 침묵, 깨지다", locked: false, audioUrl: "/audio/myvoice.wav" },

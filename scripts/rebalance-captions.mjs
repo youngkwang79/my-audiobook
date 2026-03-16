@@ -3,6 +3,10 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } fr
 
 dotenv.config({ path: ".env.local" });
 
+console.log("ACCOUNT =", process.env.R2_ACCOUNT_ID ?? "없음");
+console.log("ACCESS =", process.env.R2_ACCESS_KEY_ID ? "있음" : "없음");
+console.log("SECRET =", process.env.R2_SECRET_ACCESS_KEY ? "있음" : "없음");
+console.log("BUCKET =", process.env.R2_BUCKET_NAME ?? "없음");
 const {
   R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID,
@@ -18,10 +22,10 @@ if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_N
 }
 
 const SETTINGS = {
-  LONG_SENTENCE_CHARS: 52,
-  MAX_GROUP_CHARS: 115,
-  MAX_GROUP_SECONDS: 8.5,
-  MIN_VISIBLE_SECONDS: 1.15,
+  LONG_SENTENCE_CHARS: 999,
+  MAX_GROUP_CHARS: 999,
+  MAX_GROUP_SECONDS: 999,
+  MIN_VISIBLE_SECONDS: 0,
 };
 
 const args = process.argv.slice(2);
@@ -128,67 +132,15 @@ function mergeUnitSlice(slice) {
 }
 
 function rebalanceSentenceUnits(units) {
-  const out = [];
-  let i = 0;
-
-  while (i < units.length) {
-    let picked = null;
-
-    for (let take = 3; take >= 1; take--) {
-      const slice = units.slice(i, i + take);
-      if (!slice.length) continue;
-
-      const merged = mergeUnitSlice(slice);
-      const duration = merged.end - merged.start;
-      const hasLongSentence = slice.some((u) => u.text.length >= SETTINGS.LONG_SENTENCE_CHARS);
-
-      if (take === 3 && hasLongSentence) continue;
-      if (merged.text.length > SETTINGS.MAX_GROUP_CHARS) continue;
-      if (duration > SETTINGS.MAX_GROUP_SECONDS) continue;
-
-      picked = merged;
-      break;
-    }
-
-    if (!picked) {
-      picked = mergeUnitSlice([units[i]]);
-    }
-
-    out.push(picked);
-    i += splitSentences(picked.text).length || 1;
-  }
-
-  return out;
+  return units.map((u) => ({
+    start: u.start,
+    end: u.end,
+    text: u.text,
+  }));
 }
 
 function enforceVisibilityFloor(segments) {
-  if (!segments.length) return segments;
-
-  const out = [];
-  for (let i = 0; i < segments.length; i++) {
-    const current = { ...segments[i] };
-    const duration = current.end - current.start;
-
-    if (duration >= SETTINGS.MIN_VISIBLE_SECONDS || i === segments.length - 1) {
-      out.push(current);
-      continue;
-    }
-
-    const next = segments[i + 1];
-    if (!next) {
-      out.push(current);
-      continue;
-    }
-
-    out.push({
-      start: current.start,
-      end: next.end,
-      text: normalizeText(`${current.text} ${next.text}`),
-    });
-    i += 1;
-  }
-
-  return out;
+  return segments;
 }
 
 function rebalanceSegments(originalSegments) {
