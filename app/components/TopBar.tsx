@@ -96,15 +96,20 @@ export default function TopBar() {
 
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 18,
-        position: "relative",
-        zIndex: 10000,
-      }}
+     style={{
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 18,
+  padding: "6px 10px",
+  position: "relative",
+  zIndex: 10000,
+  background: "rgba(0,0,0,0.35)",
+  backdropFilter: "blur(6px)",
+  borderBottom: "1px solid rgba(255,215,120,0.15)",
+}}
     >
+      {/* 왼쪽 영역 */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {pathname !== "/" && (
           <button onClick={goBackSmart} style={goldStyle}>
@@ -113,21 +118,73 @@ export default function TopBar() {
         )}
 
         {pathname === "/" && (
-          <div style={{ fontSize: 36, fontWeight: 900 }}>무협 소설 채널</div>
-        )}
+  <div
+    onClick={() => router.push("/")}
+    style={{
+      cursor: "pointer",
+      display: "flex",
+      flexDirection: "column",
+      lineHeight: 1.02,
+      userSelect: "none",
+    }}
+  >
+    <div
+      style={{
+        fontSize: 46,
+        fontWeight: 950,
+        letterSpacing: "-1.2px",
+        background:
+          "linear-gradient(180deg, #fffbe0 0%, #ffe9a3 20%, #f2cd72 45%, #d39d32 70%, #fff3b8 100%)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        WebkitTextStroke: "0.4px rgba(255,245,210,0.28)",
+        textShadow:
+          "0 0 2px rgba(255,245,210,0.35), 0 0 12px rgba(255,215,120,0.22), 0 0 30px rgba(212,162,60,0.14)",
+        filter: "drop-shadow(0 3px 12px rgba(255,215,120,0.16))",
+      }}
+    >
+      무림북
+    </div>
+
+    <div
+      style={{
+        marginTop: 5,
+        marginLeft: 3,
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: "1.4px",
+        color: "rgba(255, 237, 190, 0.76)",
+        textShadow: "0 0 10px rgba(255,215,120,0.10)",
+      }}
+    >
+      창작 무협 오디오 스토리
+    </div>
+  </div>
+)}
       </div>
 
+      {/* 오른쪽 영역 */}
       <div style={{ display: "flex", gap: 12 }}>
         {loading ? (
           <button style={{ ...goldStyle, opacity: 0.7, cursor: "default" }} disabled>
             로딩중
           </button>
         ) : !user ? (
-          <button onClick={() => router.push("/login")} style={goldStyle}>
-            로그인
-          </button>
+          <>
+            <button onClick={() => router.push("/faq")} style={goldStyle}>
+              FAQ
+            </button>
+
+            <button onClick={() => router.push("/login")} style={goldStyle}>
+              로그인
+            </button>
+          </>
         ) : (
           <>
+            <button onClick={() => router.push("/faq")} style={goldStyle}>
+              FAQ
+            </button>
+
             <button
               onClick={() => router.push("/points")}
               style={{ ...goldStyle, fontSize: 20, letterSpacing: 0.3 }}
