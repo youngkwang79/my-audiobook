@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-// 1) 에러 메시지 한글 매핑
+// 에러 메시지 한글 매핑
 function toKoreanAuthError(message?: string) {
   const msg = (message || "").toLowerCase();
 
@@ -17,7 +17,7 @@ function toKoreanAuthError(message?: string) {
   return message || "오류가 발생했습니다.";
 }
 
-// 2) 비밀번호 규칙: 8자 이상 + 영문 + 숫자 + 특수문자
+// 비밀번호 규칙: 8자 이상 + 영문 + 숫자 + 특수문자
 function validatePassword(pw: string) {
   const value = pw.trim();
 
@@ -35,7 +35,7 @@ function validatePassword(pw: string) {
   };
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
@@ -129,8 +129,6 @@ export default function LoginPage() {
     }
   }
 
-  const isGoldActive = canSubmit && !busy;
-
   return (
     <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 24 }}>
       <style>{`
@@ -142,46 +140,9 @@ export default function LoginPage() {
           font-weight: 900;
           transition: all 180ms ease;
         }
-        .btnDisabled {
-          background: rgba(255,255,255,0.04);
-          cursor: not-allowed;
-          opacity: 0.7;
-        }
         .btnNormal {
           background: rgba(255,255,255,0.12);
           cursor: pointer;
-        }
-        .btnGold {
-          position: relative;
-          overflow: hidden;
-          background: linear-gradient(135deg, #b8860b, #ffd700, #b8860b);
-          color: #111;
-          border: 1px solid rgba(255, 215, 0, 0.65);
-          box-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
-          transform: translateY(-1px);
-          cursor: pointer;
-        }
-        .btnGold:hover {
-          box-shadow: 0 0 26px rgba(255, 215, 0, 0.45);
-          transform: translateY(-2px);
-        }
-        .btnGold::after {
-          content: "";
-          position: absolute;
-          top: -40%;
-          left: -60%;
-          width: 60%;
-          height: 180%;
-          background: rgba(255,255,255,0.35);
-          transform: rotate(25deg);
-          animation: shine 1.4s ease-in-out infinite;
-          pointer-events: none;
-        }
-        @keyframes shine {
-          0%   { left: -70%; opacity: 0; }
-          25%  { opacity: 0.35; }
-          50%  { left: 120%; opacity: 0.15; }
-          100% { left: 140%; opacity: 0; }
         }
         .helpBox {
           margin-top: 6px;
@@ -203,15 +164,15 @@ export default function LoginPage() {
         .hintBad { color: rgba(255,160,160,0.95); }
 
         .socialBtn {
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 16px;
-  cursor: pointer;
-  border: none;
-  width: 100%;
-  text-align: center;
-}
+          padding: 10px 12px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 16px;
+          cursor: pointer;
+          border: none;
+          width: 100%;
+          text-align: center;
+        }
       `}</style>
 
       <div
@@ -255,6 +216,7 @@ export default function LoginPage() {
           >
             로그인
           </button>
+
           <button
             onClick={() => {
               setMode("signup");
@@ -343,54 +305,52 @@ export default function LoginPage() {
           )}
 
           <button
-            
-  onClick={onSubmit}
-  disabled={busy || !canSubmit}
-  style={{
-    padding: "12px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#E6D3A3",
-    color: "#111",
-    fontWeight: "900",
-    cursor: "pointer",
-  }}
->
+            onClick={onSubmit}
+            disabled={busy || !canSubmit}
+            style={{
+              padding: "12px",
+              borderRadius: "12px",
+              border: "none",
+              background: "#E6D3A3",
+              color: "#111",
+              fontWeight: "900",
+              cursor: "pointer",
+            }}
+          >
             {mode === "login" ? (busy ? "로그인 중..." : "로그인") : busy ? "가입 중..." : "회원가입"}
           </button>
 
           <button
-  type="button"
-  className="socialBtn"
-  onClick={() => signInWithProvider("google")}
-  style={{
-    background: "#ffffff",
-    color: "#111111",
-    width: "100%",
-  }}
->
-  <span
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "10px",
-      lineHeight: 1,
-    }}
-  >
-    <img
-      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-      alt="google"
-      style={{
-        width: 18,
-        height: 18,
-        display: "block",
-        flexShrink: 0,
-      }}
-    />
-    <span>구글 로그인</span>
-  </span>
-</button>
+            type="button"
+            className="socialBtn"
+            onClick={() => signInWithProvider("google")}
+            style={{
+              background: "#ffffff",
+              color: "#111111",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                lineHeight: 1,
+              }}
+            >
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="google"
+                style={{
+                  width: 18,
+                  height: 18,
+                  display: "block",
+                  flexShrink: 0,
+                }}
+              />
+              <span>구글 로그인</span>
+            </span>
+          </button>
 
           <button
             type="button"
@@ -412,5 +372,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0b0b12" }} />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }
