@@ -78,7 +78,7 @@ export default function WorksPage() {
                   </div>
 
                   <div style={{ fontSize: 14, opacity: 0.8, lineHeight: 1.7 }}>
-                    총 {work.totalEpisodes}화 · 무료 {work.freeEpisodes}화
+                    총 {work.totalEpisodes}화 · 무료-각 화의 {work.freeEpisodes}편
                   </div>
 
                   <div

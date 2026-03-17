@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
 
@@ -37,29 +37,61 @@ function validatePassword(pw: string) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading } = useAuth();
 
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [capsOn, setCapsOn] = useState(false); // ✅ CapsLock 표시
+  const [capsOn, setCapsOn] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const redirect = searchParams.get("redirect") || "/";
 
   const emailOk = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()), [email]);
   const pwCheck = useMemo(() => validatePassword(password), [password]);
 
-  // ✅ supabase가 null이면 제출 자체를 막음
   const canSubmit = useMemo(() => !!supabase && emailOk && pwCheck.ok, [emailOk, pwCheck.ok]);
 
   useEffect(() => {
-    if (!loading && user) router.replace("/");
-  }, [loading, user, router]);
+    if (!loading && user) router.replace(redirect);
+  }, [loading, user, router, redirect]);
+
+  async function signInWithProvider(provider: "google" | "kakao") {
+    setMsg(null);
+
+    if (!supabase) {
+      setMsg(
+        [
+          "로그인 설정이 아직 배포에 반영되지 않았습니다.",
+          "Vercel 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) 저장 후",
+          "반드시 Redeploy(재배포) 해주세요.",
+        ].join("\n")
+      );
+      return;
+    }
+
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirect)}`
+        : undefined;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo,
+      },
+    });
+
+    if (error) {
+      setMsg(toKoreanAuthError(error.message));
+    }
+  }
 
   async function onSubmit() {
     setMsg(null);
 
-    // ✅ 여기서부터 “온라인에서 터지는 문제” 방어
     if (!supabase) {
       setMsg(
         [
@@ -88,7 +120,7 @@ export default function LoginPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push("/");
+        router.push(redirect);
       }
     } catch (e: any) {
       setMsg(toKoreanAuthError(e?.message));
@@ -97,12 +129,10 @@ export default function LoginPage() {
     }
   }
 
-  // ✅ 로그인/회원가입 둘 다 조건 충족하면 금빛 (원하면 signup만 금빛으로 바꿔도 됨)
   const isGoldActive = canSubmit && !busy;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 24 }}>
-      {/* CSS(반짝/황금 효과) */} 
       <style>{`
         .btnBase {
           padding: 12px 12px;
@@ -121,8 +151,6 @@ export default function LoginPage() {
           background: rgba(255,255,255,0.12);
           cursor: pointer;
         }
-
-        /* 황금 + 글로우 + 반짝 */
         .btnGold {
           position: relative;
           overflow: hidden;
@@ -155,7 +183,6 @@ export default function LoginPage() {
           50%  { left: 120%; opacity: 0.15; }
           100% { left: 140%; opacity: 0; }
         }
-
         .helpBox {
           margin-top: 6px;
           padding: 12px;
@@ -174,6 +201,17 @@ export default function LoginPage() {
         }
         .hintGood { color: rgba(255,255,255,0.85); }
         .hintBad { color: rgba(255,160,160,0.95); }
+
+        .socialBtn {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: center;
+}
       `}</style>
 
       <div
@@ -237,7 +275,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* ✅ 회원가입 진행방법 (다시 복구) */}
         {mode === "signup" && (
           <div className="helpBox">
             {"회원가입 진행방법\n"}
@@ -286,7 +323,6 @@ export default function LoginPage() {
             }}
           />
 
-          {/* ✅ CapsLock 경고 */}
           {capsOn && <div className="hint hintBad">Caps Lock이 켜져 있습니다.</div>}
 
           {password.length > 0 && (
@@ -307,14 +343,65 @@ export default function LoginPage() {
           )}
 
           <button
-            className={[
-              "btnBase",
-              busy || !canSubmit ? "btnDisabled" : isGoldActive ? "btnGold" : "btnNormal",
-            ].join(" ")}
-            onClick={onSubmit}
-            disabled={busy || !canSubmit}
-          >
+            
+  onClick={onSubmit}
+  disabled={busy || !canSubmit}
+  style={{
+    padding: "12px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#E6D3A3",
+    color: "#111",
+    fontWeight: "900",
+    cursor: "pointer",
+  }}
+>
             {mode === "login" ? (busy ? "로그인 중..." : "로그인") : busy ? "가입 중..." : "회원가입"}
+          </button>
+
+          <button
+  type="button"
+  className="socialBtn"
+  onClick={() => signInWithProvider("google")}
+  style={{
+    background: "#ffffff",
+    color: "#111111",
+    width: "100%",
+  }}
+>
+  <span
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "10px",
+      lineHeight: 1,
+    }}
+  >
+    <img
+      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+      alt="google"
+      style={{
+        width: 18,
+        height: 18,
+        display: "block",
+        flexShrink: 0,
+      }}
+    />
+    <span>구글 로그인</span>
+  </span>
+</button>
+
+          <button
+            type="button"
+            className="socialBtn"
+            onClick={() => signInWithProvider("kakao")}
+            style={{
+              background: "#FEE500",
+              color: "#191919",
+            }}
+          >
+            카카오 로그인
           </button>
 
           {msg && <div className="helpBox">{msg}</div>}

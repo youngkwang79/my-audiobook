@@ -15,6 +15,6 @@ export const works: Work[] = [
     title: "천무진 :봉인된 천재",
     thumbnail: "/thumbnails/cheonmujin.jpg",
     totalEpisodes: 55,
-    freeEpisodes: 8,
+    freeEpisodes: 0,
   },
 ];
