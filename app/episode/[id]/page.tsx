@@ -4,6 +4,7 @@ import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import Comments from "@/app/components/Comments";
 
 const DEFAULT_TOTAL_PARTS = 30;
 const DEFAULT_FREE_PARTS = 8;
@@ -1862,6 +1863,7 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
           )}
         </div>
       )}
+      <Comments workId="cheonmujin" episodeId={String(episodeKey)} />
     </main>
   );
 }

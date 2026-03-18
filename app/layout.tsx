@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "@/app/providers/AuthProvider";
+import AuthSessionGuard from "@/app/components/AuthSessionGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,15 +25,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
+          <AuthSessionGuard />
+
           {children}
 
-      <footer style={{padding:"20px", textAlign:"center"}}>
-        <a href="/privacy">개인정보처리방침</a> |
-        <a href="/terms">이용약관</a> |
-        <a href="/contact">문의</a> |
-        <a href="/about">사이트소개</a>
-      </footer>
-
+          <footer style={{ padding: "20px", textAlign: "center" }}>
+            <a href="/privacy">개인정보처리방침</a> |{" "}
+            <a href="/terms">이용약관</a> |{" "}
+            <a href="/contact">문의</a> |{" "}
+            <a href="/about">사이트소개</a>
+          </footer>
         </AuthProvider>
       </body>
     </html>

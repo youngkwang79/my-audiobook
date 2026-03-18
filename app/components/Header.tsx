@@ -1,4 +1,3 @@
-// app/components/Header.tsx
 "use client";
 
 import Link from "next/link";
@@ -8,6 +7,19 @@ import { useAuth } from "@/app/providers/AuthProvider";
 export default function Header() {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+
+    try {
+      localStorage.removeItem("points");
+      localStorage.removeItem("lastPlayed");
+    } catch (e) {
+      console.error("localStorage cleanup error:", e);
+    }
+
+    router.replace("/");
+  };
 
   return (
     <div
@@ -50,11 +62,9 @@ export default function Header() {
             <span style={{ opacity: 0.9, fontSize: 12 }}>
               로그인: {user.email ?? "사용자"}
             </span>
+
             <button
-              onClick={async () => {
-                await signOut();
-                router.push("/");
-              }}
+              onClick={handleLogout}
               style={{
                 padding: "8px 12px",
                 borderRadius: 12,
