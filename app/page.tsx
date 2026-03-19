@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { works } from "./data/works";
-import VisitorStats from "@/app/components/VisitorStats";
+import VisitorStats from "@/components/VisitorStats";
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -85,8 +85,8 @@ export default function Home() {
     >
 
       <TopBar />
-      <VisitorStats />
-<div
+     
+     <div
   style={{
     maxWidth: 900,
     margin: "0 auto 28px",

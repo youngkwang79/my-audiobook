@@ -3,17 +3,23 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
-function getUserSupabase() {
-  const cookieStore = cookies();
+async function getUserSupabase() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach((c) => cookieStore.set(c.name, c.value, c.options));
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {}
         },
       },
     }
@@ -26,7 +32,10 @@ export async function GET(req: Request) {
   const episode_id = url.searchParams.get("episode_id");
 
   if (!work_id || !episode_id) {
-    return NextResponse.json({ error: "work_id_and_episode_id_required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "work_id_and_episode_id_required" },
+      { status: 400 }
+    );
   }
 
   const { data, error } = await supabaseAdmin
@@ -45,7 +54,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const supabase = getUserSupabase();
+    const supabase = await getUserSupabase();
     const { data: auth } = await supabase.auth.getUser();
 
     if (!auth?.user) {

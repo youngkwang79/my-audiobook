@@ -28,6 +28,9 @@ export default function VisitorStats() {
     const visitorKey = getVisitorKey();
     const pagePath = window.location.pathname;
 
+    console.log("visitorKey:", visitorKey);
+    console.log("pagePath:", pagePath);
+
     fetch("/api/visits/track", {
       method: "POST",
       headers: {
@@ -37,52 +40,99 @@ export default function VisitorStats() {
         visitor_key: visitorKey,
         page_path: pagePath,
       }),
-    }).finally(() => {
-      fetch("/api/visits/stats", { cache: "no-store" })
-        .then((res) => res.json())
-        .then((data) => {
-          setStats({
-            today: Number(data?.today ?? 0),
-            total: Number(data?.total ?? 0),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        console.log("track:", res.status, data);
+      })
+      .catch((err) => {
+        console.error("track fetch error:", err);
+      })
+      .finally(() => {
+        fetch("/api/visits/stats", { cache: "no-store" })
+          .then(async (res) => {
+            const data = await res.json().catch(() => null);
+            console.log("stats:", res.status, data);
+
+            setStats({
+              today: Number(data?.today ?? 0),
+              total: Number(data?.total ?? 0),
+            });
+          })
+          .catch((err) => {
+            console.error("stats fetch error:", err);
+            setStats({ today: 0, total: 0 });
           });
-        })
-        .catch(() => {
-          setStats({ today: 0, total: 0 });
-        });
-    });
+      });
   }, []);
 
   return (
     <div
       style={{
+        width: "100%",
+        margin: "24px 0 12px",
+        padding: "14px 18px",
+        borderRadius: 16,
+        background: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.10)",
         display: "flex",
-        gap: 12,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 24,
         flexWrap: "wrap",
-        marginBottom: 16,
+        textAlign: "center",
       }}
     >
-      <div
-        style={{
-          padding: "10px 14px",
-          borderRadius: 14,
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          fontWeight: 800,
-        }}
-      >
-        오늘 방문자: {stats.today.toLocaleString("ko-KR")}
+      <div>
+        <div
+          style={{
+            fontSize: 12,
+            opacity: 0.7,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 4,
+          }}
+        >
+          Total
+        </div>
+        <div
+          style={{
+            fontSize: 20,
+            fontWeight: 900,
+          }}
+        >
+          {stats.total.toLocaleString("ko-KR")}
+        </div>
       </div>
 
       <div
         style={{
-          padding: "10px 14px",
-          borderRadius: 14,
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          fontWeight: 800,
+          width: 1,
+          height: 32,
+          background: "rgba(255,255,255,0.12)",
         }}
-      >
-        총 방문자: {stats.total.toLocaleString("ko-KR")}
+      />
+
+      <div>
+        <div
+          style={{
+            fontSize: 12,
+            opacity: 0.7,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 4,
+          }}
+        >
+          Today
+        </div>
+        <div
+          style={{
+            fontSize: 20,
+            fontWeight: 900,
+          }}
+        >
+          {stats.today.toLocaleString("ko-KR")}
+        </div>
       </div>
     </div>
   );

@@ -3,17 +3,23 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
-function getUserSupabase() {
-  const cookieStore = cookies();
+async function getUserSupabase() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach((c) => cookieStore.set(c.name, c.value, c.options));
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {}
         },
       },
     }
@@ -30,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "visitor_key_required" }, { status: 400 });
     }
 
-    const supabase = getUserSupabase();
+    const supabase = await getUserSupabase();
     const { data: auth } = await supabase.auth.getUser();
     const user_id = auth?.user?.id ?? null;
 
@@ -44,25 +50,33 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (findError) {
-      return NextResponse.json({ error: "db_find_error" }, { status: 500 });
-    }
+  console.error("visit find error:", findError);
+  return NextResponse.json(
+    { error: "db_find_error", detail: findError.message },
+    { status: 500 }
+  );
+}
 
-    if (!existing) {
-      const { error: insertError } = await supabaseAdmin.from("site_visits").insert({
-        visit_date: today,
-        page_path,
-        visitor_key,
-        user_id,
-      });
+if (!existing) {
+  const { error: insertError } = await supabaseAdmin.from("site_visits").insert({
+    visit_date: today,
+    page_path,
+    visitor_key,
+    user_id,
+  });
 
-      if (insertError) {
-        return NextResponse.json({ error: "db_insert_error" }, { status: 500 });
-      }
-    }
+  if (insertError) {
+    console.error("visit insert error:", insertError);
+    return NextResponse.json(
+      { error: "db_insert_error", detail: insertError.message },
+      { status: 500 }
+    );
+  }
+}
 
-    return NextResponse.json({ ok: true });
+return NextResponse.json({ ok: true, alreadyCounted: !!existing });
   } catch (error) {
-    console.error(error);
+    console.error("visit server error:", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

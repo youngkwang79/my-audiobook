@@ -1,3 +1,4 @@
+import VisitorStats from "@/app/components/VisitorStats";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
 
           <footer style={{ padding: "20px", textAlign: "center" }}>
+              <VisitorStats /> 
             <a href="/privacy">개인정보처리방침</a> |{" "}
             <a href="/terms">이용약관</a> |{" "}
             <a href="/contact">문의</a> |{" "}
