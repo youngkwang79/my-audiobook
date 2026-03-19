@@ -133,12 +133,12 @@ return;
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {episodes.map((ep) => {
+          {episodes.map((ep, i) => {
             const isLocked = ep.id > unlockedUntil;
             const href = isLocked ? `/episode/${ep.id}` : `/episode/${ep.id}?autoplay=1`;
 
             return (
-              <Link key={ep.id} href={href} style={{ textDecoration: "none", color: "inherit" }}>
+              <Link key={`${ep.id}-${i}`} href={href} style={{ textDecoration: "none", color: "inherit" }}>
                 <div
                   style={{
                     background: "rgba(255,255,255,0.06)",

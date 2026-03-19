@@ -1,29 +1,54 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
-async function getServerSupabase() {
-  const cookieStore = await cookies();
+const ADMIN_EMAILS = [
+  "youngkwang79@gmail.com",
+];
 
-  return createServerClient(
+function getUserClient(accessToken: string) {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          } catch {}
-        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     }
   );
+}
+
+function isAdminEmail(email?: string | null) {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email);
+}
+
+async function getOptionalUser(req: Request) {
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  const accessToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+
+  if (!accessToken) {
+    return { user: null, isAdmin: false };
+  }
+
+  const supabaseUser = getUserClient(accessToken);
+
+  const {
+    data: { user },
+  } = await supabaseUser.auth.getUser();
+
+  return {
+    user,
+    isAdmin: isAdminEmail(user?.email),
+  };
 }
 
 export async function GET(req: Request) {
@@ -39,12 +64,20 @@ export async function GET(req: Request) {
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    const auth = await getOptionalUser(req);
+
+    let query = supabaseAdmin
       .from("episode_comments")
-      .select("id, user_email, content, created_at")
+      .select("id, user_id, user_email, content, created_at, updated_at, is_hidden")
       .eq("work_id", work_id)
       .eq("episode_id", episode_id)
       .order("created_at", { ascending: false });
+
+    if (!auth.isAdmin) {
+      query = query.eq("is_hidden", false);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("comments GET db error:", error);
@@ -54,7 +87,10 @@ export async function GET(req: Request) {
       );
     }
 
-    return NextResponse.json({ comments: data ?? [] });
+    return NextResponse.json({
+      comments: data ?? [],
+      isAdmin: auth.isAdmin,
+    });
   } catch (error) {
     console.error("comments GET server error:", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
@@ -63,12 +99,24 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await getServerSupabase();
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+    const accessToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "unauthorized", detail: "missing_bearer_token" },
+        { status: 401 }
+      );
+    }
+
+    const supabaseUser = getUserClient(accessToken);
 
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } = await supabaseUser.auth.getUser();
 
     if (userError) {
       console.error("comments POST user error:", userError);
@@ -80,7 +128,7 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "unauthorized", detail: "no_user_in_server_session" },
+        { error: "unauthorized", detail: "invalid_access_token" },
         { status: 401 }
       );
     }
@@ -98,6 +146,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "content_too_long" }, { status: 400 });
     }
 
+    const now = new Date().toISOString();
+
     const { error: insertError } = await supabaseAdmin
       .from("episode_comments")
       .insert({
@@ -106,6 +156,9 @@ export async function POST(req: Request) {
         user_id: user.id,
         user_email: user.email ?? null,
         content,
+        created_at: now,
+        updated_at: now,
+        is_hidden: false,
       });
 
     if (insertError) {

@@ -50,12 +50,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
 
         if (error) {
-          setSession(null);
-          setUser(null);
-        } else {
-          setSession(session ?? null);
-          setUser(session?.user ?? null);
-        }
+  try {
+    await sb.auth.signOut();
+  } catch {}
+
+  setSession(null);
+  setUser(null);
+} else {
+  setSession(session ?? null);
+  setUser(session?.user ?? null);
+}
       } catch {
         if (!mounted) return;
         setSession(null);

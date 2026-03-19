@@ -164,6 +164,7 @@ const LAST_NUM_EPISODE = Math.max(
 );
 
 export default function EpisodePage() {
+  
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -174,10 +175,11 @@ export default function EpisodePage() {
   const TOTAL_PARTS = useMemo(() => getTotalParts(episodeKey), [episodeKey]);
   const FREE_PARTS = useMemo(() => getFreeParts(episodeKey), [episodeKey]);
 
-  const [captionFontSize, setCaptionFontSize] = useState(22);
+  const [captionFontSize, setCaptionFontSize] = useState(32);
   const [showPartList, setShowPartList] = useState(false);
   const [showPartMenuCinema, setShowPartMenuCinema] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showCinemaComments, setShowCinemaComments] = useState(false);
   const [playerLandscapeMode, setPlayerLandscapeMode] = useState(false);
   const [autoUnlockBusy, setAutoUnlockBusy] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -467,6 +469,8 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
     updateCaptionByTime(a.currentTime);
   };
 
+
+  
   function formatTime(sec: number) {
     const safe = Math.max(0, Math.floor(sec || 0));
     const m = Math.floor(safe / 60);
@@ -558,9 +562,10 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
   };
 
   const exitCinemaMode = async () => {
-    setPlayerLandscapeMode(false);
-    setShowSpeedMenu(false);
-    setShowPartMenuCinema(false);
+  setPlayerLandscapeMode(false);
+  setShowSpeedMenu(false);
+  setShowPartMenuCinema(false);
+  setShowCinemaComments(false);
 
     try {
       if (document.fullscreenElement && document.exitFullscreen) {
@@ -1002,29 +1007,19 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
               {caption || " "}
             </div>
 
-            {!!captionStatus && (
-              <div
-                style={{
-                  marginTop: 10,
-                  fontSize: 12,
-                  opacity: 0.66,
-                }}
-              >
-                {captionStatus}
-              </div>
-            )}
+            
           </div>
 
           <div
             style={{
               marginBottom: 16,
-              padding: "10px 14px",
-              borderRadius: 14,
+              padding: "16px 22px",
+              borderRadius: 18,
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.06)",
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: 14,
             }}
           >
             <span
@@ -1370,499 +1365,611 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
       </div>
 
       {playerLandscapeMode && !locked && (
-        <div
-          onMouseMove={handlePlayerInteraction}
-          onTouchStart={handlePlayerInteraction}
-          onClick={handlePlayerInteraction}
-          style={{
-  position: "fixed",
-  inset: 0,
-  zIndex: 9999,
-  background: "#000",
-  overflow: "hidden",
-  fontFamily: cinemaFont,
+  <div
+    onMouseMove={handlePlayerInteraction}
+    onTouchStart={handlePlayerInteraction}
+
+
+    onClick={() => {
+  setShowPartMenuCinema(false);
+  setShowSpeedMenu(false);
+  setShowCinemaComments(false);
+  handlePlayerInteraction();
 }}
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 9999,
+      background: "#000",
+      overflow: "hidden",
+      fontFamily: cinemaFont,
+    }}
+  >
+    <img
+      src={currentImageSrc}
+      alt={`${episodeKey}화 ${part}편`}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        filter: "brightness(0.42)",
+      }}
+    />
+
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background:
+          "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
+      }}
+    />
+
+    {showPlayerUi && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          exitCinemaMode();
+        }}
+        style={{
+          position: "absolute",
+          top: 18,
+          right: 18,
+          width: 52,
+          height: 52,
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(15,15,15,0.42)",
+          color: "rgba(255,255,255,0.94)",
+          fontSize: 26,
+          fontWeight: 500,
+          lineHeight: 1,
+          cursor: "pointer",
+          zIndex: 4,
+          backdropFilter: "blur(8px)",
+          fontFamily: cinemaFont,
+        }}
+      >
+        ×
+      </button>
+    )}
+
+    {showPlayerUi && (
+      <div
+        style={{
+          position: "absolute",
+          left: 16,
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 4,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 10,
+          padding: "14px 10px",
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(10,10,10,0.40)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.95)",
+            fontFamily: cinemaFont,
+          }}
         >
-          <img
-            src={currentImageSrc}
-            alt={`${episodeKey}화 ${part}편`}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              filter: "brightness(0.42)",
-            }}
-          />
+          음량
+        </span>
 
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
-            }}
-          />
+        <input
+  type="range"
+  min={0}
+  max={1}
+  step={0.01}
+  value={volume}
+  onInput={(e) => handleVolumeChange(Number((e.target as HTMLInputElement).value))}
+  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+  style={{ width: 120, accentColor: "#e50914", touchAction: "pan-y" }}
+/>
+      </div>
+    )}
 
-          {showPlayerUi && (
-            <button
-  onClick={(e) => {
-    e.stopPropagation();
-    exitCinemaMode();
-  }}
-  style={{
-    position: "absolute",
-    top: 18,
-    right: 18,
-    width: 52,
-    height: 52,
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(15,15,15,0.42)",
-    color: "rgba(255,255,255,0.94)",
-    fontSize: 26,
-    fontWeight: 500,
-    lineHeight: 1,
-    cursor: "pointer",
-    zIndex: 4,
-    backdropFilter: "blur(8px)",
-    fontFamily: cinemaFont,
-  }}
->
-  ×
-</button>
-          )}
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        top: "38%",
+        transform: "translateX(-50%)",
+        width: "82%",
+        display: "flex",
+        justifyContent: "center",
+        pointerEvents: "none",
+        zIndex: 3,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 980,
+          textAlign: "center",
+          fontSize: captionFontSize + 4,
+          fontWeight: 700,
+          lineHeight: 1.58,
+          letterSpacing: "-0.025em",
+          color: "rgba(255,255,255,0.98)",
+          textShadow: "0 2px 8px rgba(0,0,0,0.78)",
+          whiteSpace: "pre-wrap",
+          wordBreak: "keep-all",
+          padding: "0 18px",
+          margin: "0 auto",
+          fontFamily: cinemaFont,
+        }}
+      >
+        {caption || " "}
+      </div>
+    </div>
 
-          <div
+    {showPlayerUi && (
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "58%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 34,
+          zIndex: 4,
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            seekBy(-10);
+          }}
+          style={{
+            width: 82,
+            height: 82,
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(18,18,18,0.38)",
+            color: "rgba(255,255,255,0.96)",
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+            fontFamily: cinemaFont,
+          }}
+        >
+          -10
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePlayPause();
+          }}
+          style={{
+            width: 104,
+            height: 104,
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.16)",
+            background: "rgba(255,255,255,0.12)",
+            color: "white",
+            fontSize: 28,
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(10px)",
+            fontFamily: cinemaFont,
+          }}
+        >
+          {isPlaying ? "❚❚" : "▶"}
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            seekBy(10);
+          }}
+          style={{
+            width: 82,
+            height: 82,
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(18,18,18,0.38)",
+            color: "rgba(255,255,255,0.96)",
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+            fontFamily: cinemaFont,
+          }}
+        >
+          +10
+        </button>
+      </div>
+    )}
+
+    {showPlayerUi && (
+      <div
+        style={{
+          position: "absolute",
+          right: 16,
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <button
+          onClick={(e) => {
+  e.stopPropagation();
+  setShowSpeedMenu(false);
+  setShowCinemaComments(false);
+  setShowPartMenuCinema((v) => !v);
+  resetHideTimer();
+}}
+          style={{
+            width: 74,
+            minHeight: 74,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(10,10,10,0.40)",
+            color: "rgba(255,255,255,0.95)",
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+            fontFamily: cinemaFont,
+          }}
+        >
+          회차
+        </button>
+
+        <button
+          onClick={(e) => {
+  e.stopPropagation();
+  setShowPartMenuCinema(false);
+  setShowCinemaComments(false);
+  setShowSpeedMenu((v) => !v);
+  resetHideTimer();
+}}
+          style={{
+            width: 74,
+            minHeight: 74,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(10,10,10,0.40)",
+            color: "rgba(255,255,255,0.95)",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+            fontFamily: cinemaFont,
+          }}
+        >
+          속도
+          <br />
+          {playbackRate}x
+        </button>
+
+        <button
+          onClick={(e) => {
+  e.stopPropagation();
+  setShowPartMenuCinema(false);
+  setShowSpeedMenu(false);
+  setShowCinemaComments((v) => !v);
+  resetHideTimer();
+}}
+          style={{
+            width: 74,
+            minHeight: 74,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(10,10,10,0.40)",
+            color: "rgba(255,255,255,0.95)",
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+            fontFamily: cinemaFont,
+          }}
+        >
+          댓글
+        </button>
+      </div>
+    )}
+
+    {showPlayerUi && (
+      <div
+        style={{
+          position: "absolute",
+          left: 24,
+          right: 24,
+          bottom: 28,
+          zIndex: 4,
+          color: "white",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <span
             style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 140,
-              display: "flex",
-              justifyContent: "center",
-              pointerEvents: "none",
-              zIndex: 3,
+              minWidth: 46,
+              fontSize: 13,
+              fontWeight: 500,
+              color: "rgba(255,255,255,0.88)",
+              fontFamily: cinemaFont,
             }}
           >
-            <div
-  style={{
-    maxWidth: 980,
-    textAlign: "center",
-    fontSize: captionFontSize + 4,
-    fontWeight: 700,
-    lineHeight: 1.58,
-    letterSpacing: "-0.025em",
-    color: "rgba(255,255,255,0.98)",
-    textShadow: "0 2px 8px rgba(0,0,0,0.78)",
-    whiteSpace: "pre-wrap",
-    wordBreak: "keep-all",
-    padding: "0 18px",
-    margin: "0 auto",
-    fontFamily: cinemaFont,
-  }}
->
-  {caption || " "}
-</div>
+            {formatTime(currentTime)}
+          </span>
+
+          <input
+            type="range"
+            min={0}
+            max={Math.max(duration, 0)}
+            step={1}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(e) => handleSeek(Number(e.target.value))}
+            style={{
+              flex: 1,
+              height: 6,
+              accentColor: "#e50914",
+              cursor: "pointer",
+            }}
+          />
+
+          <span
+            style={{
+              minWidth: 46,
+              fontSize: 13,
+              fontWeight: 500,
+              textAlign: "right",
+              color: "rgba(255,255,255,0.88)",
+              fontFamily: cinemaFont,
+            }}
+          >
+            {formatTime(duration)}
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "11px 16px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(10,10,10,0.40)",
+              backdropFilter: "blur(8px)",
+              fontFamily: cinemaFont,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.95)",
+                fontFamily: cinemaFont,
+              }}
+            >
+              자막
+            </span>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCaptionFontSize((v) => Math.max(16, v - 2));
+                resetHideTimer();
+              }}
+              style={{
+                minWidth: 52,
+                height: 52,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.07)",
+                color: "rgba(255,255,255,0.95)",
+                cursor: "pointer",
+                fontSize: 22,
+                fontWeight: 700,
+                fontFamily: cinemaFont,
+              }}
+            >
+              -
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCaptionFontSize((v) => Math.min(66, v + 2));
+                resetHideTimer();
+              }}
+              style={{
+                minWidth: 52,
+                height: 52,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.07)",
+                color: "rgba(255,255,255,0.95)",
+                cursor: "pointer",
+                fontSize: 22,
+                fontWeight: 700,
+                fontFamily: cinemaFont,
+              }}
+            >
+              +
+            </button>
           </div>
+        </div>
 
-          {showPlayerUi && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 34,
-                pointerEvents: "none",
-                zIndex: 4,
-              }}
-            >
+        {showSpeedMenu && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 120,
+              minWidth: 160,
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.88)",
+              padding: 10,
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            {[0.8, 1, 1.2, 1.5].map((rate) => (
               <button
-  onClick={(e) => {
-    e.stopPropagation();
-    seekBy(-10);
-  }}
-  style={{
-    pointerEvents: "auto",
-    width: 82,
-    height: 82,
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(18,18,18,0.38)",
-    color: "rgba(255,255,255,0.96)",
-    fontSize: 18,
-    fontWeight: 700,
-    letterSpacing: "-0.02em",
-    cursor: "pointer",
-    backdropFilter: "blur(8px)",
-    fontFamily: cinemaFont,
-  }}
->
-  -10
-</button>
-
-              <button
-  onClick={(e) => {
-    e.stopPropagation();
-    togglePlayPause();
-  }}
-  style={{
-    pointerEvents: "auto",
-    width: 104,
-    height: 104,
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "rgba(255,255,255,0.12)",
-    color: "white",
-    fontSize: 28,
-    fontWeight: 700,
-    cursor: "pointer",
-    backdropFilter: "blur(10px)",
-    fontFamily: cinemaFont,
-  }}
->
-  {isPlaying ? "❚❚" : "▶"}
-</button>
-
-              <button
-  onClick={(e) => {
-    e.stopPropagation();
-    seekBy(10);
-  }}
-  style={{
-    pointerEvents: "auto",
-    width: 82,
-    height: 82,
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(18,18,18,0.38)",
-    color: "rgba(255,255,255,0.96)",
-    fontSize: 18,
-    fontWeight: 700,
-    letterSpacing: "-0.02em",
-    cursor: "pointer",
-    backdropFilter: "blur(8px)",
-    fontFamily: cinemaFont,
-  }}
->
-  +10
-</button>
-            </div>
-          )}
-
-          {showPlayerUi && (
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                padding: "16px 18px 18px",
-                zIndex: 4,
-                color: "white",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <span
-  style={{
-    minWidth: 46,
-    fontSize: 13,
-    fontWeight: 500,
-    letterSpacing: "-0.01em",
-    color: "rgba(255,255,255,0.88)",
-    fontFamily: cinemaFont,
-  }}
->
-  {formatTime(currentTime)}
-</span>
-
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(duration, 0)}
-                  step={1}
-                  value={Math.min(currentTime, duration || 0)}
-                  onChange={(e) => handleSeek(Number(e.target.value))}
-                  style={{
-                    flex: 1,
-                    height: 6,
-                    accentColor: "#e50914",
-                    cursor: "pointer",
-                  }}
-                />
-
-                <span
-  style={{
-    minWidth: 46,
-    fontSize: 13,
-    fontWeight: 500,
-    letterSpacing: "-0.01em",
-    textAlign: "right",
-    color: "rgba(255,255,255,0.88)",
-    fontFamily: cinemaFont,
-  }}
->
-  {formatTime(duration)}
-</span>
-              </div>
-
-              <div
+                key={rate}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changePlaybackRate(rate);
+                }}
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: 14,
-                  flexWrap: "wrap",
-                  position: "relative",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border:
+                    playbackRate === rate
+                      ? "1px solid rgba(229,9,20,0.8)"
+                      : "1px solid rgba(255,255,255,0.10)",
+                  background:
+                    playbackRate === rate
+                      ? "rgba(229,9,20,0.18)"
+                      : "rgba(255,255,255,0.04)",
+                  color: "white",
+                  fontSize: 15,
+                  fontWeight: 800,
+                  cursor: "pointer",
                 }}
               >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPartMenuCinema((v) => !v);
-                    resetHideTimer();
-                  }}
-                  style={{
-  padding: "11px 16px",
-  borderRadius: 14,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(10,10,10,0.40)",
-  color: "rgba(255,255,255,0.95)",
-  fontSize: 14,
-  fontWeight: 700,
-  letterSpacing: "-0.02em",
-  cursor: "pointer",
-  backdropFilter: "blur(8px)",
-  fontFamily: cinemaFont,
-                  }}
-                >
-                  회차
-                </button>
+                {rate}x
+              </button>
+            ))}
+          </div>
+        )}
 
+        {showPartMenuCinema && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 120,
+              width: "min(260px, 70vw)",
+              maxHeight: 260,
+              overflowY: "auto",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.88)",
+              padding: 10,
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            {showCinemaComments && (
+  <div
+    onClick={(e) => e.stopPropagation()}
+    style={{
+      position: "absolute",
+      right: 16,
+      top: 90,
+      width: "min(420px, 92vw)",
+      height: "min(70vh, 640px)",
+      zIndex: 6,
+      borderRadius: 18,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(8,8,8,0.92)",
+      backdropFilter: "blur(10px)",
+      overflow: "hidden",
+      boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "14px 16px",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        fontWeight: 900,
+        color: "white",
+      }}
+    >
+      <span>댓글</span>
+      <button
+        onClick={() => setShowCinemaComments(false)}
+        style={{
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          color: "white",
+          borderRadius: 10,
+          padding: "6px 10px",
+          cursor: "pointer",
+        }}
+      >
+        닫기
+      </button>
+    </div>
+
+    <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
+      <Comments workId="cheonmujin" episodeId={String(episodeKey)} />
+    </div>
+  </div>
+)}
+            {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
+              const p = i + 1;
+              const isLocked = !isSubscribed && p > unlockedUntil;
+              const isActive = p === part;
+
+              return (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowSpeedMenu((v) => !v);
-                    resetHideTimer();
-                  }}
+                  key={p}
+                  onClick={() => onSelectPart(p)}
                   style={{
-                    padding: "10px 14px",
+                    padding: "12px 14px",
                     borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(0,0,0,0.30)",
-                    color: "white",
-                    fontSize: 15,
-                    fontWeight: 800,
+                    border: isActive
+                      ? "2px solid rgba(255,215,120,0.9)"
+                      : "1px solid rgba(255,255,255,0.14)",
+                    background: isActive
+                      ? "rgba(255,215,120,0.12)"
+                      : "rgba(255,255,255,0.04)",
+                    color: isLocked ? "rgba(255,255,255,0.38)" : "white",
+                    fontWeight: isActive ? 900 : 700,
                     cursor: "pointer",
+                    textAlign: "left",
                   }}
                 >
-                  속도({playbackRate}x)
+                  {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
                 </button>
-
-                <div
-                   style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "11px 16px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(10,10,10,0.40)",
-    backdropFilter: "blur(8px)",
-    fontFamily: cinemaFont,
-                  }}
-                >
-                  <span
-  style={{
-    fontSize: 14,
-    fontWeight: 700,
-    letterSpacing: "-0.02em",
-    color: "rgba(255,255,255,0.95)",
-    fontFamily: cinemaFont,
-  }}
->
-  음량
-</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    defaultValue={1}
-                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    style={{ width: 120, accentColor: "#e50914" }}
-                  />
-                </div>
-
-                <div
-                    style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "11px 16px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(10,10,10,0.40)",
-    backdropFilter: "blur(8px)",
-    fontFamily: cinemaFont,
-                  }}
-                >
-                  <span
-  style={{
-    fontSize: 14,
-    fontWeight: 700,
-    letterSpacing: "-0.02em",
-    color: "rgba(255,255,255,0.95)",
-    fontFamily: cinemaFont,
-  }}
->
-  자막
-</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCaptionFontSize((v) => Math.max(16, v - 2));
-                      resetHideTimer();
-                    }}
-                    style={{
-    minWidth: 34,
-    height: 34,
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.07)",
-    color: "rgba(255,255,255,0.95)",
-    cursor: "pointer",
-    fontSize: 16,
-    fontWeight: 700,
-    fontFamily: cinemaFont,
-                    }}
-                  >
-                    -
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCaptionFontSize((v) => Math.min(40, v + 2));
-                      resetHideTimer();
-                    }}
-                    style={{
-    minWidth: 34,
-    height: 34,
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.07)",
-    color: "rgba(255,255,255,0.95)",
-    cursor: "pointer",
-    fontSize: 16,
-    fontWeight: 700,
-    fontFamily: cinemaFont,
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-
-                {showSpeedMenu && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 58,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      minWidth: 200,
-                      borderRadius: 16,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(0,0,0,0.88)",
-                      padding: 10,
-                      display: "grid",
-                      gap: 8,
-                    }}
-                  >
-                    {[0.8, 1, 1.2, 1.5].map((rate) => (
-                      <button
-                        key={rate}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          changePlaybackRate(rate);
-                        }}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          border:
-                            playbackRate === rate
-                              ? "1px solid rgba(229,9,20,0.8)"
-                              : "1px solid rgba(255,255,255,0.10)",
-                          background:
-                            playbackRate === rate
-                              ? "rgba(229,9,20,0.18)"
-                              : "rgba(255,255,255,0.04)",
-                          color: "white",
-                          fontSize: 15,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {rate}x
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {showPartMenuCinema && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 58,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: "min(420px, 90vw)",
-                      maxHeight: 260,
-                      overflowY: "auto",
-                      borderRadius: 16,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(0,0,0,0.88)",
-                      padding: 10,
-                      display: "grid",
-                      gap: 8,
-                    }}
-                  >
-                    {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
-                      const p = i + 1;
-                      const isLocked = !isSubscribed && p > unlockedUntil;
-                      const isActive = p === part;
-
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => onSelectPart(p)}
-                          style={{
-                            padding: "12px 14px",
-                            borderRadius: 12,
-                            border: isActive
-                              ? "2px solid rgba(255,215,120,0.9)"
-                              : "1px solid rgba(255,255,255,0.14)",
-                            background: isActive
-                              ? "rgba(255,215,120,0.12)"
-                              : "rgba(255,255,255,0.04)",
-                            color: isLocked ? "rgba(255,255,255,0.38)" : "white",
-                            fontWeight: isActive ? 900 : 700,
-                            cursor: "pointer",
-                            textAlign: "left",
-                          }}
-                        >
-                          {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
       <Comments workId="cheonmujin" episodeId={String(episodeKey)} />
     </main>
   );
