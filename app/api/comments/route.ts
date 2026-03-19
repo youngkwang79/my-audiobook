@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
-async function getUserSupabase() {
+async function getServerSupabase() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -27,38 +27,62 @@ async function getUserSupabase() {
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const work_id = url.searchParams.get("work_id");
-  const episode_id = url.searchParams.get("episode_id");
+  try {
+    const url = new URL(req.url);
+    const work_id = url.searchParams.get("work_id");
+    const episode_id = url.searchParams.get("episode_id");
 
-  if (!work_id || !episode_id) {
-    return NextResponse.json(
-      { error: "work_id_and_episode_id_required" },
-      { status: 400 }
-    );
+    if (!work_id || !episode_id) {
+      return NextResponse.json(
+        { error: "work_id_and_episode_id_required" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("episode_comments")
+      .select("id, user_email, content, created_at")
+      .eq("work_id", work_id)
+      .eq("episode_id", episode_id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("comments GET db error:", error);
+      return NextResponse.json(
+        { error: "db_error", detail: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ comments: data ?? [] });
+  } catch (error) {
+    console.error("comments GET server error:", error);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
-
-  const { data, error } = await supabaseAdmin
-    .from("episode_comments")
-    .select("id, user_email, content, created_at")
-    .eq("work_id", work_id)
-    .eq("episode_id", episode_id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    return NextResponse.json({ error: "db_error" }, { status: 500 });
-  }
-
-  return NextResponse.json({ comments: data ?? [] });
 }
 
 export async function POST(req: Request) {
   try {
-    const supabase = await getUserSupabase();
-    const { data: auth } = await supabase.auth.getUser();
+    const supabase = await getServerSupabase();
 
-    if (!auth?.user) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      console.error("comments POST user error:", userError);
+      return NextResponse.json(
+        { error: "user_error", detail: userError.message },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "unauthorized", detail: "no_user_in_server_session" },
+        { status: 401 }
+      );
     }
 
     const body = await req.json().catch(() => null);
@@ -74,21 +98,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "content_too_long" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from("episode_comments").insert({
-      work_id,
-      episode_id,
-      user_id: auth.user.id,
-      user_email: auth.user.email ?? null,
-      content,
-    });
+    const { error: insertError } = await supabaseAdmin
+      .from("episode_comments")
+      .insert({
+        work_id,
+        episode_id,
+        user_id: user.id,
+        user_email: user.email ?? null,
+        content,
+      });
 
-    if (error) {
-      return NextResponse.json({ error: "db_error" }, { status: 500 });
+    if (insertError) {
+      console.error("comments POST insert error:", insertError);
+      return NextResponse.json(
+        { error: "db_error", detail: insertError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error(error);
+    console.error("comments POST server error:", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

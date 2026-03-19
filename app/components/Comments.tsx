@@ -60,14 +60,16 @@ export default function Comments({ workId, episodeId }: Props) {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        if (data?.error === "unauthorized") {
-          alert("로그인이 필요합니다.");
-          return;
-        }
+  console.error("comment submit error:", data);
 
-        alert("댓글 등록에 실패했습니다.");
-        return;
-      }
+  if (data?.error === "unauthorized") {
+    alert(`로그인이 필요합니다. (${data?.detail ?? "unauthorized"})`);
+    return;
+  }
+
+  alert(`댓글 등록 실패: ${data?.detail ?? data?.error ?? "unknown_error"}`);
+  return;
+}
 
       setContent("");
       loadComments();
