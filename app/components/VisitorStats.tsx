@@ -7,29 +7,11 @@ type Stats = {
   total: number;
 };
 
-function getVisitorKey() {
-  if (typeof window === "undefined") return "";
-
-  const KEY = "visitor_key";
-  let value = localStorage.getItem(KEY);
-
-  if (!value) {
-    value = crypto.randomUUID();
-    localStorage.setItem(KEY, value);
-  }
-
-  return value;
-}
-
 export default function VisitorStats() {
   const [stats, setStats] = useState<Stats>({ today: 0, total: 0 });
 
   useEffect(() => {
-    const visitorKey = getVisitorKey();
     const pagePath = window.location.pathname;
-
-    console.log("visitorKey:", visitorKey);
-    console.log("pagePath:", pagePath);
 
     fetch("/api/visits/track", {
       method: "POST",
@@ -37,33 +19,21 @@ export default function VisitorStats() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        visitor_key: visitorKey,
         page_path: pagePath,
       }),
-    })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null);
-        console.log("track:", res.status, data);
-      })
-      .catch((err) => {
-        console.error("track fetch error:", err);
-      })
-      .finally(() => {
-        fetch("/api/visits/stats", { cache: "no-store" })
-          .then(async (res) => {
-            const data = await res.json().catch(() => null);
-            console.log("stats:", res.status, data);
-
-            setStats({
-              today: Number(data?.today ?? 0),
-              total: Number(data?.total ?? 0),
-            });
-          })
-          .catch((err) => {
-            console.error("stats fetch error:", err);
-            setStats({ today: 0, total: 0 });
+    }).finally(() => {
+      fetch("/api/visits/stats", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) => {
+          setStats({
+            today: Number(data?.today ?? 0),
+            total: Number(data?.total ?? 0),
           });
-      });
+        })
+        .catch(() => {
+          setStats({ today: 0, total: 0 });
+        });
+    });
   }, []);
 
   return (
