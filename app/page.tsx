@@ -9,7 +9,7 @@ import { works } from "./data/works";
 
 
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/app/lib/supabaseClient";
 
 type LastPlayed = {
   episodeId: number;
@@ -294,7 +294,7 @@ export default function Home() {
           return (
             <Link
             key={work.id}
-              href={user ? `/work/${work.id}` : `/login?redirect=${encodeURIComponent(`/work/${work.id}`)}`}
+              href={`/work/${work.id}`}
   style={{ textDecoration: "none", color: "inherit", width: "100%" }}
   onMouseEnter={() => setHoveredId(work.id)}
   onMouseLeave={() => setHoveredId(null)}

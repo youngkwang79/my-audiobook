@@ -1,74 +1,15 @@
 "use client";
 
+import { works } from "@/app/data/works";
+import { getEpisodesByWork, getTotalPartsByWork } from "@/app/data/episodes";
 import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/app/lib/supabaseClient";
 import Comments from "@/app/components/Comments";
 
-const DEFAULT_TOTAL_PARTS = 30;
 const DEFAULT_FREE_PARTS = 8;
 const POINTS_PER_PART = 60;
-const SERIES_PREFIX = "cheonmujin";
-const WORK_THUMBNAIL = "/thumbnails/cheonmujin.jpg";
-
-const EPISODE_TOTAL_PARTS: Record<string, number> = {
-  "1": 4,
-  "2": 6,
-  "3": 4,
-  "4": 3,
-  "5": 3,
-  "6": 6,
-  "7": 5,
-  "8": 6,
-  "9": 5,
-  "10": 4,
-  "11": 5,
-  "12": 1,
-  "13": 1,
-  "14": 1,
-  "15": 1,
-  "16": 1,
-  "17": 1,
-  "18": 1,
-  "19": 1,
-  "20": 1,
-  "21": 1,
-  "22": 1,
-  "23": 1,
-  "24": 1,
-  "25": 10,
-  "26": 25,
-  "27": 1,
-  "28": 1,
-  "29": 1,
-  "30": 1,
-  "31": 1,
-  "32": 1,
-  "32-1": 1,
-  "33": 1,
-  "34": 1,
-  "35": 1,
-  "36": 1,
-  "37": 1,
-  "38": 1,
-  "39": 1,
-  "40": 1,
-  "41": 1,
-  "42": 10,
-  "43": 12,
-  "44": 1,
-  "45": 9,
-  "46": 9,
-  "47": 1,
-  "48": 11,
-  "49": 1,
-  "50": 1,
-  "51": 26,
-  "52": 1,
-  "53": 1,
-  "54": 15,
-};
 
 type EntitlementPayload = {
   points: number;
@@ -97,12 +38,8 @@ function getEpisodeFolder(episodeKey: string) {
   return `${pad3(Number(m[1]))}-${m[2]}`;
 }
 
-function getTotalParts(episodeKey: string) {
-  return EPISODE_TOTAL_PARTS[episodeKey] ?? DEFAULT_TOTAL_PARTS;
-}
-
-function getFreeParts(episodeKey: string) {
-  return Math.min(DEFAULT_FREE_PARTS, getTotalParts(episodeKey));
+function getFreeParts(workId: string, episodeKey: string) {
+  return Math.min(DEFAULT_FREE_PARTS, getTotalPartsByWork(workId, episodeKey));
 }
 
 async function getAccessToken() {
@@ -117,7 +54,7 @@ async function getAccessToken() {
   return session?.access_token ?? null;
 }
 
-async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload> {
+async function fetchEntitlement(workId: string, episodeKey: string): Promise<EntitlementPayload> {
   const token = await getAccessToken();
 
   if (!token) {
@@ -129,7 +66,7 @@ async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload>
   }
 
   const qs = new URLSearchParams({
-    work_id: SERIES_PREFIX,
+    work_id: workId,
     episode_id: episodeKey,
   });
 
@@ -141,39 +78,60 @@ async function fetchEntitlement(episodeKey: string): Promise<EntitlementPayload>
     cache: "no-store",
   });
 
-  if (res.status === 401) {
-    return {
-      points: 0,
-      is_subscribed: false,
-      unlocked_until_part: null,
-    };
-  }
-
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`failed_to_fetch_entitlements: ${res.status} ${text}`);
+    throw new Error("entitlement fetch 실패");
   }
 
-  return res.json();
+  return await res.json();
 }
 
-const LAST_NUM_EPISODE = Math.max(
-  ...Object.keys(EPISODE_TOTAL_PARTS)
-    .filter((k) => /^\d+$/.test(k))
-    .map((k) => Number(k))
-);
-
 export default function EpisodePage() {
-  
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const episodeKey = String(params.id);
+  const workId = String((params as any).workId);
+  const episodeKey = String((params as any).id);
+
+  const work = works.find((w) => w.id === workId);
+  const episodes = getEpisodesByWork(workId);
+  const currentEpisode = episodes.find((ep) => String(ep.id) === episodeKey);
+  const workThumbnail = work?.thumbnail ?? "/thumbnails/cheonmujin.jpg";
+
+  const SERIES_PREFIX = workId;
+  const WORK_THUMBNAIL = workThumbnail;
+
   const autoplay = searchParams.get("autoplay") === "1";
 
-  const TOTAL_PARTS = useMemo(() => getTotalParts(episodeKey), [episodeKey]);
-  const FREE_PARTS = useMemo(() => getFreeParts(episodeKey), [episodeKey]);
+  if (!work) {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          background: "#0b0b12",
+          color: "white",
+          padding: 20,
+        }}
+      >
+        <div>존재하지 않는 작품입니다.</div>
+      </main>
+    );
+  }
+
+  const TOTAL_PARTS = useMemo(
+    () => getTotalPartsByWork(workId, episodeKey),
+    [workId, episodeKey]
+  );
+
+  const FREE_PARTS = useMemo(
+    () => getFreeParts(workId, episodeKey),
+    [workId, episodeKey]
+  );
+
+  const currentEpisodeIndex = useMemo(
+    () => episodes.findIndex((ep) => String(ep.id) === episodeKey),
+    [episodes, episodeKey]
+  );
 
   const [captionFontSize, setCaptionFontSize] = useState(32);
   const [showPartList, setShowPartList] = useState(false);
@@ -184,8 +142,9 @@ export default function EpisodePage() {
   const [autoUnlockBusy, setAutoUnlockBusy] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [autoEnteredCinema, setAutoEnteredCinema] = useState(false);
+
   const cinemaFont =
-  '"Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif';
+    '"Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif';
 
   const [playbackRate, setPlaybackRate] = useState(1);
   const [volume, setVolume] = useState(1);
@@ -217,29 +176,33 @@ export default function EpisodePage() {
   const [imageIndex, setImageIndex] = useState(0);
   const [imageErrorCount, setImageErrorCount] = useState(0);
 
-  const R2_BASE = "https://pub-593ff1dc4440464cb156da505f73a555.r2.dev";
+  const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
 
   const getR2AudioUrl = (episodeKeyValue: string, partValue: number) => {
     const folder = getEpisodeFolder(episodeKeyValue);
-    return `${R2_BASE}/${folder}/${pad2(partValue)}.MP3`;
+    return `${R2_BASE}/${SERIES_PREFIX}/${folder}/${pad2(partValue)}.MP3`;
   };
 
   const getR2ImageCandidates = (episodeKeyValue: string, _partValue: number) => {
     const folder = getEpisodeFolder(episodeKeyValue);
-    const base = `${R2_BASE}/${folder}/01`;
+    const base = `${R2_BASE}/${SERIES_PREFIX}/${folder}/01`;
     return [`${base}.jpg`, `${base}.jpeg`, `${base}.png`, `${base}.webp`];
   };
 
   const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
     const folder = getEpisodeFolder(episodeKeyValue);
-    return `${R2_BASE}/${folder}/${pad2(partValue)}.json`;
+    return `${R2_BASE}/${SERIES_PREFIX}/${folder}/${pad2(partValue)}.json`;
   };
 
   const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
-    `${WORKER_BASE}/?episode=${encodeURIComponent(episodeKeyValue)}&part=${encodeURIComponent(String(partValue))}`;
+    `${WORKER_BASE}/?workId=${encodeURIComponent(SERIES_PREFIX)}&episode=${encodeURIComponent(
+      episodeKeyValue
+    )}&part=${encodeURIComponent(String(partValue))}`;
 
-  const audioSrc = !lockedMemo(isSubscribed, part, unlockedUntil) ? getR2AudioUrl(episodeKey, part) : null;
+  const audioSrc = !lockedMemo(isSubscribed, part, unlockedUntil)
+    ? getR2AudioUrl(episodeKey, part)
+    : null;
 
   const imageCandidates = useMemo(
     () => getR2ImageCandidates(episodeKey, part),
@@ -271,18 +234,19 @@ export default function EpisodePage() {
   }, []);
 
   useEffect(() => {
-    if (!episodeKey) return;
+    if (!workId || !episodeKey) return;
     if (!Number.isFinite(part)) return;
 
     localStorage.setItem(
       "lastPlayed",
       JSON.stringify({
+        workId,
         episodeId: episodeKey,
         part,
         updatedAt: Date.now(),
       })
     );
-  }, [episodeKey, part]);
+  }, [workId, episodeKey, part]);
 
   useEffect(() => {
     const p = Number(searchParams.get("part") || 1);
@@ -296,7 +260,7 @@ export default function EpisodePage() {
 
     (async () => {
       try {
-        const data = await fetchEntitlement(episodeKey);
+        const data = await fetchEntitlement(workId, episodeKey);
         if (!alive) return;
 
         setIsSubscribed(!!data.is_subscribed);
@@ -320,7 +284,7 @@ export default function EpisodePage() {
     return () => {
       alive = false;
     };
-  }, [episodeKey, FREE_PARTS, TOTAL_PARTS]);
+  }, [workId, episodeKey, FREE_PARTS, TOTAL_PARTS]);
 
   useEffect(() => {
     setImageIndex(0);
@@ -328,7 +292,6 @@ export default function EpisodePage() {
   }, [episodeKey, part]);
 
   function parseSegmentsFromSavedJson(saved: any): Segment[] {
-    
     const aiResp = saved?.aiResp ?? saved;
     const segs = aiResp?.segments;
 
@@ -393,11 +356,11 @@ export default function EpisodePage() {
       if (!alive) return;
 
       if (r2.ok) {
-  const parsed = parseSegmentsFromSavedJson(r2.data);
-  setSegments(parsed);
-  setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
-  return;
-}
+        const parsed = parseSegmentsFromSavedJson(r2.data);
+        setSegments(parsed);
+        setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+        return;
+      }
 
       setCaptionStatus("자막 생성 중(처음 1회)...");
 
@@ -420,10 +383,9 @@ export default function EpisodePage() {
         return;
       }
 
-     
-const parsed2 = parseSegmentsFromSavedJson(r2b.data);
-setSegments(parsed2);
-setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+      const parsed2 = parseSegmentsFromSavedJson(r2b.data);
+      setSegments(parsed2);
+      setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
     }
 
     loadCaptions().catch((error) => {
@@ -438,28 +400,28 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
   }, [episodeKey, part, locked]);
 
   const updateCaptionByTime = (t: number) => {
-  const segs = segments;
-  if (!segs.length) {
-    setCaption("");
-    return;
-  }
+    const segs = segments;
+    if (!segs.length) {
+      setCaption("");
+      return;
+    }
 
-  let i = segIndexRef.current;
-  i = Math.max(0, Math.min(i, segs.length - 1));
+    let i = segIndexRef.current;
+    i = Math.max(0, Math.min(i, segs.length - 1));
 
-  while (i < segs.length - 1 && t > segs[i].end) i++;
-  while (i > 0 && t < segs[i].start) i--;
+    while (i < segs.length - 1 && t > segs[i].end) i++;
+    while (i > 0 && t < segs[i].start) i--;
 
-  segIndexRef.current = i;
+    segIndexRef.current = i;
 
-  const current = segs[i];
-  if (!(t >= current.start && t <= current.end + 0.2)) {
-    setCaption("");
-    return;
-  }
+    const current = segs[i];
+    if (!(t >= current.start && t <= current.end + 0.2)) {
+      setCaption("");
+      return;
+    }
 
-  setCaption(String(current.text || "").trim());
-};
+    setCaption(String(current.text || "").trim());
+  };
 
   const onTimeUpdate = () => {
     const a = audioRef.current;
@@ -469,8 +431,6 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
     updateCaptionByTime(a.currentTime);
   };
 
-
-  
   function formatTime(sec: number) {
     const safe = Math.max(0, Math.floor(sec || 0));
     const m = Math.floor(safe / 60);
@@ -562,10 +522,10 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
   };
 
   const exitCinemaMode = async () => {
-  setPlayerLandscapeMode(false);
-  setShowSpeedMenu(false);
-  setShowPartMenuCinema(false);
-  setShowCinemaComments(false);
+    setPlayerLandscapeMode(false);
+    setShowSpeedMenu(false);
+    setShowPartMenuCinema(false);
+    setShowCinemaComments(false);
 
     try {
       if (document.fullscreenElement && document.exitFullscreen) {
@@ -653,25 +613,25 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
   const goNextEpisode = async () => {
     if (isNavigatingRef.current) return;
 
-    if (!/^\d+$/.test(episodeKey)) {
-      setStatus("다음 화 자동이동은 숫자 화에서만 지원됩니다.");
+    if (currentEpisodeIndex < 0) {
+      setStatus("현재 화 정보를 찾을 수 없습니다.");
       return;
     }
 
-    const currentEp = Number(episodeKey);
-    if (!Number.isFinite(currentEp) || currentEp >= LAST_NUM_EPISODE) {
+    const nextEpisode = episodes[currentEpisodeIndex + 1];
+    if (!nextEpisode) {
       setStatus("마지막 화입니다.");
       return;
     }
 
     isNavigatingRef.current = true;
-    const nextEpisodeKey = String(currentEp + 1);
+    const nextEpisodeKey = String(nextEpisode.id);
 
     try {
       const token = await getAccessToken();
 
       if (!token) {
-        router.replace(`/episode/${nextEpisodeKey}?part=1`);
+        router.replace(`/episode/${workId}/${nextEpisodeKey}?part=1`);
         return;
       }
 
@@ -692,11 +652,11 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
 
       const nextUnlockedUntil = Number(data?.unlocked_until_part ?? 0);
       const nextPoints = Number(data?.points ?? points);
-      const nextLocked = !Number(data?.is_subscribed) && 1 > nextUnlockedUntil;
+      const nextLocked = !Boolean(data?.is_subscribed) && 1 > nextUnlockedUntil;
 
       if (!nextLocked) {
         pendingAutoplayRef.current = true;
-        router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+        router.replace(`/episode/${workId}/${nextEpisodeKey}?part=1&autoplay=1`);
         return;
       }
 
@@ -727,57 +687,15 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
 
           window.dispatchEvent(new Event("wallet-updated"));
           pendingAutoplayRef.current = true;
-          router.replace(`/episode/${nextEpisodeKey}?part=1&autoplay=1`);
+          router.replace(`/episode/${workId}/${nextEpisodeKey}?part=1&autoplay=1`);
           return;
         }
       }
 
-      router.replace(`/episode/${nextEpisodeKey}?part=1`);
+      router.replace(`/episode/${workId}/${nextEpisodeKey}?part=1`);
     } finally {
       isNavigatingRef.current = false;
     }
-  };
-
-  const goNextPart = async () => {
-    if (part >= TOTAL_PARTS) {
-      setStatus("다음 화로 넘어가는 중...");
-      goNextEpisode();
-      return;
-    }
-
-    const next = part + 1;
-    const nextLocked = !isSubscribed && next > unlockedUntil;
-
-    if (!nextLocked) {
-      setPart(next);
-      pendingAutoplayRef.current = true;
-      router.replace(`/episode/${episodeKey}?part=${next}&autoplay=1`);
-      return;
-    }
-
-    if (points >= POINTS_PER_PART && !autoUnlockBusy) {
-      setStatus(`다음 편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
-      setAutoUnlockBusy(true);
-
-      try {
-        const ok = await unlockWithPoints(next);
-        if (!ok) {
-          setPart(next);
-          router.replace(`/episode/${episodeKey}?part=${next}`);
-        }
-      } finally {
-        setAutoUnlockBusy(false);
-      }
-      return;
-    }
-
-    setStatus("다음 편은 잠겨 있고 포인트가 부족합니다.");
-    setPart(next);
-    router.replace(`/episode/${episodeKey}?part=${next}`);
-  };
-
-  const unlockAllParts = () => {
-    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
   };
 
   const unlockWithPoints = async (targetPart = part) => {
@@ -786,7 +704,7 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
 
       if (!token) {
         alert("로그인이 필요합니다.");
-        router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
+        router.push(`/login?redirect=/episode/${workId}/${episodeKey}?part=${targetPart}`);
         return false;
       }
 
@@ -813,7 +731,7 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
 
         if (data?.error === "unauthorized") {
           alert("로그인이 필요합니다.");
-          router.push(`/login?redirect=/episode/${episodeKey}?part=${targetPart}`);
+          router.push(`/login?redirect=/episode/${workId}/${episodeKey}?part=${targetPart}`);
           return false;
         }
 
@@ -839,13 +757,55 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
       } catch {}
 
       window.dispatchEvent(new Event("wallet-updated"));
-      router.replace(`/episode/${episodeKey}?part=${targetPart}&autoplay=1`);
+      router.replace(`/episode/${workId}/${episodeKey}?part=${targetPart}&autoplay=1`);
       return true;
     } catch (error) {
       console.error(error);
       alert("네트워크 오류가 발생했습니다.");
       return false;
     }
+  };
+
+  const goNextPart = async () => {
+    if (part >= TOTAL_PARTS) {
+      setStatus("다음 화로 넘어가는 중...");
+      goNextEpisode();
+      return;
+    }
+
+    const next = part + 1;
+    const nextLocked = !isSubscribed && next > unlockedUntil;
+
+    if (!nextLocked) {
+      setPart(next);
+      pendingAutoplayRef.current = true;
+      router.replace(`/episode/${workId}/${episodeKey}?part=${next}&autoplay=1`);
+      return;
+    }
+
+    if (points >= POINTS_PER_PART && !autoUnlockBusy) {
+      setStatus(`다음 편이 잠겨 있어 ${POINTS_PER_PART}P로 자동 오픈 중...`);
+      setAutoUnlockBusy(true);
+
+      try {
+        const ok = await unlockWithPoints(next);
+        if (!ok) {
+          setPart(next);
+          router.replace(`/episode/${workId}/${episodeKey}?part=${next}`);
+        }
+      } finally {
+        setAutoUnlockBusy(false);
+      }
+      return;
+    }
+
+    setStatus("다음 편은 잠겨 있고 포인트가 부족합니다.");
+    setPart(next);
+    router.replace(`/episode/${workId}/${episodeKey}?part=${next}`);
+  };
+
+  const unlockAllParts = () => {
+    alert("광고 리워드(서버 검증) 붙이면 전체 오픈으로 연결됩니다. 지금은 준비중입니다.");
   };
 
   const onSelectPart = async (p: number) => {
@@ -856,19 +816,19 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
     const pLocked = !isSubscribed && p > unlockedUntil;
 
     if (!pLocked) {
-      router.replace(`/episode/${episodeKey}?part=${p}&autoplay=1`);
+      router.replace(`/episode/${workId}/${episodeKey}?part=${p}&autoplay=1`);
       return;
     }
 
     if (points >= POINTS_PER_PART) {
       const ok = await unlockWithPoints(p);
       if (!ok) {
-        router.replace(`/episode/${episodeKey}?part=${p}`);
+        router.replace(`/episode/${workId}/${episodeKey}?part=${p}`);
       }
       return;
     }
 
-    router.replace(`/episode/${episodeKey}?part=${p}`);
+    router.replace(`/episode/${workId}/${episodeKey}?part=${p}`);
   };
 
   return (
@@ -892,7 +852,8 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
       {!playerLandscapeMode && <TopBar />}
 
       <h1 style={{ marginTop: 14 }}>
-        {episodeKey}화 - {part}편
+        {work.title} · {episodeKey}화
+        {currentEpisode?.title ? ` - ${currentEpisode.title}` : ""} · {part}편
       </h1>
 
       <div
@@ -905,8 +866,6 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
         }}
       >
         <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
-          
-
           <div style={{ marginBottom: 10 }}>
             <button
               onClick={() => setShowPartList((v) => !v)}
@@ -1006,8 +965,11 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
             >
               {caption || " "}
             </div>
-
-            
+            {!caption && !locked && (
+              <div style={{ marginTop: 12, fontSize: 12, opacity: 0.65 }}>
+                {captionStatus || (entBusy ? "권한 확인 중..." : "")}
+              </div>
+            )}
           </div>
 
           <div
@@ -1070,81 +1032,83 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
               {captionFontSize}
             </span>
           </div>
-{!locked && (
-  <audio
-    key={`${episodeKey}-${part}`}
-    ref={audioRef}
-    src={audioSrc!}
-    controls={!playerLandscapeMode}
-    preload="auto"
-    autoPlay
-    style={
-      playerLandscapeMode
-        ? {
-            position: "fixed",
-            width: 1,
-            height: 1,
-            opacity: 0,
-            pointerEvents: "none",
-            left: -9999,
-            top: -9999,
-          }
-        : {
-            width: "100%",
-            marginBottom: 16,
-          }
-    }
-    onLoadedMetadata={() => {
-      const a = audioRef.current;
-      if (!a) return;
 
-      setDuration(a.duration || 0);
-      a.playbackRate = playbackRate;
-      a.volume = volume;
+          {!locked && (
+            <audio
+              key={`${workId}-${episodeKey}-${part}`}
+              ref={audioRef}
+              src={audioSrc!}
+              controls={!playerLandscapeMode}
+              preload="auto"
+              autoPlay
+              style={
+                playerLandscapeMode
+                  ? {
+                      position: "fixed",
+                      width: 1,
+                      height: 1,
+                      opacity: 0,
+                      pointerEvents: "none",
+                      left: -9999,
+                      top: -9999,
+                    }
+                  : {
+                      width: "100%",
+                      marginBottom: 16,
+                    }
+              }
+              onLoadedMetadata={() => {
+                const a = audioRef.current;
+                if (!a) return;
 
-      if (resumeTime > 0) {
-        a.currentTime = resumeTime;
-        setCurrentTime(resumeTime);
-      }
+                setDuration(a.duration || 0);
+                a.playbackRate = playbackRate;
+                a.volume = volume;
 
-      if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
+                if (resumeTime > 0) {
+                  a.currentTime = resumeTime;
+                  setCurrentTime(resumeTime);
+                }
 
-      a.play()
-        .then(async () => {
-          setIsPlaying(true);
-          setStatus("재생 중");
-          pendingAutoplayRef.current = false;
+                if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
 
-          if (isMobile && !autoEnteredCinema) {
-            setAutoEnteredCinema(true);
-            await enterCinemaMode();
-          }
-        })
-        .catch(() => {
-          setIsPlaying(false);
-          setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
-        });
-    }}
-    onPlay={() => {
-      setIsPlaying(true);
-      setStatus("재생 중");
-    }}
-    onPause={() => {
-      setIsPlaying(false);
-      setStatus("일시정지");
-    }}
-    onError={() => {
-      setIsPlaying(false);
-      setStatus(`오디오 로드 실패: ${audioSrc}`);
-    }}
-    onEnded={() => {
-      setIsPlaying(false);
-      setStatus("다음으로 넘어가는 중...");
-      goNextPart();
-    }}
-    onTimeUpdate={onTimeUpdate}
-  />
-)}
+                a.play()
+                  .then(async () => {
+                    setIsPlaying(true);
+                    setStatus("재생 중");
+                    pendingAutoplayRef.current = false;
+
+                    if (isMobile && !autoEnteredCinema) {
+                      setAutoEnteredCinema(true);
+                      await enterCinemaMode();
+                    }
+                  })
+                  .catch(() => {
+                    setIsPlaying(false);
+                    setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
+                  });
+              }}
+              onPlay={() => {
+                setIsPlaying(true);
+                setStatus("재생 중");
+              }}
+              onPause={() => {
+                setIsPlaying(false);
+                setStatus("일시정지");
+              }}
+              onError={() => {
+                setIsPlaying(false);
+                setStatus(`오디오 로드 실패: ${audioSrc}`);
+              }}
+              onEnded={() => {
+                setIsPlaying(false);
+                setStatus("다음으로 넘어가는 중...");
+                goNextPart();
+              }}
+              onTimeUpdate={onTimeUpdate}
+            />
+          )}
+
           {!locked && (
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <button
@@ -1206,7 +1170,7 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
           >
             <img
               src={currentImageSrc}
-              alt={`${episodeKey}화 ${part}편 이미지`}
+              alt={`${work.title} ${episodeKey}화 ${part}편 이미지`}
               onError={() => {
                 if (imageErrorCount < imageCandidates.length) {
                   setImageErrorCount((prev) => prev + 1);
@@ -1264,7 +1228,7 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
                     <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>잠금 편</div>
 
                     <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>
-                      {episodeKey}화 {part}편은 잠겨 있어요
+                      {work.title} {episodeKey}화 {part}편은 잠겨 있어요
                     </div>
 
                     <div
@@ -1365,612 +1329,620 @@ setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 
       </div>
 
       {playerLandscapeMode && !locked && (
-  <div
-    onMouseMove={handlePlayerInteraction}
-    onTouchStart={handlePlayerInteraction}
-
-
-    onClick={() => {
-  setShowPartMenuCinema(false);
-  setShowSpeedMenu(false);
-  setShowCinemaComments(false);
-  handlePlayerInteraction();
-}}
-    style={{
-      position: "fixed",
-      inset: 0,
-      zIndex: 9999,
-      background: "#000",
-      overflow: "hidden",
-      fontFamily: cinemaFont,
-    }}
-  >
-    <img
-      src={currentImageSrc}
-      alt={`${episodeKey}화 ${part}편`}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        filter: "brightness(0.42)",
-      }}
-    />
-
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background:
-          "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
-      }}
-    />
-
-    {showPlayerUi && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          exitCinemaMode();
-        }}
-        style={{
-          position: "absolute",
-          top: 18,
-          right: 18,
-          width: 52,
-          height: 52,
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(15,15,15,0.42)",
-          color: "rgba(255,255,255,0.94)",
-          fontSize: 26,
-          fontWeight: 500,
-          lineHeight: 1,
-          cursor: "pointer",
-          zIndex: 4,
-          backdropFilter: "blur(8px)",
-          fontFamily: cinemaFont,
-        }}
-      >
-        ×
-      </button>
-    )}
-
-    {showPlayerUi && (
-      <div
-        style={{
-          position: "absolute",
-          left: 16,
-          top: "50%",
-          transform: "translateY(-50%)",
-          zIndex: 4,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 10,
-          padding: "14px 10px",
-          borderRadius: 18,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "rgba(10,10,10,0.40)",
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "rgba(255,255,255,0.95)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          음량
-        </span>
-
-        <input
-  type="range"
-  min={0}
-  max={1}
-  step={0.01}
-  value={volume}
-  onInput={(e) => handleVolumeChange(Number((e.target as HTMLInputElement).value))}
-  onChange={(e) => handleVolumeChange(Number(e.target.value))}
-  style={{ width: 120, accentColor: "#e50914", touchAction: "pan-y" }}
-/>
-      </div>
-    )}
-
-    <div
-      style={{
-        position: "absolute",
-        left: "50%",
-        top: "38%",
-        transform: "translateX(-50%)",
-        width: "82%",
-        display: "flex",
-        justifyContent: "center",
-        pointerEvents: "none",
-        zIndex: 3,
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 980,
-          textAlign: "center",
-          fontSize: captionFontSize + 4,
-          fontWeight: 700,
-          lineHeight: 1.58,
-          letterSpacing: "-0.025em",
-          color: "rgba(255,255,255,0.98)",
-          textShadow: "0 2px 8px rgba(0,0,0,0.78)",
-          whiteSpace: "pre-wrap",
-          wordBreak: "keep-all",
-          padding: "0 18px",
-          margin: "0 auto",
-          fontFamily: cinemaFont,
-        }}
-      >
-        {caption || " "}
-      </div>
-    </div>
-
-    {showPlayerUi && (
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "58%",
-          transform: "translateX(-50%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 34,
-          zIndex: 4,
-        }}
-      >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            seekBy(-10);
-          }}
-          style={{
-            width: 82,
-            height: 82,
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(18,18,18,0.38)",
-            color: "rgba(255,255,255,0.96)",
-            fontSize: 18,
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          -10
-        </button>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            togglePlayPause();
-          }}
-          style={{
-            width: 104,
-            height: 104,
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.16)",
-            background: "rgba(255,255,255,0.12)",
-            color: "white",
-            fontSize: 28,
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          {isPlaying ? "❚❚" : "▶"}
-        </button>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            seekBy(10);
-          }}
-          style={{
-            width: 82,
-            height: 82,
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(18,18,18,0.38)",
-            color: "rgba(255,255,255,0.96)",
-            fontSize: 18,
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          +10
-        </button>
-      </div>
-    )}
-
-    {showPlayerUi && (
-      <div
-        style={{
-          position: "absolute",
-          right: 16,
-          top: "50%",
-          transform: "translateY(-50%)",
-          zIndex: 4,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <button
-          onClick={(e) => {
-  e.stopPropagation();
-  setShowSpeedMenu(false);
-  setShowCinemaComments(false);
-  setShowPartMenuCinema((v) => !v);
-  resetHideTimer();
-}}
-          style={{
-            width: 74,
-            minHeight: 74,
-            borderRadius: 18,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(10,10,10,0.40)",
-            color: "rgba(255,255,255,0.95)",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          회차
-        </button>
-
-        <button
-          onClick={(e) => {
-  e.stopPropagation();
-  setShowPartMenuCinema(false);
-  setShowCinemaComments(false);
-  setShowSpeedMenu((v) => !v);
-  resetHideTimer();
-}}
-          style={{
-            width: 74,
-            minHeight: 74,
-            borderRadius: 18,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(10,10,10,0.40)",
-            color: "rgba(255,255,255,0.95)",
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          속도
-          <br />
-          {playbackRate}x
-        </button>
-
-        <button
-          onClick={(e) => {
-  e.stopPropagation();
-  setShowPartMenuCinema(false);
-  setShowSpeedMenu(false);
-  setShowCinemaComments((v) => !v);
-  resetHideTimer();
-}}
-          style={{
-            width: 74,
-            minHeight: 74,
-            borderRadius: 18,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(10,10,10,0.40)",
-            color: "rgba(255,255,255,0.95)",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            fontFamily: cinemaFont,
-          }}
-        >
-          댓글
-        </button>
-      </div>
-    )}
-
-    {showPlayerUi && (
-      <div
-        style={{
-          position: "absolute",
-          left: 24,
-          right: 24,
-          bottom: 28,
-          zIndex: 4,
-          color: "white",
-        }}
-      >
         <div
+          onMouseMove={handlePlayerInteraction}
+          onTouchStart={handlePlayerInteraction}
+          onClick={() => {
+            setShowPartMenuCinema(false);
+            setShowSpeedMenu(false);
+            setShowCinemaComments(false);
+            handlePlayerInteraction();
+          }}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 16,
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "#000",
+            overflow: "hidden",
+            fontFamily: cinemaFont,
           }}
         >
-          <span
+          <img
+            src={currentImageSrc}
+            alt={`${work.title} ${episodeKey}화 ${part}편`}
             style={{
-              minWidth: 46,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.88)",
-              fontFamily: cinemaFont,
-            }}
-          >
-            {formatTime(currentTime)}
-          </span>
-
-          <input
-            type="range"
-            min={0}
-            max={Math.max(duration, 0)}
-            step={1}
-            value={Math.min(currentTime, duration || 0)}
-            onChange={(e) => handleSeek(Number(e.target.value))}
-            style={{
-              flex: 1,
-              height: 6,
-              accentColor: "#e50914",
-              cursor: "pointer",
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "brightness(0.42)",
             }}
           />
 
-          <span
-            style={{
-              minWidth: 46,
-              fontSize: 13,
-              fontWeight: 500,
-              textAlign: "right",
-              color: "rgba(255,255,255,0.88)",
-              fontFamily: cinemaFont,
-            }}
-          >
-            {formatTime(duration)}
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "11px 16px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(10,10,10,0.40)",
-              backdropFilter: "blur(8px)",
-              fontFamily: cinemaFont,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.95)",
-                fontFamily: cinemaFont,
-              }}
-            >
-              자막
-            </span>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setCaptionFontSize((v) => Math.max(16, v - 2));
-                resetHideTimer();
-              }}
-              style={{
-                minWidth: 52,
-                height: 52,
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.07)",
-                color: "rgba(255,255,255,0.95)",
-                cursor: "pointer",
-                fontSize: 22,
-                fontWeight: 700,
-                fontFamily: cinemaFont,
-              }}
-            >
-              -
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setCaptionFontSize((v) => Math.min(66, v + 2));
-                resetHideTimer();
-              }}
-              style={{
-                minWidth: 52,
-                height: 52,
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.07)",
-                color: "rgba(255,255,255,0.95)",
-                cursor: "pointer",
-                fontSize: 22,
-                fontWeight: 700,
-                fontFamily: cinemaFont,
-              }}
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        {showSpeedMenu && (
           <div
             style={{
               position: "absolute",
-              right: 0,
-              bottom: 120,
-              minWidth: 160,
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.88)",
-              padding: 10,
-              display: "grid",
-              gap: 8,
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
             }}
-          >
-            {[0.8, 1, 1.2, 1.5].map((rate) => (
-              <button
-                key={rate}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  changePlaybackRate(rate);
-                }}
+          />
+
+          {showPlayerUi && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                exitCinemaMode();
+              }}
+              style={{
+                position: "absolute",
+                top: 18,
+                right: 18,
+                width: 52,
+                height: 52,
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(15,15,15,0.42)",
+                color: "rgba(255,255,255,0.94)",
+                fontSize: 26,
+                fontWeight: 500,
+                lineHeight: 1,
+                cursor: "pointer",
+                zIndex: 4,
+                backdropFilter: "blur(8px)",
+                fontFamily: cinemaFont,
+              }}
+            >
+              ×
+            </button>
+          )}
+
+          {showPlayerUi && (
+            <div
+              style={{
+                position: "absolute",
+                left: 16,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 4,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+                padding: "14px 10px",
+                borderRadius: 18,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(10,10,10,0.40)",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <span
                 style={{
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  border:
-                    playbackRate === rate
-                      ? "1px solid rgba(229,9,20,0.8)"
-                      : "1px solid rgba(255,255,255,0.10)",
-                  background:
-                    playbackRate === rate
-                      ? "rgba(229,9,20,0.18)"
-                      : "rgba(255,255,255,0.04)",
-                  color: "white",
-                  fontSize: 15,
-                  fontWeight: 800,
-                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.95)",
+                  fontFamily: cinemaFont,
                 }}
               >
-                {rate}x
-              </button>
-            ))}
-          </div>
-        )}
+                음량
+              </span>
 
-        {showPartMenuCinema && (
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onInput={(e) => handleVolumeChange(Number((e.target as HTMLInputElement).value))}
+                onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                style={{
+                  writingMode: "vertical-lr" as any,
+                  WebkitAppearance: "slider-vertical",
+                  width: 28,
+                  height: 150,
+                  accentColor: "#e50914",
+                  cursor: "pointer",
+                  touchAction: "pan-y",
+                }}
+              />
+            </div>
+          )}
+
           <div
             style={{
               position: "absolute",
-              right: 0,
-              bottom: 120,
-              width: "min(260px, 70vw)",
-              maxHeight: 260,
-              overflowY: "auto",
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.88)",
-              padding: 10,
-              display: "grid",
-              gap: 8,
+              left: "50%",
+              top: "38%",
+              transform: "translateX(-50%)",
+              width: "82%",
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+              zIndex: 3,
             }}
           >
-            {showCinemaComments && (
-  <div
-    onClick={(e) => e.stopPropagation()}
-    style={{
-      position: "absolute",
-      right: 16,
-      top: 90,
-      width: "min(420px, 92vw)",
-      height: "min(70vh, 640px)",
-      zIndex: 6,
-      borderRadius: 18,
-      border: "1px solid rgba(255,255,255,0.12)",
-      background: "rgba(8,8,8,0.92)",
-      backdropFilter: "blur(10px)",
-      overflow: "hidden",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
-    }}
-  >
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "14px 16px",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        fontWeight: 900,
-        color: "white",
-      }}
-    >
-      <span>댓글</span>
-      <button
-        onClick={() => setShowCinemaComments(false)}
-        style={{
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "rgba(255,255,255,0.06)",
-          color: "white",
-          borderRadius: 10,
-          padding: "6px 10px",
-          cursor: "pointer",
-        }}
-      >
-        닫기
-      </button>
-    </div>
+            <div
+              style={{
+                maxWidth: 980,
+                textAlign: "center",
+                fontSize: captionFontSize + 4,
+                fontWeight: 700,
+                lineHeight: 1.58,
+                letterSpacing: "-0.025em",
+                color: "rgba(255,255,255,0.98)",
+                textShadow: "0 2px 8px rgba(0,0,0,0.78)",
+                whiteSpace: "pre-wrap",
+                wordBreak: "keep-all",
+                padding: "0 18px",
+                margin: "0 auto",
+                fontFamily: cinemaFont,
+              }}
+            >
+              {caption || " "}
+            </div>
+          </div>
 
-    <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
-      <Comments workId="cheonmujin" episodeId={String(episodeKey)} />
-    </div>
-  </div>
-)}
-            {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
-              const p = i + 1;
-              const isLocked = !isSubscribed && p > unlockedUntil;
-              const isActive = p === part;
+          {showPlayerUi && (
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "58%",
+                transform: "translateX(-50%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 34,
+                zIndex: 4,
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  seekBy(-10);
+                }}
+                style={{
+                  width: 82,
+                  height: 82,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(18,18,18,0.38)",
+                  color: "rgba(255,255,255,0.96)",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                -10
+              </button>
 
-              return (
-                <button
-                  key={p}
-                  onClick={() => onSelectPart(p)}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlayPause();
+                }}
+                style={{
+                  width: 104,
+                  height: 104,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.12)",
+                  color: "white",
+                  fontSize: 28,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  backdropFilter: "blur(10px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                {isPlaying ? "❚❚" : "▶"}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  seekBy(10);
+                }}
+                style={{
+                  width: 82,
+                  height: 82,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(18,18,18,0.38)",
+                  color: "rgba(255,255,255,0.96)",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                +10
+              </button>
+            </div>
+          )}
+
+          {showPlayerUi && (
+            <div
+              style={{
+                position: "absolute",
+                right: 16,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 4,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSpeedMenu(false);
+                  setShowCinemaComments(false);
+                  setShowPartMenuCinema((v) => !v);
+                  resetHideTimer();
+                }}
+                style={{
+                  width: 74,
+                  minHeight: 74,
+                  borderRadius: 18,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(10,10,10,0.40)",
+                  color: "rgba(255,255,255,0.95)",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                회차
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPartMenuCinema(false);
+                  setShowCinemaComments(false);
+                  setShowSpeedMenu((v) => !v);
+                  resetHideTimer();
+                }}
+                style={{
+                  width: 74,
+                  minHeight: 74,
+                  borderRadius: 18,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(10,10,10,0.40)",
+                  color: "rgba(255,255,255,0.95)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                속도
+                <br />
+                {playbackRate}x
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPartMenuCinema(false);
+                  setShowSpeedMenu(false);
+                  setShowCinemaComments((v) => !v);
+                  resetHideTimer();
+                }}
+                style={{
+                  width: 74,
+                  minHeight: 74,
+                  borderRadius: 18,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(10,10,10,0.40)",
+                  color: "rgba(255,255,255,0.95)",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                댓글
+              </button>
+            </div>
+          )}
+
+          {showPlayerUi && (
+            <div
+              style={{
+                position: "absolute",
+                left: 24,
+                right: 24,
+                bottom: 28,
+                zIndex: 4,
+                color: "white",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 16,
+                }}
+              >
+                <span
                   style={{
-                    padding: "12px 14px",
-                    borderRadius: 12,
-                    border: isActive
-                      ? "2px solid rgba(255,215,120,0.9)"
-                      : "1px solid rgba(255,255,255,0.14)",
-                    background: isActive
-                      ? "rgba(255,215,120,0.12)"
-                      : "rgba(255,255,255,0.04)",
-                    color: isLocked ? "rgba(255,255,255,0.38)" : "white",
-                    fontWeight: isActive ? 900 : 700,
-                    cursor: "pointer",
-                    textAlign: "left",
+                    minWidth: 46,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "rgba(255,255,255,0.88)",
+                    fontFamily: cinemaFont,
                   }}
                 >
-                  {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    )}
-  </div>
-)}
-      <Comments workId="cheonmujin" episodeId={String(episodeKey)} />
+                  {formatTime(currentTime)}
+                </span>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(duration, 0)}
+                  step={1}
+                  value={Math.min(currentTime, duration || 0)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    height: 6,
+                    accentColor: "#e50914",
+                    cursor: "pointer",
+                  }}
+                />
+
+                <span
+                  style={{
+                    minWidth: 46,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    textAlign: "right",
+                    color: "rgba(255,255,255,0.88)",
+                    fontFamily: cinemaFont,
+                  }}
+                >
+                  {formatTime(duration)}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "11px 16px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(10,10,10,0.40)",
+                    backdropFilter: "blur(8px)",
+                    fontFamily: cinemaFont,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "rgba(255,255,255,0.95)",
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    자막
+                  </span>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCaptionFontSize((v) => Math.max(16, v - 2));
+                      resetHideTimer();
+                    }}
+                    style={{
+                      minWidth: 52,
+                      height: 52,
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.07)",
+                      color: "rgba(255,255,255,0.95)",
+                      cursor: "pointer",
+                      fontSize: 22,
+                      fontWeight: 700,
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    -
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCaptionFontSize((v) => Math.min(66, v + 2));
+                      resetHideTimer();
+                    }}
+                    style={{
+                      minWidth: 52,
+                      height: 52,
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.07)",
+                      color: "rgba(255,255,255,0.95)",
+                      cursor: "pointer",
+                      fontSize: 22,
+                      fontWeight: 700,
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {showSpeedMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 70,
+                    bottom: 120,
+                    minWidth: 100,
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(0,0,0,0.88)",
+                    padding: 10,
+                    display: "grid",
+                    gap: 17,
+                  }}
+                >
+                  {[0.8, 1, 1.2, 1.5].map((rate) => (
+                    <button
+                      key={rate}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changePlaybackRate(rate);
+                      }}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border:
+                          playbackRate === rate
+                            ? "1px solid rgba(229,9,20,0.8)"
+                            : "1px solid rgba(255,255,255,0.10)",
+                        background:
+                          playbackRate === rate
+                            ? "rgba(229,9,20,0.18)"
+                            : "rgba(255,255,255,0.04)",
+                        color: "white",
+                        fontSize: 15,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {rate}x
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {showPartMenuCinema && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 70,
+                    bottom: 120,
+                    width: "min(200px, 70vw)",
+                    maxHeight: 360,
+                    overflowY: "auto",
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(0,0,0,0.88)",
+                    padding: 10,
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {showCinemaComments && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: "absolute",
+                        right: 70,
+                        top: 90,
+                        width: "min(420px, 92vw)",
+                        height: "min(70vh, 640px)",
+                        zIndex: 6,
+                        borderRadius: 18,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(8,8,8,0.92)",
+                        backdropFilter: "blur(10px)",
+                        overflow: "hidden",
+                        boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "14px 16px",
+                          borderBottom: "1px solid rgba(255,255,255,0.08)",
+                          fontWeight: 900,
+                          color: "white",
+                        }}
+                      >
+                        <span>댓글</span>
+                        <button
+                          onClick={() => setShowCinemaComments(false)}
+                          style={{
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(255,255,255,0.06)",
+                            color: "white",
+                            borderRadius: 10,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          닫기
+                        </button>
+                      </div>
+
+                      <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
+                        <Comments workId={workId} episodeId={String(episodeKey)} />
+                      </div>
+                    </div>
+                  )}
+
+                  {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
+                    const p = i + 1;
+                    const isLocked = !isSubscribed && p > unlockedUntil;
+                    const isActive = p === part;
+
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => onSelectPart(p)}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: isActive
+                            ? "2px solid rgba(255,215,120,0.9)"
+                            : "1px solid rgba(255,255,255,0.14)",
+                          background: isActive
+                            ? "rgba(255,215,120,0.12)"
+                            : "rgba(255,255,255,0.04)",
+                          color: isLocked ? "rgba(255,255,255,0.38)" : "white",
+                          fontWeight: isActive ? 900 : 700,
+                          cursor: "pointer",
+                          textAlign: "left",
+                        }}
+                      >
+                        {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <Comments workId={workId} episodeId={String(episodeKey)} />
     </main>
   );
 }

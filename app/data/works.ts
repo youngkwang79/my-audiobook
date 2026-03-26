@@ -4,17 +4,21 @@ export type Work = {
   thumbnail: string;
   totalEpisodes: number;
   freeEpisodes: number;
-  badge?: string;
-  tagline?: string;
-  summary?: string;
 };
 
 export const works: Work[] = [
   {
     id: "cheonmujin",
-    title: "천무진 :봉인된 천재",
+    title: "천무진 봉인된 천재",
     thumbnail: "/thumbnails/cheonmujin.jpg",
     totalEpisodes: 55,
-    freeEpisodes: 0,
+    freeEpisodes: 8,
+  },
+  {
+    id: "hwansaeng-geomjon",
+    title: "환생검존",
+    thumbnail: "/thumbnails/hwansaeng-geomjon.jpg",
+    totalEpisodes: 4,
+    freeEpisodes: 3,
   },
 ];

@@ -2,196 +2,49 @@
 
 import TopBar from "@/app/components/TopBar";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { episodes } from "../../data/episodes";
-
-// ✅ (로그인 연동용) AuthProvider + supabaseClient 사용 (기존 유지)
-import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
-
-// ✅ 1~55화 전체 오픈
-const DEFAULT_FREE_UNTIL = 55;
-
-function getUnlockedUntil(): number {
-  // ✅ 렌더 단계에서 localStorage 읽으면 Hydration 문제가 날 수 있어서
-  //    이 함수는 useEffect에서만 호출하도록 아래에서 state로 처리합니다.
-  if (typeof window === "undefined") return DEFAULT_FREE_UNTIL;
-
-  const raw = localStorage.getItem("unlockedUntil");
-  const v = raw ? Number(raw) : DEFAULT_FREE_UNTIL;
-
-  // ✅ 혹시 예전 값(8)이 남아있으면 55로 끌어올림
-  const normalized = Number.isFinite(v) ? v : DEFAULT_FREE_UNTIL;
-  return Math.max(DEFAULT_FREE_UNTIL, normalized);
-}
+import { useParams } from "next/navigation";
+import { works } from "@/app/data/works";
+import { getEpisodesByWork } from "@/app/data/episodes";
 
 export default function WorkDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const workId = String(params.id);
 
-  const { user, loading } = useAuth();
+  const work = works.find((w) => w.id === workId);
+  const episodes = getEpisodesByWork(workId);
 
-  const workId = String((params as any).id);
-  const workTitle = workId === "cheonmujin" ? "천무진 봉인된 천재" : "알 수 없는 작품";
-
-  const total = episodes.length;
-
-  // ✅ Hydration 해결: 처음엔 55로 렌더 → 마운트 후 localStorage 반영
-  const [unlockedUntil, setUnlockedUntil] = useState<number>(DEFAULT_FREE_UNTIL);
-
-  useEffect(() => {
-    const u = getUnlockedUntil();
-    setUnlockedUntil(Math.min(u, episodes.length)); // 총 편수보다 커지지 않게
-  }, []);
-
-  // (기존 유지: 현재 파일에서는 직접 쓰진 않지만, 유지해달라고 했으니 살려둠)
-  const onAuthClick = async () => {
-    if (loading) return;
-
-    if (user) {
-      const sb = supabase;
-if (!sb) {
-  // supabase 설정이 없으면 로그아웃 대신 로그인 페이지로 보내거나 그냥 종료
-  router.push("/login");
-  return;
-}
-
-await sb.auth.signOut();
-router.refresh();
-return;
-      router.refresh();
-      return;
-    }
-
-    router.push("/login");
-  };
+  if (!work) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}>
+        <TopBar />
+        <h1>존재하지 않는 작품입니다.</h1>
+      </main>
+    );
+  }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#0b0b12",
-        color: "white",
-        padding: 20,
-        fontFamily:
-          'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
-      }}
-    >
+    <main style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 20 }}>
       <TopBar />
-
-
-      {/* 작품 카드 */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 18,
-          padding: 18,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          maxWidth: 1200,
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>작품</div>
-          <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 6 }}>{workTitle}</div>
-          <div style={{ fontSize: 13, opacity: 0.9, fontWeight: 800 }}>총 {total}화 연재 중</div>
-
-          {/* ✅ typeof window 조건 제거 (Hydration 방지) */}
-          <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>
-            현재 오픈: 1~{unlockedUntil}화
-          </div>
-        </div>
-
-        <button
-          style={{
-            background: "rgba(0,0,0,0.35)",
-            color: "white",
-            border: "1px solid rgba(255,255,255,0.35)",
-            padding: "10px 14px",
-            borderRadius: 14,
-            fontWeight: 800,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-          onClick={() =>
-            document.getElementById("episode-list")?.scrollIntoView({ behavior: "smooth" })
-          }
-        >
-          에피소드 보기
-        </button>
-      </div>
-
-      {/* 에피소드 리스트 */}
-      <div id="episode-list" style={{ marginTop: 18, maxWidth: 1200 }}>
-        <div style={{ fontSize: 14, opacity: 0.85, marginBottom: 10 }}>
-          에피소드 (총 {episodes.length}화)
-        </div>
-
-        <div style={{ display: "grid", gap: 10 }}>
-          {episodes.map((ep, i) => {
-            const isLocked = ep.id > unlockedUntil;
-            const href = isLocked ? `/episode/${ep.id}` : `/episode/${ep.id}?autoplay=1`;
-
-            return (
-              <Link key={`${ep.id}-${i}`} href={href} style={{ textDecoration: "none", color: "inherit" }}>
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 14,
-                    padding: 14,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    opacity: isLocked ? 0.75 : 1,
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        background: "rgba(255,255,255,0.1)",
-                        display: "grid",
-                        placeItems: "center",
-                        fontWeight: 800,
-                      }}
-                    >
-                      {ep.id}
-                    </div>
-
-                    <div>
-                      <div style={{ fontWeight: 800 }}>{ep.title}</div>
-                      <div style={{ fontSize: 12, opacity: 0.75 }}>
-                        {isLocked ? "잠금(구독/포인트/광고)" : "재생 가능"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: isLocked ? "transparent" : "#22c55e",
-                      border: isLocked ? "1px solid rgba(255,255,255,0.25)" : "none",
-                      padding: "8px 12px",
-                      borderRadius: 12,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isLocked ? "잠금" : "재생"}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+      <h1>{work.title}</h1>
+      <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
+        {episodes.map((ep, index) => (
+  <Link
+    key={`${ep.id}-${index}`}
+            href={`/episode/${workId}/${ep.id}?part=1`}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <div
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
+                padding: 14,
+              }}
+            >
+              {ep.id}화 - {ep.title}
+            </div>
+          </Link>
+        ))}
       </div>
     </main>
   );

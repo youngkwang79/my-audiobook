@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
+import { supabaseAdmin } from "@/app/lib/server/supabaseAdmin";
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +21,9 @@ export async function POST(req: Request) {
       console.error("auth getUser error:", authError);
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
-
+if (user.email !== "youngkwang79@gmailcom") {
+  return NextResponse.json({ error: "forbidden" }, { status: 403 });
+}
     const body = await req.json().catch(() => null);
     const amount = Number(body?.points ?? 0);
 
