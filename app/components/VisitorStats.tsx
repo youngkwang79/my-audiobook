@@ -11,64 +11,75 @@ export default function VisitorStats() {
   const [stats, setStats] = useState<Stats>({ today: 0, total: 0 });
 
   useEffect(() => {
-    const pagePath = window.location.pathname;
+    let alive = true;
 
-    fetch("/api/visits/track", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        page_path: pagePath,
-      }),
-    }).finally(() => {
-      fetch("/api/visits/stats", { cache: "no-store" })
-        .then((res) => res.json())
-        .then((data) => {
+    const loadStats = async () => {
+      try {
+        const res = await fetch("/api/visits/stats", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data) {
+          if (alive) setStats({ today: 0, total: 0 });
+          return;
+        }
+
+        if (alive) {
           setStats({
             today: Number(data?.today ?? 0),
             total: Number(data?.total ?? 0),
           });
-        })
-        .catch(() => {
-          setStats({ today: 0, total: 0 });
-        });
-    });
+        }
+      } catch (error) {
+        console.error("방문자 통계 불러오기 실패:", error);
+        if (alive) setStats({ today: 0, total: 0 });
+      }
+    };
+
+    loadStats();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   return (
     <div
       style={{
-        width: "100%",
-        margin: "24px 0 12px",
-        padding: "14px 18px",
-        borderRadius: 16,
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.10)",
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
-        gap: 24,
-        flexWrap: "wrap",
-        textAlign: "center",
+        gap: 12,
+        marginTop: 20,
       }}
     >
-      <div>
+      <div
+        style={{
+          padding: "10px 16px",
+          borderRadius: 14,
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          minWidth: 84,
+          textAlign: "center",
+        }}
+      >
         <div
           style={{
-            fontSize: 12,
-            opacity: 0.7,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            marginBottom: 4,
+            fontSize: 11,
+            opacity: 0.6,
+            marginBottom: 2,
+            letterSpacing: "0.4px",
           }}
         >
-          Total
+          TOTAL
         </div>
         <div
           style={{
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: 900,
+            color: "#f3c969",
           }}
         >
           {stats.total.toLocaleString("ko-KR")}
@@ -77,28 +88,29 @@ export default function VisitorStats() {
 
       <div
         style={{
-          width: 1,
-          height: 32,
-          background: "rgba(255,255,255,0.12)",
+          padding: "10px 16px",
+          borderRadius: 14,
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          minWidth: 84,
+          textAlign: "center",
         }}
-      />
-
-      <div>
+      >
         <div
           style={{
-            fontSize: 12,
-            opacity: 0.7,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            marginBottom: 4,
+            fontSize: 11,
+            opacity: 0.6,
+            marginBottom: 2,
+            letterSpacing: "0.4px",
           }}
         >
-          Today
+          TODAY
         </div>
         <div
           style={{
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: 900,
+            color: "#f3c969",
           }}
         >
           {stats.today.toLocaleString("ko-KR")}

@@ -11,6 +11,9 @@ import Comments from "@/app/components/Comments";
 const DEFAULT_FREE_PARTS = 8;
 const POINTS_PER_PART = 60;
 
+const AUDIO_EXTENSIONS = ["MP3", "mp3", "WAV", "wav", "M4A", "m4a"];
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+
 type EntitlementPayload = {
   points: number;
   is_subscribed: boolean;
@@ -40,6 +43,11 @@ function getEpisodeFolder(episodeKey: string) {
 
 function getFreeParts(workId: string, episodeKey: string) {
   return Math.min(DEFAULT_FREE_PARTS, getTotalPartsByWork(workId, episodeKey));
+}
+
+function lockedMemo(isSubscribed: boolean, part: number, unlockedUntil: number) {
+  if (isSubscribed) return false;
+  return part > unlockedUntil;
 }
 
 async function getAccessToken() {
@@ -85,6 +93,40 @@ async function fetchEntitlement(workId: string, episodeKey: string): Promise<Ent
   return await res.json();
 }
 
+function formatTime(sec: number) {
+  const safe = Math.max(0, Math.floor(sec || 0));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function parseSegmentsFromSavedJson(saved: any): Segment[] {
+  const aiResp = saved?.aiResp ?? saved;
+  const segs = aiResp?.segments;
+
+  if (Array.isArray(segs)) {
+    return segs
+      .map((s: any) => ({
+        start: Number(s.start ?? s.t0 ?? 0),
+        end: Number(s.end ?? s.t1 ?? 0),
+        text: String(s.text ?? s.transcript ?? ""),
+      }))
+      .filter(
+        (s: Segment) =>
+          Number.isFinite(s.start) &&
+          Number.isFinite(s.end) &&
+          s.text.trim().length > 0
+      );
+  }
+
+  const text = aiResp?.text;
+  if (typeof text === "string" && text.trim()) {
+    return [{ start: 0, end: 999999, text }];
+  }
+
+  return [];
+}
+
 export default function EpisodePage() {
   const params = useParams();
   const router = useRouter();
@@ -94,29 +136,16 @@ export default function EpisodePage() {
   const episodeKey = String((params as any).id);
 
   const work = works.find((w) => w.id === workId);
-  const episodes = getEpisodesByWork(workId);
-  const currentEpisode = episodes.find((ep) => String(ep.id) === episodeKey);
+  const episodes = useMemo(() => getEpisodesByWork(workId), [workId]);
+  const currentEpisode = useMemo(
+    () => episodes.find((ep) => String(ep.id) === episodeKey),
+    [episodes, episodeKey]
+  );
   const workThumbnail = work?.thumbnail ?? "/thumbnails/cheonmujin.jpg";
 
   const SERIES_PREFIX = workId;
   const WORK_THUMBNAIL = workThumbnail;
-
   const autoplay = searchParams.get("autoplay") === "1";
-
-  if (!work) {
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: "#0b0b12",
-          color: "white",
-          padding: 20,
-        }}
-      >
-        <div>존재하지 않는 작품입니다.</div>
-      </main>
-    );
-  }
 
   const TOTAL_PARTS = useMemo(
     () => getTotalPartsByWork(workId, episodeKey),
@@ -175,19 +204,22 @@ export default function EpisodePage() {
 
   const [imageIndex, setImageIndex] = useState(0);
   const [imageErrorCount, setImageErrorCount] = useState(0);
+  const [audioIndex, setAudioIndex] = useState(0);
 
   const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
 
-  const getR2AudioUrl = (episodeKeyValue: string, partValue: number) => {
+  const getAudioCandidates = (episodeKeyValue: string, partValue: number) => {
     const folder = getEpisodeFolder(episodeKeyValue);
-    return `${R2_BASE}/${SERIES_PREFIX}/${folder}/${pad2(partValue)}.MP3`;
+    return AUDIO_EXTENSIONS.map(
+      (ext) => `${R2_BASE}/${SERIES_PREFIX}/${folder}/${pad2(partValue)}.${ext}`
+    );
   };
 
   const getR2ImageCandidates = (episodeKeyValue: string, _partValue: number) => {
     const folder = getEpisodeFolder(episodeKeyValue);
     const base = `${R2_BASE}/${SERIES_PREFIX}/${folder}/01`;
-    return [`${base}.jpg`, `${base}.jpeg`, `${base}.png`, `${base}.webp`];
+    return IMAGE_EXTENSIONS.map((ext) => `${base}.${ext}`);
   };
 
   const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
@@ -200,24 +232,27 @@ export default function EpisodePage() {
       episodeKeyValue
     )}&part=${encodeURIComponent(String(partValue))}`;
 
-  const audioSrc = !lockedMemo(isSubscribed, part, unlockedUntil)
-    ? getR2AudioUrl(episodeKey, part)
-    : null;
+  const locked = useMemo(() => {
+    if (isSubscribed) return false;
+    return part > unlockedUntil;
+  }, [isSubscribed, part, unlockedUntil]);
+
+  const audioCandidates = useMemo(
+    () => (!locked ? getAudioCandidates(episodeKey, part) : []),
+    [episodeKey, part, workId, locked]
+  );
+
+  const audioSrc = !locked ? audioCandidates[audioIndex] ?? null : null;
 
   const imageCandidates = useMemo(
     () => getR2ImageCandidates(episodeKey, part),
-    [episodeKey, part]
+    [episodeKey, part, workId]
   );
 
   const currentImageSrc =
     imageErrorCount >= imageCandidates.length
       ? WORK_THUMBNAIL
       : imageCandidates[imageIndex] || WORK_THUMBNAIL;
-
-  const locked = useMemo(() => {
-    if (isSubscribed) return false;
-    return part > unlockedUntil;
-  }, [isSubscribed, part, unlockedUntil]);
 
   useEffect(() => {
     isNavigatingRef.current = false;
@@ -237,15 +272,17 @@ export default function EpisodePage() {
     if (!workId || !episodeKey) return;
     if (!Number.isFinite(part)) return;
 
-    localStorage.setItem(
-      "lastPlayed",
-      JSON.stringify({
-        workId,
-        episodeId: episodeKey,
-        part,
-        updatedAt: Date.now(),
-      })
-    );
+    try {
+      localStorage.setItem(
+        "lastPlayed",
+        JSON.stringify({
+          workId,
+          episodeId: episodeKey,
+          part,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch {}
   }, [workId, episodeKey, part]);
 
   useEffect(() => {
@@ -289,34 +326,11 @@ export default function EpisodePage() {
   useEffect(() => {
     setImageIndex(0);
     setImageErrorCount(0);
-  }, [episodeKey, part]);
+  }, [episodeKey, part, workId]);
 
-  function parseSegmentsFromSavedJson(saved: any): Segment[] {
-    const aiResp = saved?.aiResp ?? saved;
-    const segs = aiResp?.segments;
-
-    if (Array.isArray(segs)) {
-      return segs
-        .map((s: any) => ({
-          start: Number(s.start ?? s.t0 ?? 0),
-          end: Number(s.end ?? s.t1 ?? 0),
-          text: String(s.text ?? s.transcript ?? ""),
-        }))
-        .filter(
-          (s: Segment) =>
-            Number.isFinite(s.start) &&
-            Number.isFinite(s.end) &&
-            s.text.trim().length > 0
-        );
-    }
-
-    const text = aiResp?.text;
-    if (typeof text === "string" && text.trim()) {
-      return [{ start: 0, end: 999999, text }];
-    }
-
-    return [];
-  }
+  useEffect(() => {
+    setAudioIndex(0);
+  }, [episodeKey, part, workId]);
 
   useEffect(() => {
     let alive = true;
@@ -358,13 +372,16 @@ export default function EpisodePage() {
       if (r2.ok) {
         const parsed = parseSegmentsFromSavedJson(r2.data);
         setSegments(parsed);
-        setCaptionStatus(parsed.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+        const current = audioRef.current?.currentTime ?? 0;
+updateCaptionByTime(current);
+        setCaptionStatus(parsed.length ? "" : "자막 데이터가 비어있어요");
         return;
       }
 
       setCaptionStatus("자막 생성 중(처음 1회)...");
 
       const workerRes = await fetch(getWorkerUrl(episodeKey, part), {
+        method: "GET",
         cache: "no-store",
       });
 
@@ -384,8 +401,15 @@ export default function EpisodePage() {
       }
 
       const parsed2 = parseSegmentsFromSavedJson(r2b.data);
-      setSegments(parsed2);
-      setCaptionStatus(parsed2.length ? "자막 준비 완료" : "자막 데이터가 비어있어요");
+      if (parsed2.length) {
+  setSegments(parsed2);
+  const current = audioRef.current?.currentTime ?? 0;
+updateCaptionByTime(current);
+  setCaptionStatus(""); // 성공 시 아무것도 안 보여줌
+} else {
+  setSegments([]);
+  setCaptionStatus("자막 데이터가 비어있어요");
+}
     }
 
     loadCaptions().catch((error) => {
@@ -397,31 +421,50 @@ export default function EpisodePage() {
     return () => {
       alive = false;
     };
-  }, [episodeKey, part, locked]);
+  }, [episodeKey, part, locked, workId]);
 
   const updateCaptionByTime = (t: number) => {
-    const segs = segments;
-    if (!segs.length) {
-      setCaption("");
-      return;
-    }
+  const segs = segments;
+  if (!segs.length) {
+    setCaption("");
+    return;
+  }
 
-    let i = segIndexRef.current;
-    i = Math.max(0, Math.min(i, segs.length - 1));
+  const EARLY_SWITCH = 0.15; // 추천값: 0.12 ~ 0.18
 
-    while (i < segs.length - 1 && t > segs[i].end) i++;
-    while (i > 0 && t < segs[i].start) i--;
+  let i = segIndexRef.current;
+  i = Math.max(0, Math.min(i, segs.length - 1));
 
+  while (i < segs.length - 1 && t > segs[i].end) i++;
+  while (i > 0 && t < segs[i].start) i--;
+
+  const current = segs[i];
+  const next = segs[i + 1];
+
+  // 다음 자막 시작 직전이면 살짝 미리 교체
+  if (next && t >= next.start - EARLY_SWITCH && t < next.start) {
+    segIndexRef.current = i + 1;
+    setCaption(String(next.text || "").trim());
+    return;
+  }
+
+  // 현재 자막 구간이면 현재 자막 표시
+  if (t >= current.start && t <= current.end) {
     segIndexRef.current = i;
-
-    const current = segs[i];
-    if (!(t >= current.start && t <= current.end + 0.2)) {
-      setCaption("");
-      return;
-    }
-
     setCaption(String(current.text || "").trim());
-  };
+    return;
+  }
+
+  // 다음 자막도 없고 현재 자막이 끝났으면 비움
+  if (!next && t > current.end) {
+    setCaption("");
+    return;
+  }
+
+  // 그 외에는 현재 자막 유지
+  segIndexRef.current = i;
+  setCaption(String(current.text || "").trim());
+};
 
   const onTimeUpdate = () => {
     const a = audioRef.current;
@@ -430,13 +473,6 @@ export default function EpisodePage() {
     setCurrentTime(a.currentTime || 0);
     updateCaptionByTime(a.currentTime);
   };
-
-  function formatTime(sec: number) {
-    const safe = Math.max(0, Math.floor(sec || 0));
-    const m = Math.floor(safe / 60);
-    const s = safe % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  }
 
   const resetHideTimer = () => {
     setShowPlayerUi(true);
@@ -816,6 +852,7 @@ export default function EpisodePage() {
     const pLocked = !isSubscribed && p > unlockedUntil;
 
     if (!pLocked) {
+      pendingAutoplayRef.current = true;
       router.replace(`/episode/${workId}/${episodeKey}?part=${p}&autoplay=1`);
       return;
     }
@@ -830,6 +867,21 @@ export default function EpisodePage() {
 
     router.replace(`/episode/${workId}/${episodeKey}?part=${p}`);
   };
+
+  if (!work) {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          background: "#0b0b12",
+          color: "white",
+          padding: 20,
+        }}
+      >
+        <div>존재하지 않는 작품입니다.</div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -961,10 +1013,12 @@ export default function EpisodePage() {
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
                 color: "rgba(255,255,255,0.92)",
+                
               }}
             >
               {caption || " "}
             </div>
+
             {!caption && !locked && (
               <div style={{ marginTop: 12, fontSize: 12, opacity: 0.65 }}>
                 {captionStatus || (entBusy ? "권한 확인 중..." : "")}
@@ -1033,11 +1087,11 @@ export default function EpisodePage() {
             </span>
           </div>
 
-          {!locked && (
+          {!locked && audioSrc && (
             <audio
-              key={`${workId}-${episodeKey}-${part}`}
+              key={`${workId}-${episodeKey}-${part}-${audioIndex}`}
               ref={audioRef}
-              src={audioSrc!}
+              src={audioSrc}
               controls={!playerLandscapeMode}
               preload="auto"
               autoPlay
@@ -1097,8 +1151,16 @@ export default function EpisodePage() {
                 setStatus("일시정지");
               }}
               onError={() => {
+                if (audioIndex < audioCandidates.length - 1) {
+                  setAudioIndex((prev) => prev + 1);
+                  setStatus(
+                    `오디오 형식 변경 시도 중... (${audioIndex + 2}/${audioCandidates.length})`
+                  );
+                  return;
+                }
+
                 setIsPlaying(false);
-                setStatus(`오디오 로드 실패: ${audioSrc}`);
+                setStatus("오디오 파일을 찾지 못했습니다. R2 파일명과 확장자를 확인해주세요.");
               }}
               onEnded={() => {
                 setIsPlaying(false);
@@ -1144,6 +1206,133 @@ export default function EpisodePage() {
               >
                 시네마 모드
               </button>
+            </div>
+          )}
+
+          {!locked && (
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <button
+                onClick={() => seekBy(-10)}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                -10초
+              </button>
+
+              <button
+                onClick={() => seekBy(10)}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                +10초
+              </button>
+
+              <button
+                onClick={goNextPart}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                다음 편
+              </button>
+            </div>
+          )}
+
+          {!locked && (
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 12,
+                }}
+              >
+                <span style={{ minWidth: 46, fontSize: 13 }}>{formatTime(currentTime)}</span>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(duration, 0)}
+                  step={1}
+                  value={Math.min(currentTime, duration || 0)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: "#d4a23c" }}
+                />
+
+                <span style={{ minWidth: 46, fontSize: 13, textAlign: "right" }}>
+                  {formatTime(duration)}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {[0.8, 1, 1.2, 1.5].map((rate) => (
+                  <button
+                    key={rate}
+                    onClick={() => changePlaybackRate(rate)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border:
+                        playbackRate === rate
+                          ? "2px solid rgba(255,215,120,0.9)"
+                          : "1px solid rgba(255,255,255,0.14)",
+                      background:
+                        playbackRate === rate
+                          ? "rgba(255,215,120,0.12)"
+                          : "rgba(255,255,255,0.06)",
+                      color: "white",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {rate}x
+                  </button>
+                ))}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 13 }}>음량</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={volume}
+                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                    style={{ width: 140, accentColor: "#d4a23c" }}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -1569,119 +1758,29 @@ export default function EpisodePage() {
             <div
               style={{
                 position: "absolute",
-                right: 16,
-                top: "50%",
-                transform: "translateY(-50%)",
+                left: "50%",
+                bottom: 38,
+                transform: "translateX(-50%)",
+                width: "min(1120px, 90vw)",
                 zIndex: 4,
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowSpeedMenu(false);
-                  setShowCinemaComments(false);
-                  setShowPartMenuCinema((v) => !v);
-                  resetHideTimer();
-                }}
-                style={{
-                  width: 74,
-                  minHeight: 74,
-                  borderRadius: 18,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(10,10,10,0.40)",
-                  color: "rgba(255,255,255,0.95)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  backdropFilter: "blur(8px)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                회차
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPartMenuCinema(false);
-                  setShowCinemaComments(false);
-                  setShowSpeedMenu((v) => !v);
-                  resetHideTimer();
-                }}
-                style={{
-                  width: 74,
-                  minHeight: 74,
-                  borderRadius: 18,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(10,10,10,0.40)",
-                  color: "rgba(255,255,255,0.95)",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  backdropFilter: "blur(8px)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                속도
-                <br />
-                {playbackRate}x
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPartMenuCinema(false);
-                  setShowSpeedMenu(false);
-                  setShowCinemaComments((v) => !v);
-                  resetHideTimer();
-                }}
-                style={{
-                  width: 74,
-                  minHeight: 74,
-                  borderRadius: 18,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(10,10,10,0.40)",
-                  color: "rgba(255,255,255,0.95)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  backdropFilter: "blur(8px)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                댓글
-              </button>
-            </div>
-          )}
-
-          {showPlayerUi && (
-            <div
-              style={{
-                position: "absolute",
-                left: 24,
-                right: 24,
-                bottom: 28,
-                zIndex: 4,
-                color: "white",
+                display: "grid",
+                gap: 14,
               }}
             >
               <div
                 style={{
-                  display: "flex",
+                  display: "grid",
+                  gridTemplateColumns: "70px 1fr 70px",
                   alignItems: "center",
-                  gap: 10,
-                  marginBottom: 16,
+                  gap: 12,
+                  padding: "0 8px",
                 }}
               >
                 <span
                   style={{
-                    minWidth: 46,
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 15,
                     color: "rgba(255,255,255,0.88)",
+                    textAlign: "left",
                     fontFamily: cinemaFont,
                   }}
                 >
@@ -1694,10 +1793,12 @@ export default function EpisodePage() {
                   max={Math.max(duration, 0)}
                   step={1}
                   value={Math.min(currentTime, duration || 0)}
-                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleSeek(Number(e.target.value));
+                  }}
                   style={{
-                    flex: 1,
-                    height: 6,
+                    width: "100%",
                     accentColor: "#e50914",
                     cursor: "pointer",
                   }}
@@ -1705,11 +1806,9 @@ export default function EpisodePage() {
 
                 <span
                   style={{
-                    minWidth: 46,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    textAlign: "right",
+                    fontSize: 15,
                     color: "rgba(255,255,255,0.88)",
+                    textAlign: "right",
                     fontFamily: cinemaFont,
                   }}
                 >
@@ -1720,93 +1819,115 @@ export default function EpisodePage() {
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "center",
-                  gap: 8,
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
                 }}
               >
-                <div
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSpeedMenu((v) => !v);
+                      setShowPartMenuCinema(false);
+                      setShowCinemaComments(false);
+                      resetHideTimer();
+                    }}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(10,10,10,0.40)",
+                      color: "white",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      backdropFilter: "blur(8px)",
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    속도 {playbackRate}x
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPartMenuCinema((v) => !v);
+                      setShowSpeedMenu(false);
+                      setShowCinemaComments(false);
+                      resetHideTimer();
+                    }}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(10,10,10,0.40)",
+                      color: "white",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      backdropFilter: "blur(8px)",
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    파트 선택
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowCinemaComments((v) => !v);
+                      setShowPartMenuCinema(false);
+                      setShowSpeedMenu(false);
+                      resetHideTimer();
+                    }}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(10,10,10,0.40)",
+                      color: "white",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      backdropFilter: "blur(8px)",
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    댓글
+                  </button>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goNextPart();
+                  }}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "11px 16px",
+                    padding: "12px 14px",
                     borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(10,10,10,0.40)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(255,255,255,0.12)",
+                    color: "white",
+                    fontWeight: 900,
+                    cursor: "pointer",
                     backdropFilter: "blur(8px)",
                     fontFamily: cinemaFont,
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "rgba(255,255,255,0.95)",
-                      fontFamily: cinemaFont,
-                    }}
-                  >
-                    자막
-                  </span>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCaptionFontSize((v) => Math.max(16, v - 2));
-                      resetHideTimer();
-                    }}
-                    style={{
-                      minWidth: 52,
-                      height: 52,
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.07)",
-                      color: "rgba(255,255,255,0.95)",
-                      cursor: "pointer",
-                      fontSize: 22,
-                      fontWeight: 700,
-                      fontFamily: cinemaFont,
-                    }}
-                  >
-                    -
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCaptionFontSize((v) => Math.min(66, v + 2));
-                      resetHideTimer();
-                    }}
-                    style={{
-                      minWidth: 52,
-                      height: 52,
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.07)",
-                      color: "rgba(255,255,255,0.95)",
-                      cursor: "pointer",
-                      fontSize: 22,
-                      fontWeight: 700,
-                      fontFamily: cinemaFont,
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
+                  다음 편
+                </button>
               </div>
 
               {showSpeedMenu && (
                 <div
                   style={{
                     position: "absolute",
-                    right: 70,
+                    left: 0,
                     bottom: 120,
-                    minWidth: 100,
+                    display: "flex",
+                    gap: 8,
+                    padding: 10,
                     borderRadius: 16,
                     border: "1px solid rgba(255,255,255,0.12)",
                     background: "rgba(0,0,0,0.88)",
-                    padding: 10,
-                    display: "grid",
-                    gap: 17,
                   }}
                 >
                   {[0.8, 1, 1.2, 1.5].map((rate) => (
@@ -1821,14 +1942,13 @@ export default function EpisodePage() {
                         borderRadius: 12,
                         border:
                           playbackRate === rate
-                            ? "1px solid rgba(229,9,20,0.8)"
-                            : "1px solid rgba(255,255,255,0.10)",
+                            ? "2px solid rgba(255,215,120,0.9)"
+                            : "1px solid rgba(255,255,255,0.14)",
                         background:
                           playbackRate === rate
-                            ? "rgba(229,9,20,0.18)"
+                            ? "rgba(255,215,120,0.12)"
                             : "rgba(255,255,255,0.04)",
                         color: "white",
-                        fontSize: 15,
                         fontWeight: 800,
                         cursor: "pointer",
                       }}
@@ -1856,57 +1976,6 @@ export default function EpisodePage() {
                     gap: 8,
                   }}
                 >
-                  {showCinemaComments && (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        position: "absolute",
-                        right: 70,
-                        top: 90,
-                        width: "min(420px, 92vw)",
-                        height: "min(70vh, 640px)",
-                        zIndex: 6,
-                        borderRadius: 18,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(8,8,8,0.92)",
-                        backdropFilter: "blur(10px)",
-                        overflow: "hidden",
-                        boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "14px 16px",
-                          borderBottom: "1px solid rgba(255,255,255,0.08)",
-                          fontWeight: 900,
-                          color: "white",
-                        }}
-                      >
-                        <span>댓글</span>
-                        <button
-                          onClick={() => setShowCinemaComments(false)}
-                          style={{
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            background: "rgba(255,255,255,0.06)",
-                            color: "white",
-                            borderRadius: 10,
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          닫기
-                        </button>
-                      </div>
-
-                      <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
-                        <Comments workId={workId} episodeId={String(episodeKey)} />
-                      </div>
-                    </div>
-                  )}
-
                   {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
                     const p = i + 1;
                     const isLocked = !isSubscribed && p > unlockedUntil;
@@ -1937,6 +2006,57 @@ export default function EpisodePage() {
                   })}
                 </div>
               )}
+
+              {showCinemaComments && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: -430,
+                    width: "min(420px, 92vw)",
+                    height: "min(70vh, 640px)",
+                    zIndex: 6,
+                    borderRadius: 18,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(8,8,8,0.92)",
+                    backdropFilter: "blur(10px)",
+                    overflow: "hidden",
+                    boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "14px 16px",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      fontWeight: 900,
+                      color: "white",
+                    }}
+                  >
+                    <span>댓글</span>
+                    <button
+                      onClick={() => setShowCinemaComments(false)}
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(255,255,255,0.06)",
+                        color: "white",
+                        borderRadius: 10,
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      닫기
+                    </button>
+                  </div>
+
+                  <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
+                    <Comments workId={workId} episodeId={String(episodeKey)} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1945,9 +2065,4 @@ export default function EpisodePage() {
       <Comments workId={workId} episodeId={String(episodeKey)} />
     </main>
   );
-}
-
-function lockedMemo(isSubscribed: boolean, part: number, unlockedUntil: number) {
-  if (isSubscribed) return false;
-  return part > unlockedUntil;
 }
