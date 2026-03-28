@@ -15,7 +15,7 @@ type LastPlayed = {
   part: number;
   updatedAt?: number;
 };
-
+<div style={{ color: "red", fontWeight: 900 }}>DEPLOY TEST</div>
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
