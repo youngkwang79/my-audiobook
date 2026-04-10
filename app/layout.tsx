@@ -20,6 +20,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "무림북",
   description: "창작 무협 소설과 오디오 스토리를 감상하는 무협 오디오북 플랫폼",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "무림북",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

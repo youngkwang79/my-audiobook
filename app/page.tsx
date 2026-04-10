@@ -8,14 +8,14 @@ import { works } from "./data/works";
 import WorkCard from "@/app/components/work/WorkCard";
 
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/app/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
 type LastPlayed = {
-  episodeId: number;
+  workId: string;
+  episodeId: string;
   part: number;
   updatedAt?: number;
 };
-<div style={{ color: "red", fontWeight: 900 }}>DEPLOY TEST</div>
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -29,28 +29,33 @@ export default function Home() {
   const [lastPlayed, setLastPlayed] = useState<LastPlayed | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("lastPlayed");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.episodeId || !parsed?.part) return;
+  try {
+    const raw = localStorage.getItem("lastPlayed");
+    if (!raw) return;
 
-      setLastPlayed({
-        episodeId: Number(parsed.episodeId),
-        part: Number(parsed.part),
-        updatedAt: parsed.updatedAt ? Number(parsed.updatedAt) : undefined,
-      });
-    } catch {
-      // 무시
-    }
-  }, []);
+    const parsed = JSON.parse(raw);
+    if (!parsed?.workId || !parsed?.episodeId || !parsed?.part) return;
+
+    setLastPlayed({
+      workId: String(parsed.workId),
+      episodeId: String(parsed.episodeId),
+      part: Number(parsed.part),
+      updatedAt: parsed.updatedAt ? Number(parsed.updatedAt) : undefined,
+    });
+  } catch {
+    // 무시
+  }
+}, []);
 
   // ✅ 이어듣기 링크
   const continueHref = useMemo(() => {
-    if (!lastPlayed) return "";
-    return `/episode/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
-  }, [lastPlayed]);
-
+  if (!lastPlayed) return "";
+  return `/episode/${lastPlayed.workId}/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
+}, [lastPlayed]);
+const lastPlayedWorkTitle = useMemo(() => {
+  if (!lastPlayed?.workId) return "";
+  return works.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
+}, [lastPlayed]);
   const handleAuthClick = async () => {
     if (loading) return;
 
@@ -246,10 +251,17 @@ export default function Home() {
               minWidth: 0,
             }}
           >
-            {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
+            {lastPlayedWorkTitle} · {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
           </div>
 
-          <Link href={user ? continueHref : "/login"} style={{ textDecoration: "none" }}>
+          <Link
+  href={
+    user
+      ? continueHref
+      : `/login?redirect=${encodeURIComponent(continueHref)}`
+  }
+  style={{ textDecoration: "none" }}
+>
             <div
               style={{
                 position: "relative",

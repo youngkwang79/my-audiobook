@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/lib/server/supabaseAdmin";
+import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
 const FREE_PARTS_DEFAULT = 8;
 const POINTS_PER_PART = 60;

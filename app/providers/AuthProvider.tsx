@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/app/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
 type AuthContextValue = {
   user: User | null;

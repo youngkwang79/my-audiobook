@@ -16,22 +16,30 @@ export default function WorkCard({ work }: Props) {
           display: flex;
           flex-direction: column;
 
-          background:
-            linear-gradient(
-              135deg,
-              rgba(7, 10, 22, 0.0028) 0%,
-              rgba(8, 11, 24, 0.0022) 45%,
-              rgba(10, 13, 26, 0.0006) 100%
-            );
+          /* 배경 거의 없음 */
+          background: rgba(255, 255, 255, 0.015);
 
-          backdrop-filter: blur(0px);
-          -webkit-backdrop-filter: blur(10px);
+          /* iPhone 차이 줄이려고 블러 제거 */
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
 
-          border: 1px solid rgba(255, 215, 120, 0.16);
-
+          border: 1px solid rgba(255, 215, 120, 0.12);
           box-shadow:
-            0 0 8px rgba(255, 215, 120, 0.08),
-            0 8px 22px rgba(0, 0, 0, 0.18);
+            0 6px 18px rgba(0, 0, 0, 0.14),
+            0 0 6px rgba(255, 215, 120, 0.04);
+
+          transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .work-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(255, 215, 120, 0.18);
+          box-shadow:
+            0 10px 24px rgba(0, 0, 0, 0.18),
+            0 0 10px rgba(255, 215, 120, 0.06);
         }
 
         .work-card-thumb-wrap {
@@ -39,7 +47,9 @@ export default function WorkCard({ work }: Props) {
           width: 100%;
           flex-shrink: 0;
           overflow: hidden;
-          background: rgba(255, 255, 255, 0.015);
+
+          /* 썸네일 뒤 배경도 거의 없음 */
+          background: rgba(255, 255, 255, 0.01);
         }
 
         .work-card-thumb {
@@ -47,8 +57,11 @@ export default function WorkCard({ work }: Props) {
           display: block;
           aspect-ratio: 16 / 9;
           object-fit: cover;
+          opacity: 1;
+          filter: none;
         }
 
+        /* 썸네일 위 덮는 막도 거의 제거 */
         .work-card-thumb-wrap::after {
           content: "";
           position: absolute;
@@ -57,9 +70,9 @@ export default function WorkCard({ work }: Props) {
           background:
             linear-gradient(
               to bottom,
-              rgba(255, 255, 255, 0.02) 0%,
-              rgba(0, 0, 0, 0.0004) 55%,
-              rgba(0, 0, 0, 0.0010) 100%
+              rgba(255, 255, 255, 0.01) 0%,
+              rgba(0, 0, 0, 0.02) 60%,
+              rgba(0, 0, 0, 0.04) 100%
             );
         }
 
@@ -71,17 +84,13 @@ export default function WorkCard({ work }: Props) {
           flex-direction: column;
           gap: 10px;
 
-          background:
-            linear-gradient(
-              180deg,
-              rgba(7, 10, 22, 0.36) 0%,
-              rgba(7, 10, 22, 0.24) 100%
-            );
+          /* 본문 배경도 아주 약하게 */
+          background: rgba(7, 10, 22, 0.06);
 
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
 
-          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          border-top: 1px solid rgba(255, 255, 255, 0.03);
         }
 
         .work-card-title {
@@ -91,24 +100,22 @@ export default function WorkCard({ work }: Props) {
           line-height: 1.25;
           word-break: keep-all;
           color: rgba(255, 255, 255, 0.96);
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+          text-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
         }
 
         .work-card-desc {
           font-size: 17px;
           font-weight: 600;
           line-height: 1.6;
-          opacity: 1;
           margin: 0;
           word-break: keep-all;
           color: rgba(255, 255, 255, 0.82);
-          text-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
         }
 
         .work-card-meta {
           font-size: 15px;
           font-weight: 800;
-          opacity: 1;
           margin: 0;
           color: rgba(255, 245, 210, 0.88);
         }
@@ -128,8 +135,36 @@ export default function WorkCard({ work }: Props) {
           font-weight: 900;
           text-decoration: none;
           box-shadow:
-            0 0 8px rgba(255, 215, 120, 0.10),
-            0 4px 12px rgba(0, 0, 0, 0.14);
+            0 0 8px rgba(255, 215, 120, 0.08),
+            0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        @media (max-width: 768px) {
+          .work-card {
+            background: rgba(255, 255, 255, 0.012);
+            border: 1px solid rgba(255, 215, 120, 0.10);
+            box-shadow:
+              0 5px 14px rgba(0, 0, 0, 0.12),
+              0 0 4px rgba(255, 215, 120, 0.03);
+          }
+
+          .work-card-thumb-wrap {
+            background: rgba(255, 255, 255, 0.008);
+          }
+
+          .work-card-thumb-wrap::after {
+            background:
+              linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.008) 0%,
+                rgba(0, 0, 0, 0.015) 60%,
+                rgba(0, 0, 0, 0.03) 100%
+              );
+          }
+
+          .work-card-body {
+            background: rgba(7, 10, 22, 0.045);
+          }
         }
 
         @media (min-width: 900px) {
@@ -145,7 +180,6 @@ export default function WorkCard({ work }: Props) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.015);
           }
 
           .work-card-thumb {
@@ -161,7 +195,7 @@ export default function WorkCard({ work }: Props) {
             justify-content: center;
             gap: 14px;
             border-top: 0;
-            border-left: 1px solid rgba(255, 255, 255, 0.04);
+            border-left: 1px solid rgba(255, 255, 255, 0.03);
           }
 
           .work-card-title {

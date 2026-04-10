@@ -13,7 +13,7 @@ export type Work = {
 export const works: Work[] = [
   {
     id: "cheonmujin",
-    title: "천무진",
+    title: "천무진 : 봉인된 천재",
     description: "봉인된 천재가 다시 깨어나 무림의 질서를 뒤흔든다",
     thumbnail: "/thumbnails/cheonmujin.jpg",
     episodeCount: 54,

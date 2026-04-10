@@ -1,0 +1,21 @@
+{
+  "name": "무림북",
+  "short_name": "무림북",
+  "description": "창작 무협 소설과 오디오 스토리를 감상하는 무협 오디오북 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0b12",
+  "theme_color": "#0b0b12",
+  "icons": [
+    {
+      "src": "/warrior.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/warrior.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

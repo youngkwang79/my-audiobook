@@ -1,7 +1,7 @@
 console.log("✅ PORTONE WEBHOOK POST HIT", new Date().toISOString());
 import { NextResponse } from "next/server";
 import { Webhook } from "@portone/server-sdk";
-import { supabaseAdmin } from "@/app/lib/server/supabaseAdmin";
+import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status });

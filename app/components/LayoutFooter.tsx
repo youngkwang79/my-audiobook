@@ -28,6 +28,7 @@ export default function LayoutFooter() {
 
   return (
     <footer
+      className="hide-in-fullscreen"
       style={{
         padding: "20px 16px 28px",
         textAlign: "center",

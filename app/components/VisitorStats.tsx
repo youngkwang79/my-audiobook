@@ -48,6 +48,7 @@ export default function VisitorStats() {
 
   return (
     <div
+      className="hide-in-fullscreen"
       style={{
         display: "flex",
         justifyContent: "center",

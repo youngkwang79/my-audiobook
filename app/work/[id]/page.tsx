@@ -8,7 +8,7 @@ import { works } from "@/app/data/works";
 import { getEpisodesByWork } from "@/app/data/episodes";
 
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/app/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function WorkDetailPage() {
   const params = useParams();
@@ -155,11 +155,11 @@ export default function WorkDetailPage() {
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
-            onClick={() => {
-              const firstEpisode = episodes[0];
-              if (!firstEpisode) return;
-              router.push(`/episode/${work.id}/${firstEpisode.id}`);
-            }}
+  onClick={() => {
+    const firstEpisode = episodes[0];
+    if (!firstEpisode) return;
+    router.push(`/episode/${work.id}/${firstEpisode.id}?part=1&autoplay=1`);
+  }}
             style={{
               background:
                 "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
@@ -208,14 +208,14 @@ export default function WorkDetailPage() {
 
           return (
             <Link
-              key={episodeNo}
-              href={
-                user
-                  ? `/episode/${work.id}/${episodeNo}`
-                  : `/login?redirect=${encodeURIComponent(`/episode/${work.id}/${episodeNo}`)}`
-              }
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
+  key={episodeNo}
+  href={
+    user
+      ? `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`
+      : `/login?redirect=${encodeURIComponent(`/episode/${work.id}/${episodeNo}?part=1&autoplay=1`)}`
+  }
+  style={{ textDecoration: "none", color: "inherit" }}
+>
               <div
                 style={{
                   background: "rgba(255,255,255,0.05)",

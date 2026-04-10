@@ -5,7 +5,7 @@ import { getEpisodesByWork, getTotalPartsByWork } from "@/app/data/episodes";
 import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/app/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import Comments from "@/app/components/Comments";
 
 const DEFAULT_FREE_PARTS = 8;
@@ -532,10 +532,10 @@ updateCaptionByTime(current);
           setStatus("재생 중");
           pendingAutoplayRef.current = false;
 
-          if (isMobile && !autoEnteredCinema) {
-            setAutoEnteredCinema(true);
-            await enterCinemaMode();
-          }
+          if (!autoEnteredCinema) {
+  setAutoEnteredCinema(true);
+  await enterCinemaMode();
+}
         })
         .catch(() => {
           setIsPlaying(false);
@@ -593,10 +593,10 @@ updateCaptionByTime(current);
         await a.play();
         setIsPlaying(true);
 
-        if (isMobile && !autoEnteredCinema) {
-          setAutoEnteredCinema(true);
-          await enterCinemaMode();
-        }
+        if (!autoEnteredCinema) {
+  setAutoEnteredCinema(true);
+  await enterCinemaMode();
+}
       } else {
         a.pause();
         setIsPlaying(false);
@@ -1132,10 +1132,10 @@ updateCaptionByTime(current);
                     setStatus("재생 중");
                     pendingAutoplayRef.current = false;
 
-                    if (isMobile && !autoEnteredCinema) {
-                      setAutoEnteredCinema(true);
-                      await enterCinemaMode();
-                    }
+                    if (!autoEnteredCinema) {
+  setAutoEnteredCinema(true);
+  await enterCinemaMode();
+}
                   })
                   .catch(() => {
                     setIsPlaying(false);
@@ -1209,132 +1209,7 @@ updateCaptionByTime(current);
             </div>
           )}
 
-          {!locked && (
-            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              <button
-                onClick={() => seekBy(-10)}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "white",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                -10초
-              </button>
-
-              <button
-                onClick={() => seekBy(10)}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "white",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                +10초
-              </button>
-
-              <button
-                onClick={goNextPart}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "white",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                다음 편
-              </button>
-            </div>
-          )}
-
-          {!locked && (
-            <div style={{ marginBottom: 16 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 12,
-                }}
-              >
-                <span style={{ minWidth: 46, fontSize: 13 }}>{formatTime(currentTime)}</span>
-
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(duration, 0)}
-                  step={1}
-                  value={Math.min(currentTime, duration || 0)}
-                  onChange={(e) => handleSeek(Number(e.target.value))}
-                  style={{ flex: 1, accentColor: "#d4a23c" }}
-                />
-
-                <span style={{ minWidth: 46, fontSize: 13, textAlign: "right" }}>
-                  {formatTime(duration)}
-                </span>
-              </div>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {[0.8, 1, 1.2, 1.5].map((rate) => (
-                  <button
-                    key={rate}
-                    onClick={() => changePlaybackRate(rate)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 12,
-                      border:
-                        playbackRate === rate
-                          ? "2px solid rgba(255,215,120,0.9)"
-                          : "1px solid rgba(255,255,255,0.14)",
-                      background:
-                        playbackRate === rate
-                          ? "rgba(255,215,120,0.12)"
-                          : "rgba(255,255,255,0.06)",
-                      color: "white",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {rate}x
-                  </button>
-                ))}
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.06)",
-                  }}
-                >
-                  <span style={{ fontSize: 13 }}>음량</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={volume}
-                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    style={{ width: 140, accentColor: "#d4a23c" }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          
 
           {!locked && status && (
             <div
