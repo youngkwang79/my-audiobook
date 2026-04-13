@@ -797,17 +797,22 @@ export function generateRandomAccessory(realm: string, level: number): OwnedWeap
   const baseName = isNecklace ? "목걸이" : "반지";
   const prefix = level > 5 ? "영롱한" : level > 2 ? "강화된" : "낡은";
   
-  const item: OwnedWeapon = {
-    id,
-    name: `${prefix} ${realm}의 ${baseName}`,
-    slot: isNecklace ? "necklace" : "ring",
-    realm: realm as any,
-    attackBonus: 10 + level * 20,
-    mpBonus: 20 + level * 30, // 기본 내공(MP) 보너스 추가
-    price: 0,
-    icon: isNecklace ? "📿" : "💍",
-    description: `${effect.label} | 공격 +${10 + level * 20} | 내공 +${20 + level * 30}`,
-  };
+    const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+    const rIdx = realms.indexOf(realm);
+    const baseForgePrice = [1000, 5000, 25000, 100000, 500000, 2000000, 10000000, 50000000, 250000000, 1000000000, 5000000000][rIdx] || 1000;
+    const calculatedPrice = Math.floor(baseForgePrice * (1 + level * 0.1) * 1.2);
+
+    const item: OwnedWeapon = {
+      id,
+      name: `${prefix} ${realm}의 ${baseName}`,
+      slot: isNecklace ? "necklace" : "ring",
+      realm: realm as any,
+      attackBonus: 10 + level * 20,
+      mpBonus: 20 + level * 30, // 기본 내공(MP) 보너스 추가
+      price: calculatedPrice,
+      icon: isNecklace ? "📿" : "💍",
+      description: `${effect.label} | 공격 +${10 + level * 20} | 내공 +${20 + level * 30}`,
+    };
 
   if (effect.type === "exp") item.expMultiplier = 1.3;
   if (effect.type === "paralyze") {
