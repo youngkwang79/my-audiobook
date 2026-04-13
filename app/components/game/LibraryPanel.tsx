@@ -7,17 +7,17 @@ import { FACTIONS } from "@/app/lib/game/factions";
  * 각 경지별 기본 스탯입니다. 문파의 스타일에 따라 여기서 보너스가 붙습니다.
  */
 const REALM_BASE_STATS: Record<string, { multiplier: number; crit: number; price: number }> = {
-  "필부": { multiplier: 3, crit: 1, price: 100 },
-  "삼류": { multiplier: 6, crit: 3, price: 1000 },
-  "이류": { multiplier: 9, crit: 5, price: 5000 },
-  "일류": { multiplier: 12, crit: 8, price: 20000 },
-  "절정": { multiplier: 15, crit: 12, price: 100000 },
-  "초절정": { multiplier: 20, crit: 18, price: 500000 },
-  "화경": { multiplier: 30, crit: 25, price: 2000000 },
-  "현경": { multiplier: 50, crit: 35, price: 10000000 },
-  "생사경": { multiplier: 100, crit: 50, price: 50000000 },
-  "신화경": { multiplier: 150, crit: 70, price: 200000000 },
-  "천인합일": { multiplier: 300, crit: 90, price: 1000000000 },
+  "필부": { multiplier: 3, crit: 1, price: 20000 },
+  "삼류": { multiplier: 6, crit: 3, price: 200000 },
+  "이류": { multiplier: 9, crit: 5, price: 1000000 },
+  "일류": { multiplier: 12, crit: 8, price: 2500000 },
+  "절정": { multiplier: 15, crit: 12, price: 5000000 },
+  "초절정": { multiplier: 20, crit: 18, price: 20000000 },
+  "화경": { multiplier: 30, crit: 25, price: 100000000 },
+  "현경": { multiplier: 50, crit: 35, price: 300000000 },
+  "생사경": { multiplier: 100, crit: 50, price: 1000000000 },
+  "신화경": { multiplier: 150, crit: 70, price: 5000000000 },
+  "천인합일": { multiplier: 300, crit: 90, price: 10000000000 },
 };
 
 // 경지 순서 (잠금 해제 확인용)
