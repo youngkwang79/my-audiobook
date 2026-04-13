@@ -61,6 +61,59 @@ const MINI_GAMES: {
   },
 ];
 
+let bgmInterval: any = null;
+let bgmCtx: AudioContext | null = null;
+let bgmGain: GainNode | null = null;
+
+const stopInnBGM = () => {
+  if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+  if (bgmGain) { 
+    try { bgmGain.gain.exponentialRampToValueAtTime(0.001, bgmCtx!.currentTime + 0.5); } catch(e){}
+    setTimeout(() => { try { bgmCtx?.close(); bgmCtx = null; bgmGain = null; } catch(e){} }, 600);
+  }
+};
+
+const startInnBGM = () => {
+  if (typeof window === 'undefined') return;
+  stopInnBGM();
+  try {
+    const AudioCtxClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtxClass) return;
+    const ctx = new AudioCtxClass() as AudioContext;
+    const gain = ctx.createGain();
+    
+    bgmCtx = ctx;
+    bgmGain = gain;
+    
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.connect(ctx.destination);
+
+    const playPulse = (freq: number, type: OscillatorType, dur: number, vol: number) => {
+      if (!bgmCtx || !bgmGain) return;
+      const osc = bgmCtx.createOscillator();
+      const g = bgmCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, bgmCtx.currentTime);
+      g.gain.setValueAtTime(vol, bgmCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + dur);
+      osc.connect(g);
+      g.connect(bgmGain);
+      osc.start();
+      osc.stop(bgmCtx.currentTime + dur);
+    };
+
+    let step = 0;
+    bgmInterval = setInterval(() => {
+      if (!bgmCtx) return;
+      // Tense heartbeat-like drone
+      playPulse(60 + (step % 4 === 0 ? 0 : 5), 'sine', 0.4, 0.8);
+      if (step % 8 === 0) playPulse(120, 'triangle', 0.6, 0.4);
+      if (step % 16 === 12) playPulse(180, 'sawtooth', 0.1, 0.2); // Tense click
+      step++;
+    }, 400);
+  } catch(e){}
+};
+
 const playPuzzleSound = (type: 'match' | 'combo' | 'fail' | 'swap') => {
   if (typeof window === 'undefined') return;
   try {
@@ -421,6 +474,7 @@ export default function InnPanel({
     clearAllIntervals();
     setIsPlaying(false);
     isPlayingRef.current = false;
+    stopInnBGM();
     // 패배 시에는 즉시 승리 팝업이 떠있지 않도록 보장
     setIsWinPopup(false); 
 
@@ -520,6 +574,7 @@ export default function InnPanel({
     } else {
       setIsPlaying(true);
       isPlayingRef.current = true;
+      startInnBGM();
     }
   };
 
@@ -595,7 +650,7 @@ export default function InnPanel({
       breathMissCountRef.current = newMissCount;
       setBreathMissCount(newMissCount);
 
-      const penalty = Math.floor(missedCount * 85 * 3 * powerFactor);
+      const penalty = Math.floor(missedCount * 85 * powerFactor);
       const newScore = Math.max(-5000 * powerFactor, playerScoreRef.current - penalty);
       
       playerScoreRef.current = newScore;
@@ -655,14 +710,17 @@ export default function InnPanel({
     const tolerance = 10;
     
     // Read from REF to avoid stale closure in logic
-    const nearestNote = breathNotesRef.current.find(n => n.lane === lane && n.y > 60);
-    if (!nearestNote) return;
+    const laneNotes = breathNotesRef.current.filter(n => n.lane === lane && n.y > 55);
+    if (laneNotes.length === 0) return;
+    
+    // Fix: Find the note closest to the bottom (max Y) to prevent hitting a note behind the front one
+    const nearestNote = laneNotes.reduce((prev, curr) => (curr.y > prev.y) ? curr : prev);
 
     const diff = Math.abs(nearestNote.y - hitZone);
     const grade = getGrade(diff, tolerance);
 
     if (grade === "MISS") {
-      const penalty = Math.floor(85 * 3 * powerFactor);
+      const penalty = Math.floor(85 * powerFactor);
       const newScore = playerScoreRef.current - penalty;
       playerScoreRef.current = newScore;
       setPlayerScore(newScore);
@@ -821,9 +879,12 @@ export default function InnPanel({
   const findMatches = (grid: any[][]) => {
     if (!grid || grid.length === 0) return [];
     const matches: Set<string> = new Set();
+    const rows = grid.length;
+    const cols = grid[0].length;
+
     // Rows
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 5; c++) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols - 2; c++) {
         const t = grid[r][c]?.type;
         if (t && t !== 'bomb' && grid[r][c+1]?.type === t && grid[r][c+2]?.type === t) {
           matches.add(`${r},${c}`); 
@@ -833,8 +894,8 @@ export default function InnPanel({
       }
     }
     // Cols
-    for (let c = 0; c < 7; c++) {
-      for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows - 2; r++) {
         const t = grid[r][c]?.type;
         if (t && t !== 'bomb' && grid[r+1][c]?.type === t && grid[r+2][c]?.type === t) {
           matches.add(`${r},${c}`); 
@@ -853,7 +914,9 @@ export default function InnPanel({
 
     let hasMatches = true;
     while (hasMatches && isPlayingRef.current) {
-      const matches = findMatches(puzzleGridRef.current);
+      // FORCE SYNC: Ensure ref is definitely the state for the start of calculation
+      const gridToMatch = JSON.parse(JSON.stringify(puzzleGridRef.current));
+      const matches = findMatches(gridToMatch);
       if (matches.length === 0) {
         hasMatches = false;
         break;
@@ -1153,6 +1216,15 @@ export default function InnPanel({
           0% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
           100% { transform: translateY(0); }
+        }
+        @keyframes puzzleBurst {
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; filter: brightness(2); }
+          100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; filter: brightness(1); }
+        }
+        @keyframes textShake {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          25% { transform: translate(-52%, -52%) scale(1.1); }
+          75% { transform: translate(-48%, -48%) scale(1.1); }
         }
         .duel-bg {
           position: absolute;
