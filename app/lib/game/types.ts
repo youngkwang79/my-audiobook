@@ -286,6 +286,13 @@ export type GameSaveData = {
   consumables: Record<ConsumableId, number>;
   quickSlots: (ConsumableId | null)[];
   skillCooldowns: Record<string, number>;
+  lastSaveTime: number;
+  lastOfflineRewards: {
+    gold: number;
+    exp: number;
+    points: number;
+    duration: number; // in hours
+  } | null;
   nextRivalTime: number; 
   nextRivalKills: number; 
 
@@ -300,5 +307,8 @@ export type GameSaveData = {
     critRate: number;
     critDmg: number;
     eva: number;
+    luck: number;      // New: Increases better tier drop chance
+    autoGain: number;  // New: Increases passive gain
+    offlineLimit: number; // New: Increases offline cap (hours)
   };
 };

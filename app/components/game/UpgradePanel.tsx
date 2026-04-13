@@ -52,7 +52,7 @@ export default function UpgradePanel() {
               color: "#ffd700",
             }}
           >
-            {currentCoins.toLocaleString()} 냥
+            {Math.floor(currentCoins).toLocaleString()} 냥
           </div>
           <div
             style={{
@@ -65,7 +65,7 @@ export default function UpgradePanel() {
               color: "#a8ff7e",
             }}
           >
-            {(game.reputation || game.points || 0).toLocaleString()} 명성
+            {Math.floor(game.reputation || game.points || 0).toLocaleString()} 명성
           </div>
         </div>
       </div>
@@ -113,6 +113,9 @@ export default function UpgradePanel() {
           { id: "def", name: "금강불괴 기법", icon: "🛡️", desc: "방어력 영구 상승" },
           { id: "hpRec", name: "천심 회복력", icon: "❤️", desc: "최대 체력 영구 상승" },
           { id: "mpRec", name: "단전 크기 확장", icon: "💎", desc: "최대 내공 영구 상승" },
+          { id: "luck", name: "천명 기연(기연)", icon: "🍀", desc: "고등급 아이템 획득 확률 상승" },
+          { id: "autoGain", name: "심득 자동 성취", icon: "💰", desc: "매초 획득하는 금화/경험치 증가" },
+          { id: "offlineLimit", name: "명상 시간 확장", icon: "⏳", desc: "오프라인 보상 한도 증가 (최초 1시간)" },
         ].map(s => {
           const lvValue = (game.statUpgrades as any)[s.id] || 0;
           const store: any = useGameStore.getState();

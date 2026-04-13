@@ -13,10 +13,10 @@ export default function GameStatusPanel({ game }: { game: any }) {
     ...game,
     ownedWeapons: Array.isArray(game?.ownedWeapons) ? game.ownedWeapons : [],
     learnedSkills: Array.isArray(game?.learnedSkills) ? game.learnedSkills : [],
-    exp: game?.exp ?? 0,
-    touches: game?.touches ?? 0,
-    coins: game?.coins ?? 0,
-    reputation: game?.points ?? 0,
+    exp: Math.floor(game?.exp ?? 0),
+    touches: Math.floor(game?.touches ?? 0),
+    coins: Math.floor(game?.coins ?? 0),
+    reputation: Math.floor(game?.points ?? 0),
     realm: game?.realm ?? "필부",
     faction: game?.faction ?? "무소속",
     hp: game?.hp ?? 150,
@@ -240,7 +240,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
             >
               <span>HP</span>
               <span>
-                {safeGame.hp.toLocaleString()} / {totalHp.toLocaleString()}
+                {Math.floor(safeGame.hp).toLocaleString()} / {Math.floor(totalHp).toLocaleString()}
               </span>
             </div>
             <div
@@ -277,7 +277,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
             >
               <span>MP</span>
               <span>
-                {safeGame.mp.toLocaleString()} / {totalMp.toLocaleString()}
+                {Math.floor(safeGame.mp).toLocaleString()} / {Math.floor(totalMp).toLocaleString()}
               </span>
             </div>
             <div

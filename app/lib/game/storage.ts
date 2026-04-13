@@ -113,6 +113,9 @@ export const defaultGameData: GameSaveData = {
   pendingInnEntry: false,
   innEventVersion: 0,
 
+  lastSaveTime: Date.now(),
+  lastOfflineRewards: null,
+
   // 초기 전투 상태
   comboCount: 0,
   specialStacks: 0,
@@ -141,6 +144,9 @@ export const defaultGameData: GameSaveData = {
     critRate: 0,
     critDmg: 0,
     eva: 0,
+    luck: 0,
+    autoGain: 0,
+    offlineLimit: 0,
   },
 };
 

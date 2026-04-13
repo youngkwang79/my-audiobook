@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType } from "./types";
 import { FACTIONS } from "./factions";
 import { defaultGameData, loadGame, saveGame } from "./storage";
-import { REALM_SET_OPTIONS, MASTER_RIVALS, generateRandomAccessory } from "./items";
+import { REALM_SET_OPTIONS, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions } from "./items";
 
 export const REALM_SETTINGS: Record<string, any> = {
   필부: { bonus: 1.0, minTouches: 0, dummyHp: 1000, dummyType: "straw", label: "낡은 짚더미", hp: 150, mp: 60, goldMultiplier: 1 },
@@ -150,6 +150,8 @@ interface GameState {
   getMultiUpgradeCost: (key: string, count: number, mode: 'gold' | 'reputation') => number;
   upgradeStatMulti: (key: string, count: number, mode: 'gold' | 'reputation') => void;
   updateBuffs: (dt: number) => void;
+  checkOfflineRewards: () => void;
+  claimOfflineRewards: () => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -201,7 +203,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const equippedIds = Object.values(game.equippedGear ?? {}).filter(Boolean);
     const equippedItems = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     const gearAtk = equippedItems.reduce((s, i) => s + (i.attackBonus || 0), 0);
-    const realmSetts = getRealmSettings(game.realm);
+    const realmSetts = REALM_SETTINGS[game.realm];
     const realmMult = realmSetts?.bonus || 1;
     const upgradeAtk = (game.statUpgrades?.atk || 0);
 
@@ -687,14 +689,48 @@ export const useGameStore = create<GameState>((set, get) => ({
   takeDamage: (damage: number) => set(s => ({ game: { ...s.game, hp: Math.max(0, s.game.hp - damage) } })),
   heal: (amount: number) => set(s => ({ game: { ...s.game, hp: Math.min(get().getTotalHp(), s.game.hp + amount) } })),
   triggerSave: (i = false) => {
-    if (i) { if (debounceTimer) clearTimeout(debounceTimer); saveGame(get().game); debounceTimer = null; return; }
+    if (i) {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      const updatedGame = { ...get().game, lastSaveTime: Date.now() };
+      saveGame(updatedGame);
+      debounceTimer = null;
+      return;
+    }
     if (debounceTimer) return;
-    debounceTimer = setTimeout(() => { if (typeof window !== "undefined") saveGame(get().game); debounceTimer = null; }, 10000);
+    debounceTimer = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        const updatedGame = { ...get().game, lastSaveTime: Date.now() };
+        saveGame(updatedGame);
+      }
+      debounceTimer = null;
+    }, 10000);
   },
   startBuffCountdown: () => startBuffCountdown(),
   autoTrain: () => {
-    const faction = FACTIONS.find(f => f.name === get().game.faction);
-    get().addExp(0.7 * (1 + (faction?.expBonus || 0) / 100), true);
+    const { game, addExp, addCoins } = get();
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    const realmSetts = REALM_SETTINGS[game.realm] || { goldMultiplier: 1 };
+    
+    // 자동획득 강화 수치 적용 (기본 초당 획득량 + 강화)
+    const autoGainLv = game.statUpgrades.autoGain || 0;
+    const goldBonus = (realmSetts.goldMultiplier || 1) * (1 + autoGainLv * 0.1);
+    
+    // 초당 10 gold/exp 기준 (5회 실행되므로 나누기 5)
+    const tickExp = 0.7 * (1 + (faction?.expBonus || 0) / 100) * (1 + autoGainLv * 0.05);
+    const tickGold = (2 / 5) * (1 + autoGainLv * 0.1) * (realmSetts.goldMultiplier || 1);
+
+    addExp(tickExp, true);
+    
+    if (tickGold > 0) {
+      set(s => ({
+        game: {
+          ...s.game,
+          coins: s.game.coins + tickGold,
+          points: (s.game.points || 0) + tickGold,
+          reputation: (s.game.reputation || 0) + tickGold
+        }
+      }));
+    }
   },
   setQuickSlot: (idx, id) => {
     set(s => {
@@ -705,7 +741,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   buyPotion: (id, q) => {
     const { game } = get();
-    const realmSetts = getRealmSettings(game.realm);
+    const realmSetts = REALM_SETTINGS[game.realm];
     const realmList = Object.keys(REALM_SETTINGS);
     let realmIdx = realmList.indexOf(game.realm);
     if (realmIdx === -1 && game.realm.startsWith("환골탈퇴")) {
@@ -746,8 +782,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   unequipItem: (slot) => set(s => ({ game: { ...s.game, equippedGear: { ...s.game.equippedGear, [slot]: null }, equippedWeaponId: slot === "mainWeapon" ? null : s.game.equippedWeaponId } })),
   addWeapon: (w) => {
-    const { rollTierAndOptions } = require("./items");
-    const weaponWithTier = w.tier ? w : rollTierAndOptions(w, 0);
+    const luck = get().game.statUpgrades.luck || 0;
+    const weaponWithTier = w.tier ? w : rollTierAndOptions(w, 0, luck);
     set(s => ({ game: { ...s.game, ownedWeapons: [...s.game.ownedWeapons, weaponWithTier] } }));
   },
   breakthrough: () => {
@@ -817,6 +853,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     let gain = 250; // 25 -> 250 상향
     if (key === "hpRec") gain = 2500; // 250 -> 2500 상향
     if (key === "mpRec") gain = 1000; // 100 -> 1000 상향
+    if (["luck", "autoGain", "offlineLimit"].includes(key)) gain = 1;
 
     set(s => ({
       game: {
@@ -835,6 +872,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     let gain = 1000; // 100 -> 1000 상향
     if (key === "hpRec") gain = 10000; // 1000 -> 10000 상향
     if (key === "mpRec") gain = 4000; // 400 -> 4000 상향
+    if (["luck", "autoGain", "offlineLimit"].includes(key)) gain = 1;
 
     set(s => ({
       game: {
@@ -856,7 +894,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     for (let i = 0; i < count; i++) {
       const bonus = currentBonus + (i * unit);
-      const upgradeCount = mode === 'gold' ? Math.floor(bonus / 250) : Math.floor(bonus / 1000);
+      const upgradeCount = ["luck", "autoGain", "offlineLimit"].includes(key) ? bonus : (mode === 'gold' ? Math.floor(bonus / 250) : Math.floor(bonus / 1000));
       if (mode === 'gold') {
         // 비용 증가폭 1% (1.01)
         totalCost += Math.floor(500 * Math.pow(1.01, upgradeCount));
@@ -881,6 +919,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     let finalGain = gain;
     if (key === "hpRec") finalGain = gain * 10;
     if (key === "mpRec") finalGain = gain * 4;
+    
+    // 특수 강화 (기연, 자동획득, 한도)는 수량을 1배로 적용 ( unit 은 mode에 따라 다름 )
+    if (["luck", "autoGain", "offlineLimit"].includes(key)) {
+       finalGain = count; // 단순히 클릭 횟수/강화 횟수만큼 정수 증가
+    }
 
     set(s => {
       const nextGame = { ...s.game };
@@ -914,6 +957,44 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     get().triggerSave(true);
   },
+  checkOfflineRewards: () => {
+    const { game } = get();
+    if (!game.lastSaveTime) return;
+    const now = Date.now();
+    const diffMs = now - game.lastSaveTime;
+    if (diffMs < 60000) return; // 1분 미만은 무시
+
+    const maxHours = 1 + (game.statUpgrades.offlineLimit || 0);
+    const offlineMs = Math.min(diffMs, maxHours * 3600000);
+    const offlineSec = offlineMs / 1000;
+
+    // 보상 계산: 초당 자동획득량 기반 (1/3 활성 효율)
+    const realmSetts = REALM_SETTINGS[game.realm];
+    const goldRate = (realmSetts.goldMultiplier || 1) * 3 * (1 + (game.statUpgrades.autoGain || 0) * 0.1); 
+    const expRate = 0.5 * (1 + (game.statUpgrades.autoGain || 0) * 0.1); 
+    
+    const earnedGold = Math.floor(goldRate * offlineSec / 3);
+    const earnedExp = Math.floor(expRate * offlineSec / 3);
+    const earnedPoints = Math.floor(earnedGold); // 명성은 금화와 동일하게
+
+    set(s => ({
+      game: {
+        ...s.game,
+        lastSaveTime: now,
+        lastOfflineRewards: {
+          gold: earnedGold,
+          exp: earnedExp,
+          points: earnedPoints,
+          duration: Math.round((offlineMs / 3600000) * 10) / 10
+        },
+        coins: s.game.coins + earnedGold,
+        exp: s.game.exp + earnedExp,
+        points: (s.game.points || 0) + earnedPoints,
+        reputation: (s.game.reputation || 0) + earnedPoints
+      }
+    }));
+  },
+  claimOfflineRewards: () => set(s => ({ game: { ...s.game, lastOfflineRewards: null } })),
   resolveTimingMission: ({ success, score, grade, isFinal, maxStage = 0 }) => {
     const { game } = get();
     if (!success && maxStage === 0) {
@@ -923,7 +1004,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rand = Math.random() * 100;
     const mult = rand < 1 ? 10 : rand < 7 ? 5 : rand < 20 ? 4 : rand < 40 ? 3 : 2;
     const dur = 3 + Math.floor(Math.random() * 5);
-    const realmSetts = getRealmSettings(game.realm);
+    const realmSetts = REALM_SETTINGS[game.realm];
     const goldMult = realmSetts?.goldMultiplier || 1;
     const coinReward = 1000 * Math.pow(2.2, maxStage) * goldMult;
     set(s => ({ game: { ...s.game, coins: s.game.coins + coinReward, attackMultiplier: mult, buffTimeLeft: dur, activeBuff: "무아지경", timingMission: { ...s.game.timingMission, available: false }, pendingInnEntry: false, lastReward: `🎁 금화 ${Math.floor(coinReward).toLocaleString()}냥, 무아지경 ${mult}배(${dur}초)` } }));
@@ -969,7 +1050,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const dmg = get().getTotalAttack() * (crit ? (get().getTotalCritDmg() / 100) : 1);
     const nextHp = Math.max(0, game.masterDuel.rivalHp - dmg);
     if (nextHp <= 0) {
-      const reward = generateRandomAccessory(game.realm, game.masterDuel.selectedLevel);
+      const reward = generateRandomAccessory(game.realm, game.masterDuel.selectedLevel, game.statUpgrades.luck || 0);
       const isNewLevel = game.masterDuel.selectedLevel === game.masterDuel.currentLevel;
       set(s => ({
         game: {

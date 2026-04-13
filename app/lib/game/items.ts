@@ -798,15 +798,15 @@ export const SYNERGY_SETS: Record<string, { label: string, description: string }
   "태극": { label: "태극 (균형)", description: "3세트: 공격력 15%, 치명타율 7% 증가 | 5세트: 모든 속성 10% 강화" },
 };
 
-export function rollTierAndOptions(item: any, level: number) {
+export function rollTierAndOptions(item: any, level: number, luck: number = 0) {
+  const luckBonus = luck * 0.2; // 기연 1포인트당 가중치 0.2% 증가
   const rand = Math.random() * 100;
   let tier: ItemTier = "평범";
   let optionCount = 0;
-  let hasSpecial = false;
 
-  if (rand < 5) { tier = "신기"; optionCount = 3; hasSpecial = true; }
-  else if (rand < 20) { tier = "보구"; optionCount = 2; }
-  else if (rand < 50) { tier = "명품"; optionCount = 1; }
+  if (rand < (5 + luckBonus)) { tier = "신기"; optionCount = 3; }
+  else if (rand < (20 + luckBonus * 2)) { tier = "보구"; optionCount = 2; }
+  else if (rand < (50 + luckBonus * 4)) { tier = "명품"; optionCount = 1; }
 
   const options: RandomOption[] = [];
   const pool = [...RANDOM_OPTION_POOL];
@@ -814,13 +814,19 @@ export function rollTierAndOptions(item: any, level: number) {
     if (pool.length === 0) break;
     const idx = Math.floor(Math.random() * pool.length);
     const opt = pool.splice(idx, 1)[0];
-    const value = Math.floor(opt.range[0] + Math.random() * (opt.range[1] - opt.range[0] + 1));
+    
+    // 기연이 높을수록 랜덤 옵션 수치도 소폭 높게 나올 확률
+    const minVal = opt.range[0];
+    const maxVal = opt.range[1];
+    const luckRoll = Math.min(luck * 0.1, (maxVal - minVal) * 0.5);
+    const value = Math.floor(minVal + luckRoll + Math.random() * (maxVal - minVal + 1 - luckRoll));
+    
     options.push({ stat: opt.stat, value, label: `${opt.label} +${value}${opt.suffix}` });
   }
 
-  // 시너지 세트 부여 (명품 이상부터 30% 확률)
+  // 시너지 세트 부여 (명품 이상부터 40% 확률 + 기연 보조)
   let setName = undefined;
-  if (tier !== "평범" && Math.random() < 0.4) {
+  if (tier !== "평범" && Math.random() < (0.4 + luck * 0.01)) {
     const setKeys = Object.keys(SYNERGY_SETS);
     setName = setKeys[Math.floor(Math.random() * setKeys.length)];
   }
@@ -828,7 +834,7 @@ export function rollTierAndOptions(item: any, level: number) {
   return { ...item, tier, randomOptions: options, setName };
 }
 
-export function generateRandomAccessory(realm: string, level: number): OwnedWeapon {
+export function generateRandomAccessory(realm: string, level: number, luck: number = 0): OwnedWeapon {
   const isNecklace = Math.random() < 0.5;
   const id = `${realm}_${isNecklace ? "necklace" : "ring"}_${Date.now()}`;
   
@@ -850,10 +856,10 @@ export function generateRandomAccessory(realm: string, level: number): OwnedWeap
     description: `대결을 통해 획득한 전리품입니다.`,
   };
 
-  const tieredItem = rollTierAndOptions(baseItem, level);
+  const tieredItem = rollTierAndOptions(baseItem, level, luck);
   
   // 신기 등급에는 특수 효과(스킬) 부여 확률
-  if (tieredItem.tier === "신기" && Math.random() < 0.5) {
+  if (tieredItem.tier === "신기" && Math.random() < (0.5 + luck * 0.02)) {
      tieredItem.equipmentSkill = { name: "전설의 광휘", multiplier: 20 };
   }
 

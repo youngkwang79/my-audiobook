@@ -14,6 +14,7 @@ import FactionSelectPanel from "./FactionSelectPanel";
 import AutoTrainingManager from "./AutoTrainingManager";
 import TrainingPanel from "./TrainingPanel";
 import UpgradePanel from "./UpgradePanel";
+import OfflineRewardPopup from "./OfflineRewardPopup";
 
 export default function GameShell() {
   const { game, markInnEntryHandled, syncFromCloud, syncToCloud } = useGameStore() as any;
@@ -25,6 +26,10 @@ export default function GameShell() {
 
   useEffect(() => {
     setMounted(true);
+    // Trigger offline reward check on mount
+    const store: any = useGameStore.getState();
+    if (store.checkOfflineRewards) store.checkOfflineRewards();
+
     // Autosave interval every 30 seconds
     const interval = setInterval(() => {
       const { triggerSave, syncToCloud } = useGameStore.getState() as any;
@@ -309,6 +314,8 @@ export default function GameShell() {
           `}</style>
         </div>
       )}
+
+      {game.lastOfflineRewards && <OfflineRewardPopup />}
     </div>
   );
 }
