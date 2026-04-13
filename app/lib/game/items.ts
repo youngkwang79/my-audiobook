@@ -781,49 +781,81 @@ export const MASTER_RIVALS = [
   { name: "검신", hpMult: 500.0, atkMult: 400.0 },
 ];
 
-export const ACCESSORY_EFFECTS = [
-  { name: "수련의 가호", type: "exp", label: "수련 효율 +30%" },
-  { name: "마비의 일격", type: "paralyze", label: "마비 확률 5% (2초)" },
-  { name: "기혈 순환", type: "hpregen", label: "공격 시 HP 흡수 2%" },
-  { name: "치명적인 일침", type: "crit", label: "치명타 피해 20% 증가" },
-  { name: "신법의 깨달음", type: "agi", label: "민첩 +10%" },
+export const RANDOM_OPTION_POOL = [
+  { stat: "atk_pct", label: "공격력", suffix: "%", range: [5, 15] },
+  { stat: "crit_rate", label: "치명타율", suffix: "%", range: [3, 8] },
+  { stat: "crit_dmg", label: "치명타 피해", suffix: "%", range: [15, 40] },
+  { stat: "eva", label: "회피율", suffix: "%", range: [3, 10] },
+  { stat: "hp_pct", label: "생명력", suffix: "%", range: [10, 25] },
+  { stat: "mp_pct", label: "내공", suffix: "%", range: [10, 25] },
+  { stat: "exp_pct", label: "수련 효율", suffix: "%", range: [20, 50] },
 ];
+
+export const SYNERGY_SETS: Record<string, { label: string, description: string }> = {
+  "파천": { label: "파천 (공격)", description: "3세트: 공격력 25% 증폭 | 5세트: 최종 대미지 20% 추가" },
+  "멸절": { label: "멸절 (치명피해)", description: "3세트: 치명타 피해 60% 증가 | 5세트: 치명타 시 10% 확률로 대미지 2배" },
+  "빙화": { label: "빙화 (치명)", description: "3세트: 치명타율 20% 증가 | 5세트: 공격 시 내공 2% 회복" },
+  "태극": { label: "태극 (균형)", description: "3세트: 공격력 15%, 치명타율 7% 증가 | 5세트: 모든 속성 10% 강화" },
+};
+
+export function rollTierAndOptions(item: any, level: number) {
+  const rand = Math.random() * 100;
+  let tier: ItemTier = "평범";
+  let optionCount = 0;
+  let hasSpecial = false;
+
+  if (rand < 5) { tier = "신기"; optionCount = 3; hasSpecial = true; }
+  else if (rand < 20) { tier = "보구"; optionCount = 2; }
+  else if (rand < 50) { tier = "명품"; optionCount = 1; }
+
+  const options: RandomOption[] = [];
+  const pool = [...RANDOM_OPTION_POOL];
+  for (let i = 0; i < optionCount; i++) {
+    if (pool.length === 0) break;
+    const idx = Math.floor(Math.random() * pool.length);
+    const opt = pool.splice(idx, 1)[0];
+    const value = Math.floor(opt.range[0] + Math.random() * (opt.range[1] - opt.range[0] + 1));
+    options.push({ stat: opt.stat, value, label: `${opt.label} +${value}${opt.suffix}` });
+  }
+
+  // 시너지 세트 부여 (명품 이상부터 30% 확률)
+  let setName = undefined;
+  if (tier !== "평범" && Math.random() < 0.4) {
+    const setKeys = Object.keys(SYNERGY_SETS);
+    setName = setKeys[Math.floor(Math.random() * setKeys.length)];
+  }
+
+  return { ...item, tier, randomOptions: options, setName };
+}
 
 export function generateRandomAccessory(realm: string, level: number): OwnedWeapon {
   const isNecklace = Math.random() < 0.5;
   const id = `${realm}_${isNecklace ? "necklace" : "ring"}_${Date.now()}`;
-  const effect = ACCESSORY_EFFECTS[Math.floor(Math.random() * ACCESSORY_EFFECTS.length)];
   
   const baseName = isNecklace ? "목걸이" : "반지";
-  const prefix = level > 5 ? "영롱한" : level > 2 ? "강화된" : "낡은";
+  const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+  const rIdx = realms.indexOf(realm);
+  const baseForgePrice = [1000, 5000, 25000, 100000, 500000, 2000000, 10000000, 50000000, 250000000, 1000000000, 5000000000][rIdx] || 1000;
+  const calculatedPrice = Math.floor(baseForgePrice * (1 + level * 0.1) * 1.2);
+
+  const baseItem: any = {
+    id,
+    name: `${realm}의 ${baseName}`,
+    slot: isNecklace ? "necklace" : "ring",
+    realm: realm as any,
+    attackBonus: 10 + level * 20,
+    mpBonus: 20 + level * 30,
+    price: calculatedPrice,
+    icon: isNecklace ? "📿" : "💍",
+    description: `대결을 통해 획득한 전리품입니다.`,
+  };
+
+  const tieredItem = rollTierAndOptions(baseItem, level);
   
-    const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
-    const rIdx = realms.indexOf(realm);
-    const baseForgePrice = [1000, 5000, 25000, 100000, 500000, 2000000, 10000000, 50000000, 250000000, 1000000000, 5000000000][rIdx] || 1000;
-    const calculatedPrice = Math.floor(baseForgePrice * (1 + level * 0.1) * 1.2);
-
-    const item: OwnedWeapon = {
-      id,
-      name: `${prefix} ${realm}의 ${baseName}`,
-      slot: isNecklace ? "necklace" : "ring",
-      realm: realm as any,
-      attackBonus: 10 + level * 20,
-      mpBonus: 20 + level * 30, // 기본 내공(MP) 보너스 추가
-      price: calculatedPrice,
-      icon: isNecklace ? "📿" : "💍",
-      description: `${effect.label} | 공격 +${10 + level * 20} | 내공 +${20 + level * 30}`,
-    };
-
-  if (effect.type === "exp") item.expMultiplier = 1.3;
-  if (effect.type === "paralyze") {
-    item.paralyzeChance = 5;
-    item.paralyzeDuration = 2000;
-  }
-  if (effect.type === "agi") item.evadeBonus = 5;
-  if (effect.type === "crit") {
-    item.critBonus = 5;
-    item.critDmgBonus = 20; // 라벨에 있는 치명타 피해 20% 적용
+  // 신기 등급에는 특수 효과(스킬) 부여 확률
+  if (tieredItem.tier === "신기" && Math.random() < 0.5) {
+     tieredItem.equipmentSkill = { name: "전설의 광휘", multiplier: 20 };
   }
 
-  return item;
+  return tieredItem as OwnedWeapon;
 }

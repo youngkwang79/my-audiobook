@@ -190,7 +190,7 @@ export default function ForgePanel(props: Props) {
         ))}
       </div>
 
-      {setOption && (
+      {setOption ? (
         <div style={{
           background: "rgba(0, 255, 255, 0.05)",
           border: "1px solid rgba(0, 255, 255, 0.2)",
@@ -205,6 +205,19 @@ export default function ForgePanel(props: Props) {
         }}>
           <span>✨</span>
           <span>{setOption.description}</span>
+        </div>
+      ) : (
+        <div style={{
+          background: "rgba(255, 255, 255, 0.03)",
+          border: "1px dashed rgba(255, 255, 255, 0.1)",
+          borderRadius: 8,
+          padding: "8px 12px",
+          marginBottom: 12,
+          fontSize: 11,
+          color: "#888",
+          textAlign: "center"
+        }}>
+          세트 옵션 준비 중
         </div>
       )}
 
@@ -246,8 +259,9 @@ export default function ForgePanel(props: Props) {
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-               <span>⚔️</span> {selectedRealm} 장비
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+               <div><span>⚔️</span> {selectedRealm} 장비</div>
+               <div style={{ fontSize: 10, color: "#aaa", fontWeight: "normal" }}>* 구매 시 등급/옵션 무작위 부여</div>
             </div>
             {filteredItems.map((item) => {
               const owned = ownedIds.includes(item.id);
@@ -268,7 +282,9 @@ export default function ForgePanel(props: Props) {
                     {item.icon ?? "📦"}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a", marginBottom: 2 }}>{item.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a", marginBottom: 2 }}>
+                      {item.name} {item.equipmentSkill && <span style={{ color: "#00f2ff", fontSize: 10, fontWeight: "bold", marginLeft: 4 }}>[보검]</span>}
+                    </div>
                     <div style={{ fontSize: 10, opacity: 0.8, color: "#aaa" }}>{item.description}</div>
                     {item.equipmentSkill && (
                       <div style={{ fontSize: 9, color: "#ffd700", fontWeight: "bold" }}>✨ {item.equipmentSkill.name} ({item.equipmentSkill.multiplier}배)</div>

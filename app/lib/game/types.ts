@@ -50,11 +50,20 @@ export type ConsumableId =
   | "mp_small" | "mp_medium" | "mp_large"
   | "trance_2" | "trance_5" | "trance_10";
 
+export type ItemTier = "평범" | "명품" | "보구" | "신기";
+
+export type RandomOption = {
+  stat: string;
+  value: number;
+  label: string;
+};
+
 export type OwnedWeapon = {
   id: WeaponId;
   name: string;
   type?: string;
-  rank?: string;
+  tier?: ItemTier;
+  randomOptions?: RandomOption[];
   slot: EquipSlot;
   realm?: RealmType;
   attackBonus: number;
@@ -77,6 +86,7 @@ export type OwnedWeapon = {
     name: string;
     multiplier: number;
   };
+  setName?: string; // Synergy support
 };
 
 export type Skill = {

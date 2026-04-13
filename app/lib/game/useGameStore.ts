@@ -205,6 +205,20 @@ export const useGameStore = create<GameState>((set, get) => ({
     const realmMult = realmSetts?.bonus || 1;
     const upgradeAtk = (game.statUpgrades?.atk || 0);
 
+    // Random Options
+    const optAtkPct = equippedItems.reduce((sum, item) => 
+      sum + (item.randomOptions?.filter(o => o.stat === "atk_pct").reduce((s, o) => s + o.value, 0) || 0), 0) / 100;
+
+    // Synergy
+    const setCounts: Record<string, number> = {};
+    equippedItems.forEach(i => { if (i.setName) setCounts[i.setName] = (setCounts[i.setName] || 0) + 1; });
+    let synergyAtkMult = 1;
+    let synergyFinalDmg = 1;
+    if (setCounts["파천"] >= 3) synergyAtkMult += 0.25;
+    if (setCounts["파천"] >= 5) synergyFinalDmg += 0.2;
+    if (setCounts["태극"] >= 3) synergyAtkMult += 0.15;
+    if (setCounts["태극"] >= 5) synergyAtkMult += 0.1;
+
     let setAtkMult = 1;
     const realmCounts = equippedItems.reduce((acc, item) => {
       if (item.realm) acc[item.realm] = (acc[item.realm] || 0) + 1;
@@ -223,7 +237,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const martialStats = (faction?.martial as any)?.[game.realm]?.stats || {};
     const martialAtk = martialStats.atk || 0;
 
-    let finalAtk = (game.baseAttack + gearAtk + martialAtk + upgradeAtk) * weaponAtkMult * setAtkMult * realmMult * game.attackMultiplier * factionAtkMult;
+    let finalAtk = (game.baseAttack + gearAtk + martialAtk + upgradeAtk) * weaponAtkMult * setAtkMult * realmMult * game.attackMultiplier * factionAtkMult * (1 + optAtkPct) * synergyAtkMult * synergyFinalDmg;
 
     // Faction specific logic
     if (game.faction === "소림") finalAtk *= (1 + (game.hp / game.maxHp) * 0.3);
@@ -244,6 +258,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const equippedIds = Object.values(game.equippedGear ?? {}).filter(Boolean);
     const equippedItems = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     const gearCrit = equippedItems.reduce((s, i) => s + (i.critBonus || 0), 0);
+
+    // Random Options & Synergy
+    const optCrit = equippedItems.reduce((sum, item) => sum + (item.randomOptions?.filter(o => o.stat === "crit_rate").reduce((s, o) => s + o.value, 0) || 0), 0);
+    const setCounts: Record<string, number> = {};
+    equippedItems.forEach(i => { if (i.setName) setCounts[i.setName] = (setCounts[i.setName] || 0) + 1; });
+    let synergyCrit = 0;
+    if (setCounts["빙화"] >= 3) synergyCrit += 20;
+    if (setCounts["태극"] >= 3) synergyCrit += 7;
+    if (setCounts["태극"] >= 5) synergyCrit += 10;
+
     const martialStats = (faction?.martial as any)?.[game.realm]?.stats || {};
     const martialCrit = martialStats.critRate || 0;
     const learnedCrit = (game.learnedSkills || []).reduce((acc, s) => acc + (s.crit || 0), 0);
@@ -262,7 +286,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
-    return (game.critRate || 5) + gearCrit + factionCrit + martialCrit + setCritBonus + learnedCrit + upgradeCrit;
+    return (game.critRate || 5) + gearCrit + optCrit + synergyCrit + factionCrit + martialCrit + setCritBonus + learnedCrit + upgradeCrit;
   },
 
   getTotalCritDmg: () => {
@@ -270,13 +294,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     const faction = FACTIONS.find(f => f.name === game.faction);
     const factionCritDmg = faction?.bonusStats?.critDmg || 0;
     const equippedIds = Object.values(game.equippedGear ?? {}).filter(Boolean);
-    const gearCritDmg = game.ownedWeapons.filter(w => equippedIds.includes(w.id)).reduce((s, i) => s + (i.critDmgBonus || 0), 0);
+    const equippedItems = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    const gearCritDmg = equippedItems.reduce((s, i) => s + (i.critDmgBonus || 0), 0);
+
+    // Random Options & Synergy
+    const optCritDmg = equippedItems.reduce((sum, item) => sum + (item.randomOptions?.filter(o => o.stat === "crit_dmg").reduce((s, o) => s + o.value, 0) || 0), 0);
+    const setCounts: Record<string, number> = {};
+    equippedItems.forEach(i => { if (i.setName) setCounts[i.setName] = (setCounts[i.setName] || 0) + 1; });
+    let synergyCritDmg = 0;
+    if (setCounts["멸절"] >= 3) synergyCritDmg += 60;
+    if (setCounts["태극"] >= 5) synergyCritDmg += 20;
+
     const martialStats = (faction?.martial as any)?.[game.realm]?.stats || {};
     const martialCritDmg = martialStats.critDmg || 0;
     const learnedCritDmg = (game.learnedSkills || []).reduce((acc, s) => acc + (s.critDmg || 0), 0);
     const upgradeCritDmg = (game.statUpgrades?.critDmg || 0);
 
-    return 150 + gearCritDmg + factionCritDmg + martialCritDmg + learnedCritDmg + upgradeCritDmg;
+    return 150 + gearCritDmg + optCritDmg + synergyCritDmg + factionCritDmg + martialCritDmg + learnedCritDmg + upgradeCritDmg;
   },
 
   getTotalDefense: () => {
@@ -292,10 +326,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   getTotalHp: () => {
     const { game } = get();
     const faction = FACTIONS.find(f => f.name === game.faction);
-    const gearHp = game.ownedWeapons.filter(w => Object.values(game.equippedGear).includes(w.id)).reduce((s, i) => s + (i.hpBonus || 0), 0);
+    const equippedIds = Object.values(game.equippedGear ?? {}).filter(Boolean);
+    const equippedItems = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    const gearHp = equippedItems.reduce((s, i) => s + (i.hpBonus || 0), 0);
+
+    // Random Options & Synergy
+    const optHpPct = equippedItems.reduce((sum, item) => sum + (item.randomOptions?.filter(o => o.stat === "hp_pct").reduce((s, o) => s + o.value, 0) || 0), 0) / 100;
+    const setCounts: Record<string, number> = {};
+    equippedItems.forEach(i => { if (i.setName) setCounts[i.setName] = (setCounts[i.setName] || 0) + 1; });
+    let synergyHpMult = 1;
+    if (setCounts["태극"] >= 5) synergyHpMult += 0.1;
+
     const martialHp = ((faction?.martial as any)?.[game.realm]?.stats?.hp || 0);
     const upgradeHp = (game.statUpgrades?.hpRec || 0);
-    return Math.floor((game.maxHp + gearHp + martialHp + upgradeHp) * (1 + (faction?.bonusStats?.hp || 0) / 100));
+    return Math.floor((game.maxHp + gearHp + martialHp + upgradeHp) * (1 + (faction?.bonusStats?.hp || 0) / 100) * (1 + optHpPct) * synergyHpMult);
   },
 
   getTotalEvasion: () => {
@@ -701,7 +745,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { game: { ...s.game, equippedWeaponId: it.slot === "mainWeapon" ? id : s.game.equippedWeaponId, equippedGear: { ...s.game.equippedGear, [it.slot]: id } } };
   }),
   unequipItem: (slot) => set(s => ({ game: { ...s.game, equippedGear: { ...s.game.equippedGear, [slot]: null }, equippedWeaponId: slot === "mainWeapon" ? null : s.game.equippedWeaponId } })),
-  addWeapon: (w) => set(s => ({ game: { ...s.game, ownedWeapons: [...s.game.ownedWeapons, w] } })),
+  addWeapon: (w) => {
+    const { rollTierAndOptions } = require("./items");
+    const weaponWithTier = w.tier ? w : rollTierAndOptions(w, 0);
+    set(s => ({ game: { ...s.game, ownedWeapons: [...s.game.ownedWeapons, weaponWithTier] } }));
+  },
   breakthrough: () => {
     const { game } = get();
     if (game.star < 10) {

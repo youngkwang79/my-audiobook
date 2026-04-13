@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useGameStore } from "@/app/lib/game/useGameStore";
+import { SYNERGY_SETS } from "@/app/lib/game/items";
 import type { EquipSlot, OwnedWeapon, WeaponId, ConsumableId } from "@/app/lib/game/types";
 
 type Props = {
@@ -247,13 +248,13 @@ export default function InventoryPanel(props: Props) {
                           textAlign: "left",
                           fontSize: 12,
                           fontWeight: "bold",
-                          color: isEquipped ? "#ffe08a" : "#fff",
+                          color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                         }}
                       >
-                        {item.name}
+                        {item.name} {item.equipmentSkill && <span style={{ color: "#00f2ff", fontSize: 9, fontWeight: "bold" }}>[보검]</span>}
                       </div>
                       {isEquipped && (
                         <div
@@ -430,7 +431,10 @@ export default function InventoryPanel(props: Props) {
                 {popupItem.icon ?? "📦"}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 16, fontWeight: 900, color: "#ffe08a" }}>{popupItem.name}</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: popupItem.tier === "신기" ? "#ff9d00" : popupItem.tier === "보구" ? "#a822f3" : popupItem.tier === "명품" ? "#4facfe" : "#ffe08a" }}>
+                  {popupItem.name} 
+                  {popupItem.tier && <span style={{ fontSize: 10, marginLeft: 6, padding: "1px 4px", borderRadius: 4, background: "rgba(255,255,255,0.1)", color: "#fff" }}>{popupItem.tier}</span>}
+                </div>
                 <div style={{ fontSize: 11, color: "#aaa" }}>부위: {slotLabel(popupItem.slot)}</div>
               </div>
             </div>
@@ -439,8 +443,27 @@ export default function InventoryPanel(props: Props) {
               {popupItem.description}
             </div>
 
-            <div style={{ background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: 8, fontSize: 12 }}>
-              <div style={{ color: "#ff4d4d", fontWeight: "bold" }}>공격력 +{popupItem.attackBonus}</div>
+            <div style={{ background: "rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: 8, fontSize: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ color: "#ff4d4d", fontWeight: "bold" }}>기본 공격력 +{popupItem.attackBonus}</div>
+              {popupItem.mpBonus && <div style={{ color: "#4d94ff", fontWeight: "bold" }}>기본 내공 +{popupItem.mpBonus}</div>}
+              
+              {/* 무작위 옵션 표시 */}
+              {popupItem.randomOptions && popupItem.randomOptions.length > 0 && (
+                <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                  {popupItem.randomOptions.map((opt, i) => (
+                    <div key={i} style={{ color: "#7ee7ff", fontSize: 11 }}>🔹 {opt.label}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* 시너지 세트 표시 */}
+              {popupItem.setName && (
+                <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ color: "#ffd700", fontWeight: "bold", fontSize: 11 }}>🧩 세트: {(SYNERGY_SETS as any)[popupItem.setName]?.label || popupItem.setName}</div>
+                  <div style={{ color: "#aaa", fontSize: 10, fontStyle: "italic" }}>{(SYNERGY_SETS as any)[popupItem.setName]?.description}</div>
+                </div>
+              )}
+
               {popupItem.touchMultiplier && (
                 <div style={{ color: "#7ee7ff", fontWeight: "bold" }}>수련 효율 +{((popupItem.touchMultiplier - 1) * 100).toFixed(0)}%</div>
               )}
