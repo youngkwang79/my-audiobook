@@ -8,6 +8,10 @@ export type SetOption = {
 };
 
 export const REALM_SET_OPTIONS: Record<string, SetOption> = {
+  "필부": { requiredPieces: 5, attackBonusMultiplier: 1.05, critRateBonus: 1, description: "필부 세트: 총 공격력 5% 증폭, 치명타율 1% 증가" },
+  "삼류": { requiredPieces: 5, attackBonusMultiplier: 1.08, critRateBonus: 2, description: "삼류 세트: 총 공격력 8% 증폭, 치명타율 2% 증가" },
+  "이류": { requiredPieces: 5, attackBonusMultiplier: 1.12, critRateBonus: 3, description: "이류 세트: 총 공격력 12% 증폭, 치명타율 3% 증가" },
+  "일류": { requiredPieces: 5, attackBonusMultiplier: 1.15, critRateBonus: 4, description: "일류 세트: 총 공격력 15% 증폭, 치명타율 4% 증가" },
   "절정": { requiredPieces: 5, attackBonusMultiplier: 1.2, critRateBonus: 5, description: "절정 세트: 총 공격력 20% 증폭, 치명타율 5% 증가" },
   "초절정": { requiredPieces: 5, attackBonusMultiplier: 1.35, critRateBonus: 8, description: "초절정 세트: 총 공격력 35% 증폭, 치명타율 8% 증가" },
   "화경": { requiredPieces: 5, attackBonusMultiplier: 1.5, critRateBonus: 12, description: "화경 세트: 총 공격력 50% 증폭, 치명타율 12% 증가" },

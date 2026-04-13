@@ -74,6 +74,7 @@ export default function MasterPanel() {
       const cappedDt = Math.min(dt, 0.1);
       if (useGameStore.getState().game.masterDuel.isPlaying) {
         updateMasterDuel(cappedDt);
+        useGameStore.getState().updateBuffs(cappedDt);
       }
     }
     lastTickRef.current = time;
@@ -96,6 +97,16 @@ export default function MasterPanel() {
       return () => clearTimeout(timer);
     }
   }, [masterDuel.lastWinReward]);
+
+  const [isPlayerHit, setIsPlayerHit] = useState(false);
+
+  useEffect(() => {
+    if (masterDuel.damageTakenAccumulator && masterDuel.damageTakenAccumulator > 0) {
+      spawnDamage(Math.floor(masterDuel.damageTakenAccumulator), false, "player");
+      setIsPlayerHit(true);
+      setTimeout(() => setIsPlayerHit(false), 300);
+    }
+  }, [masterDuel.damageTakenAccumulator]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(animate);
@@ -243,6 +254,13 @@ export default function MasterPanel() {
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
           }
+          @keyframes playerHitShake {
+            0% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
+            25% { transform: translate(-5px, 5px); filter: brightness(1.5) sepia(1) hue-rotate(-50deg); }
+            50% { transform: translate(5px, -5px); filter: brightness(2) sepia(1) hue-rotate(-50deg); }
+            75% { transform: translate(-5px, -5px); filter: brightness(1.5) sepia(1) hue-rotate(-50deg); }
+            100% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
+          }
         `}</style>
 
         {/* Dynamic Background */}
@@ -275,9 +293,24 @@ export default function MasterPanel() {
           <div style={{
             fontSize: 28, fontWeight: 950, color: "#fff",
             textShadow: "0 0 10px #ff0000, 0 0 20px #000",
-            fontStyle: "italic", letterSpacing: 2
+            fontStyle: "italic", letterSpacing: 2,
+            opacity: masterDuel.isBerserk ? 0.3 : 1
           }}>VS</div>
         </div>
+
+        {/* Berserk Alert */}
+        {masterDuel.isBerserk && (
+          <div style={{
+            position: "absolute", top: "25%", left: "50%", transform: "translateX(-50%)",
+            zIndex: 30, pointerEvents: "none"
+          }}>
+            <div style={{
+              fontSize: 20, fontWeight: 950, color: "#ff0000",
+              textShadow: "0 0 10px #fff, 0 0 5px #ff0000",
+              animation: "redFlash 0.5s infinite"
+            }}>⚠ 광폭화! ⚠</div>
+          </div>
+        )}
 
         {/* Player */}
         <div style={{ position: "absolute", left: "12%", bottom: 85, zIndex: 5 }}>
@@ -287,7 +320,15 @@ export default function MasterPanel() {
             border: "1px solid rgba(0,242,255,0.5)", borderRadius: "50%",
             animation: "glowPlayer 4s infinite"
           }} />
-          <img src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"} style={{ height: 180, position: "relative" }} />
+          <img 
+            src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"} 
+            style={{ 
+              height: 180, 
+              position: "relative",
+              animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
+              filter: isPlayerHit ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" : "none"
+            }} 
+          />
           
           {/* Player Bars with Numeric View */}
           <div style={{ position: "absolute", bottom: 190, left: "50%", transform: "translateX(-50%)", width: 130 }}>
@@ -375,7 +416,15 @@ export default function MasterPanel() {
             if (lv <= 70) return "/images/villain_tiger.png";
             if (lv <= 85) return "/images/villain_poison.png";
             return "/images/villain_blood.png";
-          })()} style={{ height: 210, position: "relative", filter: "drop-shadow(0 0 15px rgba(255,0,0,0.3))" }} />
+          })()} 
+          style={{ 
+            height: 210, 
+            position: "relative", 
+            filter: masterDuel.isBerserk 
+              ? "drop-shadow(0 0 20px rgba(255,0,0,1)) brightness(1.5) sepia(0.5) hue-rotate(-50deg)" 
+              : "drop-shadow(0 0 15px rgba(255,0,0,0.3))",
+            transition: "0.4s"
+          }} />
           
           <div style={{
             position: "absolute", bottom: 210, left: "50%", transform: "translateX(-50%)",

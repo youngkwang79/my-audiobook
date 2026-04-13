@@ -215,6 +215,9 @@ export type MasterDuelState = {
   isPlaying: boolean;
   lastWinReward?: string;
   lastDefeatTimes: Record<number, number>; // level -> timestamp
+  rivalAttackTimer?: number;
+  damageTakenAccumulator?: number;
+  isBerserk?: boolean;
 };
 
 export type GameSaveData = {

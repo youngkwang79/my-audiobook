@@ -63,20 +63,14 @@ export function getRealmSettings(realm: string) {
 
 // 헬퍼 함수: 대결 적 자동 스케일링
 export function generateEnemy(level: number) {
-  const realms = ["삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
-  const rIdx = Math.min(realms.length - 1, Math.floor((level - 1) / 10));
-
-  let name = "";
-  if (level <= 100) {
-    name = level === 100 ? "최종 악적: 천마" : `수수께끼의 ${realms[rIdx]} 악당 (Lv.${level})`;
-  } else {
-    name = `환골탈퇴한 정체불명의 고수 (Lv.${level})`;
-  }
-
+  const rivalData = MASTER_RIVALS[(level - 1) % MASTER_RIVALS.length];
+  const baseHp = 1000 * Math.pow(1.65, level - 1) * (rivalData.hpMult || 1);
+  const baseAtk = (5 + Math.pow(level * 1.5, 1.25)) * (rivalData.atkMult || 1);
+  
   return {
-    name,
-    hp: Math.floor(100000 * Math.pow(1.5, level - 1)),
-    atk: Math.floor(300 * Math.pow(1.5, level - 1))
+    name: rivalData.name,
+    hp: baseHp,
+    atk: baseAtk
   };
 }
 
@@ -1069,7 +1063,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rivalHp = enemy.hp;
     const rivalAtk = enemy.atk;
 
-    set(s => ({ game: { ...s.game, masterDuel: { ...s.game.masterDuel, isPlaying: true, rivalHp, rivalMaxHp: rivalHp, rivalAtk, timeLeft: 30 } } }));
+    set(s => ({ 
+      game: { 
+        ...s.game, 
+        masterDuel: { 
+          ...s.game.masterDuel, 
+          isPlaying: true, 
+          rivalHp, 
+          rivalMaxHp: rivalHp, 
+          rivalAtk, 
+          timeLeft: 40,
+          rivalAttackTimer: 0,
+          damageTakenAccumulator: 0,
+          isBerserk: false
+        } 
+      } 
+    }));
   },
   updateMasterDuel: (dt) => {
     set(s => {
@@ -1078,13 +1087,36 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (timeLeft <= 0) return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, isPlaying: false, lastWinReward: "시간 초과" } } };
 
       let hp = s.game.hp;
-      const totalPlayerHp = get().getTotalHp();
+      const myDef = get().getTotalDefense();
+      let timer = (s.game.masterDuel.rivalAttackTimer || 0) + dt;
+      let dmgTaken = 0;
       
-      // 초당 1회 공격 가정, 30초에 사망하도록 설계 (HP/30 per sec)
-      const dmgPerSec = totalPlayerHp / 30;
+      // 광폭화 체크: 마지막 10초
+      const isBerserk = timeLeft <= 10;
+      const dmgMult = isBerserk ? 3 : 1;
 
-      hp = Math.max(0, hp - (dmgPerSec * dt));
-      return { game: { ...s.game, hp, masterDuel: { ...s.game.masterDuel, timeLeft, isPlaying: hp > 0 } } };
+      // 초당 1회 공격 (RPG 공식: (적 공격 * 배율) - 내 방어)
+      if (timer >= 1.0) {
+        timer -= 1.0;
+        const rawAtk = s.game.masterDuel.rivalAtk;
+        dmgTaken = Math.max(1, (rawAtk * dmgMult) - myDef); 
+        hp = Math.max(0, hp - dmgTaken);
+      }
+
+      return { 
+        game: { 
+          ...s.game, 
+          hp, 
+          masterDuel: { 
+            ...s.game.masterDuel, 
+            timeLeft, 
+            isPlaying: hp > 0,
+            rivalAttackTimer: timer,
+            damageTakenAccumulator: dmgTaken,
+            isBerserk
+          } 
+        } 
+      };
     });
   },
   tapMasterDuel: () => {
