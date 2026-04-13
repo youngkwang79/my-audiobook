@@ -922,7 +922,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextHp = Math.max(0, game.masterDuel.rivalHp - dmg);
     if (nextHp <= 0) {
       const reward = generateRandomAccessory(game.realm, game.masterDuel.selectedLevel);
-      set(s => ({ game: { ...s.game, ownedWeapons: [...s.game.ownedWeapons, reward], masterDuel: { ...s.game.masterDuel, isPlaying: false, lastWinReward: `${reward.name} 획득!` } } }));
+      const isNewLevel = game.masterDuel.selectedLevel === game.masterDuel.currentLevel;
+      set(s => ({ 
+        game: { 
+          ...s.game, 
+          ownedWeapons: [...s.game.ownedWeapons, reward], 
+          masterDuel: { 
+            ...s.game.masterDuel, 
+            isPlaying: false, 
+            lastWinReward: `${reward.name} 획득!`,
+            currentLevel: isNewLevel ? s.game.masterDuel.currentLevel + 1 : s.game.masterDuel.currentLevel
+          } 
+        } 
+      }));
     } else set(s => ({ game: { ...s.game, masterDuel: { ...s.game.masterDuel, rivalHp: nextHp } } }));
   },
   markInnEntryHandled: () => set(s => ({ game: { ...s.game, pendingInnEntry: false } })),
