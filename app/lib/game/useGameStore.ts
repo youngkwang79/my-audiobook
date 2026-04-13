@@ -749,24 +749,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   getUpgradeCost: (key: keyof GameSaveData["statUpgrades"]) => {
     const s = get().game.statUpgrades as any;
     const currentBonus = s[key] || 0;
-    // 금화 강화는 회당 25씩 오르므로, 강화 횟수는 currentBonus / 25
-    const count = Math.floor(currentBonus / 25);
+    // 금화 강화 회당 증가량 25 -> 250 (10배 상향)
+    const count = Math.floor(currentBonus / 250);
     return Math.floor(500 * Math.pow(1.08, count));
   },
   getReputationCost: (key: keyof GameSaveData["statUpgrades"]) => {
     const s = get().game.statUpgrades as any;
     const currentBonus = s[key] || 0;
-    // 명성 강화는 회당 100씩 오르므로, 강화 횟수는 currentBonus / 100
-    const count = Math.floor(currentBonus / 100);
+    // 명성 강화 회당 증가량 100 -> 1000 (10배 상향)
+    const count = Math.floor(currentBonus / 1000);
     return Math.floor(100 * Math.pow(1.1, count));
   },
   upgradeStat: (key: keyof GameSaveData["statUpgrades"]) => {
     const cost = get().getUpgradeCost(key);
     if (get().game.coins < cost) return;
     
-    let gain = 25; // 5 -> 25 상향
-    if (key === "hpRec") gain = 250; // 50 -> 250 상향
-    if (key === "mpRec") gain = 100; // 20 -> 100 상향
+    let gain = 250; // 25 -> 250 상향
+    if (key === "hpRec") gain = 2500; // 250 -> 2500 상향
+    if (key === "mpRec") gain = 1000; // 100 -> 1000 상향
 
     set(s => ({ 
       game: { 
@@ -782,9 +782,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const currentRep = get().game.reputation || get().game.points || 0;
     if (currentRep < cost) return;
     
-    let gain = 100; // 20 -> 100 상향
-    if (key === "hpRec") gain = 1000; // 200 -> 1000 상향
-    if (key === "mpRec") gain = 400; // 80 -> 400 상향
+    let gain = 1000; // 100 -> 1000 상향
+    if (key === "hpRec") gain = 10000; // 1000 -> 10000 상향
+    if (key === "mpRec") gain = 4000; // 400 -> 4000 상향
 
     set(s => ({ 
       game: { 
@@ -800,13 +800,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const s = get().game.statUpgrades as any;
     const currentBonus = s[key] || 0;
     
-    // 모드별 증가 단위 (금화:25, 명성:100)
-    const unit = mode === 'gold' ? 25 : 100;
+    // 모드별 증가 단위 (금화:250, 명성:1000) - 10배 상향
+    const unit = mode === 'gold' ? 250 : 1000;
     let totalCost = 0;
     
     for (let i = 0; i < count; i++) {
        const bonus = currentBonus + (i * unit);
-       const upgradeCount = mode === 'gold' ? Math.floor(bonus / 25) : Math.floor(bonus / 100);
+       const upgradeCount = mode === 'gold' ? Math.floor(bonus / 250) : Math.floor(bonus / 1000);
        if (mode === 'gold') {
          totalCost += Math.floor(500 * Math.pow(1.08, upgradeCount));
        } else {
@@ -822,7 +822,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     if (currentRes < cost) return;
     
-    const unit = mode === 'gold' ? 25 : 100;
+    const unit = mode === 'gold' ? 250 : 1000;
     const gain = unit * count;
     
     // Special gains for HP/MP (5x or 4x relative to ATK)
