@@ -751,16 +751,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const currentBonus = s[key] || 0;
     // 금화 강화 회당 증가량 25 -> 250 (10배 상향)
     const count = Math.floor(currentBonus / 250);
-    // 비용 증가폭 15배 완화 (1.08 -> 1.005)
-    return Math.floor(500 * Math.pow(1.005, count));
+    // 비용 증가폭 4% (1.04)
+    return Math.floor(500 * Math.pow(1.04, count));
   },
   getReputationCost: (key: keyof GameSaveData["statUpgrades"]) => {
     const s = get().game.statUpgrades as any;
     const currentBonus = s[key] || 0;
     // 명성 강화 회당 증가량 100 -> 1000 (10배 상향)
     const count = Math.floor(currentBonus / 1000);
-    // 비용 증가폭 15배 완화 (1.1 -> 1.007)
-    return Math.floor(100 * Math.pow(1.007, count));
+    // 비용 증가폭 3% (1.03)
+    return Math.floor(100 * Math.pow(1.03, count));
   },
   upgradeStat: (key: keyof GameSaveData["statUpgrades"]) => {
     const cost = get().getUpgradeCost(key);
@@ -810,11 +810,11 @@ export const useGameStore = create<GameState>((set, get) => ({
        const bonus = currentBonus + (i * unit);
        const upgradeCount = mode === 'gold' ? Math.floor(bonus / 250) : Math.floor(bonus / 1000);
        if (mode === 'gold') {
-         // 비용 증가폭 15배 완화 (1.08 -> 1.005)
-         totalCost += Math.floor(500 * Math.pow(1.005, upgradeCount));
+         // 비용 증가폭 4% (1.04)
+         totalCost += Math.floor(500 * Math.pow(1.04, upgradeCount));
        } else {
-         // 비용 증가폭 15배 완화 (1.1 -> 1.007)
-         totalCost += Math.floor(100 * Math.pow(1.007, upgradeCount));
+         // 비용 증가폭 3% (1.03)
+         totalCost += Math.floor(100 * Math.pow(1.03, upgradeCount));
        }
     }
     return totalCost;
