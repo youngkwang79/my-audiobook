@@ -103,10 +103,16 @@ export default function ForgePanel(props: Props) {
       style={{
         border: "1px solid rgba(255,215,120,0.18)",
         borderRadius: 24,
-        background: "rgba(12,12,18,0.62)",
-        padding: 20,
+        background: "rgba(12,12,18,0.7)",
+        padding: "16px 12px",
         position: "relative",
         overflow: "hidden",
+        touchAction: "none",
+        height: "100%",
+        maxHeight: "780px",
+        display: "flex",
+        flexDirection: "column",
+        boxSizing: "border-box"
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -146,7 +152,7 @@ export default function ForgePanel(props: Props) {
             대장간 잠김
           </div>
           <div style={{ fontSize: 14, color: "#fff", opacity: 0.85, lineHeight: 1.7 }}>
-            허수아비 50회 처치 시 해금됩니다.
+            허수아비 30회 처치 시 해금됩니다.
           </div>
         </div>
       )}
@@ -158,8 +164,8 @@ export default function ForgePanel(props: Props) {
           gap: 6,
           overflowX: "auto",
           paddingBottom: 8,
-          marginBottom: 12,
-          scrollbarWidth: "none",
+          marginBottom: 10,
+          touchAction: "pan-x"
         }}
         className="hide-scrollbar"
       >
@@ -204,27 +210,29 @@ export default function ForgePanel(props: Props) {
 
       <div
         style={{
+          flex: 1,
+          overflowY: "auto",
+          paddingRight: 4,
+          touchAction: "pan-y",
           display: "flex",
           flexDirection: "column",
           gap: 8,
-          opacity: unlocked ? 1 : 0.45,
-          maxHeight: "350px",
-          overflowY: "auto",
-          paddingRight: 4
+          opacity: unlocked ? 1 : 0.45
         }}
+        className="hide-scrollbar"
       >
         {selectedRealm === "회복제" ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
-              { id: "hp_small", name: "HP 회복제(小)", icon: "🧪", desc: "전체 HP의 30% 회복", basePrice: 1000 },
-              { id: "hp_medium", name: "HP 회복제(中)", icon: "🏺", desc: "전체 HP의 60% 회복", basePrice: 2500 },
-              { id: "hp_large", name: "HP 회복제(大)", icon: "💎", desc: "전체 HP 100% 회복", basePrice: 5000 },
-              { id: "mp_small", name: "내공 회복제(小)", icon: "💧", desc: "전체 MP의 30% 회복", basePrice: 800 },
-              { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 MP의 60% 회복", basePrice: 2000 },
-              { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 MP 100% 회복", basePrice: 4000 },
-              { id: "trance_2", name: "무아지경(x2)", icon: "⚡", desc: "공격력 2배 (30초)", basePrice: 20000 },
-              { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 150000 },
-              { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 1000000 },
+              { id: "hp_small", name: "HP 회복제(小)", icon: "🧪", desc: "전체 HP의 30% 회복", basePrice: 10000 },
+              { id: "hp_medium", name: "HP 회복제(中)", icon: "🏺", desc: "전체 HP의 60% 회복", basePrice: 25000 },
+              { id: "hp_large", name: "HP 회복제(大)", icon: "💎", desc: "전체 HP 100% 회복", basePrice: 50000 },
+              { id: "mp_small", name: "내공 회복제(小)", icon: "💧", desc: "전체 MP의 30% 회복", basePrice: 8000 },
+              { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 MP의 60% 회복", basePrice: 20000 },
+              { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 MP 100% 회복", basePrice: 40000 },
+              { id: "trance_2", name: "무아지경(x2)", icon: "⚡", desc: "공격력 2배 (30초)", basePrice: 200000 },
+              { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 1500000 },
+              { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 10000000 },
             ].map(p => (
               <PotionItem 
                 key={p.id} 
@@ -262,6 +270,9 @@ export default function ForgePanel(props: Props) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a", marginBottom: 2 }}>{item.name}</div>
                     <div style={{ fontSize: 10, opacity: 0.8, color: "#aaa" }}>{item.description}</div>
+                    {item.equipmentSkill && (
+                      <div style={{ fontSize: 9, color: "#ffd700", fontWeight: "bold" }}>✨ {item.equipmentSkill.name} ({item.equipmentSkill.multiplier}배)</div>
+                    )}
                     <div style={{ fontSize: 10, color: "#ffcc00", fontWeight: "bold", marginTop: 2 }}>가격: {item.price.toLocaleString()} 냥</div>
                   </div>
                   <button

@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "무림북",
   description: "창작 무협 소설과 오디오 스토리를 감상하는 무협 오디오북 플랫폼",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -42,8 +42,8 @@ export type EquipSlot =
   | "necklace"
   | "ring";
  
-export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory";
-export type MiniGameType = "breath" | "dodge" | "biryongbo" | "pulse";
+export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade";
+export type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse";
 
 export type ConsumableId = 
   | "hp_small" | "hp_medium" | "hp_large" 
@@ -89,6 +89,9 @@ export type Skill = {
   realm?: string;
   multiplier?: number;
   crit?: number;
+  critDmg?: number;
+  atk?: number;
+  mpCost: number;
 };
 
 export type FactionInfo = {
@@ -103,8 +106,20 @@ export type FactionInfo = {
     glow: string;
     accent: string;
   };
-  martial: Record<string, { name: string; innerPower: string }>;
-  movement: {
+  martial: Record<string, { 
+    name: string; 
+    innerPower: string; 
+    stats?: {
+      atk?: number;
+      def?: number;
+      hp?: number;
+      critRate?: number;
+      critDmg?: number;
+      eva?: number;
+      speed?: number;
+    };
+  }>;
+  movement?: {
     entry: string;
     peak: string;
     final: string;
@@ -146,8 +161,6 @@ export type HeroProfile = {
 export type TimingMissionState = {
   unlocked: boolean;
   available: boolean;
-  attempts: number;
-  clearedCount: number;
   pendingTarget: number | null;
   requiredHits: number;
   tolerance: number;
@@ -157,13 +170,10 @@ export type TimingMissionState = {
   rewardAttackBuff: number;
   rewardBuffSeconds: number;
   rivalName: string;
-  rivalScore: number;
   lastGrade: "PERFECT" | "GREAT" | "GOOD" | "MISS" | null;
   pressureLimit: number;
-  
-  // New fields for infinite stage system
-  selectedGameType?: string; 
   currentStage: number;
+  selectedGameType?: MiniGameType;
   highScores: Record<string, number>;
   lastScores: Record<string, number>;
 };
@@ -214,7 +224,6 @@ export type GameSaveData = {
   coins: number;
   hasBreakthrough: boolean;
   coinDrops: CoinItem[];
-  attack: number;
   baseAttack: number;
 
   reputation: number;
@@ -267,4 +276,19 @@ export type GameSaveData = {
   consumables: Record<ConsumableId, number>;
   quickSlots: (ConsumableId | null)[];
   skillCooldowns: Record<string, number>;
+  nextRivalTime: number; 
+  nextRivalKills: number; 
+
+  // New Progression & Upgrade System
+  star: number; 
+  points: number; 
+  statUpgrades: {
+    hpRec: number;
+    mpRec: number;
+    atk: number;
+    def: number;
+    critRate: number;
+    critDmg: number;
+    eva: number;
+  };
 };

@@ -81,9 +81,15 @@ export default function InventoryPanel(props: Props) {
         overflow: "hidden",
         borderRadius: 20,
         border: "1px solid rgba(255,215,120,0.16)",
-        background: "rgba(10,12,20,0.85)",
-        minHeight: 280,
-        padding: 14,
+        background: "rgba(10,12,20,0.9)",
+        height: "100%",
+        maxHeight: "620px",
+        padding: "12px",
+        touchAction: "none",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px"
       }}
     >
       {!unlocked && (
@@ -122,26 +128,18 @@ export default function InventoryPanel(props: Props) {
           }}
         >
           <div style={{ color: "#f5e6b3", fontSize: 18, fontWeight: 900 }}>장비</div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <MiniBadge label={`장착 ${equippedCount}/7`} />
-            <MiniBadge label={`공격 ${totalAttack}`} />
-            <MiniBadge label={`생명 ${totalHp}`} />
-            <MiniBadge label={`방어 ${totalDefense}`} />
-            <MiniBadge label={`치명 ${totalCritRate}%`} />
-            <MiniBadge label={`치피 ${totalCritDmg}%`} />
-            <MiniBadge label={`회피 ${totalEvasion}%`} />
-            <MiniBadge label={`속도 ${totalSpeed}%`} />
-          </div>
         </div>
 
         {/* 메인 레이아웃: 좌측(부위별 슬롯) / 우측(해당 부위 장비 목록) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "100px 1fr",
-            gap: 12,
-          }}
-        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "110px 1fr",
+              gap: 8,
+              flex: 1,
+              overflow: "hidden"
+            }}
+          >
           {/* 좌측 슬롯 네비게이션 */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {slotMeta.map((meta) => {
@@ -153,29 +151,37 @@ export default function InventoryPanel(props: Props) {
                   key={meta.slot}
                   onClick={() => setSelectedSlot(meta.slot)}
                   style={{
-                    borderRadius: 10,
+    borderRadius: 12,
                     border: active
-                      ? "1px solid rgba(255,215,120,0.85)"
-                      : "1px solid rgba(255,255,255,0.08)",
+                      ? "1px solid rgba(255,215,120,0.9)"
+                      : "1px solid rgba(255,255,255,0.1)",
                     background: active
-                      ? "linear-gradient(180deg, rgba(255,215,120,0.12), rgba(255,255,255,0.03))"
-                      : "rgba(255,255,255,0.02)",
-                    padding: "8px 6px",
+                      ? "linear-gradient(135deg, rgba(255,215,120,0.25) 0%, rgba(255,215,120,0.05) 100%)"
+                      : "rgba(255,255,255,0.03)",
+                    padding: "6px 6px",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                     cursor: "pointer",
+                    animation: equipped ? "goldGlow 2s infinite" : "none",
+                    boxShadow: active ? "0 4px 15px rgba(255,215,120,0.15)" : "none",
+                    transition: "all 0.2s ease",
+                    backdropFilter: "blur(5px)"
                   }}
                 >
                   <div style={{ fontSize: 18, filter: active ? "drop-shadow(0 0 4px rgba(255,215,120,0.5))" : "none" }}>
                     {meta.icon}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                    <div style={{ fontSize: 10, color: active ? "#ffd778" : "#ccc", fontWeight: "bold" }}>
+                    <div style={{ fontSize: 15, color: active ? "#ffd778" : "#ccc", fontWeight: "bold", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
                       {meta.short}
-                    </div>
-                    <div style={{ fontSize: 9, color: equipped ? "#55ffaa" : "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "45px", textAlign: "left" }}>
-                      {equipped ? "E" : "비어있음"}
+                      {equipped && (
+                        <span style={{ 
+                          fontSize: 9, background: "#ffd700", color: "#000", 
+                          padding: "1px 4px", borderRadius: "50%", 
+                          boxShadow: "0 0 8px rgba(255,215,0,0.6)"
+                        }}>E</span>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -189,8 +195,10 @@ export default function InventoryPanel(props: Props) {
               borderRadius: 14,
               border: "1px solid rgba(255,255,255,0.08)",
               background: "rgba(255,255,255,0.03)",
-              padding: 10,
-              minHeight: 200,
+              padding: 8,
+              minHeight: 150,
+              overflowY: "auto",
+              touchAction: "pan-y"
             }}
           >
             {selectedItems.length === 0 ? (
@@ -229,6 +237,7 @@ export default function InventoryPanel(props: Props) {
                         gap: 10,
                         padding: "6px 10px",
                         cursor: "pointer",
+                        animation: isEquipped ? "goldGlow 2s infinite" : "none"
                       }}
                     >
                       <div style={{ fontSize: 22 }}>{item.icon ?? "📦"}</div>
@@ -269,11 +278,19 @@ export default function InventoryPanel(props: Props) {
         </div>
 
         {/* 퀵슬롯 설정 (회복제 장착) */}
-        <div style={{ marginTop: 15, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-          <div style={{ fontSize: 13, fontWeight: 900, color: "#00f2ff", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>💊</span> 퀵슬롯 장착 (대결 시 자동 사용)
+        <div style={{ 
+          marginTop: 15, 
+          padding: "15px", 
+          borderTop: "1px solid rgba(255,215,120,0.2)",
+          borderRadius: "15px",
+          background: "radial-gradient(circle at center, rgba(255,215,0,0.1) 0%, transparent 85%)",
+          position: "relative",
+          overflow: "hidden"
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", marginBottom: 10, display: "flex", alignItems: "center", gap: 6, textShadow: "0 0 8px rgba(255,215,0,0.5)" }}>
+            <span>🧪</span> 물약 장착 (대결 시 자동 사용)
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
             {[0, 1, 2, 3, 4].map(idx => {
               const consumableId = game.quickSlots[idx];
               return (
@@ -281,9 +298,11 @@ export default function InventoryPanel(props: Props) {
                   key={idx}
                   onClick={() => setSelectingSlot(idx)}
                   style={{
-                    height: 50, borderRadius: 12, border: "2px dashed rgba(255,255,255,0.15)",
+                    height: 50, borderRadius: 12, 
+                    border: consumableId ? "2px solid #ffd700" : "2px dashed rgba(255,215,0,0.4)",
                     background: "rgba(255,255,255,0.03)", display: "grid", placeItems: "center",
-                    position: "relative", cursor: "pointer", padding: 0
+                    position: "relative", cursor: "pointer", padding: 0,
+                    animation: "goldGlow 2s infinite"
                   }}
                 >
                   {consumableId ? (
@@ -294,7 +313,7 @@ export default function InventoryPanel(props: Props) {
                       </div>
                     </>
                   ) : (
-                    <span style={{ fontSize: 20, color: "rgba(255,255,255,0.2)" }}>+</span>
+                    <span style={{ fontSize: 20, color: "rgba(255,215,0,0.6)", textShadow: "0 0 10px rgba(255,215,0,0.4)" }}>+</span>
                   )}
                 </button>
               );
@@ -315,12 +334,24 @@ export default function InventoryPanel(props: Props) {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              width: "100%", maxWidth: 300, background: "#1c1c24", borderRadius: 16, border: "1px solid #00f2ff",
-              padding: 16, display: "flex", flexDirection: "column", gap: 10
+              width: "100%", maxWidth: 300, background: "#1c1c24", borderRadius: 16, border: "2px solid #ffd700",
+              padding: 16, display: "flex", flexDirection: "column", gap: 10,
+              boxShadow: "0 0 20px rgba(255, 215, 0, 0.2)"
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#00f2ff", marginBottom: 5 }}>장착할 비약 선택</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#ffd700", marginBottom: 5 }}>장착할 물약 선택</div>
             <div style={{ maxHeight: 250, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }} className="hide-scrollbar">
+               {game.quickSlots[selectingSlot] && (
+                <button 
+                  onClick={() => {
+                    (useGameStore.getState() as any).useConsumable(game.quickSlots[selectingSlot]);
+                    setSelectingSlot(null);
+                  }}
+                  style={{ padding: 10, borderRadius: 8, background: "linear-gradient(135deg, #ff8c8c, #ff4b4b)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 'bold' }}
+                >
+                  사용하기
+                </button>
+              )}
               <button 
                 onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, null); setSelectingSlot(null); }}
                 style={{ padding: 10, borderRadius: 8, background: "#333", color: "#eee", border: "none", cursor: "pointer", fontSize: 12 }}
@@ -332,8 +363,8 @@ export default function InventoryPanel(props: Props) {
                   key={id} 
                   onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, id); setSelectingSlot(null); }}
                   style={{ 
-                    padding: "8px 12px", borderRadius: 10, background: "rgba(0,242,255,0.1)", color: "#fff", 
-                    border: "1px solid rgba(0,242,255,0.3)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10
+                    padding: "8px 12px", borderRadius: 10, background: "rgba(255,215,0,0.05)", color: "#fff", 
+                    border: "1px solid rgba(255,215,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10
                   }}
                 >
                   <span style={{ fontSize: 18 }}>{getPotionIcon(id)}</span>
@@ -419,9 +450,25 @@ export default function InventoryPanel(props: Props) {
               {popupItem.paralyzeChance && (
                 <div style={{ color: "#e07eff", fontWeight: "bold" }}>마비 확률 {popupItem.paralyzeChance}% ({popupItem.paralyzeDuration! / 1000}초)</div>
               )}
+              {popupItem.equipmentSkill && (
+                <div style={{ 
+                  marginTop: 4, 
+                  padding: "4px 8px", 
+                  borderRadius: 6, 
+                  background: "rgba(255, 215, 0, 0.1)", 
+                  border: "1px solid rgba(255, 215, 0, 0.3)" 
+                }}>
+                  <div style={{ color: "#ffd700", fontWeight: "900", fontSize: 11 }}>
+                    ✨ 무기 전용 스킬: {popupItem.equipmentSkill.name}
+                  </div>
+                  <div style={{ color: "#f5e6b3", fontSize: 10 }}>
+                    발동 시 공격력 {popupItem.equipmentSkill.multiplier}배 피해
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
               <button
                 onClick={handleEquipFromPopup}
                 style={{
@@ -440,10 +487,35 @@ export default function InventoryPanel(props: Props) {
               >
                 {popupItem.id === selectedEquippedId ? "장착 해제" : "장착하기"}
               </button>
+              
+              <button
+                onClick={() => {
+                   if (confirm(`${popupItem.name}을(를) 판매하시겠습니까? (판매가: ${Math.floor(popupItem.price * 0.25).toLocaleString()} 냥)`)) {
+                     (useGameStore.getState() as any).sellItem(popupItem.id);
+                     setPopupItem(null);
+                   }
+                }}
+                disabled={popupItem.id === selectedEquippedId}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  background: "rgba(255,100,100,0.15)",
+                  color: "#ff8c8c",
+                  border: "1px solid rgba(255,100,100,0.3)",
+                  cursor: popupItem.id === selectedEquippedId ? "not-allowed" : "pointer",
+                  opacity: popupItem.id === selectedEquippedId ? 0.5 : 1
+                }}
+              >
+                판매
+              </button>
+
               <button
                 onClick={() => setPopupItem(null)}
                 style={{
-                  width: 50,
+                  width: "100%",
                   padding: "10px",
                   borderRadius: 8,
                   border: "1px solid rgba(255,255,255,0.1)",
@@ -459,6 +531,45 @@ export default function InventoryPanel(props: Props) {
           </div>
         </div>
       )}
+
+      {/* 데이터 전송 (아이폰 Safari <-> 홈 화면 앱 연동용) */}
+      <div style={{ marginTop: "10px", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 8, paddingBottom: 10 }}>
+        <button 
+          onClick={() => {
+            const data = localStorage.getItem("murimbook-game-save-v12");
+            if (!data) return alert("저장된 데이터가 없습니다.");
+            const encoded = btoa(encodeURI(data));
+            prompt("수련 기록을 코드로 변환했습니다. 아래 내용을 복사하여 다른 환경에서 '가져오기'를 하세요:", encoded);
+          }}
+          style={{ flex: 1, padding: "10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#aaa", fontSize: 10, cursor: "pointer" }}
+        >
+          기록 내보내기 (기기 이동)
+        </button>
+        <button 
+          onClick={() => {
+            const code = prompt("가져올 수련 기록 코드를 입력하세요:");
+            if (!code) return;
+            try {
+              const decoded = decodeURI(atob(code));
+              JSON.parse(decoded);
+              localStorage.setItem("murimbook-game-save-v12", decoded);
+              alert("수련 기록을 불러왔습니다! 게임을 재시작합니다.");
+              window.location.reload();
+            } catch(e) { alert("잘못된 코드입니다."); }
+          }}
+          style={{ flex: 1, padding: "10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#aaa", fontSize: 10, cursor: "pointer" }}
+        >
+          기록 가져오기
+        </button>
+      </div>
+
+      <style jsx>{`
+        @keyframes goldGlow {
+          0% { border-color: rgba(255,215,0,0.4); box-shadow: 0 0 5px rgba(255,215,0,0.1); }
+          50% { border-color: rgba(255,215,0,1); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
+          100% { border-color: rgba(255,215,0,0.4); box-shadow: 0 0 5px rgba(255,215,0,0.1); }
+        }
+      `}</style>
     </section>
   );
 }

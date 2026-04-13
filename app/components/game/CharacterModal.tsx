@@ -39,30 +39,40 @@ export default function CharacterModal({
     faction: game?.faction ?? "무소속",
     realm: game?.realm ?? "필부",
     touches: game?.touches ?? 0,
-    hp: game?.hp ?? 100,
-    maxHp: game?.maxHp ?? 100,
-    mp: game?.mp ?? 30,
-    maxMp: game?.maxMp ?? 30,
+    hp: game?.hp ?? 150,
+    maxHp: game?.maxHp ?? 150,
+    mp: game?.mp ?? 60,
+    maxMp: game?.maxMp ?? 60,
     agi: game?.agi ?? 5,
     critRate: game?.critRate ?? 5,
-    baseAttack: game?.baseAttack ?? 10,
+    baseAttack: game?.baseAttack ?? 100,
   };
 
   const currentFactionInfo = FACTIONS.find(f => f.name === safeGame.faction);
-
-  const currentRealmInfo = REALM_SETTINGS[safeGame.realm as keyof typeof REALM_SETTINGS];
-
+  
   const realmKeys = Object.keys(REALM_SETTINGS);
   const currentIndex = realmKeys.indexOf(safeGame.realm);
-  const nextRealm = realmKeys[currentIndex + 1];
-  const nextRealmInfo = nextRealm
-    ? REALM_SETTINGS[nextRealm as keyof typeof REALM_SETTINGS]
-    : null;
+  const isFinalRealm = currentIndex === realmKeys.length - 1;
+  const nextRealm = !isFinalRealm ? realmKeys[currentIndex + 1] : null;
 
-  const touchesNeeded = nextRealmInfo ? nextRealmInfo.minTouches : 0;
-  const remainingTouches = Math.max(0, touchesNeeded - safeGame.touches);
-  const progressPercent =
-    touchesNeeded > 0 ? Math.min((safeGame.touches / touchesNeeded) * 100, 100) : 100;
+  const getRequiredTouches = (realm: string, star: number) => {
+    const list = Object.keys(REALM_SETTINGS);
+    const idx = list.indexOf(realm);
+    const cur = (REALM_SETTINGS as any)[realm];
+    const nxt = (REALM_SETTINGS as any)[list[idx + 1]] || cur;
+    return cur.minTouches + Math.floor(((nxt.minTouches - cur.minTouches) / 10) * star);
+  };
+
+  const startTouches = safeGame.star === 1 ? (REALM_SETTINGS as any)[safeGame.realm].minTouches : getRequiredTouches(safeGame.realm, safeGame.star - 1);
+  const targetTouches = getRequiredTouches(safeGame.realm, safeGame.star);
+  
+  const progressPercent = isFinalRealm ? 100 : Math.min(
+    ((safeGame.touches - startTouches) / Math.max(1, targetTouches - startTouches)) * 100,
+    100
+  );
+
+  const displayTarget = safeGame.star === 10 ? `${nextRealm} 도달` : `${safeGame.realm} ${safeGame.star + 1}성 도달`;
+  const remainingTouches = Math.max(0, targetTouches - safeGame.touches);
 
   const findEquippedItem = (slot: string) =>
     safeGame.ownedWeapons.find((item: any) => item.id === safeGame.equippedGear?.[slot]) ?? null;
@@ -105,7 +115,7 @@ export default function CharacterModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 1000,
+        zIndex: 2000,
         backdropFilter: "blur(5px)",
         padding: "16px",
         boxSizing: "border-box",
@@ -120,52 +130,80 @@ export default function CharacterModal({
           background: "#1a1612",
           border: "2px solid #d4a23c",
           borderRadius: "20px",
-          padding: "20px",
+          padding: "16px",
           color: "#eee",
           boxShadow: "0 0 40px rgba(212, 162, 60, 0.3)",
           boxSizing: "border-box",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ textAlign: "center", marginBottom: 12 }}>
           <h2
             style={{
               color: "#ffd778",
               margin: 0,
-              fontSize: "22px",
-              letterSpacing: "2px",
+              fontSize: "18px",
+              letterSpacing: "1px",
             }}
           >
             강호 기록보 (江湖)
           </h2>
-          <div style={{ fontSize: "12px", color: "#888" }}>
+          <div style={{ fontSize: "11px", color: "#888" }}>
             {safeGame.name} 협객의 상세 정보
           </div>
         </div>
 
-        {/* 문파 고유 특성 */}
+        {/* 문파 고유 특성 및 무학 효과 - 콤팩트하게 */}
         {currentFactionInfo && (
           <div style={{
-            background: "rgba(212, 162, 60, 0.1)",
-            border: "1px solid rgba(212, 162, 60, 0.3)",
-            borderRadius: "12px",
-            padding: "12px",
-            marginBottom: "15px",
+            background: "rgba(212, 162, 60, 0.08)",
+            border: "1px solid rgba(212, 162, 60, 0.2)",
+            borderRadius: "10px",
+            padding: "8px 10px",
+            marginBottom: "10px",
           }}>
-            <div style={{ fontSize: "12px", color: "#ffd778", fontWeight: "bold", marginBottom: "4px" }}>
-              [ {currentFactionInfo.name} 무학 ]
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <div style={{ fontSize: "13px", color: "#ffd778", fontWeight: "900" }}>
+                [ {currentFactionInfo.name} ]
+              </div>
+              <div style={{ fontSize: "10px", color: "#888" }}>{currentFactionInfo.style}</div>
             </div>
-            <div style={{ fontSize: "13px", color: "#f5e6b3", lineHeight: 1.4, wordBreak: "keep-all" }}>
-              {currentFactionInfo.specialAdvantage}
+            
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ fontSize: "12px", color: "#f5e6b3", lineHeight: 1.3, wordBreak: "keep-all" }}>
+                {currentFactionInfo.specialAdvantage}
+              </div>
             </div>
+
+            {/* 실질적 무학 수치 표시 */}
+            {currentFactionInfo.martial[safeGame.realm] && (
+              <div style={{ borderTop: "1px solid rgba(212, 162, 60, 0.15)", paddingTop: "6px" }}>
+                <div style={{ fontSize: "10px", color: "#888", marginBottom: "2px" }}>
+                  현재 무학: <span style={{ color: "#ffd778", fontWeight: "bold" }}>{currentFactionInfo.martial[safeGame.realm].name}</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}>
+                  {Object.entries((currentFactionInfo.martial[safeGame.realm] as any).stats || {}).map(([stat, val]: any) => {
+                    const labelMap: any = { atk: "공격", def: "방어", hp: "생명", critRate: "치명", critDmg: "치피", eva: "회피", speed: "신법" };
+                    const colorMap: any = { atk: "#ff4d4d", def: "#8ecbff", hp: "#ff8c8c", critRate: "#ffcc00", critDmg: "#ff7e4d", eva: "#7fffd4", speed: "#a8ff7e" };
+                    const suffix = ["critRate", "critDmg", "eva", "speed"].includes(stat) ? "%" : "";
+                    return (
+                      <div key={stat} style={{ fontSize: "10px", display: "flex", gap: "2px" }}>
+                        <span style={{ color: "#888" }}>{labelMap[stat] || stat}:</span>
+                        <span style={{ color: colorMap[stat] || "#fff", fontWeight: "bold" }}>+{val.toLocaleString()}{suffix}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "15px",
-            borderRadius: "12px",
-            marginBottom: "15px",
+            background: "rgba(255,255,255,0.03)",
+            padding: "8px 12px",
+            borderRadius: "10px",
+            marginBottom: "10px",
             border: "1px solid rgba(255,255,255,0.05)",
           }}
         >
@@ -173,90 +211,104 @@ export default function CharacterModal({
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: "10px",
-              fontSize: "14px",
+              gap: "4px",
+              fontSize: "13px",
             }}
           >
             <div>
-              <span style={{ color: "#888" }}>성명:</span> {safeGame.name}
+              <span style={{ color: "#888", fontSize: "11px" }}>성명:</span> {safeGame.name}
             </div>
             <div>
-              <span style={{ color: "#888" }}>나이:</span> {safeGame.age}세
+              <span style={{ color: "#888", fontSize: "11px" }}>나이:</span> {safeGame.age}세
             </div>
             <div>
-              <span style={{ color: "#888" }}>소속:</span> {safeGame.faction}
+              <span style={{ color: "#888", fontSize: "11px" }}>소속:</span> {safeGame.faction}
             </div>
             <div style={{ color: "#ffd778", fontWeight: "bold" }}>
-              <span style={{ color: "#888" }}>경지:</span> {safeGame.realm}
+              <span style={{ color: "#888", fontSize: "11px" }}>경지:</span> {safeGame.realm} ({safeGame.star}성)
+            </div>
+            <div style={{ color: "#ffcc00", fontWeight: "bold" }}>
+              <span style={{ color: "#888", fontSize: "11px" }}>명성:</span> {game.points.toLocaleString()}
             </div>
           </div>
         </div>
 
-        <div style={{ marginBottom: "20px" }}>
+        {/* 습득 비급 (서각 무공) 보너스 표시 - 콤팩트하게 */}
+        {safeGame.learnedSkills && safeGame.learnedSkills.length > 0 && (
+          <div style={{
+            background: "rgba(138, 43, 226, 0.06)",
+            border: "1px solid rgba(138, 43, 226, 0.2)",
+            borderRadius: "10px",
+            padding: "8px 10px",
+            marginBottom: "10px",
+          }}>
+            <div style={{ fontSize: "11px", color: "#e0ccff", fontWeight: "900", marginBottom: "4px" }}>
+              [ 습득한 비전 무공 ]
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
+              {safeGame.learnedSkills.map((s: any, idx: number) => (
+                <div key={idx} style={{ 
+                  display: "flex", justifyContent: "space-between", fontSize: "10px",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "2px"
+                }}>
+                  <span style={{ color: "#ddd" }}>{s.name}</span>
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    {s.crit > 0 && <span style={{ color: "#ffcc00" }}>+{s.crit}%</span>}
+                    {s.multiplier > 1 && <span style={{ color: "#ff8888" }}>{s.multiplier}x</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginBottom: "12px" }}>
           <div
             style={{
-              fontSize: "12px",
+              fontSize: "11px",
               color: "#d4a23c",
-              marginBottom: "8px",
+              marginBottom: "4px",
               fontWeight: "bold",
             }}
           >
             [ 전투 능력 ]
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <StatRow
               label="최종 공격력"
               value={totalAttack.toLocaleString()}
               color="#ff4d4d"
+              sub={safeGame.comboCount > 0 ? `🔥 ${safeGame.comboCount}` : undefined}
             />
             <StatRow
               label="최종 생명력"
               value={totalHp.toLocaleString()}
               color="#ff8c8c"
-              sub={`기초: ${safeGame.hp.toLocaleString()}`}
             />
             <StatRow
               label="현재 내공"
               value={`${safeGame.mp.toLocaleString()} / ${safeGame.maxMp.toLocaleString()}`}
               color="#55aaff"
             />
-            <StatRow label="방어력" value={totalDefense.toLocaleString()} color="#8ecbff" />
-            <StatRow label="회피율" value={`${totalEvasion}%`} color="#7fffd4" />
-            <StatRow label="치명타 확률" value={`${totalCritRate}%`} color="#ffcc00" />
-            <StatRow label="치명타 피해" value={`${totalCritDmg}%`} color="#ff7e4d" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
+                <StatRow label="방어력" value={totalDefense.toLocaleString()} color="#8ecbff" />
+                <StatRow label="회피율" value={`${totalEvasion}%`} color="#7fffd4" />
+                <StatRow label="치명타" value={`${totalCritRate}%`} color="#ffcc00" />
+                <StatRow label="치피" value={`${totalCritDmg}%`} color="#ff7e4d" />
+            </div>
             <StatRow label="신법 (속도)" value={`${totalSpeed}%`} color="#a8ff7e" />
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "13px",
-                marginTop: "4px",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginTop: "4px" }}>
               <span style={{ color: "#888" }}>장착 무기</span>
-              <span style={{ color: (mainWeapon || subWeapon) ? "#ffd778" : "#666" }}>
+              <span style={{ color: (mainWeapon || subWeapon) ? "#ffd778" : "#666", fontSize: "10px" }}>
                 {equippedWeaponLabel}
               </span>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "13px",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
               <span style={{ color: "#888" }}>장착 장신구</span>
-              <span
-                style={{
-                  color: (gloves || shoes || robe || necklace || ring) ? "#ffd778" : "#666",
-                  textAlign: "right",
-                  maxWidth: "60%",
-                  lineHeight: 1.4,
-                }}
-              >
+              <span style={{ color: (gloves || shoes || robe || necklace || ring) ? "#ffd778" : "#666", textAlign: "right", maxWidth: "60%", fontSize: "10px", lineHeight: 1.2 }}>
                 {gearSummary || "없음"}
               </span>
             </div>
@@ -264,50 +316,23 @@ export default function CharacterModal({
         </div>
 
         <div style={{ marginBottom: "20px" }}>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "#d4a23c",
-              marginBottom: "10px",
-              fontWeight: "bold",
-            }}
-          >
-            [ 경지 돌파 진척도: {nextRealm || "최고 경지"} ]
+          <div style={{ fontSize: "12px", color: "#d4a23c", marginBottom: "8px", fontWeight: "bold" }}>
+            [ 다음 목표: {displayTarget || "최고 경지"} ]
           </div>
 
-          {nextRealm ? (
+          {nextRealm || safeGame.star < 10 ? (
             <>
-              <div
-                style={{
-                  width: "100%",
-                  height: "6px",
-                  background: "rgba(255,255,255,0.1)",
-                  borderRadius: "3px",
-                  overflow: "hidden",
-                  marginBottom: "8px",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${progressPercent}%`,
-                    height: "100%",
-                    background: "linear-gradient(90deg, #d4a23c, #ffd778)",
-                    boxShadow: "0 0 10px rgba(212, 162, 60, 0.5)",
-                  }}
-                />
+              <div style={{ width: "100%", height: "6px", background: "rgba(255,255,255,0.1)", borderRadius: "3px", overflow: "hidden", marginBottom: "8px" }}>
+                <div style={{ width: `${progressPercent}%`, height: "100%", background: "linear-gradient(90deg, #d4a23c, #ffd778)", boxShadow: "0 0 10px rgba(212, 162, 60, 0.5)" }} />
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "11px",
-                  color: "#aaa",
-                }}
-              >
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#aaa" }}>
                 <span>
-                  돌파까지: <b style={{ color: "#fff" }}>{remainingTouches.toLocaleString()}</b>회
+                  목표까지: <b style={{ color: "#fff" }}>{remainingTouches.toLocaleString()}</b>회
                 </span>
                 <span>{Math.floor(progressPercent)}%</span>
+              </div>
+              <div style={{ fontSize: "10px", color: "#666", marginTop: "4px", textAlign: "right" }}>
+                현재 수련도: {safeGame.touches.toLocaleString()} / {targetTouches.toLocaleString()}
               </div>
             </>
           ) : (
@@ -345,16 +370,16 @@ function StatRow({ label, value, color, sub }: any) {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        fontSize: "14px",
+        fontSize: "12px",
+        paddingBottom: "2px",
+        borderBottom: "1px solid rgba(255,255,255,0.03)",
       }}
     >
-      <span style={{ color: "#888" }}>{label}</span>
-      <div style={{ textAlign: "right" }}>
-        <span style={{ color, fontWeight: "bold", fontSize: "15px" }}>{value}</span>
-        {sub ? (
-          <span style={{ fontSize: "9px", color: "#666", marginLeft: "6px" }}>{sub}</span>
-        ) : null}
+      <div style={{ color: "#888", display: "flex", alignItems: "center", gap: "4px" }}>
+        {label}
+        {sub && <span style={{ fontSize: "9px", color: "#aaa" }}>{sub}</span>}
       </div>
+      <div style={{ color: color || "#fff", fontWeight: "bold" }}>{value}</div>
     </div>
   );
 }

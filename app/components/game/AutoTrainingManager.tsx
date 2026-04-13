@@ -4,15 +4,17 @@ import { useGameStore } from "@/app/lib/game/useGameStore";
 
 export default function AutoTrainingManager() {
   const autoTrain = useGameStore((state) => state.autoTrain);
+  const updateBuffs = useGameStore((state) => (state as any).updateBuffs);
 
   useEffect(() => {
-    // 1초마다 자동 수련 실행
+    // 0.2초마다 자동 수련 및 버프 타이머 실행 (초당 5회)
     const timer = setInterval(() => {
       autoTrain();
-    }, 1000);
+      if (updateBuffs) updateBuffs(0.2);
+    }, 200);
 
     return () => clearInterval(timer);
-  }, [autoTrain]);
+  }, [autoTrain, updateBuffs]);
 
-  return null; // 화면에 아무것도 그리지 않음
+  return null; 
 }

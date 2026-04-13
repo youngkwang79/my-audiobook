@@ -7,7 +7,7 @@
 
 
   export default function TrainingPanel() {
-    const { game, addExp, addCoins, breakthrough } = useGameStore();
+    const { game, addExp, addCoins, breakthrough, getTotalCombatPower } = useGameStore();
 
     const [damages, setDamages] = useState<
       { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean }[]
@@ -15,6 +15,7 @@
     const [isShaking, setIsShaking] = useState(false);
     const [characterAction, setCharacterAction] = useState("idle");
     const [attackIdx, setAttackIdx] = useState(1);
+    const [missionSlide, setMissionSlide] = useState(0); // 0: 현재 임무, 1: 누적 처치 정보
     const [showMissionPopup, setShowMissionPopup] = useState(false);
     const [showBreakthroughPopup, setShowBreakthroughPopup] = useState(false);
     const [trainingStatFloat, setTrainingStatFloat] = useState<{
@@ -23,6 +24,10 @@
 } | null>(null);
 const [showBreakthroughSuccessEffect, setShowBreakthroughSuccessEffect] = useState(false);
 const [breakthroughSuccessRealm, setBreakthroughSuccessRealm] = useState<string | null>(null);
+const [showPrompt, setShowPrompt] = useState(true);
+const [lastTouchTime, setLastTouchTime] = useState(Date.now());
+const [hitEffects, setHitEffects] = useState<{ id: number; x: number; y: number, type: 'slash' | 'blue-slash' | 'flash' }[]>([]);
+  const [textStrikes, setTextStrikes] = useState<{ id: any; char: string; x: number; y: number; groupId: number }[]>([]);
 
 useEffect(() => {
   if (game.unlockEffectText) {
@@ -34,6 +39,8 @@ useEffect(() => {
 }, [game.unlockEffectText]);
 
 const dismissedRealmRef = useRef<string | null>(null);
+const dismissedStarRef = useRef<number | null>(null);
+const currentTouchGoalRef = useRef<number | null>(null);
 
   const realmKeys = Object.keys(REALM_SETTINGS);
   const currentRealmIndex = realmKeys.indexOf(game.realm);
@@ -49,10 +56,12 @@ const dismissedRealmRef = useRef<string | null>(null);
     const currentMinTouches = currentRealmInfo?.minTouches ?? 0;
     const nextMinTouches = nextRealmInfo?.minTouches ?? Infinity;
 
-    const isBreakthroughReady =
-      !!nextRealmName &&
-      game.touches >= nextMinTouches &&
-      game.realm !== dismissedRealmRef.current;
+    const canBreakthrough = (useGameStore.getState() as any).canBreakthrough();
+    const isBreakthroughReady = canBreakthrough && nextRealmName && 
+      (dismissedRealmRef.current !== game.realm || dismissedStarRef.current !== game.star);
+
+    const isRealmBreakthrough = game.star === 10;
+    const upgradeTargetLabel = isRealmBreakthrough ? `${nextRealmName} 경지` : `${game.star + 1}성`;
 
     const getPopupContent = () => {
       const raw = game.lastReward;
@@ -66,11 +75,11 @@ const dismissedRealmRef = useRef<string | null>(null);
         };
       }
 
-      if (msg.includes("서각") || msg.includes("장경각")) {
+      if (msg.includes("비급") || msg.includes("장경각")) {
         return {
-          title: "📚 문파 서각 개방",
-          body: "허수아비 200회 처치를 달성하여\n문파의 비급들이 보관된 서각이 열렸습니다!",
-          reward: "이제 '서각' 탭에서 무공을 배울 수 있습니다.",
+          title: "📚 문파 비급 개방",
+          body: "허수아비 200회 처치를 달성하여\n문파의 비급들이 보관된 장경각이 열렸습니다!",
+          reward: "이제 '비급' 탭에서 무공을 배울 수 있습니다.",
         };
       }
 
@@ -217,28 +226,40 @@ const isTrainingStatReward =
 }, [game.lastReward]);
 
     useEffect(() => {
-      if (isBreakthroughReady && nextRealmName && dismissedRealmRef.current !== game.realm) {
+      if (isBreakthroughReady && nextRealmName) {
         setShowBreakthroughPopup(true);
       }
-    }, [isBreakthroughReady, nextRealmName, game.realm]);
+    }, [isBreakthroughReady, nextRealmName, game.realm, game.star]);
 
     useEffect(() => {
       dismissedRealmRef.current = null;
     }, [game.realm]);
 
-    const handleHit = (e: React.MouseEvent<HTMLDivElement>) => {
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setMissionSlide(s => (s + 1) % 2);
+      }, 3000);
+      return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        if (Date.now() - lastTouchTime > 3000) {
+          setShowPrompt(true);
+        }
+      }, 500);
+      return () => clearInterval(interval);
+    }, [lastTouchTime]);
+
+    const performHit = () => {
+      setLastTouchTime(Date.now());
+      setShowPrompt(false);
       if (showBreakthroughPopup) return;
 
       const totalCritRate = useGameStore.getState().getTotalCritRate ? useGameStore.getState().getTotalCritRate() : 5;
       const isCritical = Math.random() < totalCritRate / 100;
 
       addExp(1);
-
-      if (Math.random() < 0.3) {
-        const realmGold = REALM_SETTINGS[game.realm]?.goldMultiplier || 1;
-        const baseGold = 5 * realmGold;
-        addCoins(game.attackMultiplier > 1 ? baseGold * 3 : baseGold);
-      }
 
       setAttackIdx(Math.floor(Math.random() * 5) + 1);
       setCharacterAction("attack");
@@ -249,12 +270,11 @@ const isTrainingStatReward =
         setIsShaking(false);
       }, 150);
 
-      const rect = e.currentTarget.getBoundingClientRect();
       const totalAtk = useGameStore.getState().getTotalAttack();
       const gameState = useGameStore.getState().game;
 
-const dummyX = rect.width * 0.62;
-const dummyY = rect.height * 0.52;
+      const dummyX = 75; // 허수아비가 오른쪽으로 배치됨에 따라 조정
+      const dummyY = 20; // 허수아비 머리 위쪽 (percentage)
 
       let equipmentSkillProc = false;
       let eqSkillDamage = 0;
@@ -277,47 +297,101 @@ const dummyY = rect.height * 0.52;
 
       if (gameState.learnedSkills.length > 0 && Math.random() < 0.15) {
         const bestSkill = [...gameState.learnedSkills].sort((a,b) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
-        martialSkillProc = true;
-        martialSkillName = bestSkill.name;
-        martialSkillDamage = totalAtk * ((bestSkill as any).multiplier || 3);
-      }
-
-      let finalDamage = totalAtk;
-      let skillTexts = [];
-      let isSkillActivate = false;
-
-      if (equipmentSkillProc || martialSkillProc) {
-        isSkillActivate = true;
-        finalDamage = (equipmentSkillProc ? eqSkillDamage : 0) + (martialSkillProc ? martialSkillDamage : 0);
-        if (equipmentSkillProc && martialSkillProc) {
-          skillTexts.push(`잭팟! ${eqSkillName} & ${martialSkillName}`);
-        } else if (equipmentSkillProc) {
-          skillTexts.push(`⚡ ${eqSkillName}`);
-        } else {
-          skillTexts.push(`🔥 ${martialSkillName}`);
+        const mpCost = (bestSkill as any).mpCost || 10;
+        
+        if (gameState.mp >= mpCost) {
+          martialSkillProc = true;
+          martialSkillName = bestSkill.name;
+          martialSkillDamage = totalAtk * ((bestSkill as any).multiplier || 3);
+          // Consume MP
+          useGameStore.setState(s => ({ game: { ...s.game, mp: Math.max(0, s.game.mp - mpCost) } }));
         }
-      } else {
-        if (isCritical) finalDamage = Math.floor(finalDamage * 2);
       }
 
-      setDamages((prev) => [
-  ...prev.slice(-10),
-  {
-    id: Date.now() + Math.random(),
-    damage: finalDamage,
-    x: dummyX + (Math.random() * 30 - 15),
-    y: dummyY + (Math.random() * 30 - 15),
-    isCritical: !isSkillActivate && isCritical,
-    isSkillProc: isSkillActivate,
-    skillText: skillTexts.join(" "),
-  },
-]);
+      const critDmgMult = useGameStore.getState().getTotalCritDmg ? useGameStore.getState().getTotalCritDmg() / 100 : 1.5;
+      const finalDmg = isCritical ? Math.floor(totalAtk * critDmgMult) : totalAtk;
+
+      setDamages(prev => {
+        const next = [...prev];
+        next.push({
+          id: Date.now() + Math.random(),
+          damage: finalDmg,
+          x: dummyX + (Math.random() * 10 - 5),
+          y: dummyY + (Math.random() * 10 - 5),
+          isCritical: isCritical
+        });
+
+        if (equipmentSkillProc) {
+          next.push({
+            id: Date.now() + Math.random() + 1,
+            damage: eqSkillDamage,
+            x: dummyX + (Math.random() * 20 - 10),
+            y: dummyY - 10 + (Math.random() * 10 - 5),
+            isCritical: true,
+            skillText: eqSkillName,
+            isSkillProc: true
+          });
+        }
+
+        if (martialSkillProc) {
+          next.push({
+            id: Date.now() + Math.random() + 2,
+            damage: martialSkillDamage,
+            x: dummyX + (Math.random() * 20 - 10),
+            y: dummyY - 18 + (Math.random() * 10 - 5),
+            isCritical: true,
+            skillText: martialSkillName,
+            isSkillProc: true
+          });
+
+          // 무공 이름 한 글자씩 나란히 가로로 타격 (매.화.초.식 따따따딱)
+          const chars = martialSkillName.split("");
+          const strikeGroupId = Date.now();
+          chars.forEach((char, i) => {
+            setTimeout(() => {
+              const strikeId = `${Date.now()}-${i}-${Math.random()}`;
+              const xOffset = (i - (chars.length - 1) / 2) * 9; 
+              const hitX = 75 + xOffset;
+              const hitY = 68 + (Math.random() * 4 - 2);
+              
+              setTextStrikes(ts => [...ts, { id: strikeId as any, char, x: hitX, y: hitY, groupId: strikeGroupId }]);
+            }, i * 200); // 0.2초 간격 (더욱 묵직하고 절도 있는 따 따 따 딱 느낌)
+          });
+
+          // 2초 뒤에 해당 그룹의 모든 글자를 한번에 제거
+          setTimeout(() => {
+            setTextStrikes(ts => ts.filter(t => t.groupId !== strikeGroupId));
+          }, 2000 + (chars.length * 200));
+        }
+        return next.slice(-20);
+      });
+
+      // 자동 제거
+      setTimeout(() => {
+        setHitEffects(h => h.slice(1));
+      }, 500);
     };
+
+    const handleHit = (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      performHit();
+    };
+
+    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      // Handle up to 5 simultaneous touches in a single frame
+      const touches = Array.from(e.changedTouches).slice(0, 5);
+      touches.forEach(() => performHit());
+    };
+
+
 
     const handleConfirmBreakthrough = () => {
   const targetRealm = nextRealmName;
 
-  setShowBreakthroughPopup(false);
+    setShowBreakthroughPopup(false);
+    dismissedRealmRef.current = game.realm;
+    dismissedStarRef.current = game.star;
 
   if (targetRealm) {
     setBreakthroughSuccessRealm(targetRealm);
@@ -535,9 +609,9 @@ const dummyY = rect.height * 0.52;
     textShadow: "0 0 10px rgba(255,255,255,0.10)",
   }}
 >
- ✨ {currentRealmName} 경지의 수련 조건을 달성했습니다.✨
+  ✨ {game.realm} {game.star}성 수련 조건을 달성했습니다.✨
   {"\n"}
-  {nextRealmName}(으)로 돌파하시겠습니까?
+  {upgradeTargetLabel}(으)로 {isRealmBreakthrough ? "돌파" : "승급"}하시겠습니까?
 </div>
               
 
@@ -671,7 +745,8 @@ const dummyY = rect.height * 0.52;
   </div>
 )}
         <div
-          onClick={handleHit}
+          onMouseDown={handleHit}
+          onTouchStart={handleTouchStart}
           style={{
             position: "relative",
             display: "flex",
@@ -681,14 +756,27 @@ const dummyY = rect.height * 0.52;
             borderRadius: "20px",
             overflow: "hidden",
             cursor: showBreakthroughPopup ? "default" : "pointer",
+            touchAction: "none",
+            boxSizing: "border-box",
+            userSelect: "none",
             background: "#08060a",
             boxShadow: "inset 0 0 40px rgba(0,0,0,0.8)",
             border: "1px solid rgba(255,215,120,0.2)",
             WebkitTapHighlightColor: "transparent",
             perspective: "1200px",
-            marginBottom: "12px",
+            marginBottom: "0px",
           }}
         >
+          {/* Combat Power (Left Corner) */}
+          <div style={{
+            position: "absolute", top: 6, left: 12, zIndex: 120,
+            fontSize: "10px", color: "rgba(255,215,0,0.9)", fontWeight: "bold",
+            background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: "6px",
+            border: "1px solid rgba(255,215,0,0.2)", backdropFilter: "blur(2px)",
+            pointerEvents: "none"
+          }}>
+            전투력: {getTotalCombatPower().toLocaleString()}
+          </div>
           {/* 3D Panning Background */}
           <div
             style={{
@@ -792,7 +880,7 @@ const dummyY = rect.height * 0.52;
                   textShadow: "0 0 10px #fff, 0 0 20px #ffd700",
                 }}
               >
-                {game.buffTimeLeft}s
+                {Math.ceil(game.buffTimeLeft)}s
               </div>
             </div>
           )}
@@ -800,11 +888,14 @@ const dummyY = rect.height * 0.52;
           <div
             style={{
               position: "absolute",
-              top: "12px",
+              top: "8px", // Slightly higher
               left: "50%",
               transform: "translateX(-50%)",
               width: "75%",
               zIndex: 100,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
             }}
           >
             <div
@@ -888,14 +979,79 @@ const dummyY = rect.height * 0.52;
             ))}
           </div>
 
-          <div style={{ position: "relative", width: "100%", flex: 1, zIndex: 5 }}>
+          {/* Hit Effects Layer */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 160 }}>
+            {hitEffects.map(eff => (
+              <div key={eff.id} style={{
+                position: "absolute",
+                left: `${eff.x}%`,
+                top: `${eff.y}%`,
+                transform: "translate(-50%, -50%)",
+                width: 150,
+                height: 150,
+                display: "grid",
+                placeItems: "center"
+              }}>
+                {eff.type === 'blue-slash' && (
+                  <div style={{ width: "100%", height: "4px", background: "cyan", transform: "rotate(45deg)", boxShadow: "0 0 20px cyan", animation: "slashAnim 0.3s ease-out forwards" }} />
+                )}
+                {eff.type === 'slash' && (
+                  <div style={{ width: "80%", height: "3px", background: "#fff", transform: "rotate(-30deg)", boxShadow: "0 0 15px #fff", animation: "slashAnim 0.25s ease-out forwards" }} />
+                )}
+                {eff.type === 'flash' && (
+                  <div style={{ width: 80, height: 80, borderRadius: "50%", background: "white", boxShadow: "0 0 40px #ffd700", animation: "flashAnim 0.4s ease-out forwards" }} />
+                )}
+              </div>
+            ))}
+            {textStrikes.map(st => (
+              <div key={st.id} style={{
+                position: "absolute",
+                left: `${st.x}%`,
+                top: `${st.y}%`,
+                transform: "translate(-50%, -50%)",
+                fontSize: "24px",
+                fontWeight: "1000",
+                fontFamily: "'Gungsuh', 'Batang', serif",
+                color: "#fff",
+                textShadow: "0 0 10px #fff, 0 0 20px #ff4500, 0 0 40px #ff0000, 0 0 60px #ffd700",
+                animation: "textStrikeAnim 1.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards",
+                pointerEvents: "none",
+                zIndex: 170,
+                WebkitTextStroke: "1px #ffd700",
+              }}>
+                {st.char}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ position: "relative", width: "100%", flex: 1, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {showPrompt && !game.pendingInnEntry && !game.timingMission.available && (
+              <div style={{
+                position: "absolute",
+                top: "45%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 500,
+                color: "#ffd700",
+                fontSize: "32px",
+                fontWeight: "900",
+                textAlign: "center",
+                textShadow: "2px 2px 0px #000, 0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,69,0,0.6)",
+                pointerEvents: "none",
+                animation: "promptIntensePulse 1.5s ease-in-out infinite",
+                width: "100%",
+                letterSpacing: "-1px",
+              }}>
+                화면을 터치해 강해지세요
+              </div>
+            )}
             {/* Dummy (Further back) */}
             <div
               style={{
                 position: "absolute",
-                bottom: "75px",
-                right: "10%",
-                width: "160px",
+                bottom: "45px",
+                right: "-10%",
+                width: "320px",
                 transition: "transform 0.05s ease-out",
                 transform: isShaking ? "rotate(10deg) scale(0.95) translateX(8px)" : "rotate(0deg)",
                 transformOrigin: "bottom center",
@@ -972,7 +1128,7 @@ const dummyY = rect.height * 0.52;
             textAlign: "center",
             boxShadow: "inset 0 0 15px rgba(0,0,0,0.8)",
             boxSizing: "border-box",
-            marginTop: "10px",
+            marginTop: "0px",
           }}
         >
           <div
@@ -985,13 +1141,26 @@ const dummyY = rect.height * 0.52;
           />
           <div
             style={{
-              color: "#ffd700",
-              fontWeight: "bold",
-              fontSize: "14px",
-              whiteSpace: "pre-wrap",
+              fontSize: "13px",
+              fontWeight: "900",
+              color: "#fff",
+              lineHeight: 1.4,
+              minHeight: "42px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
             }}
           >
-            {game.currentMissionTitle}
+            {missionSlide === 0 ? (
+              <span style={{ color: "#ffd700", animation: "goldShine 1.5s ease-in-out infinite", whiteSpace: "pre-wrap" }}>
+                {game.currentMissionTitle}
+              </span>
+            ) : (
+              <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
+                객잔 무뢰배 처단 (300회 처치 마다 발생)
+              </span>
+            )}
           </div>
           <div
             style={{
@@ -1019,6 +1188,7 @@ const dummyY = rect.height * 0.52;
         
 
         <style jsx global>{`
+          @import url('https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&display=swap');
 
         @keyframes breakthroughAuraSpin {
     0% { transform: scale(0.95) rotate(0deg); opacity: 0.85; }
@@ -1146,6 +1316,31 @@ const dummyY = rect.height * 0.52;
             0% { transform: scale(1) translate(0, 0); }
             50% { transform: scale(1.1) translate(40px, -15px); filter: brightness(1.3) drop-shadow(0 0 15px rgba(255,100,0,0.8)); }
             100% { transform: scale(1) translate(0, 0); }
+          }
+          @keyframes flashAnim {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(3); opacity: 0.8; }
+            100% { transform: scale(4); opacity: 0; }
+          }
+          @keyframes textStrikeAnim {
+            0% { transform: translate(-50%, -50%) scale(5); opacity: 0; filter: blur(10px); }
+            10% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: blur(0); }
+            90% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -55%) scale(0.9); opacity: 0; }
+          }
+          @keyframes goldShine {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 5px #ffd700); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 15px #fff); transform: scale(1.02); }
+          }
+          @keyframes promptIntensePulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; text-shadow: 0 0 30px #ffd700, 0 0 60px #ff4500; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+          }
+          @keyframes blink {
+            0% { opacity: 0.2; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.2; }
           }
         `}</style>
       </div>

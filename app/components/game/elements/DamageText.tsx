@@ -26,8 +26,8 @@ export default function DamageText({ damage, x, y, isCritical, skillText, isSkil
   return (
     <div style={{
       position: "absolute",
-      left: x,
-      top: y,
+      left: `${x}%`,
+      top: `${y}%`,
       color: isSkillProc ? "#00ffff" : isCritical ? "#ff4444" : "#ffcc00",
       fontWeight: "bold",
       fontSize: isSkillProc ? "36px" : isCritical ? "32px" : "24px",

@@ -57,6 +57,16 @@ export default function GameIntroPanel({
     onSelectFaction(selected);
   }, [currentIndex, onSelectFaction]);
 
+  // 이미지 프리로딩
+  useEffect(() => {
+    FACTIONS.forEach(f => {
+      if (f.characterImages?.ready) {
+        const img = new Image();
+        img.src = f.characterImages.ready;
+      }
+    });
+  }, []);
+
   const currentFaction = FACTIONS[currentIndex];
   
   // 시작 가능 조건 확인
@@ -179,7 +189,7 @@ export default function GameIntroPanel({
                 ⚔️ {currentFaction.martial["삼류"].name}
               </div>
               <div style={{ fontSize: 12, color: "#bde7ff", border: "1px solid rgba(189,231,255,0.3)", padding: "2px 8px", borderRadius: 6 }}>
-                👟 {currentFaction.movement.entry}
+                👟 {currentFaction.movement?.entry || "-"}
               </div>
             </div>
 

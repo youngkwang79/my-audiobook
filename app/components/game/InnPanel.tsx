@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 
+import { MiniGameType } from "@/app/lib/game/types";
+
+// Grade defines the quality of a timing action
 type Grade = "PERFECT" | "GREAT" | "GOOD" | "MISS";
-type MiniGameType = "breath" | "dodge" | "biryongbo" | "pulse";
 
 type FloatText = {
   id: number;
@@ -35,7 +37,7 @@ const MINI_GAMES: {
 }[] = [
   {
     key: "breath",
-    name: "천지운기 (Rhythm)",
+    name: "청운진기 (Rhythm)",
     desc: "기운이 조화로운 지점에 도달할 때 타이밍에 맞춰 탭하세요.",
     icon: "🧘",
   },
@@ -46,10 +48,10 @@ const MINI_GAMES: {
     icon: "👟",
   },
   {
-    key: "biryongbo",
-    name: "비룡보 경공수련",
-    desc: "상하좌우 스와이프로 장애물을 피하며 멀리 나아가세요.",
-    icon: "🕊️",
+    key: "puzzle",
+    name: "내공폭주 (Puzzle)",
+    desc: "기맥을 어지럽히는 기운을 정렬하여 단전을 안정시키세요.",
+    icon: "🎇",
   },
   {
     key: "pulse",
@@ -57,12 +59,6 @@ const MINI_GAMES: {
     desc: "팽창하는 동그라미가 가득 찼을 때 타이밍에 맞춰 터치하세요.",
     icon: "🔘",
   },
-];
-
-const RANK_REWARDS = [
-  { score: 1000, name: "객잔의 지배자", icon: "👑", reward: "영구적 금화 획득 +20%", bonus: { coinMult: 0.2 } },
-  { score: 5000, name: "전설의 고수", icon: "🔥", reward: "영구적 치명타 피해 +50%", bonus: { critDmg: 50 } },
-  { score: 20000, name: "천하제일인", icon: "🐉", reward: "모든 능력치 +15%", bonus: { allStats: 0.15 } },
 ];
 
 function getGrade(diff: number, tolerance: number): Grade {
@@ -86,32 +82,37 @@ function getGradeColor(grade: Grade) {
   return "#ff4d4d";                         // Crimson
 }
 
-function getMeihuaRank(s: number) {
-  if (s >= 1000) return "천하제일인";
-  if (s >= 500) return "현경(玄境)";
-  if (s >= 300) return "화경(化境)";
-  if (s >= 100) return "일류고수";
-  return "초출강호";
-}
-
 export default function InnPanel({
   onRewardClose,
 }: { onRewardClose?: () => void } = {}) {
-  const { game, resolveTimingMission, claimDuelReward } = useGameStore() as any;
+  const { game, resolveTimingMission, claimDuelReward, getTotalAttack, incrementCombo, markInnEntryHandled } = useGameStore() as any;
 
   const mission = game.timingMission;
   const duel = game.duel;
 
-  const getTargetScore = (s: number) => {
-    if (s === 1) return 500;
-    if (s === 2) return 2000;
-    if (s === 3) return 5000;
-    if (s === 4) return 8000;
-    return 8000 + (s - 4) * 5000; // Exponentially harder targets after stage 4
-  };
-
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentMiniGame, setCurrentMiniGame] = useState<MiniGameType>("breath");
+
+  // Bugfix: powerFactor must be stable during a single game session relative to base attack
+  const powerFactor = useMemo(() => {
+    const atk = getTotalAttack();
+    // Use log scale for target scaling but remove volatile combo factors if possible
+    // For now, memoizing it based on mission availability ensures it doesn't drift during playback
+    return 1 + Math.log10(Math.max(1, atk / 100)) * 2;
+  }, [mission?.available, isPlaying]); // Only recalculate when a new mission is ready or game starts
+
+  const getTargetScore = (s: number) => {
+    let base = 0;
+    if (s === 1) base = 1000;
+    else if (s === 2) base = 4000;
+    else if (s === 3) base = 8000;
+    else if (s === 4) base = 15000;
+    else if (s === 5) base = 25000;
+    else base = 25000 + (s - 5) * 15000;
+    
+    // 공격력이 높아짐에 따라 성공 기준도 상향 조정
+    return Math.floor(base * powerFactor);
+  };
   const [playerScore, setPlayerScore] = useState(0);
   const [currentStage, setCurrentStage] = useState(1);
   const [successHits, setSuccessHits] = useState(0); 
@@ -123,11 +124,12 @@ export default function InnPanel({
   const [floatTexts, setFloatTexts] = useState<FloatText[]>([]);
   const [popup, setPopup] = useState<{ visible: boolean; message: string } | null>(null);
   const [isFailPopup, setIsFailPopup] = useState(false);
+  const [isWinPopup, setIsWinPopup] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [pulseTargets, setPulseTargets] = useState<{ id: number; x: number; y: number; progress: number }[]>([]);
   const [failReason, setFailReason] = useState("");
   const [localFailCount, setLocalFailCount] = useState(0);
-  const [laneFlash, setLaneFlash] = useState<number | null>(null);
+  const [activeLanes, setActiveLanes] = useState<Record<number, boolean>>({});
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialTarget, setTutorialTarget] = useState<MiniGameType>("breath");
 
@@ -139,6 +141,7 @@ export default function InnPanel({
       return () => clearTimeout(timer);
     }
   }, [game.unlockEffectText]);
+
 
   const TUTORIAL_INFO = {
     breath: {
@@ -153,11 +156,11 @@ export default function InnPanel({
       controls: "현재 발을 딛고 있는 기둥의 다음 위치를 보고, 왼쪽(左) 또는 오른쪽(右) 버튼을 타이밍에 맞춰 누르세요.",
       goal: "3번의 실수(추락) 전까지 끝까지 버텨내야 하며, 총점 500점 이상 획득 시 성공합니다."
     },
-    biryongbo: {
-      title: "비룡보 경공수련",
-      method: "장애물을 피해 질주하며 한계를 시험하는 경공 수련입니다.",
-      controls: "화면 스와이프: 좌/우(레인 이동), 상(점프/경공), 하(슬라이딩).",
-      goal: "다양한 장애물을 돌파하며 500m 이상 주파해야 합니다. (파란 구슬 획득 시 잠시 무적)"
+    puzzle: {
+      title: "내공폭주 단전회복",
+      method: "어지러워진 기맥의 기운을 속성별로 정렬하는 수련입니다.",
+      controls: "같은 속성의 기운(구슬)을 3개 이상 한 줄로 연결하여 폭발시키세요.",
+      goal: "단전이 폭주하기 전에 기운을 정렬하여 목표 점수를 달성해야 합니다."
     },
     pulse: {
       title: "기운응축 (Pulse)",
@@ -171,6 +174,8 @@ export default function InnPanel({
   const [breathNotes, setBreathNotes] = useState<{ id: number; y: number; lane: number }[]>([]);
   const breathNoteIdRef = useRef(0);
   const [breathTimeLeft, setBreathTimeLeft] = useState(30.0);
+  const [breathMissCount, setBreathMissCount] = useState(0);
+  const breathMissCountRef = useRef(0);
 
   // --- Meihua Poles (Dodge) States ---
   const [poles, setPoles] = useState<number[]>([]);
@@ -178,20 +183,23 @@ export default function InnPanel({
   const [combo, setCombo] = useState(0);
   const [dodgeTimeLeft, setDodgeTimeLeft] = useState(30.0);
 
-  // --- Biryongbo (Kyung-gong) States ---
-  const [biryongPos, setBiryongPos] = useState(2); // 0-4 (5 lanes)
-  const [biryongObstacles, setBiryongObstacles] = useState<any[]>([]);
-  const [isBiryongJumping, setIsBiryongJumping] = useState(false);
-  const [isBiryongSliding, setIsBiryongSliding] = useState(false);
-  const [isHeogong, setIsHeogong] = useState(false);
-  const [biryongTimeLeft, setBiryongTimeLeft] = useState(30.0);
+  // --- Naegong Puzzle (Explosion) States ---
+  const [puzzleGrid, setPuzzleGrid] = useState<any[][]>([]);
+  const [puzzleDantian, setPuzzleDantian] = useState(0);
+  const [puzzleSelected, setPuzzleSelected] = useState<[number, number] | null>(null);
+  const [puzzleTimeLeft, setPuzzleTimeLeft] = useState(45.0);
+  const [puzzleIsProcessing, setPuzzleIsProcessing] = useState(false);
+  const [puzzleCombo, setPuzzleCombo] = useState(0);
+  const [puzzleSwipeStart, setPuzzleSwipeStart] = useState<{ r: number, c: number, x: number, y: number } | null>(null);
+  const [puzzleEffects, setPuzzleEffects] = useState<{ id: number; r: number; c: number; color: string }[]>([]);
   const pulseIdRef = useRef(0);
 
   // --- REFS for Stale Closure Prevention ---
   const breathNotesRef = useRef<{ id: number; y: number; lane: number }[]>([]);
   const polesRef = useRef<number[]>([]);
-  const biryongObstaclesRef = useRef<any[]>([]);
-  const biryongPosRef = useRef(2);
+  const puzzleGridRef = useRef<any[][]>([]);
+  const puzzleDantianRef = useRef(0);
+  const puzzleTimeLeftRef = useRef(45.0);
   const touchStartRef = useRef({ x: 0, y: 0 });
   const pulseTargetsRef = useRef<{ id: number; x: number; y: number; progress: number }[]>([]);
   const currentMiniGameRef = useRef<MiniGameType>("breath");
@@ -200,7 +208,7 @@ export default function InnPanel({
   const currentProgressRef = useRef(0);
   const breathTimeLeftRef = useRef(30.0);
   const dodgeTimeLeftRef = useRef(30.0);
-  const biryongTimeLeftRef = useRef(30.0);
+  const puzzleTimeLeftRefVal = useRef(45.0);
   const comboRef = useRef(0);
   const dodgeHpRef = useRef(3);
   const playerScoreRef = useRef(0);
@@ -210,6 +218,7 @@ export default function InnPanel({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const gameLoopRef = useRef<number | null>(null);
   const finishLockRef = useRef(false);
+  const isPlayingRef = useRef(false);
 
   const missionAvailable = mission?.available;
   const scoreRatio = missionAvailable
@@ -221,6 +230,59 @@ export default function InnPanel({
     [currentMiniGame]
   );
 
+  const RIVAL_IMAGE_MAP: Record<string, string> = {
+    "취권의 고수": "/images/villain_drunken_master.png",
+    "강동의 호랑이": "/images/villain_tiger.png",
+    "만독문주": "/images/villain_poison.png",
+    "혈교 호법": "/images/villain_blood.png",
+    "그림자 암살자": "/images/villain_shadow.png",
+    "tier1": "/images/villain_tier1.png",
+    "tier2": "/images/villain_tier2.png",
+    "tier3": "/images/villain_tier3.png",
+  };
+
+  const getRivalImage = () => {
+    const stage = mission?.currentStage || 1;
+    if (mission?.rivalName && RIVAL_IMAGE_MAP[mission.rivalName]) {
+      return RIVAL_IMAGE_MAP[mission.rivalName];
+    }
+    
+    // Fallback based on stage (Tiers)
+    if (stage <= 5) return RIVAL_IMAGE_MAP["tier1"];
+    if (stage <= 15) return RIVAL_IMAGE_MAP["tier2"];
+    if (stage <= 30) return RIVAL_IMAGE_MAP["tier3"];
+    if (stage <= 45) return RIVAL_IMAGE_MAP["취권의 고수"];
+    if (stage <= 60) return RIVAL_IMAGE_MAP["강동의 호랑이"];
+    if (stage <= 75) return RIVAL_IMAGE_MAP["만독문주"];
+    if (stage <= 90) return RIVAL_IMAGE_MAP["혈교 호법"];
+    return RIVAL_IMAGE_MAP["그림자 암살자"];
+  };
+
+  const getPlayerImage = () => {
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    // Restoration: uses the original paths which were restored via git checkout
+    return faction?.characterImages?.ready || "/images/char_hwasan_ready.png";
+  };
+
+  const [rivalTimeLeft, setRivalTimeLeft] = useState("");
+
+  useEffect(() => {
+    if (!game.nextRivalTime) return;
+    const update = () => {
+      const diff = game.nextRivalTime - Date.now();
+      if (diff <= 0) {
+        setRivalTimeLeft("");
+      } else {
+        const m = Math.floor(diff / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        setRivalTimeLeft(`${m}분 ${s}초`);
+      }
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [game.nextRivalTime]);
+
   const clearAllIntervals = () => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
@@ -230,6 +292,26 @@ export default function InnPanel({
     timerRef.current = null;
   };
 
+  const initPuzzleGrid = () => {
+    const types = ["fire", "water", "wind", "thunder"];
+    const newGrid: any[][] = [];
+    for (let r = 0; r < 7; r++) {
+      const row: any[] = [];
+      for (let c = 0; c < 7; c++) {
+        let t;
+        do {
+          t = types[Math.floor(Math.random() * types.length)];
+        } while (
+          (r >= 2 && newGrid[r-1][c].type === t && newGrid[r-2][c].type === t) ||
+          (c >= 2 && row[c-1].type === t && row[c-2].type === t)
+        );
+        row.push({ id: Math.random(), type: t });
+      }
+      newGrid.push(row);
+    }
+    return newGrid;
+  };
+
   const resetGameState = (type: MiniGameType) => {
     setCurrentMiniGame(type);
     currentMiniGameRef.current = type;
@@ -237,6 +319,7 @@ export default function InnPanel({
     breathNotesRef.current = [];
     setBreathTimeLeft(30.0);
     breathTimeLeftRef.current = 30.0;
+    // NOTE: Miss count is now cumulative across stages, reset in startMission instead
     // Meihua Poles Reset
     const initialPoles = Array.from({ length: 6 }, () => Math.round(Math.random()));
     setPoles(initialPoles);
@@ -245,15 +328,17 @@ export default function InnPanel({
     dodgeHpRef.current = 3;
     setCombo(0);
     comboRef.current = 0;
-    setBiryongPos(2);
-    biryongPosRef.current = 2;
-    setBiryongObstacles([]);
-    biryongObstaclesRef.current = [];
-    setIsBiryongJumping(false);
-    setIsBiryongSliding(false);
-    setIsHeogong(false);
-    setBiryongTimeLeft(30.0);
-    biryongTimeLeftRef.current = 30.0;
+    // Naegong Puzzle Reset
+    const initialGrid = initPuzzleGrid();
+    setPuzzleGrid(initialGrid);
+    puzzleGridRef.current = initialGrid;
+    setPuzzleDantian(10); // Start with some stability
+    puzzleDantianRef.current = 10;
+    setPuzzleSelected(null);
+    setPuzzleTimeLeft(45.0);
+    puzzleTimeLeftRef.current = 45.0;
+    setPuzzleCombo(0);
+    setPuzzleIsProcessing(false);
     totalNotesSpawnedRef.current = 0;
 
     // NOTE: Score must NOT be reset here as it should accumulate across rounds
@@ -290,6 +375,9 @@ export default function InnPanel({
     finishLockRef.current = true;
     clearAllIntervals();
     setIsPlaying(false);
+    isPlayingRef.current = false;
+    // 패배 시에는 즉시 승리 팝업이 떠있지 않도록 보장
+    setIsWinPopup(false); 
 
     const clearedStage = success ? currentStage : currentStage - 1;
 
@@ -323,24 +411,11 @@ export default function InnPanel({
     const targetScore = getTargetScore(currentStage);
 
     if (nextScore >= targetScore) {
-       // Stage Clear! Moving to next stage
-       const nextStage = currentStage + 1;
-       setCurrentStage(nextStage);
-       setPlayerScore(nextScore);
-       setResultText(`Stage ${currentStage} 돌파! 다음 목표: ${getTargetScore(nextStage)}점`);
-       
-       setIsPlaying(false);
-       setIsTransitioning(true);
-
-       setTimeout(() => {
-          if (finishLockRef.current) return;
-          resetGameState(currentMiniGame);
-          setIsTransitioning(false);
-          setIsPlaying(true);
-       }, 1200);
-    } else {
-       // Not enough score for next stage yet (if game allows multiple rounds per stage, but here one 30s session per stage)
-       // Let's assume one 30s session is the whole stage.
+        // Stage Clear! 
+        setIsPlaying(false);
+        isPlayingRef.current = false;
+        setIsWinPopup(true);
+        setResultText(`무뢰배에게 ${currentStage}번 승리하셨습니다!`);
     }
   };
 
@@ -370,22 +445,35 @@ export default function InnPanel({
     setCurrentStage(1);
     successHitsRef.current = 0;
     setSuccessHits(0);
-    roundRef.current = 1;
     setRound(1);
-    biryongPosRef.current = 2;
     
     const selected = mission.selectedGameType || "breath";
     setCurrentMiniGame(selected);
+    
+    // Reset cumulative miss count for new session
+    setBreathMissCount(0);
+    breathMissCountRef.current = 0;
+
     resetGameState(selected);
     setResultText(`${MINI_GAMES.find(m => m.key === selected)?.name} 수련을 시작합니다.`);
 
-    if (game.innEventVersion === 1) {
+    const hasRecord = !!(mission.highScores && mission.highScores[selected]);
+    if (!hasRecord) {
       setTutorialTarget(selected);
       setShowTutorial(true);
     } else {
       setIsPlaying(true);
+      isPlayingRef.current = true;
     }
   };
+
+  // 객잔 자동 진입 시 미니게임 즉시 시작
+  useEffect(() => {
+    if (game.pendingInnEntry && mission?.available && !isPlaying) {
+      startMission();
+      markInnEntryHandled();
+    }
+  }, [game.pendingInnEntry, mission?.available, isPlaying, startMission, markInnEntryHandled]);
 
   // --- GAME LOOPS ---
 
@@ -401,8 +489,8 @@ export default function InnPanel({
         updateBreath(dt);
       } else if (currentMiniGameRef.current === "dodge") {
         updateDodge(dt);
-      } else if (currentMiniGameRef.current === "biryongbo") {
-        updateBiryong(dt);
+      } else if (currentMiniGameRef.current === "puzzle") {
+        updatePuzzle(dt);
       } else if (currentMiniGameRef.current === "pulse") {
         updatePulse(dt);
       }
@@ -440,45 +528,56 @@ export default function InnPanel({
     const accel = (30 - nextTime) * (1.25 + currentStage * 0.2);
     const speed = baseSpeed + accel;
 
-    const nextNotes = breathNotesRef.current
-      .map((n) => ({ ...n, y: n.y + speed * dt }))
-      .filter((n) => n.y <= 100);
+    let processedNotes = breathNotesRef.current
+      .map((n) => ({ ...n, y: n.y + speed * dt }));
 
-    if (nextNotes.some((n) => n.y > 96)) {
-      const missedCount = nextNotes.filter(n => n.y > 96).length;
-      const penalty = missedCount * 20;
-      const newScore = playerScoreRef.current - penalty;
+    const missedInThisFrame = processedNotes.filter((n) => n.y > 96);
+    if (missedInThisFrame.length > 0) {
+      const missedCount = missedInThisFrame.length;
+      
+      const newMissCount = breathMissCountRef.current + missedCount;
+      breathMissCountRef.current = newMissCount;
+      setBreathMissCount(newMissCount);
+
+      const penalty = Math.floor(missedCount * 85 * 3 * powerFactor);
+      const newScore = Math.max(-5000 * powerFactor, playerScoreRef.current - penalty);
       
       playerScoreRef.current = newScore;
       setPlayerScore(newScore);
       addFloatText(`-${penalty}`, "#ff4d4d");
       
-      if (newScore <= -300) {
+      if (newMissCount >= 5) {
+        finishMission(false, "MISS", newScore, "기운을 지나치게 놓쳐 대련이 중단되었습니다. (5회 미스)");
+        return;
+      }
+
+      if (newScore <= -4500 * powerFactor) {
         finishMission(true, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
         return;
       }
       
-      // Reset combo on missed notes
       setCombo(0);
       comboRef.current = 0;
       
-      // Filter out missed notes
-      const filteredNotes = nextNotes.filter(n => n.y <= 96);
-      breathNotesRef.current = filteredNotes;
-      setBreathNotes(filteredNotes);
-      return;
+      // Filter out only the missed ones, keep others!
+      processedNotes = processedNotes.filter(n => n.y <= 96);
     }
 
-    breathNotesRef.current = nextNotes;
-    setBreathNotes(nextNotes);
+    breathNotesRef.current = processedNotes;
+    setBreathNotes(processedNotes);
 
-    // Spawn rate by realm
-    const spawnRate = 0.015 + rIdx * 0.005 + (30 - nextTime) * 0.001;
-    if (Math.random() < spawnRate && nextNotes.length < 5) {
+    // Spawn rate logic: 더 완만하고 밀도 낮게 조정
+    const baseRate = 0.015 + rIdx * 0.003;
+    const stageBonus = (currentStage - 1) * 0.005;
+    const timeBonus = (30 - nextTime) * 0.001;
+    const spawnRate = Math.min(0.07, baseRate + stageBonus + timeBonus);
+    
+    const maxNotesOnScreen = 7 + Math.floor(currentStage / 3);
+    
+    if (Math.random() < spawnRate && processedNotes.length < maxNotesOnScreen) {
       const lane = Math.floor(Math.random() * 5);
-      
-      // Prevent vertical overlap in the same lane
-      const lastNoteInLane = nextNotes.find(n => n.lane === lane && n.y < 25);
+      // Prevent vertical overlap in the same lane: 간격을 더 넓힘 (12 -> 18)
+      const lastNoteInLane = processedNotes.find(n => n.lane === lane && n.y < 18);
       
       if (!lastNoteInLane) {
         totalNotesSpawnedRef.current += 1;
@@ -487,7 +586,7 @@ export default function InnPanel({
           y: 0, 
           lane
         };
-        const updated = [...nextNotes, newNote];
+        const updated = [...processedNotes, newNote];
         breathNotesRef.current = updated;
         setBreathNotes(updated);
       }
@@ -507,12 +606,22 @@ export default function InnPanel({
     const grade = getGrade(diff, tolerance);
 
     if (grade === "MISS") {
-      const newScore = playerScoreRef.current - 20;
+      const penalty = Math.floor(85 * 3 * powerFactor);
+      const newScore = playerScoreRef.current - penalty;
       playerScoreRef.current = newScore;
       setPlayerScore(newScore);
-      addFloatText("-20", "#ff4d4d");
+      addFloatText(`-${penalty}`, "#ff4d4d");
       
-      if (newScore <= -300) {
+      const newMissCount = breathMissCountRef.current + 1;
+      breathMissCountRef.current = newMissCount;
+      setBreathMissCount(newMissCount);
+
+      if (newMissCount >= 5) {
+        finishMission(false, "MISS", newScore, "기운을 지나치게 놓쳐 대련이 중단되었습니다. (5회 미스)");
+        return;
+      }
+
+      if (newScore <= -4000 * powerFactor) {
         finishMission(true, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
         const nextNotes = breathNotesRef.current.filter(n => n.id !== nearestNote.id);
         breathNotesRef.current = nextNotes;
@@ -534,7 +643,8 @@ export default function InnPanel({
 
       // Score weightage based on grade
       const scoreMap = { "PERFECT": 50, "GREAT": 35, "GOOD": 20, "MISS": 0 };
-      const scoreGain = scoreMap[grade] || 10;
+      const baseScoreGain = scoreMap[grade] || 10;
+      const scoreGain = Math.floor(baseScoreGain * powerFactor);
       const newScore = playerScoreRef.current + scoreGain;
       
       playerScoreRef.current = newScore;
@@ -545,6 +655,7 @@ export default function InnPanel({
       const nextCombo = comboRef.current + 1;
       comboRef.current = nextCombo;
       setCombo(nextCombo);
+      incrementCombo(); // 문파 특성 및 스탯 보너스 갱신용
       
       playHitEffect();
       
@@ -552,14 +663,14 @@ export default function InnPanel({
         addFloatText(`${nextCombo} COMBO!!`, "#ffd700");
       }
       
-      // Lane flash effect
-      setLaneFlash(lane);
-      setTimeout(() => setLaneFlash(null), 150);
+      // Lane flash effect (Multiple lanes supported)
+      setActiveLanes(prev => ({ ...prev, [lane]: true }));
+      setTimeout(() => setActiveLanes(prev => ({ ...prev, [lane]: false })), 150);
     }
   };
 
   // 2. Meihua Poles (Dodge) Logic
-    const updateDodge = (dt: number) => {
+  const updateDodge = (dt: number) => {
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
 
     const timeScale = 1 + (currentStage - 1) * 0.15;
@@ -572,17 +683,18 @@ export default function InnPanel({
       if (playerScoreRef.current >= targetScore) {
         handleRoundSuccess("PERFECT", 200, `Stage ${currentStage} 성공!`);
       } else {
-        finishMission(false, "MISS", playerScoreRef.current, `보법 수련이 미흡합니다. (목표: ${targetScore}점 / 현재: ${playerScoreRef.current})`);
+        finishMission(false, "MISS", playerScoreRef.current, `보법 수련이 미흡합니다. (목표: ${targetScore.toLocaleString()}점 / 현재: ${Math.floor(playerScoreRef.current).toLocaleString()})`);
       }
     }
   };
+
 
   const handlePolesStep = (side: number) => {
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
 
     if (polesRef.current[0] === side) {
-      // Success Step
-      const gain = 10 + comboRef.current * 2;
+      // Success Step - Adjusted to be around 30 points as requested
+      const gain = Math.floor((20 + Math.min(comboRef.current, 10)) * (1 + Math.log10(Math.max(1, getTotalAttack() / 1000)) * 0.5));
       const nextScore = playerScoreRef.current + gain;
       playerScoreRef.current = nextScore;
       setPlayerScore(nextScore);
@@ -590,6 +702,7 @@ export default function InnPanel({
       const nextCombo = comboRef.current + 1;
       comboRef.current = nextCombo;
       setCombo(nextCombo);
+      incrementCombo(); // Faction/Martial Combo update
 
       const nextPoles = [...polesRef.current.slice(1), Math.round(Math.random())];
       polesRef.current = nextPoles;
@@ -613,146 +726,288 @@ export default function InnPanel({
     }
   };
 
-  // 3. Biryongbo Logic
-  const updateBiryong = (dt: number) => {
-    if (!isPlaying || currentMiniGameRef.current !== "biryongbo") return;
+  // Local throttling for puzzle UI updates to prevent lag
+  const lastPuzzleUpdateRef = useRef(0);
 
-    const nextTime = Math.max(0, biryongTimeLeftRef.current - dt);
-    biryongTimeLeftRef.current = nextTime;
-    setBiryongTimeLeft(nextTime);
+  // 3. Naegong Puzzle Logic
+  const updatePuzzle = (dt: number) => {
+    if (!isPlaying || currentMiniGameRef.current !== "puzzle" || puzzleIsProcessing) return;
 
-    // Obstacle move
-    const baseSpeed = 30 + (currentStage * 10); 
-    const timeBonus = (30 - biryongTimeLeftRef.current) * (3 + currentStage * 0.5); 
-    const speed = baseSpeed + timeBonus;
+    const nextTime = Math.max(0, puzzleTimeLeftRef.current - dt);
+    puzzleTimeLeftRef.current = nextTime;
 
-    let nextObs = biryongObstaclesRef.current.map(obs => ({
-      ...obs,
-      top: obs.top + (speed * dt)
-    })).filter(obs => obs.top < 115);
+    const nextDantian = Math.max(0, puzzleDantianRef.current - dt * 1.5);
+    puzzleDantianRef.current = nextDantian;
 
-    // Collision check
-    // Collision check
-    const collision = nextObs.find(obs => obs.top > 78 && obs.top < 92 && obs.lane === biryongPosRef.current);
-    if (collision) {
-      if (collision.type === 'HEOGONG') {
-        setIsHeogong(true);
-        nextObs = nextObs.filter(o => o.id !== collision.id);
-        addFloatText("허공답보!", "#00f2ff");
-        setTimeout(() => setIsHeogong(false), 3000);
-      } else if (!isHeogong) {
-        let avoided = false;
-        if (collision.type === 'HURDLE' && isBiryongJumping) avoided = true;
-        if (collision.type === 'BAMBOO' && isBiryongSliding) avoided = true;
-
-        if (!avoided) {
-          finishMission(false, "MISS", playerScoreRef.current, "장애물에 걸려 경공의 흐름이 끊겼습니다!");
-          return;
-        }
-      }
+    // Only update state every 100ms to prevent render lag
+    const now = performance.now();
+    if (now - lastPuzzleUpdateRef.current > 100) {
+      setPuzzleTimeLeft(nextTime);
+      setPuzzleDantian(nextDantian);
+      lastPuzzleUpdateRef.current = now;
     }
 
-    // Spawning (Spawn based on distance/time)
-    if (Math.random() < 0.02 + roundRef.current * 0.006) {
-       const type = Math.random() < 0.1 ? 'HEOGONG' : (Math.random() < 0.5 ? 'HURDLE' : 'BAMBOO');
-       if (nextObs.filter(o => o.top < 35).length === 0) {
-         nextObs.push({ id: Date.now() + Math.random(), lane: Math.floor(Math.random() * 5), top: -10, type });
-       }
+    if (nextDantian >= 100) {
+      finishMission(false, "MISS", playerScoreRef.current, "단전이 폭주하여 주화입마에 빠졌습니다! 기운을 빨리 정렬하세요.");
+      return;
     }
-
-    biryongObstaclesRef.current = nextObs;
-    setBiryongObstacles(nextObs);
 
     if (nextTime <= 0) {
       const targetScore = getTargetScore(currentStage);
       if (playerScoreRef.current >= targetScore) {
         handleRoundSuccess("PERFECT", 240, `Stage ${currentStage} 성공!`);
       } else {
-        finishMission(false, "MISS", playerScoreRef.current, `수련 거리가 부족합니다. (목표: ${targetScore} / 현재: ${Math.floor(playerScoreRef.current)})`);
+        finishMission(false, "MISS", playerScoreRef.current, `기맥 정렬이 부족합니다. (목표: ${targetScore.toLocaleString()} / 현재: ${Math.floor(playerScoreRef.current).toLocaleString()})`);
       }
     }
-
-    // Continuous score 
-    const gain = dt * 80;
-    playerScoreRef.current += gain;
-    setPlayerScore(Math.floor(playerScoreRef.current));
   };
 
-  const handleBiryongTouchStart = (e: React.TouchEvent | React.MouseEvent | any) => {
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    touchStartRef.current = { x: clientX, y: clientY };
-  };
-
-  const handleBiryongTouchEnd = (e: React.TouchEvent | React.MouseEvent | any) => {
-    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-
-    const xDiff = touchStartRef.current.x - clientX;
-    const yDiff = touchStartRef.current.y - clientY;
-
-    if (Math.abs(xDiff) > Math.abs(yDiff)) {
-      if (Math.abs(xDiff) > 30) {
-        if (xDiff > 0) {
-          const next = Math.max(0, biryongPosRef.current - 1);
-          biryongPosRef.current = next;
-          setBiryongPos(next);
-        } else {
-          const next = Math.min(4, biryongPosRef.current + 1);
-          biryongPosRef.current = next;
-          setBiryongPos(next);
+  const findMatches = (grid: any[][]) => {
+    const matches: Set<string> = new Set();
+    // Rows
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < 5; c++) {
+        const t = grid[r][c].type;
+        if (t && grid[r][c+1].type === t && grid[r][c+2].type === t) {
+          matches.add(`${r},${c}`); matches.add(`${r},${c+1}`); matches.add(`${r},${c+2}`);
         }
       }
+    }
+    // Cols
+    for (let c = 0; c < 7; c++) {
+      for (let r = 0; r < 5; r++) {
+        const t = grid[r][c].type;
+        if (t && grid[r+1][c].type === t && grid[r+2][c].type === t) {
+          matches.add(`${r},${c}`); matches.add(`${r+1},${c}`); matches.add(`${r+2},${c}`);
+        }
+      }
+    }
+    return Array.from(matches).map(s => s.split(',').map(Number));
+  };
+
+  const resolveMatches = async () => {
+    setPuzzleIsProcessing(true);
+    let totalScoreGain = 0;
+    let currentCombo = 0;
+
+    let hasMatches = true;
+    while (hasMatches && isPlayingRef.current) {
+      const matches = findMatches(puzzleGridRef.current);
+      if (matches.length === 0) {
+        hasMatches = false;
+        break;
+      }
+
+      currentCombo++;
+      setPuzzleCombo(currentCombo);
+      incrementCombo(); 
+
+      // Check for bomb potential (5+ matches create a bomb at the center-most match)
+      const maybeBombPos = matches.length >= 5 ? matches[Math.floor(matches.length / 2)] : null;
+
+      // Score gain using softened powerFactor instead of raw scaling (Reduced to 1/5th)
+      const scoreGain = Math.floor(matches.length * 3 * (1 + currentCombo * 0.2) * powerFactor);
+      totalScoreGain += scoreGain;
+
+      // Update Dantian 
+      const nextDantian = Math.min(100, puzzleDantianRef.current + matches.length * 0.8);
+      puzzleDantianRef.current = nextDantian;
+      setPuzzleDantian(nextDantian);
+
+      const newGrid = puzzleGridRef.current.map(r => r.map(c => ({ ...c })));
+      
+      // Process Bombs before clearing matches
+      const bombMatches: [number, number][] = [];
+      matches.forEach(([r, c]) => {
+        if (newGrid[r][c].type === 'bomb') {
+          // Explode surrounding cross area
+          for (let i = -1; i <= 1; i++) {
+            if (r+i >= 0 && r+i < 7) bombMatches.push([r+i, c]);
+            if (c+i >= 0 && c+i < 7) bombMatches.push([r, c+i]);
+          }
+        }
+      });
+
+      const finalMatches = Array.from(new Set([...matches.map(m => m.join(',')), ...bombMatches.map(m => m.join(','))]))
+                           .map(s => s.split(',').map(Number) as [number, number]);
+
+      finalMatches.forEach(([r, c]) => {
+        const type = newGrid[r][c].type;
+        newGrid[r][c].type = null;
+        
+        // Add explosion effect
+        const effectId = Math.random();
+        setPuzzleEffects(prev => [...prev, { 
+          id: effectId, 
+          r, 
+          c, 
+          color: type === 'bomb' ? '#ffd700' : (() => {
+            switch(type) {
+              case 'fire': return '#ff4d4d';
+              case 'water': return '#4dabf7';
+              case 'wind': return '#63e6be';
+              case 'thunder': return '#ffd43b';
+              case 'poison': return '#9c36b5';
+              default: return '#fff';
+            }
+          })() 
+        }]);
+        setTimeout(() => setPuzzleEffects(prev => prev.filter(e => e.id !== effectId)), 600);
+      });
+
+      // If matches length was large, create a new bomb!
+      if (maybeBombPos) {
+        newGrid[maybeBombPos[0]][maybeBombPos[1]] = { id: Math.random(), type: 'bomb' };
+      }
+
+      puzzleGridRef.current = newGrid;
+      setPuzzleGrid(newGrid);
+      await new Promise(res => setTimeout(res, 220));
+      if (!isPlayingRef.current) break;
+
+      const types = ["fire", "water", "wind", "thunder"];
+      if (currentStage >= 2) types.push("poison");
+      
+      for (let c = 0; c < 7; c++) {
+        let emptySpaces = 0;
+        for (let r = 6; r >= 0; r--) {
+          if (newGrid[r][c].type === null) {
+            emptySpaces++;
+          } else if (emptySpaces > 0) {
+            newGrid[r + emptySpaces][c] = newGrid[r][c];
+            newGrid[r][c] = { id: Math.random(), type: null };
+          }
+        }
+        for (let r = 0; r < emptySpaces; r++) {
+          newGrid[r][c] = { id: Math.random(), type: types[Math.floor(Math.random() * types.length)] };
+        }
+      }
+      puzzleGridRef.current = newGrid;
+      setPuzzleGrid(newGrid);
+      await new Promise(res => setTimeout(res, 280));
+    }
+
+    if (totalScoreGain > 0) {
+      playerScoreRef.current += totalScoreGain;
+      setPlayerScore(Math.floor(playerScoreRef.current));
+      addFloatText(`${currentCombo}연쇄! +${Math.floor(totalScoreGain)}`, currentCombo >= 5 ? "#ffd700" : "#fff");
+      playHitEffect();
+    }
+
+    setPuzzleCombo(0);
+    setPuzzleIsProcessing(false);
+  };
+
+  const executePuzzleSwap = (r1: number, c1: number, r2: number, c2: number) => {
+    if (!isPlaying || puzzleIsProcessing) return;
+
+    const newGrid = puzzleGrid.map(row => row.map(cell => ({ ...cell })));
+    const temp = newGrid[r1][c1];
+    newGrid[r1][c1] = newGrid[r2][c2];
+    newGrid[r2][c2] = temp;
+
+    const matches = findMatches(newGrid);
+    if (matches.length > 0) {
+      puzzleGridRef.current = newGrid;
+      setPuzzleGrid(newGrid);
+      setPuzzleSelected(null);
+      resolveMatches();
     } else {
-      if (Math.abs(yDiff) > 30) {
-        if (yDiff > 0) {
-          if (!isBiryongJumping) {
-            setIsBiryongJumping(true);
-            setTimeout(() => setIsBiryongJumping(false), 600);
-          }
-        } else {
-          if (!isBiryongSliding) {
-            setIsBiryongSliding(true);
-            setTimeout(() => setIsBiryongSliding(false), 600);
-          }
-        }
+      // Visual feedback for invalid swap
+      addFloatText("기맥 불일치", "#aaa");
+      setPuzzleSelected(null);
+    }
+  };
+
+  const handlePuzzleCellClick = (r: number, c: number) => {
+    if (!isPlaying || puzzleIsProcessing) return;
+
+    if (!puzzleSelected) {
+      setPuzzleSelected([r, c]);
+    } else {
+      const [sr, sc] = puzzleSelected;
+      const isAdjacent = (Math.abs(r - sr) === 1 && c === sc) || (Math.abs(c - sc) === 1 && r === sr);
+
+      if (isAdjacent) {
+        executePuzzleSwap(sr, sc, r, c);
+      } else {
+        setPuzzleSelected([r, c]);
       }
     }
+  };
+
+  const handlePuzzleTouchStart = (e: React.TouchEvent, r: number, c: number) => {
+    if (!isPlaying || puzzleIsProcessing) return;
+    const touch = e.touches[0];
+    setPuzzleSwipeStart({ r, c, x: touch.clientX, y: touch.clientY });
+  };
+
+  const handlePuzzleTouchEnd = (e: React.TouchEvent) => {
+    if (!isPlaying || puzzleIsProcessing || !puzzleSwipeStart) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - puzzleSwipeStart.x;
+    const dy = touch.clientY - puzzleSwipeStart.y;
+    
+    // Small movement is treated as a click/select
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+      handlePuzzleCellClick(puzzleSwipeStart.r, puzzleSwipeStart.c);
+      setPuzzleSwipeStart(null);
+      return;
+    }
+
+    let tr = puzzleSwipeStart.r;
+    let tc = puzzleSwipeStart.c;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      tc += dx > 0 ? 1 : -1;
+    } else {
+      tr += dy > 0 ? 1 : -1;
+    }
+
+    if (tr >= 0 && tr < 7 && tc >= 0 && tc < 7) {
+      executePuzzleSwap(puzzleSwipeStart.r, puzzleSwipeStart.c, tr, tc);
+    }
+    setPuzzleSwipeStart(null);
   };
 
   // 5. Pulse Logic
   const updatePulse = (dt: number) => {
-    // Initial speed is lower, increases as currentProgress rises
-    const speedFactor = (7.5 + currentStage * 5) + (currentProgressRef.current * 8);
+    // Throttled speed: significantly lower base speed and gentler scaling
+    const speedFactor = (4.0 + currentStage * 2.5) + (currentProgressRef.current * 2);
     const moved = pulseTargetsRef.current.map(t => ({ 
       ...t, 
-      progress: t.progress + speedFactor * dt * 5 
+      progress: t.progress + speedFactor * dt * 4 // Reduced from 5
     }));
     pulseTargetsRef.current = moved;
     setPulseTargets(moved);
 
+    // Auto-fail prevention: ensure it doesn't fail on first frame
     if (moved.some(t => t.progress > 100)) {
-       finishMission(false, "MISS", playerScore, "기운이 너무 팽창했습니다!");
+       finishMission(false, "MISS", playerScoreRef.current, "기운이 너무 팽창했습니다!");
        return;
     }
 
-    if (moved.length === 0 && Math.random() < 0.04) {
+    // Increased target count: allow up to 3 concurrent targets
+    const maxPulseTargets = Math.min(3, 1 + Math.floor(currentStage / 3));
+    if (moved.length < maxPulseTargets && Math.random() < 0.05) {
       const newTarget = {
         id: pulseIdRef.current++,
-        x: 20 + Math.random() * 60,
-        y: 20 + Math.random() * 60,
+        x: 15 + Math.random() * 70,
+        y: 15 + Math.random() * 70,
         progress: 0
       };
-      pulseTargetsRef.current = [newTarget];
-      setPulseTargets([newTarget]);
+      const updated = [...moved, newTarget];
+      pulseTargetsRef.current = updated;
+      setPulseTargets(updated);
     }
   };
 
-  const handlePulseTap = (id: number) => {
+  const handlePulseTouch = (id: number) => {
     const target = pulseTargetsRef.current.find(t => t.id === id);
     if (!target) return;
 
-    const grade = target.progress > 80 ? (target.progress > 91 ? "PERFECT" : "GREAT") : (target.progress > 60 ? "GOOD" : "MISS");
+    // Widened judgment windows for easier gameplay
+    const grade = target.progress > 85 ? (target.progress > 93 ? "PERFECT" : "GREAT") : (target.progress > 40 ? "GOOD" : "MISS");
     
     if (grade === "MISS") {
       finishMission(false, "MISS", playerScoreRef.current, "타이밍이 맞지 않았습니다.");
@@ -764,10 +1019,11 @@ export default function InnPanel({
       const nextProg = currentProgressRef.current + 1;
       currentProgressRef.current = nextProg;
       setCurrentProgress(nextProg);
+      incrementCombo();
 
       const targetForRound = 4 + (currentStage - 1) * 2;
       
-      const scoreGain = getGradeScore(grade);
+      const scoreGain = Math.floor(getGradeScore(grade) * powerFactor);
       playerScoreRef.current += scoreGain;
       setPlayerScore(Math.floor(playerScoreRef.current));
       
@@ -796,6 +1052,16 @@ export default function InnPanel({
           아직 객잔 대련이 열리지 않았습니다.
           <br />
           허수아비를 꾸준히 처치하여 무뢰배를 유인하세요.
+          {game.nextRivalKills > 0 && (
+            <div style={{ marginTop: 10, color: "#ffd700", fontWeight: 'bold' }}>
+              남은 처치 수: {game.nextRivalKills}회
+            </div>
+          )}
+          {rivalTimeLeft && (
+            <div style={{ color: "#ff4d4d", fontSize: '0.9em' }}>
+              재출몰까지 시간: {rivalTimeLeft}
+            </div>
+          )}
         </div>
       </section>
     );
@@ -806,8 +1072,35 @@ export default function InnPanel({
       ...containerStyle,
       transform: isShake ? "translateX(5px)" : "none",
       transition: "transform 0.05s linear",
-      backgroundImage: "linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.85)), url('/bg-inn-duel.png')",
+      backgroundImage: isPlaying ? "none" : "linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.85)), url('/bg-inn-duel.png')",
+      overflowY: "auto",
+      paddingTop: "50px",
+      touchAction: "pan-y"
     }}>
+      <style>{`
+        @keyframes bgMotion {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes floatUpDown {
+          0% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+          100% { transform: translateY(0); }
+        }
+        .duel-bg {
+          position: absolute;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('/images/bg_inn_duel.png');
+          background-size: cover;
+          background-position: center;
+          animation: bgMotion 20s ease-in-out infinite;
+          z-index: 0;
+          opacity: ${isPlaying ? 1 : 0};
+          transition: opacity 1s ease;
+        }
+      `}</style>
+      <div className="duel-bg" />
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: "#ffd700" }}>{miniGameInfo?.icon}</span> {miniGameInfo?.name || "객잔 대련"}
@@ -825,18 +1118,24 @@ export default function InnPanel({
         </div>
         <div style={statBox}>
           <div style={statLabel}>이번 상대</div>
-          <div style={{ ...statValue, color: "#ff4d4d" }}>{missionAvailable ? mission.rivalName : "대기 중"}</div>
+          <div style={{ ...statValue, color: "#ff4d4d" }}>
+            {missionAvailable ? mission.rivalName : (rivalTimeLeft ? `재출몰 대기 (${rivalTimeLeft})` : "무뢰배 유인 중...")}
+          </div>
         </div>
       </div>
 
       {missionAvailable ? (
-        <div style={gameStage}>
+        <div style={{ ...gameStage, position: "relative", overflow: "hidden" }}>
+          {/* Faction Char vs Rival Vis */}
+          {/* VS Overlay removed as requested during gameplay */}
+
+          
           {showTutorial && tutorialTarget && (
             <div style={{
               position: "absolute", top: 0, left: 0, width: "100%", height: "100%", 
               background: "radial-gradient(circle at center, rgba(10,10,20,0.98) 0%, rgba(0,0,0,0.95) 100%)", 
               zIndex: 3000, display: "flex", 
-              flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px",
+              flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "15px 10px",
               textAlign: "center", borderRadius: "24px", backdropFilter: "blur(15px)",
               border: "1px solid rgba(255,215,0,0.3)",
               boxShadow: "inset 0 0 50px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.8)"
@@ -849,25 +1148,25 @@ export default function InnPanel({
               </div>
 
               <div style={{ 
-                width: "60px", height: "60px", borderRadius: "50%", background: "rgba(255,215,0,0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px",
-                border: "2px solid #ffd700", marginBottom: "20px", boxShadow: "0 0 20px rgba(255,215,0,0.2)"
+                width: "45px", height: "45px", borderRadius: "50%", background: "rgba(255,215,0,0.1)",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px",
+                border: "2px solid #ffd700", marginBottom: "10px", boxShadow: "0 0 15px rgba(255,215,0,0.2)"
               }}>
                 {MINI_GAMES.find((m: any) => m.key === tutorialTarget)?.icon}
               </div>
 
               <h2 style={{ 
-                fontSize: "28px", fontWeight: 900, color: "#ffd700", marginBottom: "20px",
+                fontSize: "20px", fontWeight: 900, color: "#ffd700", marginBottom: "10px",
                 textShadow: "0 0 10px rgba(255,215,0,0.3)", letterSpacing: "1px"
               }}>
                 {TUTORIAL_INFO[tutorialTarget].title}
               </h2>
 
               <div style={{ 
-                width: "100%", maxWidth: "320px", background: "rgba(255,255,255,0.03)", 
-                padding: "24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)",
-                marginBottom: "30px", fontSize: "14px", lineHeight: "1.7", color: "#ccc",
-                textAlign: "left", display: "flex", flexDirection: "column", gap: "16px"
+                width: "100%", maxWidth: "300px", background: "rgba(255,255,255,0.03)", 
+                padding: "10px 14px", borderRadius: "15px", border: "1px solid rgba(255,255,255,0.08)",
+                marginBottom: "10px", fontSize: "12px", lineHeight: "1.4", color: "#ccc",
+                textAlign: "left", display: "flex", flexDirection: "column", gap: "8px"
               }}>
                 <div>
                   <div style={{ color: "#ffd700", fontWeight: 800, fontSize: "12px", marginBottom: "4px", opacity: 0.8 }}>[게임 방법]</div>
@@ -883,19 +1182,36 @@ export default function InnPanel({
                 </div>
               </div>
 
-              <button 
-                onClick={() => { setShowTutorial(false); setIsPlaying(true); }}
-                style={{ 
-                  ...primaryButton, 
-                  width: "100%", maxWidth: "240px", padding: "18px", fontSize: "18px",
-                  boxShadow: "0 10px 25px rgba(255,215,0,0.3)",
-                  animation: "pulse 2s infinite"
-                }}
-              >
-                무뢰배 처단 시작
-              </button>
+              <div style={{ display: "flex", gap: "10px", width: "100%", maxWidth: "260px", alignItems: "center" }}>
+                <button 
+                  onClick={() => { setShowTutorial(false); setIsPlaying(true); }}
+                  style={{ 
+                    ...primaryButton, 
+                    flex: 2, padding: "10px", fontSize: "14px",
+                    fontWeight: 900,
+                    boxShadow: "0 10px 20px rgba(255,215,0,0.2)",
+                    animation: "pulse 2s infinite"
+                  }}
+                >
+                  무뢰배 처단 시작
+                </button>
+                <button 
+                  onClick={() => { setShowTutorial(false); setIsPlaying(true); }}
+                  style={{ 
+                    flex: 1, padding: "6px", fontSize: "11px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: "8px", color: "#aaa", cursor: "pointer",
+                    transition: "0.2s"
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                  onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                >
+                  건너뛰기
+                </button>
+              </div>
 
-              <p style={{ marginTop: "20px", fontSize: "12px", color: "#666", fontStyle: "italic" }}>
+              <p style={{ marginTop: "10px", fontSize: "10px", color: "#666", fontStyle: "italic" }}>
                 긴장하세요! 실패 시 금지령이 내려질 수 있습니다.
               </p>
             </div>
@@ -909,26 +1225,26 @@ export default function InnPanel({
               }} />
               
               <div style={{ 
-                background: "rgba(0,0,0,0.4)", padding: "8px 20px", borderRadius: "12px", 
-                border: "1px solid rgba(255,215,0,0.3)", marginBottom: "20px",
-                display: "flex", alignItems: "center", gap: "10px"
+                background: "rgba(0,0,0,0.5)", padding: "6px 16px", borderRadius: "10px", 
+                border: "1px solid rgba(255,215,0,0.3)", marginBottom: "12px",
+                display: "flex", alignItems: "center", gap: "8px"
               }}>
-                <span style={{ fontSize: "20px" }}>🏮</span>
-                <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>{mission.rivalName} 출현!</h2>
+                <span style={{ fontSize: "16px" }}>🏮</span>
+                <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>{mission.rivalName} 출현!</h2>
               </div>
 
               <div style={{ 
                 background: "linear-gradient(90deg, transparent, rgba(255,215,0,0.1), transparent)", 
-                padding: "6px 20px", width: "100%", textAlign: "center",
-                fontSize: "12px", color: "#ffd700", marginBottom: "25px", fontWeight: 700, letterSpacing: "1px"
+                padding: "4px 16px", width: "100%", textAlign: "center",
+                fontSize: "11px", color: "#ffd700", marginBottom: "15px", fontWeight: 700, letterSpacing: "1px"
               }}>
                 현재 위명: {playerScore >= 20000 ? "천하제일인" : playerScore >= 5000 ? "전설의 고수" : playerScore >= 1000 ? "객잔의 지배자" : "무명소졸"}
               </div>
 
-              <div style={{ position: "relative", marginBottom: 20, display: "flex", justifyContent: "center" }}>
+              <div style={{ position: "relative", marginBottom: 12, display: "flex", justifyContent: "center" }}>
                 {/* Character Aura */}
                 <div style={{ 
-                  position: "absolute", width: "120px", height: "120px", 
+                  position: "absolute", width: "100px", height: "100px", 
                   background: "radial-gradient(circle, rgba(255,215,0,0.2) 0%, transparent 70%)",
                   borderRadius: "50%", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
                   animation: "pulse 2s infinite"
@@ -941,18 +1257,42 @@ export default function InnPanel({
                   })()} 
                   alt="My Character" 
                   style={{ 
-                    width: "120px", height: "auto", zIndex: 2, 
+                    width: "100px", height: "auto", zIndex: 2, 
                     filter: "drop-shadow(0 0 15px rgba(255,215,0,0.4)) brightness(1.1)" 
                   }}
                 />
               </div>
 
-              <p style={{ fontSize: 13, marginBottom: 20, opacity: 0.9, lineHeight: 1.5, color: "#ddd", maxWidth: "260px" }}>
+              <p style={{ fontSize: 12, marginBottom: 15, opacity: 0.9, lineHeight: 1.4, color: "#ddd", maxWidth: "240px", textAlign: "center" }}>
                 객잔을 어지럽히는 {mission.rivalName} 무리를 제압하세요.<br/>
                 <span style={{ color: "#ffd700", fontWeight: 700 }}>총 {mission.requiredHits}단계</span>의 수련을 완수해야 합니다.
               </p>
 
-              <button onClick={startMission} style={primaryButton}>대련 시작</button>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button onClick={startMission} style={primaryButton}>대련 시작</button>
+                <button 
+                  onClick={() => {
+                    if (confirm("대련을 건너뛰시겠습니까? (보상을 획득할 수 없습니다.)")) {
+                      resolveTimingMission({ success: false, score: 0, grade: "MISS", isFinal: true });
+                      if (onRewardClose) onRewardClose();
+                    }
+                  }} 
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#888",
+                    padding: "8px 16px",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#ccc"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#888"; }}
+                >
+                  건너뛰기
+                </button>
+              </div>
             </div>
           ) : isTransitioning ? (
             <div style={{ ...lobbyOverlay, animation: "pulse 1s infinite" }}>
@@ -982,23 +1322,30 @@ export default function InnPanel({
                 </div>
               </div>
 
-              <div style={roundBadge}>Stage {currentStage}</div>
+            <div style={roundBadge}>Stage {currentStage}</div>
 
               {/* GAME RENDERERS */}
               {currentMiniGame === "breath" && (
                 <div style={{ ...breathArea, height: 260, padding: 0 }}>
-                   <div style={{ position: "absolute", top: 10, left: 15, fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10 }}>잔여 시간: {breathTimeLeft.toFixed(1)}s</div>
+                   <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10, display: "flex", gap: 20 }}>
+                       <span>잔여 시간: {breathTimeLeft.toFixed(1)}s</span>
+                       <span style={{ color: breathMissCount >= 10 ? "#ff4d4d" : "#ffd700" }}>MISS: {breathMissCount}/15</span>
+                    </div>
                    <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
                       {[0, 1, 2, 3, 4].map(l => (
                         <div 
                           key={l} 
                           onMouseDown={(e) => { e.preventDefault(); handleBreathTap(l); }}
-                          onTouchStart={(e) => { e.preventDefault(); handleBreathTap(l); }}
+                          onTouchStart={(e) => { 
+                            e.preventDefault(); 
+                            const touches = Array.from(e.changedTouches);
+                            touches.forEach(() => handleBreathTap(l));
+                          }}
                           style={{ 
                             flex: 1, 
                             borderRight: l < 4 ? "1px solid rgba(255,255,255,0.05)" : "none",
                             position: "relative",
-                            background: laneFlash === l ? "rgba(255, 215, 0, 0.15)" : "rgba(255,255,255,0.02)",
+                            background: activeLanes[l] ? "rgba(255, 215, 0, 0.15)" : "rgba(255,255,255,0.02)",
                             transition: "background 0.1s",
                             cursor: "pointer"
                           }}
@@ -1011,9 +1358,9 @@ export default function InnPanel({
                             width: 38, 
                             height: 38, 
                             borderRadius: "50%", 
-                            border: `2px solid ${laneFlash === l ? "#ffd700" : "rgba(255,215,0,0.4)"}`,
-                            background: laneFlash === l ? "rgba(255,215,0,0.3)" : "rgba(0,0,0,0.5)",
-                            boxShadow: laneFlash === l ? "0 0 15px #ffd700" : "none",
+                            border: `2px solid ${activeLanes[l] ? "#ffd700" : "rgba(255,215,0,0.4)"}`,
+                            background: activeLanes[l] ? "rgba(255,215,0,0.3)" : "rgba(0,0,0,0.5)",
+                            boxShadow: activeLanes[l] ? "0 0 15px #ffd700" : "none",
                             transition: "all 0.1s"
                           }} />
                         </div>
@@ -1068,40 +1415,46 @@ export default function InnPanel({
 
               {currentMiniGame === "pulse" && (
                 <div style={{ ...reflectArea, position: "relative" }}>
-                  {pulseTargets.map(t => (
-                    <div 
-                      key={t.id} 
-                      onClick={() => handlePulseTap(t.id)} 
-                      style={{
-                        position: "absolute",
-                        left: `${t.x}%`,
-                        top: `${t.y}%`,
-                        width: 110,
-                        height: 110,
-                        transform: "translate(-50%, -50%)",
-                        cursor: "pointer"
-                      }}
-                    >
-                      {/* Outer Ring */}
-                      <div style={{
-                        position: "absolute",
-                        inset: 0,
-                        borderRadius: "50%",
-                        border: "4px solid #00f2ff",
-                        transform: `scale(${t.progress / 100})`,
-                        opacity: 1 - (t.progress / 100)
-                      }} />
-                      {/* Inner Target */}
-                      <div style={{
-                        position: "absolute",
-                        inset: "10%",
-                        borderRadius: "50%",
-                        border: "2px solid rgba(255,215,0,0.5)",
-                        background: t.progress > 80 ? "rgba(0,242,255,0.2)" : "transparent"
-                      }} />
-                      <div style={{ ...reflectTargetCircle, fontSize: 14 }}>응축</div>
-                    </div>
-                  ))}
+                  {pulseTargets.map((t) => (
+                      <div
+                        key={t.id}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          handlePulseTouch(t.id);
+                        }}
+                        style={{
+                          position: "absolute",
+                          left: `${t.x}%`,
+                          top: `${t.y}%`,
+                          width: 80,
+                          height: 80,
+                          transform: "translate(-50%, -50%)",
+                          background: "radial-gradient(circle, rgba(255,215,0,0.4), transparent)",
+                          borderRadius: "50%",
+                          border: "2px solid rgba(255,215,0,0.3)",
+                          cursor: "pointer",
+                          display: "grid",
+                          placeItems: "center",
+                          zIndex: 10
+                        }}
+                      >
+                        <div style={{
+                          width: `${t.progress}%`,
+                          height: `${t.progress}%`,
+                          borderRadius: "50%",
+                          background: t.progress > 85 ? "rgba(0,242,255,0.6)" : "rgba(255,215,0,0.6)",
+                          boxShadow: t.progress > 85 ? "0 0 15px #00f2ff" : "0 0 10px #ffd700"
+                        }} />
+                        <div style={{
+                          position: "absolute",
+                          inset: "10%",
+                          borderRadius: "50%",
+                          border: "2px solid rgba(255,215,0,0.5)",
+                          background: t.progress > 80 ? "rgba(0,242,255,0.2)" : "transparent"
+                        }} />
+                        <div style={{ ...reflectTargetCircle, fontSize: 13, fontWeight: 900, color: '#fff' }}>응축</div>
+                      </div>
+                    ))}
                   <div style={gameTip}>기운이 가득 찼을 때 탭하세요! ({currentProgress}/{4 + (round - 1)})</div>
                 </div>
               )}
@@ -1117,7 +1470,7 @@ export default function InnPanel({
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '12px', color: '#fbbf24', fontWeight: 'bold' }}>{getMeihuaRank(playerScore)}</div>
+                      <div style={{ fontSize: '12px', color: '#fbbf24', fontWeight: 'bold' }}>梅花장 보법수련</div>
                       <div style={{ fontSize: '10px', color: '#78716c' }}>Time: {dodgeTimeLeft.toFixed(1)}s</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -1133,11 +1486,13 @@ export default function InnPanel({
                            position: 'absolute', bottom: `${i * 30 + 15}px`,
                            left: side === 0 ? '15%' : '55%',
                            width: '80px', height: '20px', 
-                           background: i === 0 ? 'linear-gradient(to right, #f59e0b, #d97706)' : '#292524',
-                           borderRadius: '6px', opacity: i === 0 ? 1 : 1 / (i + 1.5),
+                           background: i === 0 ? 'linear-gradient(to right, #f8ae2d, #d97706)' : '#1a1a1a',
+                           borderRadius: '6px', 
+                           border: i === 0 ? '2px solid #ffd700' : '1px solid rgba(255, 215, 0, 0.3)',
+                           opacity: i === 0 ? 1 : 1 / (i + 1.2),
                            transform: i === 0 ? 'scale(1.1)' : 'scale(1)',
                            display: 'flex', justifyContent: 'center', alignItems: 'center',
-                           boxShadow: i === 0 ? '0 0 10px #fbbf24' : 'none',
+                           boxShadow: i === 0 ? '0 0 15px rgba(255, 215, 0, 0.5)' : 'none',
                            transition: 'all 0.1s ease-out'
                          }}>
                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: i === 0 ? '#fff' : '#666' }}>{side === 0 ? '左' : '右'}</span>
@@ -1159,71 +1514,154 @@ export default function InnPanel({
                 </div>
               )}
 
-              {/* 3. Biryongbo Minigame (Reflect Replacement) */}
-              {currentMiniGame === "biryongbo" && (
-                <div 
-                  onMouseDown={handleBiryongTouchStart}
-                  onMouseUp={handleBiryongTouchEnd}
-                  onTouchStart={handleBiryongTouchStart} 
-                  onTouchEnd={handleBiryongTouchEnd}
-                  style={{
-                    background: '#1a1a1a', color: '#fff', height: '340px', width: '100%', 
-                    overflow: 'hidden', display: 'flex', flexDirection: 'column', 
-                    borderRadius: '20px', touchAction: 'none', position: 'relative'
-                  }}
-                >
-                  <div style={{ padding: '10px', textAlign: 'center', zIndex: 10 }}>
-                    <h2 style={{ color: isHeogong ? '#00f2ff' : '#fbbf24', margin: 0, fontSize: '16px' }}>
-                      {isHeogong ? '✨ 허공답보 ✨' : '비룡보 수련'}
-                    </h2>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{Math.floor(playerScore)}m</div>
+              {/* 3. Puzzle Minigame */}
+              {currentMiniGame === "puzzle" && (
+                <div style={{ 
+                  position: "relative", 
+                  width: "100%", 
+                  height: "100%", 
+                  minHeight: "380px",
+                  maxHeight: "680px",
+                  background: "rgba(0,0,0,0.5)", 
+                  borderRadius: 20, 
+                  padding: 10, 
+                  display: "flex", 
+                  flexDirection: "column",
+                  boxSizing: "border-box",
+                  touchAction: "none"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                     <div style={{ fontSize: 13, color: "#ffd700", fontWeight: 'bold' }}>Stage {currentStage} 단전 정렬</div>
+                     <div style={{ fontSize: 13, color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#fff" }}>잔여 시간: {puzzleTimeLeft.toFixed(1)}s</div>
                   </div>
 
-                  <div style={{ flex: 1, position: 'relative', background: 'linear-gradient(#1a1a1a, #333, #1a1a1a)', width: '100%' }}>
-                    <div style={{ position: 'absolute', left: '20%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                    <div style={{ position: 'absolute', left: '40%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                    <div style={{ position: 'absolute', left: '60%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                    <div style={{ position: 'absolute', left: '80%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.08)' }} />
-
-                    {biryongObstacles.map(obs => (
-                      <div key={obs.id} style={{
-                        position: 'absolute', top: `${obs.top}%`, left: `${obs.lane * 20 + 5}%`,
-                        width: '10%', height: '18px', borderRadius: '4px',
-                        background: obs.type === 'HEOGONG' ? '#00f2ff' : (obs.type === 'HURDLE' ? '#ef4444' : '#10b981'),
-                        display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9px', fontWeight: 'bold',
-                        boxShadow: obs.type === 'HEOGONG' ? '0 0 10px #00f2ff' : 'none',
-                        zIndex: 5
-                      }}>
-                        {obs.type === 'HEOGONG' ? '☁️' : (obs.type === 'HURDLE' ? '가시' : '대나무')}
-                      </div>
-                    ))}
-
-                    <div style={{
-                      position: 'absolute', bottom: isBiryongJumping ? '35%' : '10%', 
-                      left: `${biryongPos * 20 + 6}%`,
-                      width: '8%', height: '40px', background: '#fbbf24', borderRadius: '20px 20px 8px 8px',
-                      transition: 'left 0.15s, transform 0.2s, bottom 0.2s',
-                      transform: isBiryongSliding ? 'scaleY(0.5)' : (isBiryongJumping ? 'scale(1.2)' : 'scale(1)'),
-                      boxShadow: isHeogong ? '0 0 20px #00f2ff' : '0 5px 12px rgba(0,0,0,0.5)',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      zIndex: 10
-                    }}>
-                      <div style={{ fontSize: '14px' }}>{isHeogong ? '🕊️' : '👤'}</div>
+                  {/* Dantian Gauge */}
+                  <div style={{ height: 12, width: "100%", background: "#333", borderRadius: 6, marginBottom: 10, position: "relative", overflow: "hidden" }}>
+                    <div style={{ 
+                       height: "100%", 
+                       width: `${puzzleDantian}%`, 
+                       background: puzzleDantian > 80 ? "linear-gradient(90deg, #ff4d4d, #b30000)" : (puzzleDantian > 50 ? "#ffcc00" : "#4dabf7"),
+                       transition: "width 0.3s ease-out, background 0.5s" 
+                    }} />
+                    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 9, fontWeight: 900, color: "#fff", textShadow: "0 0 2px #000" }}>
+                      단전 안정도: {Math.floor(puzzleDantian)}% {puzzleDantian > 80 ? "(폭주 주의!)" : ""}
                     </div>
                   </div>
                   
-                  <div style={{ position: 'absolute', bottom: 5, width: '100%', textAlign: 'center', fontSize: '10px', opacity: 0.5 }}>
-                    스와이프: 좌우(이동), 상(경공), 하(슬라이딩)
+                  {/* Puzzle Grid */}
+                  <div style={{ 
+                    flex: 1, 
+                    display: "grid", 
+                    gridTemplateColumns: "repeat(7, 1fr)", 
+                    gap: 4, 
+                    background: "rgba(255,255,255,0.03)", 
+                    padding: 4, 
+                    borderRadius: 8,
+                    perspective: "1000px",
+                    touchAction: "none", // Prevent scrolling while swiping
+                    position: "relative"
+                  }}>
+                    {puzzleGrid.map((row, r) => row.map((cell, c) => (
+                      <div 
+                        key={cell.id}
+                        onClick={() => handlePuzzleCellClick(r, c)}
+                        onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
+                        onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
+                        style={{
+                          aspectRatio: "1/1",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          borderRadius: 4,
+                          background: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "rgba(255,255,255,0.1)" : "transparent",
+                          transition: "all 0.2s",
+                          position: "relative",
+                          opacity: cell.type === null ? 0 : 1,
+                          transform: cell.type === null ? "scale(0)" : "scale(1)"
+                        }}
+                      >
+                         <div style={{
+                            width: "94%",
+                            height: "94%",
+                            borderRadius: "8px", // More block-like
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            fontSize: 16,
+                            cursor: "pointer",
+                            transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            background: (() => {
+                              switch(cell.type) {
+                                case 'fire': return 'linear-gradient(135deg, #ff6b6b, #b30000)';
+                                case 'water': return 'linear-gradient(135deg, #4dabf7, #1864ab)';
+                                case 'wind': return 'linear-gradient(135deg, #63e6be, #087f5b)';
+                                case 'thunder': return 'linear-gradient(135deg, #ffd43b, #f08c00)';
+                                case 'poison': return 'linear-gradient(135deg, #9c36b5, #4a0e4e)';
+                                default: return 'transparent';
+                              }
+                            })(),
+                            boxShadow: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c 
+                               ? "0 0 20px #fff, inset 0 0 10px rgba(255,255,255,0.5)" 
+                               : "0 4px 0 rgba(0,0,0,0.4), inset 0 2px 2px rgba(255,255,255,0.3)",
+                            transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.1) translateZ(20px)" : "scale(1)",
+                            position: "relative"
+                         }}>
+                            {(() => {
+                              switch(cell.type) {
+                                case 'fire': return '🔥';
+                                case 'water': return '💧';
+                                case 'wind': return '🌪️';
+                                case 'thunder': return '⚡';
+                                case 'poison': return '☣️';
+                                default: return '';
+                              }
+                            })()}
+                         </div>
+                      </div>
+                    )))}
+                    {/* Explosion Effects */}
+                    {puzzleEffects.map(eff => (
+                      <div 
+                        key={eff.id}
+                        style={{
+                          position: "absolute",
+                          left: `${(eff.c * (100/7)) + (100/14)}%`,
+                          top: `${(eff.r * (100/7)) + (100/14)}%`,
+                          width: 40,
+                          height: 40,
+                          background: eff.color,
+                          borderRadius: "50%",
+                          transform: "translate(-50%, -50%)",
+                          pointerEvents: "none",
+                          animation: "puzzleBurst 0.6s ease-out forwards",
+                          zIndex: 10,
+                          filter: "blur(2px) brightness(1.5)"
+                        }}
+                      />
+                    ))}
                   </div>
+                  {puzzleIsProcessing && (
+                    <div style={{ position: "absolute", bottom: 15, left: "50%", transform: "translateX(-50%)", fontSize: 14, fontWeight: 900, color: "#ffd700", textShadow: "0 0 10px #000" }}>
+                      {puzzleCombo > 1 ? `${puzzleCombo}연쇄 폭발!` : "기맥 공명 중..."}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
         </div>
       ) : (
-        <div style={{ marginTop: 40, opacity: 0.6 }}>
-          현재 대결할 상대가 없습니다.<br/>
-          허수아비 수련에 집중하세요.
+        <div style={{ ...lobbyOverlay, background: "rgba(0,0,0,0.8)", border: "1px dashed rgba(255,215,0,0.2)" }}>
+
+           <div style={{ fontSize: 50, marginBottom: 20 }}>🏮</div>
+           <h3 style={{ color: "#ffd700", fontWeight: 900 }}>평화로운 객잔</h3>
+           <p style={{ fontSize: 13, opacity: 0.7, maxWidth: 220, lineHeight: 1.6, marginTop: 10 }}>
+              현재는 객잔이 평화롭습니다. 무뢰배가 나타나 소란이 생기면 다시 알려드리겠습니다.
+           </p>
+           <div style={{ marginTop: 30, padding: "12px 20px", background: "rgba(255,255,255,0.05)", borderRadius: 12, fontSize: 11, color: "#888" }}>
+              (수련 페이지에서 허수아비를 처치하다 보면 이벤트가 발생합니다)
+           </div>
         </div>
       )}
 
@@ -1243,6 +1681,47 @@ export default function InnPanel({
         </div>
       ))}
 
+
+      {isWinPopup && (
+        <div style={rewardOverlay}>
+          <div style={{ ...rewardCard, borderColor: "#ffd700" }}>
+            <div style={{ fontSize: 40 }}>🏆</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd700", marginTop: 10 }}>대련 승리</div>
+            <div style={{ fontSize: 14, margin: "15px 0", opacity: 0.8, lineHeight: 1.6 }}>
+                 무뢰배에게 <span style={{ color: "#ffd700", fontWeight: 800 }}>{currentStage}번</span> 승리하셨습니다. <br/>
+                 <span style={{ color: "#7cff70" }}>{currentStage}승 보상</span>이 주어집니다. <br/>
+                 다시 도전하면 {currentStage}승 보상이 초기화 됩니다.
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%", maxWidth: "240px" }}>
+              <button 
+                onClick={() => {
+                  setIsWinPopup(false);
+                  const nextStage = currentStage + 1;
+                  setCurrentStage(nextStage);
+                  setRound(nextStage);
+                  resetGameState(currentMiniGame);
+                  setIsPlaying(true);
+                  isPlayingRef.current = true;
+                }} 
+                style={{ ...primaryButton, background: "linear-gradient(135deg, #ffd700, #ff8c00)", color: "#000" }}
+              >
+                다시 도전 (남은 기회 1회)
+              </button>
+              
+              <button 
+                onClick={() => {
+                  setIsWinPopup(false);
+                  finishMission(true, "PERFECT", playerScoreRef.current, `${currentStage}단계 격파 성공!`);
+                }} 
+                style={{ ...primaryButton, background: "#333", color: "#fff", border: "1px solid #555" }}
+              >
+                도전 중지 (보상 수령)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isFailPopup && (
         <div style={rewardOverlay}>
@@ -1324,6 +1803,11 @@ export default function InnPanel({
           from { transform: scale(1.5); opacity: 0.3; }
           to { transform: scale(0.5); opacity: 1; }
         }
+        @keyframes puzzleBurst {
+          0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(2.5); opacity: 0.6; filter: blur(5px); }
+          100% { transform: translate(-50%, -50%) scale(4); opacity: 0; filter: blur(10px); }
+        }
       `}</style>
     </section>
   );
@@ -1331,15 +1815,18 @@ export default function InnPanel({
 
 const containerStyle: React.CSSProperties = {
   position: "relative",
-  minHeight: "600px",
+  width: "100%",
+  minHeight: "550px",
+  height: "100%",
   borderRadius: "24px",
   overflow: "hidden",
   border: "1px solid rgba(255,215,120,0.25)",
   background: "#0a0a0f",
-  padding: "20px",
+  padding: "16px",
+  boxSizing: "border-box",
   textAlign: "center",
-  color: "#fff",
-  fontFamily: "'Inter', sans-serif",
+  touchAction: "manipulation",
+  userSelect: "none"
 };
 
 const headerStyle: React.CSSProperties = {
@@ -1388,6 +1875,8 @@ const gameStage: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
+  touchAction: "none",
+  boxSizing: "border-box"
 };
 
 const lobbyOverlay: React.CSSProperties = {
@@ -1396,11 +1885,12 @@ const lobbyOverlay: React.CSSProperties = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  padding: "30px",
+  padding: "15px",
   background: "radial-gradient(circle at center, rgba(60,40,20,0.4) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0.9) 100%)",
   borderRadius: "20px",
   position: "relative",
   overflow: "hidden",
+  touchAction: "none"
 };
 
 const primaryButton: React.CSSProperties = {
@@ -1422,7 +1912,10 @@ const activeGameArea: React.CSSProperties = {
   flex: 1,
   display: "flex",
   flexDirection: "column",
-  padding: "15px",
+  padding: "12px",
+  touchAction: "none",
+  overflow: "hidden",
+  boxSizing: "border-box"
 };
 
 const scoreBarContainer: React.CSSProperties = {

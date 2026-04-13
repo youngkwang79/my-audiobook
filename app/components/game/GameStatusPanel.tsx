@@ -16,7 +16,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
     exp: game?.exp ?? 0,
     touches: game?.touches ?? 0,
     coins: game?.coins ?? 0,
-    reputation: game?.reputation ?? 0,
+    reputation: game?.points ?? 0,
     realm: game?.realm ?? "필부",
     faction: game?.faction ?? "무소속",
     hp: game?.hp ?? 150,
@@ -31,25 +31,39 @@ export default function GameStatusPanel({ game }: { game: any }) {
   // 최종 공격력 산출
   const totalAttack = getTotalAttack();
 
-  // 경지 돌파 진행도 계산
+  // 경지 돌파 진행도 계산 (성급 반영)
   const realmKeys = Object.keys(REALM_SETTINGS);
   const currentIndex = realmKeys.indexOf(safeGame.realm);
-  const nextRealm = currentIndex >= 0 ? realmKeys[currentIndex + 1] : null;
+  const isFinalRealm = currentIndex === realmKeys.length - 1;
+  const nextRealm = !isFinalRealm ? realmKeys[currentIndex + 1] : null;
+
+  const currentRealmInfo = (REALM_SETTINGS as any)[safeGame.realm];
   const nextRealmInfo = nextRealm ? (REALM_SETTINGS as any)[nextRealm] : null;
-  const currentRealmInfo =
-    currentIndex >= 0 ? (REALM_SETTINGS as any)[safeGame.realm] : REALM_SETTINGS["필부"];
 
-  const currentMinTouches = currentRealmInfo?.minTouches ?? 0;
-  const nextMinTouches = nextRealmInfo?.minTouches ?? currentMinTouches;
-  const requiredTouches = Math.max(1, nextMinTouches - currentMinTouches);
-  const currentProgressTouches = Math.max(0, safeGame.touches - currentMinTouches);
+  // 현재 성급의 목표 터치값 계산
+  const getRequiredTouches = (realm: string, star: number) => {
+    const list = Object.keys(REALM_SETTINGS);
+    const idx = list.indexOf(realm);
+    const cur = (REALM_SETTINGS as any)[realm];
+    const nxt = (REALM_SETTINGS as any)[list[idx + 1]] || cur;
+    return cur.minTouches + Math.floor(((nxt.minTouches - cur.minTouches) / 10) * star);
+  };
 
-  const progressPercent = nextRealmInfo
-    ? Math.min((currentProgressTouches / requiredTouches) * 100, 100)
-    : 100;
+  const startTouches = safeGame.star === 1 ? currentRealmInfo.minTouches : getRequiredTouches(safeGame.realm, safeGame.star - 1);
+  const targetTouches = getRequiredTouches(safeGame.realm, safeGame.star);
+  
+  const progressPercent = isFinalRealm ? 100 : Math.min(
+    ((safeGame.touches - startTouches) / Math.max(1, targetTouches - startTouches)) * 100,
+    100
+  );
 
-  const hpPercent = safeGame.maxHp > 0 ? Math.min((safeGame.hp / safeGame.maxHp) * 100, 100) : 0;
-  const mpPercent = safeGame.maxMp > 0 ? Math.min((safeGame.mp / safeGame.maxMp) * 100, 100) : 0;
+  const displayTarget = safeGame.star === 10 ? `${nextRealm} 도달` : `${safeGame.realm} ${safeGame.star + 1}성 도달`;
+
+  const totalHp = useGameStore().getTotalHp();
+  const totalMp = useGameStore().getTotalMp();
+
+  const hpPercent = totalHp > 0 ? Math.min((safeGame.hp / totalHp) * 100, 100) : 0;
+  const mpPercent = totalMp > 0 ? Math.min((safeGame.mp / totalMp) * 100, 100) : 0;
 
   return (
     <>
@@ -101,36 +115,106 @@ export default function GameStatusPanel({ game }: { game: any }) {
             <button
               onClick={() => (window.location.href = "/")}
               style={{
-                padding: "2px 10px",
-                fontSize: "12px",
+                padding: "2px 8px",
+                fontSize: "11px",
                 background: "linear-gradient(180deg, #f3c969, #d4a23c)",
                 border: "none",
                 borderRadius: "6px",
                 color: "#1a1612",
                 cursor: "pointer",
                 fontWeight: "bold",
-                boxShadow: "0 2px 6px rgba(212, 162, 60, 0.2)",
               }}
             >
-              홈 🏠
+              홈
+            </button>
+
+            {typeof window !== "undefined" && !/iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+              <button
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                      alert(`전체화면 전환 실패: ${err.message}`);
+                    });
+                  } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                  }
+                }}
+                style={{
+                  padding: "2px 8px",
+                  fontSize: "11px",
+                  background: "rgba(0,180,255,0.6)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "6px",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                전체화면
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                if (confirm("정말 게임을 처음으로 초기화하시겠습니까?")) {
+                  useGameStore.getState().resetGame();
+                }
+              }}
+              style={{
+                padding: "2px 8px",
+                fontSize: "11px",
+                background: "rgba(255,0,0,0.6)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "6px",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+            >
+              초기화
+            </button>
+            <button
+              onClick={() => {
+                const state = useGameStore.getState();
+                state.addCoins(100000000);
+                // 강화 탭 즉시 해금 로직 추가
+                useGameStore.setState((s: any) => ({
+                  game: {
+                    ...s.game,
+                    unlockedTabs: Array.from(new Set([...s.game.unlockedTabs, "upgrade"]))
+                  }
+                }));
+                alert("비밀 자금 1억냥 충전 및 강화 메뉴가 해금되었습니다!");
+              }}
+              style={{
+                padding: "4px 6px",
+                fontSize: "10px",
+                background: "transparent",
+                border: "none",
+                borderRadius: "4px",
+                color: "#444",
+                cursor: "pointer",
+                marginLeft: "2px",
+              }}
+            >
+              G
             </button>
           </div>
 
           <button
             onClick={() => setIsModalOpen(true)}
             style={{
-              padding: "4px 10px",
-              fontSize: "10px",
+              padding: "4px 8px",
+              fontSize: "11px",
               background: "linear-gradient(180deg, #f3c969, #d4a23c)",
               border: "none",
               borderRadius: "8px",
               color: "#1a1612",
               cursor: "pointer",
               fontWeight: "bold",
-              boxShadow: "0 2px 6px rgba(212, 162, 60, 0.2)",
             }}
           >
-            상태창 📜
+            상태창
           </button>
         </div>
 
@@ -156,7 +240,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
             >
               <span>HP</span>
               <span>
-                {safeGame.hp.toLocaleString()} / {safeGame.maxHp.toLocaleString()}
+                {safeGame.hp.toLocaleString()} / {totalHp.toLocaleString()}
               </span>
             </div>
             <div
@@ -193,7 +277,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
             >
               <span>MP</span>
               <span>
-                {safeGame.mp.toLocaleString()} / {safeGame.maxMp.toLocaleString()}
+                {safeGame.mp.toLocaleString()} / {totalMp.toLocaleString()}
               </span>
             </div>
             <div
@@ -229,7 +313,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
               marginBottom: "3px",
             }}
           >
-            <span>{nextRealm ? `${nextRealm} 도달까지` : "최종 경지"}</span>
+            <span>{displayTarget ? `${displayTarget}까지` : "최종 경지"}</span>
             <span style={{ color: "#ffd778" }}>{Math.floor(progressPercent)}%</span>
           </div>
           <div

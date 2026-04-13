@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FACTIONS } from "@/app/lib/game/factions";
 import type { FactionType } from "@/app/lib/game/types";
 
@@ -20,6 +20,16 @@ export default function FactionSelectPanel({
     return found >= 0 ? found : 0;
   });
 
+  // 이미지 프리로딩
+  useEffect(() => {
+    FACTIONS.forEach(f => {
+      if (f.characterImages?.ready) {
+        const img = new Image();
+        img.src = f.characterImages.ready;
+      }
+    });
+  }, []);
+
   const currentFaction = FACTIONS[selectedIdx];
   const isCurrentlySelected = faction === currentFaction.name;
 
@@ -29,29 +39,35 @@ export default function FactionSelectPanel({
         border: "1px solid rgba(255,215,120,0.18)",
         borderRadius: 24,
         background: "rgba(10,10,15,0.85)",
-        padding: 20,
+        padding: "12px 12px 20px",
         display: "flex",
         flexDirection: "column",
-        gap: 20,
+        gap: 8,
+        height: "100%",
+        boxSizing: "border-box",
+        touchAction: "none",
       }}
     >
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: "#f5e6b3" }}>문파 선택</div>
-        <div style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>
-          무림의 다양한 세력 중 하나를 선택하여 수련을 시작하세요.
+      <div style={{ marginBottom: 4 }}>
+        <div style={{ fontSize: 20, fontWeight: 900, color: "#f5e6b3" }}>문파 선택</div>
+        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
+          무림의 세력 중 하나를 선택하세요.
         </div>
       </div>
 
-      {/* Grid of Factions */}
+      {/* Grid of Factions - Compact height */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
-          gap: 10,
-          maxHeight: 200,
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 6,
+          maxHeight: 100,
           overflowY: "auto",
           padding: "4px",
+          background: "rgba(0,0,0,0.2)",
+          borderRadius: 12,
         }}
+        className="hide-scrollbar"
       >
         {FACTIONS.map((f, idx) => {
           const active = selectedIdx === idx;
@@ -61,8 +77,8 @@ export default function FactionSelectPanel({
               key={f.name}
               onClick={() => setSelectedIdx(idx)}
               style={{
-                padding: "10px 6px",
-                borderRadius: 12,
+                padding: "8px 4px",
+                borderRadius: 10,
                 border: active 
                   ? "2px solid #ffd700" 
                   : "1px solid rgba(255,255,255,0.1)",
@@ -70,19 +86,18 @@ export default function FactionSelectPanel({
                   ? "rgba(255,215,120,0.15)" 
                   : "rgba(255,255,255,0.03)",
                 color: active ? "#ffd700" : "#ccc",
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 900,
                 cursor: "pointer",
-                transition: "all 0.2s",
                 position: "relative"
               }}
             >
               {f.name.replace("파", "").replace("세가", "")}
               {isMatched && (
                 <div style={{ 
-                  position: "absolute", top: -4, right: -4, fontSize: 10, 
+                  position: "absolute", top: -2, right: -2, fontSize: 8, 
                   background: "#ffd700", color: "#000", borderRadius: "50%", 
-                  width: 14, height: 14, display: "grid", placeItems: "center"
+                  width: 12, height: 12, display: "grid", placeItems: "center"
                 }}>✓</div>
               )}
             </button>
@@ -90,82 +105,67 @@ export default function FactionSelectPanel({
         })}
       </div>
 
-      {/* Detail View */}
+      {/* Detail View - Now Scrollable internally if height is small */}
       <div
         style={{
-          borderRadius: 20,
-          border: "1px solid rgba(255,255,255,0.1)",
-          background: "rgba(255,255,255,0.02)",
-          padding: 20,
-          boxShadow: `0 0 30px ${currentFaction.theme.glow}`,
+          flex: 1,
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.01)",
+          padding: "12px",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          touchAction: "pan-y",
         }}
+        className="hide-scrollbar"
       >
-          {/* Character Preview */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 15 }}>
+          {/* Character Preview - Smaller */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
             <img 
               src={currentFaction.characterImages?.ready || "/warrior.png"} 
               alt={currentFaction.name} 
-              style={{ width: "120px", height: "auto", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))" }}
+              style={{ height: "90px", width: "auto", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))" }}
             />
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 13, color: "#aaa", marginBottom: 2 }}>{currentFaction.group}</div>
-              <div style={{ fontSize: 28, fontWeight: 950, color: "#fff" }}>{currentFaction.name}</div>
+              <div style={{ fontSize: 11, color: "#aaa" }}>{currentFaction.group}</div>
+              <div style={{ fontSize: 20, fontWeight: 950, color: "#fff" }}>{currentFaction.name}</div>
             </div>
             <div style={{ 
-              padding: "4px 10px", borderRadius: 8, background: currentFaction.theme.glow, 
-              color: currentFaction.theme.accent, fontSize: 12, fontWeight: 900 
+              padding: "2px 8px", borderRadius: 6, background: currentFaction.theme.glow, 
+              color: currentFaction.theme.accent, fontSize: 10, fontWeight: 900 
             }}>
               {currentFaction.style}
             </div>
           </div>
 
-        <div style={{ fontSize: 15, lineHeight: 1.6, color: "#ddd", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, lineHeight: 1.5, color: "#ddd" }}>
           {currentFaction.summary}
         </div>
 
-        {/* New Advantage Section */}
+        {/* Bonus stats */}
         <div style={{ 
-          background: "linear-gradient(135deg, rgba(255,215,120,0.08), rgba(255,255,255,0.02))", 
-          border: "1px solid rgba(255,215,120,0.25)", 
-          borderRadius: 18, 
-          padding: 16, 
-          marginBottom: 20,
-          position: "relative",
-          overflow: "hidden"
+          background: "rgba(255,215,120,0.05)", 
+          border: "1px solid rgba(255,215,120,0.15)", 
+          borderRadius: 12, 
+          padding: 10, 
         }}>
-          <div style={{ 
-            position: "absolute", top: -10, right: -10, fontSize: 40, opacity: 0.1, pointerEvents: "none" 
-          }}>📜</div>
-          
-          <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>✨</span> 세력 고유 보너스 & 특성
+          <div style={{ fontSize: 12, fontWeight: 900, color: "#ffd700", marginBottom: 6 }}>
+            세력 보너스
           </div>
-          
-          <div style={{ fontSize: 14, color: "#f5e6b3", lineHeight: 1.6, wordBreak: "keep-all", marginBottom: 14, fontWeight: 500 }}>
-            {currentFaction.specialAdvantage}
-          </div>
-          
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             {Object.entries(currentFaction.bonusStats).map(([k, v]) => {
               const label = {
-                atk: "공격력",
-                def: "방어력",
-                hp: "최대 체력",
-                critRate: "치명타 확률",
-                critDmg: "치명타 피해",
-                eva: "회피율",
-                speed: "공격 속도",
-                targetDmg: "추가 피해"
+                atk: "공격", def: "방어", hp: "체력", critRate: "치명", critDmg: "치피", eva: "회피", speed: "공속"
               }[k] || k;
-              
               return (
                 <div key={k} style={{ 
-                  fontSize: 11, background: "rgba(0,0,0,0.3)", padding: "6px 10px", borderRadius: 8, 
-                  color: "#eee", border: "1px solid rgba(255,255,255,0.05)",
-                  display: "flex", justifyContent: "space-between"
+                  fontSize: 10, background: "rgba(0,0,0,0.2)", padding: "4px 8px", borderRadius: 6, 
+                  color: "#eee", display: "flex", justifyContent: "space-between"
                 }}>
                   <span style={{ color: "#aaa" }}>{label}</span>
                   <span style={{ color: "#fff", fontWeight: 900 }}>+{v}%</span>
@@ -175,37 +175,39 @@ export default function FactionSelectPanel({
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-          <StatMini label="경험치 보너스" value={`+${currentFaction.expBonus}`} color="#a8ff7e" />
-          <StatMini label="엽전 보너스" value={`+${currentFaction.coinBonus}`} color="#f3c969" />
-          <StatMini label="삼류 무공" value={currentFaction.martial["삼류"].name} color="#7ee7ff" />
-          <StatMini label="입문 경공" value={currentFaction.movement.entry} color="#e07eff" />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <StatMini label="경험치/엽전" value={`+${currentFaction.expBonus}% / +${currentFaction.coinBonus}%`} color="#f3c969" />
+          <StatMini label="초기 무공" value={currentFaction.martial["삼류"].name} color="#7ee7ff" />
         </div>
-
-        <button
-          onClick={() => {
-            if (factionLocked && !isCurrentlySelected) return;
-            onSelect(currentFaction.name as any);
-          }}
-          disabled={factionLocked && !isCurrentlySelected}
-          style={{
-            width: "100%",
-            padding: "16px",
-            borderRadius: 14,
-            border: "none",
-            background: factionLocked && !isCurrentlySelected 
-              ? "rgba(255,255,255,0.05)" 
-              : "linear-gradient(135deg, #fff1a8, #d4a23c)",
-            color: factionLocked && !isCurrentlySelected ? "#666" : "#2b1d00",
-            fontSize: 16,
-            fontWeight: 900,
-            cursor: factionLocked && !isCurrentlySelected ? "default" : "pointer",
-          }}
-        >
-          {isCurrentlySelected ? "현재 소속 문파" : "이 문파로 시작하기"}
-        </button>
       </div>
+
+      {/* Select Button - Fixed at bottom of panel */}
+      <button
+        onClick={() => {
+          if (factionLocked && !isCurrentlySelected) return;
+          onSelect(currentFaction.name as any);
+        }}
+        disabled={factionLocked && !isCurrentlySelected}
+        style={{
+          width: "100%",
+          padding: "14px",
+          borderRadius: 14,
+          border: "none",
+          background: factionLocked && !isCurrentlySelected 
+            ? "rgba(255,255,255,0.05)" 
+            : "linear-gradient(135deg, #fff1a8, #d4a23c)",
+          color: factionLocked && !isCurrentlySelected ? "#666" : "#2b1d00",
+          fontSize: 15,
+          fontWeight: 900,
+          cursor: factionLocked && !isCurrentlySelected ? "default" : "pointer",
+          boxShadow: "0 4px 15px rgba(212, 162, 60, 0.3)",
+          marginTop: 4,
+        }}
+      >
+        {isCurrentlySelected ? "현재 소속 문파" : "이 문파로 시작하기"}
+      </button>
     </section>
+
   );
 }
 

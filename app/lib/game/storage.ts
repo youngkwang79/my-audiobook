@@ -33,8 +33,7 @@ export const defaultGameData: GameSaveData = {
   coins: 0,
   hasBreakthrough: false,
   coinDrops: [],
-  attack: 3,
-  baseAttack: 100,
+  baseAttack: 10,
 
   reputation: 0,
 
@@ -63,7 +62,7 @@ export const defaultGameData: GameSaveData = {
   attackMultiplier: 1,
   multiHitActive: false,
   isMinigameActive: false,
-  currentMissionTitle: "첫 번째 임무: 허수아비 10번 처치\n(보상: 무아지경 7초)",
+  currentMissionTitle: "첫 번째 임무: 허수아비 10번 처치\n(보상: 강해질 수 있는 기회)",
   activeBuff: null,
   buffTimeLeft: 0,
   lastReward: null,
@@ -72,8 +71,6 @@ export const defaultGameData: GameSaveData = {
   timingMission: {
     unlocked: false,
     available: false,
-    attempts: 0,
-    clearedCount: 0,
     pendingTarget: null,
     requiredHits: 3,
     tolerance: 8,
@@ -83,7 +80,6 @@ export const defaultGameData: GameSaveData = {
     rewardAttackBuff: 2,
     rewardBuffSeconds: 10,
     rivalName: "흑풍낭인",
-    rivalScore: 220,
     lastGrade: null,
     pressureLimit: 10,
     currentStage: 1,
@@ -132,44 +128,91 @@ export const defaultGameData: GameSaveData = {
   },
   quickSlots: [null, null, null, null, null],
   skillCooldowns: {},
+  nextRivalTime: 0,
+  nextRivalKills: 100,
+
+  star: 1,
+  points: 0,
+  statUpgrades: {
+    hpRec: 0,
+    mpRec: 0,
+    atk: 0,
+    def: 0,
+    critRate: 0,
+    critDmg: 0,
+    eva: 0,
+  },
 };
 
-const STORAGE_KEY = "murimbook-game-save-v10";
+// 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 
+// 반드시 공식 도메인(https://murimbook.com)에서 플레이해야 데이터가 유지됩니다.
+const STORAGE_KEY = "murimbook-game-save-v12"; 
 
 export function loadGame(): GameSaveData {
   if (typeof window === "undefined") return defaultGameData;
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultGameData;
+    let v12Data: any = null;
 
-    const parsed = JSON.parse(raw);
+    if (!raw) {
+      // v11 마이그레이션 확인
+      const v11Raw = localStorage.getItem("murimbook-game-save-v11");
+      if (v11Raw) {
+        console.log("v11 데이터 발견, v12로 마이그레이션합니다.");
+        v12Data = JSON.parse(v11Raw);
+      } else {
+        // v10 데이터 확인
+        const oldRaw = localStorage.getItem("murimbook-game-save-v10");
+        if (oldRaw) {
+          console.log("구버전 데이터 발견, 마이그레이션을 시작합니다.");
+          v12Data = JSON.parse(oldRaw);
+          if (v12Data) v12Data.baseAttack = 10;
+        }
+      }
+    } else {
+      v12Data = JSON.parse(raw);
+    }
+
+    if (!v12Data) return defaultGameData;
 
     const loadedEquippedGear: EquippedGear = {
       ...defaultEquippedGear,
-      ...(parsed?.equippedGear ?? {}),
+      ...(v12Data.equippedGear ?? {}),
     };
 
-    if (!loadedEquippedGear.mainWeapon && parsed?.equippedWeaponId) {
-      loadedEquippedGear.mainWeapon = parsed.equippedWeaponId;
+    if (!loadedEquippedGear.mainWeapon && v12Data.equippedWeaponId) {
+      loadedEquippedGear.mainWeapon = v12Data.equippedWeaponId;
     }
+
+    // Repair/Retroactive Unlock Logic: 
+    // If the user has enough kills but tabs are missing (e.g. following a failed migration), restore them.
+    let repairedTabs = Array.isArray(v12Data.unlockedTabs) ? [...v12Data.unlockedTabs] : ["training"];
+    const kills = v12Data.totalDummyKills || 0;
+    
+    if (kills >= 30) {
+      if (!repairedTabs.includes("forge")) repairedTabs.push("forge");
+      if (!repairedTabs.includes("inventory")) repairedTabs.push("inventory");
+    }
+    if (kills >= 100 && !repairedTabs.includes("upgrade")) repairedTabs.push("upgrade");
+    if (kills >= 150 && !repairedTabs.includes("master")) repairedTabs.push("master");
+    if (kills >= 200 && !repairedTabs.includes("library")) repairedTabs.push("library");
+    if (kills >= 300 && !repairedTabs.includes("inn")) repairedTabs.push("inn");
 
     return {
       ...defaultGameData,
-      ...parsed,
+      ...v12Data,
       hero: {
         ...defaultGameData.hero,
-        ...(parsed?.hero ?? {}),
+        ...(v12Data.hero ?? {}),
       },
-      coinDrops: Array.isArray(parsed?.coinDrops) ? parsed.coinDrops : [],
-      unlockedTabs: Array.isArray(parsed?.unlockedTabs)
-        ? parsed.unlockedTabs
-        : ["training"],
-      ownedWeapons: Array.isArray(parsed?.ownedWeapons)
-        ? parsed.ownedWeapons
+      coinDrops: Array.isArray(v12Data.coinDrops) ? v12Data.coinDrops : [],
+      unlockedTabs: Array.from(new Set(repairedTabs)) as any, // Deduplicate
+      ownedWeapons: Array.isArray(v12Data.ownedWeapons)
+        ? v12Data.ownedWeapons
         : [],
       equippedWeaponId:
-        parsed?.equippedWeaponId ??
+        v12Data.equippedWeaponId ??
         loadedEquippedGear.mainWeapon ??
         null,
       equippedGear: loadedEquippedGear,

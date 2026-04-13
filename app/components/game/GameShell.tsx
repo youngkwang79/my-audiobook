@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "@/app/lib/game/useGameStore";
+import { useAuth } from "@/app/providers/AuthProvider";
 import GameStatusPanel from "./GameStatusPanel";
 import GameBottomNav from "./GameBottomNav";
 import ForgePanel from "./ForgePanel";
@@ -10,12 +11,13 @@ import InnPanel from "./InnPanel";
 import MasterPanel from "./MasterPanel";
 import LibraryPanel from "./LibraryPanel";
 import FactionSelectPanel from "./FactionSelectPanel";
-import BreakthroughModule from "./elements/BreakthroughModule";
 import AutoTrainingManager from "./AutoTrainingManager";
 import TrainingPanel from "./TrainingPanel";
+import UpgradePanel from "./UpgradePanel";
 
 export default function GameShell() {
-  const { game, markInnEntryHandled, resetGame } = useGameStore() as any;
+  const { game, markInnEntryHandled, syncFromCloud, syncToCloud } = useGameStore() as any;
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("training");
   const [mounted, setMounted] = useState(false);
   const [showFogWarp, setShowFogWarp] = useState(false);
@@ -23,7 +25,21 @@ export default function GameShell() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Autosave interval every 30 seconds
+    const interval = setInterval(() => {
+      const { triggerSave, syncToCloud } = useGameStore.getState() as any;
+      if (triggerSave) triggerSave(true);
+      if (user && syncToCloud) syncToCloud();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Cloud Sync on Login
+  useEffect(() => {
+    if (user && mounted) {
+      syncFromCloud();
+    }
+  }, [user, mounted]);
 
   useEffect(() => {
     if (!game.pendingInnEntry) return;
@@ -34,7 +50,6 @@ export default function GameShell() {
 
     const moveTimer = setTimeout(() => {
       setActiveTab("inn");
-      markInnEntryHandled();
     }, 4500);
 
     const hideTimer = setTimeout(() => {
@@ -55,74 +70,52 @@ export default function GameShell() {
     }));
   };
 
-  if (!game.faction) {
-    return (
-      <FactionSelectPanel
-        faction={null}
-        factionLocked={false}
-        onSelect={handleSetFaction}
-      />
-    );
-  }
-
   return (
     <div
       style={{
         maxWidth: 400,
         margin: "0 auto",
-        padding: "5px 5px 85px",
+        padding: "0",
         color: "white",
-        minHeight: "100vh",
+        height: "100dvh",
         background: "#0a0a0c",
         display: "flex",
         flexDirection: "column",
         position: "relative",
         overflow: "hidden",
+        touchAction: "none",
       }}
     >
       <AutoTrainingManager />
-      <BreakthroughModule />
 
-      <button
-        onClick={() => {
-          if (confirm("정말 게임을 처음으로 초기화하시겠습니까?")) {
-            resetGame();
-          }
-        }}
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          zIndex: 9999,
-          padding: "6px 12px",
-          background: "rgba(255,0,0,0.6)",
-          color: "white",
-          border: "1px solid rgba(255,255,255,0.2)",
-          borderRadius: "8px",
-          fontSize: "12px",
-          fontWeight: "bold",
-          cursor: "pointer",
-        }}
-      >
-        🔄 초기화 (테스트용)
-      </button>
+      {!game.faction ? (
+        <FactionSelectPanel
+          faction={null}
+          factionLocked={false}
+          onSelect={handleSetFaction}
+        />
+      ) : (
+        <>
+
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, position: "relative" }}>
+        {activeTab === "inventory" && (
+          <div style={{ marginBottom: 4 }}>
+            <GameStatusPanel game={game} />
+          </div>
+        )}
+        <div style={{ position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {activeTab === "training" && <TrainingPanel />}
           {activeTab === "inn" && <InnPanel onRewardClose={() => setActiveTab("training")} />}
           {activeTab === "master" && <MasterPanel />}
           {activeTab === "library" && <LibraryPanel />}
           {activeTab === "forge" && <ForgePanel />}
           {activeTab === "inventory" && <InventoryPanel />}
+          {activeTab === "upgrade" && <UpgradePanel />}
         </div>
-
-        {activeTab !== "training" && (
-          <div style={{ marginTop: 20 }}>
-            <GameStatusPanel game={game} />
-          </div>
-        )}
       </div>
+        </>
+      )}
 
       <GameBottomNav
         activeTab={activeTab as any}
