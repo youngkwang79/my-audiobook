@@ -95,20 +95,22 @@ export default function GameStatusPanel({ game }: { game: any }) {
             marginBottom: 8,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", flexWrap: "nowrap", flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: 13,
+                fontSize: 11,
                 color: "#fff",
                 fontWeight: "bold",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "3px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
               }}
             >
-              <span style={{ fontSize: 9, color: "#888", marginRight: 4 }}>현재 경지</span>
               <span style={{ color: "#ffd778" }}>{safeGame.faction}</span>
-              <span style={{ opacity: 0.4 }}>|</span>
+              <span style={{ opacity: 0.3 }}>|</span>
               <span>{safeGame.realm}</span>
             </div>
 
@@ -132,25 +134,24 @@ export default function GameStatusPanel({ game }: { game: any }) {
               <button
                 onClick={() => {
                   if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                      alert(`전체화면 전환 실패: ${err.message}`);
-                    });
+                    document.documentElement.requestFullscreen();
                   } else {
                     if (document.exitFullscreen) document.exitFullscreen();
                   }
                 }}
                 style={{
-                  padding: "2px 8px",
-                  fontSize: "11px",
-                  background: "rgba(0,180,255,0.6)",
+                  padding: "2px 4px",
+                  fontSize: "10px",
+                  background: "rgba(0,180,255,0.4)",
                   border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "6px",
+                  borderRadius: "4px",
                   color: "white",
                   cursor: "pointer",
                   fontWeight: "bold",
+                  whiteSpace: "nowrap"
                 }}
               >
-                전체화면
+                전체
               </button>
             )}
 
@@ -161,14 +162,15 @@ export default function GameStatusPanel({ game }: { game: any }) {
                 }
               }}
               style={{
-                padding: "2px 8px",
-                fontSize: "11px",
-                background: "rgba(255,0,0,0.6)",
+                padding: "2px 4px",
+                fontSize: "10px",
+                background: "rgba(255,0,0,0.4)",
                 border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "6px",
+                borderRadius: "4px",
                 color: "white",
                 cursor: "pointer",
                 fontWeight: "bold",
+                whiteSpace: "nowrap"
               }}
             >
               초기화
@@ -341,63 +343,67 @@ export default function GameStatusPanel({ game }: { game: any }) {
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr 1fr",
-            gap: "4px",
+            gap: "2px",
             marginBottom: 8,
           }}
         >
           <div
             style={{
               background: "rgba(255,255,255,0.02)",
-              padding: "6px 2px",
-              borderRadius: "8px",
+              padding: "4px 1px",
+              borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
+              minWidth: 0
             }}
           >
-            <div style={{ fontSize: "8px", color: "#888", marginBottom: "2px" }}>강호 명성</div>
-            <div style={{ fontSize: "11px", fontWeight: "bold", color: "#ffcc00" }}>
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>명성</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffcc00", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {safeGame.reputation.toLocaleString()}
             </div>
           </div>
           <div
             style={{
               background: "rgba(255,255,255,0.02)",
-              padding: "6px 2px",
-              borderRadius: "8px",
+              padding: "4px 1px",
+              borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
+              minWidth: 0
             }}
           >
-            <div style={{ fontSize: "8px", color: "#888", marginBottom: "2px" }}>보유 자금</div>
-            <div style={{ fontSize: "11px", fontWeight: "bold", color: "#ffd778" }}>
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>자금</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd778", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {safeGame.coins.toLocaleString()}
             </div>
           </div>
           <div
             style={{
               background: "rgba(255,255,255,0.02)",
-              padding: "6px 2px",
-              borderRadius: "8px",
+              padding: "4px 1px",
+              borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
+              minWidth: 0
             }}
           >
-            <div style={{ fontSize: "8px", color: "#888", marginBottom: "2px" }}>누적 수련</div>
-            <div style={{ fontSize: "11px", fontWeight: "bold", color: "#55ffaa" }}>
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>수련</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#55ffaa", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {safeGame.touches.toLocaleString()}
             </div>
           </div>
           <div
             style={{
               background: "rgba(255,255,255,0.02)",
-              padding: "6px 2px",
-              borderRadius: "8px",
+              padding: "4px 1px",
+              borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
+              minWidth: 0
             }}
           >
-            <div style={{ fontSize: "8px", color: "#888", marginBottom: "2px" }}>총 공격력</div>
-            <div style={{ fontSize: "11px", fontWeight: "bold", color: "#ff4d4d", textShadow: "0 0 4px rgba(255,77,77,0.3)" }}>
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>공격력</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ff4d4d", textShadow: "0 0 4px rgba(255,77,77,0.3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {totalAttack.toLocaleString()}
             </div>
           </div>

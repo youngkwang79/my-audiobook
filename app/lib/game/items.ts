@@ -1,4 +1,4 @@
-import type { OwnedWeapon } from "./types";
+import type { OwnedWeapon, ItemTier, RandomOption } from "./types";
 
 export type SetOption = {
   requiredPieces: number;

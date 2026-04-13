@@ -61,6 +61,49 @@ const MINI_GAMES: {
   },
 ];
 
+const playPuzzleSound = (type: 'match' | 'combo' | 'fail' | 'swap') => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    if (type === 'match') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(500, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.start(); osc.stop(ctx.currentTime + 0.15);
+    } else if (type === 'combo') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    } else if (type === 'swap') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(300, ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.start(); osc.stop(ctx.currentTime + 0.1);
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    }
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+  } catch (e) {}
+};
+
 function getGrade(diff: number, tolerance: number): Grade {
   if (diff <= Math.max(4, tolerance * 0.8)) return "PERFECT";
   if (diff <= Math.max(8, tolerance * 1.5)) return "GREAT";
@@ -129,6 +172,8 @@ export default function InnPanel({
   const [pulseTargets, setPulseTargets] = useState<{ id: number; x: number; y: number; progress: number }[]>([]);
   const [failReason, setFailReason] = useState("");
   const [localFailCount, setLocalFailCount] = useState(0);
+  const [lastStageScore, setLastStageScore] = useState(0);
+  const lastStageScoreRef = useRef(0);
   const [activeLanes, setActiveLanes] = useState<Record<number, boolean>>({});
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialTarget, setTutorialTarget] = useState<MiniGameType>("breath");
@@ -379,18 +424,24 @@ export default function InnPanel({
     // 패배 시에는 즉시 승리 팝업이 떠있지 않도록 보장
     setIsWinPopup(false); 
 
-    const clearedStage = success ? currentStage : currentStage - 1;
-
-    if (!success && clearedStage === 0) {
+    if (!success) {
       triggerShake();
       const currentFails = localFailCount + 1;
       setLocalFailCount(currentFails);
       
+      const clearedStage = currentStage - 1;
+
       if (currentFails >= 2) {
         if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
-        setFailReason("대련에 완전히 패배했습니다. (기회 소진)");
-        setIsFailPopup(true);
-        resolveTimingMission({ success: false, score, grade, isFinal: true, maxStage: 0 });
+        if (clearedStage > 0) {
+           setFailReason(`무뢰배의 반격에 당했습니다! ${clearedStage}단계 승리 보상을 챙겨 대피합니다.`);
+           setIsFailPopup(true);
+           resolveTimingMission({ success: true, score: lastStageScoreRef.current, grade, maxStage: clearedStage });
+        } else {
+           setFailReason("대련에 완전히 패배했습니다. (기회 소진)");
+           setIsFailPopup(true);
+           resolveTimingMission({ success: false, score, grade, isFinal: true, maxStage: 0 });
+        }
       } else {
         setFailReason("분함에 다시 일어섭니다! (마지막 기회)");
         setIsFailPopup(true);
@@ -398,7 +449,7 @@ export default function InnPanel({
     } else {
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
       setResultText(text || "수련 종료!");
-      resolveTimingMission({ success: true, score, grade, maxStage: clearedStage });
+      resolveTimingMission({ success: true, score, grade, maxStage: currentStage });
     }
   };
 
@@ -412,10 +463,12 @@ export default function InnPanel({
 
     if (nextScore >= targetScore) {
         // Stage Clear! 
+        lastStageScoreRef.current = nextScore;
+        setLastStageScore(nextScore);
         setIsPlaying(false);
         isPlayingRef.current = false;
         setIsWinPopup(true);
-        setResultText(`무뢰배에게 ${currentStage}번 승리하셨습니다!`);
+        setResultText(`무뢰배에게 ${currentStage}번 연속 승리하셨습니다!`);
     }
   };
 
@@ -442,10 +495,13 @@ export default function InnPanel({
 
     playerScoreRef.current = 0;
     setPlayerScore(0);
+    lastStageScoreRef.current = 0;
+    setLastStageScore(0);
     setCurrentStage(1);
     successHitsRef.current = 0;
     setSuccessHits(0);
     setRound(1);
+    setLocalFailCount(0);
     
     const selected = mission.selectedGameType || "breath";
     setCurrentMiniGame(selected);
@@ -763,26 +819,31 @@ export default function InnPanel({
   };
 
   const findMatches = (grid: any[][]) => {
+    if (!grid || grid.length === 0) return [];
     const matches: Set<string> = new Set();
     // Rows
     for (let r = 0; r < 7; r++) {
       for (let c = 0; c < 5; c++) {
-        const t = grid[r][c].type;
-        if (t && grid[r][c+1].type === t && grid[r][c+2].type === t) {
-          matches.add(`${r},${c}`); matches.add(`${r},${c+1}`); matches.add(`${r},${c+2}`);
+        const t = grid[r][c]?.type;
+        if (t && t !== 'bomb' && grid[r][c+1]?.type === t && grid[r][c+2]?.type === t) {
+          matches.add(`${r},${c}`); 
+          matches.add(`${r},${c+1}`); 
+          matches.add(`${r},${c+2}`);
         }
       }
     }
     // Cols
     for (let c = 0; c < 7; c++) {
       for (let r = 0; r < 5; r++) {
-        const t = grid[r][c].type;
-        if (t && grid[r+1][c].type === t && grid[r+2][c].type === t) {
-          matches.add(`${r},${c}`); matches.add(`${r+1},${c}`); matches.add(`${r+2},${c}`);
+        const t = grid[r][c]?.type;
+        if (t && t !== 'bomb' && grid[r+1][c]?.type === t && grid[r+2][c]?.type === t) {
+          matches.add(`${r},${c}`); 
+          matches.add(`${r+1},${c}`); 
+          matches.add(`${r+2},${c}`);
         }
       }
     }
-    return Array.from(matches).map(s => s.split(',').map(Number));
+    return Array.from(matches).map(s => s.split(',').map(Number) as [number, number]);
   };
 
   const resolveMatches = async () => {
@@ -801,6 +862,9 @@ export default function InnPanel({
       currentCombo++;
       setPuzzleCombo(currentCombo);
       incrementCombo(); 
+      
+      if (currentCombo > 1) playPuzzleSound('combo');
+      else playPuzzleSound('match');
 
       // Check for bomb potential (5+ matches create a bomb at the center-most match)
       const maybeBombPos = matches.length >= 5 ? matches[Math.floor(matches.length / 2)] : null;
@@ -908,12 +972,14 @@ export default function InnPanel({
 
     const matches = findMatches(newGrid);
     if (matches.length > 0) {
+      playPuzzleSound('swap');
       puzzleGridRef.current = newGrid;
       setPuzzleGrid(newGrid);
       setPuzzleSelected(null);
       resolveMatches();
     } else {
       // Visual feedback for invalid swap
+      playPuzzleSound('fail');
       addFloatText("기맥 불일치", "#aaa");
       setPuzzleSelected(null);
     }
@@ -1688,9 +1754,9 @@ export default function InnPanel({
             <div style={{ fontSize: 40 }}>🏆</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd700", marginTop: 10 }}>대련 승리</div>
             <div style={{ fontSize: 14, margin: "15px 0", opacity: 0.8, lineHeight: 1.6 }}>
-                 무뢰배에게 <span style={{ color: "#ffd700", fontWeight: 800 }}>{currentStage}번</span> 승리하셨습니다. <br/>
-                 <span style={{ color: "#7cff70" }}>{currentStage}승 보상</span>이 주어집니다. <br/>
-                 다시 도전하면 {currentStage}승 보상이 초기화 됩니다.
+                 무뢰배에게 <span style={{ color: "#ffd700", fontWeight: 800 }}>{currentStage}번</span> 연속 승리하셨습니다! <br/>
+                 <span style={{ color: "#7cff70" }}>{currentStage}단계 누적 보상</span>이 대기 중입니다. <br/>
+                 더 강한 무뢰배가 나타납니다. 계속하시겠습니까?
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%", maxWidth: "240px" }}>
@@ -1706,7 +1772,7 @@ export default function InnPanel({
                 }} 
                 style={{ ...primaryButton, background: "linear-gradient(135deg, #ffd700, #ff8c00)", color: "#000" }}
               >
-                다시 도전 (남은 기회 1회)
+                다음 무뢰배 도전
               </button>
               
               <button 
@@ -1730,8 +1796,19 @@ export default function InnPanel({
             <div style={{ fontSize: 20, fontWeight: 900, color: "#ff4d4d", marginTop: 10 }}>대련 패배</div>
             <div style={{ fontSize: 14, margin: "15px 0", opacity: 0.8 }}>{failReason}</div>
             
-            {localFailCount < 2 ? (
-              <button onClick={startMission} style={{ ...primaryButton, background: "linear-gradient(135deg, #ff4d4d, #b30000)", boxShadow: "0 4px 15px rgba(255,77,77,0.3)", color: "#fff" }}>
+            {localFailCount < 2 && (currentStage === 1 || playerScoreRef.current >= getTargetScore(currentStage-1)) ? (
+              <button 
+                onClick={() => {
+                  setIsFailPopup(false);
+                  finishLockRef.current = false;
+                  playerScoreRef.current = lastStageScoreRef.current;
+                  setPlayerScore(lastStageScoreRef.current);
+                  resetGameState(currentMiniGame);
+                  setIsPlaying(true);
+                  isPlayingRef.current = true;
+                }} 
+                style={{ ...primaryButton, background: "linear-gradient(135deg, #ff4d4d, #b30000)", boxShadow: "0 4px 15px rgba(255,77,77,0.3)", color: "#fff" }}
+              >
                 다시 도전 (남은 기회 1회)
               </button>
             ) : (
@@ -1740,9 +1817,9 @@ export default function InnPanel({
                   setIsFailPopup(false);
                   if (onRewardClose) onRewardClose();
                 }} 
-                style={{ ...primaryButton, background: "#333", color: "#888" }}
+                style={{ ...primaryButton, background: "#333", color: "#fff", border: "1px solid #555" }}
               >
-                수련으로 복귀 (보상 없음)
+                수련으로 복귀 {currentStage > 1 ? "(보상 획득 완료)" : "(보상 없음)"}
               </button>
             )}
 
@@ -1804,9 +1881,9 @@ export default function InnPanel({
           to { transform: scale(0.5); opacity: 1; }
         }
         @keyframes puzzleBurst {
-          0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; }
-          50% { transform: translate(-50%, -50%) scale(2.5); opacity: 0.6; filter: blur(5px); }
-          100% { transform: translate(-50%, -50%) scale(4); opacity: 0; filter: blur(10px); }
+          0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; filter: brightness(1); }
+          50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.9; filter: blur(2px) brightness(2); }
+          100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; filter: blur(8px) brightness(1); }
         }
       `}</style>
     </section>

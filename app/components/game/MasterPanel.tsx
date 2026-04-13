@@ -157,21 +157,20 @@ export default function MasterPanel() {
             >
               {(() => {
                 const options = [];
-                const maxLevel = Math.max(100, masterDuel.currentLevel);
-                // 1~100까지는 기존의 듬성듬성한 간격 유지
-                const baseLevels = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 100];
-                baseLevels.forEach(lv => { if (lv <= maxLevel) options.push(lv); });
-
-                // 무한 생성 체감 (5단위 촘촘한 레벨업)
-                if (maxLevel > 100) {
-                  for (let i = 105; i <= maxLevel; i += 5) {
-                    options.push(i);
-                  }
+                const currentMax = masterDuel.currentLevel;
+                
+                // Show all levels up to current max or 100
+                const displayLimit = Math.min(100, currentMax);
+                for (let i = 1; i <= displayLimit; i++) {
+                  options.push(i);
                 }
                 
-                // 현재 도달한 최고 레벨이 목록에 없으면 추가
-                if (!options.includes(masterDuel.currentLevel)) {
-                  options.push(masterDuel.currentLevel);
+                // For levels beyond 100, show in 5-level increments
+                if (currentMax > 100) {
+                  for (let i = 105; i <= currentMax; i += 5) {
+                    options.push(i);
+                  }
+                  if (!options.includes(currentMax)) options.push(currentMax);
                 }
 
                 return Array.from(new Set(options)).sort((a, b) => a - b).map(lv => (

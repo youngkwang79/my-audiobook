@@ -81,6 +81,15 @@ export default function ForgePanel(props: Props) {
     return FORGE_ITEMS.filter(item => item.realm === selectedRealm);
   }, [selectedRealm]);
 
+  const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+  const canAccessRealm = (realm: string) => {
+    if (realm === "회복제") return true;
+    const playerIdx = realms.indexOf(game.realm);
+    const targetIdx = realms.indexOf(realm);
+    if (targetIdx === -1) return false;
+    return targetIdx <= playerIdx + 1;
+  };
+
   const setOption = (REALM_SET_OPTIONS as any)[selectedRealm];
 
   const handleBuy = (itemId: WeaponId) => {
@@ -169,25 +178,34 @@ export default function ForgePanel(props: Props) {
         }}
         className="hide-scrollbar"
       >
-        {REALM_ORDER.map((realm) => (
-          <button
-            key={realm}
-            onClick={() => setSelectedRealm(realm)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 14,
-              border: selectedRealm === realm ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.1)",
-              background: selectedRealm === realm ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.05)",
-              color: selectedRealm === realm ? "#ffd700" : "#aaa",
-              fontSize: 13,
-              fontWeight: selectedRealm === realm ? "bold" : "normal",
-              cursor: "pointer",
-              whiteSpace: "nowrap"
-            }}
-          >
-            {realm}
-          </button>
-        ))}
+        {REALM_ORDER.map((realm) => {
+          const isLocked = !canAccessRealm(realm);
+          const isSelected = selectedRealm === realm;
+          return (
+            <button
+              key={realm}
+              onClick={() => !isLocked && setSelectedRealm(realm)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 14,
+                border: isSelected ? "1px solid #ffd700" : (isLocked ? "1px solid rgba(255,255,255,0.03)" : "1px solid rgba(255,255,255,0.1)"),
+                background: isSelected ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.05)",
+                color: isSelected ? "#ffd700" : (isLocked ? "#444" : "#aaa"),
+                fontSize: 13,
+                fontWeight: isSelected ? "bold" : "normal",
+                cursor: isLocked ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+                opacity: isLocked ? 0.4 : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 4
+              }}
+            >
+              {isLocked && <span>🔒</span>}
+              {realm}
+            </button>
+          );
+        })}
       </div>
 
       {setOption ? (
