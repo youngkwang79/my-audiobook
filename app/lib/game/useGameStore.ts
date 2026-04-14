@@ -439,8 +439,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         set((s: any) => ({ game: { ...s.game, coins: s.game.coins + r, timingMission: { ...s.game.timingMission, available: false }, activeTab: "training" } }));
       } else {
         // 실제 임무 보상 정산 및 수련장 복귀
-        const r = p.gold || (1000 * Math.pow(2.2, p.maxStage || 0) * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1));
-        const repGain = p.rep || (50 * ((p.maxStage || 0) + 1));
+        const actualStage = Math.min(15, p.maxStage || 0);
+        const r = p.gold || (1000 * Math.pow(1.4, actualStage) * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1));
+        const repGain = p.rep || (50 + actualStage * 30);
         
         let newConsumables = { ...game.consumables };
         if (p.item) {

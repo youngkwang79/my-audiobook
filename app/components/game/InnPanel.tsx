@@ -416,9 +416,9 @@ export default function InnPanel({
     
     if (success || finalScore > 0) {
       // 승리 보상 로직 (스테이지 클리어 혹은 점수 획득 시)
-      const actualStage = Math.max(1, clearedStage);
-      const gReward = Math.floor(1000 * Math.pow(1.8, actualStage) * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1));
-      const rReward = 50 * (actualStage + 1);
+      const actualStage = Math.min(15, Math.max(1, clearedStage)); // 보상 상한선 설정
+      const gReward = Math.floor(1000 * Math.pow(1.35, actualStage) * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1));
+      const rReward = Math.floor(50 + actualStage * 30);
       const items = ["체력 환약", "내력 환약", "청심단", "보명단"];
       const randomItem = Math.random() < 0.3 ? items[Math.floor(Math.random() * items.length)] : null;
       
