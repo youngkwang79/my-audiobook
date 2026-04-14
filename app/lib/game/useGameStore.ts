@@ -424,6 +424,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         lastOfflineRewards: { 
           gold: eGold, 
           exp: eExp, 
+          points: eGold, // 명성 포인트용으로 금화와 동일하게 설정 (UI 호환성)
           duration: Math.round(offSec / 36) / 100 // 시간(h) 단위로 변환 표시
         } 
       } 
