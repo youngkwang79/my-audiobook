@@ -1231,13 +1231,13 @@ export default function InnPanel({
             ...statBox, 
             cursor: "pointer", 
             position: "relative",
-            background: "rgba(255,215,0,0.08)",
-            boxShadow: "0 0 15px rgba(255,215,0,0.1)",
+            background: "linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.4) 100%)",
+            boxShadow: "0 0 20px rgba(255,215,0,0.2), inset 0 0 10px rgba(255,215,0,0.1)",
             animation: "pulseGlow 2s infinite ease-in-out",
-            border: "1px solid rgba(255,215,0,0.3)"
+            border: "2px solid #ffd700"
           }}
         >
-          <div style={statLabel}>내 등급 (상세 혜택 탭)</div>
+          <div style={{ ...statLabel, color: "#ffd700", fontWeight: 900 }}>내 등급 (상세 혜택 탭)</div>
           <div style={{ ...statValue, fontSize: 16, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             {duel.tier} <span style={{ fontSize: 12, opacity: 0.7 }}>({duel.rating}점)</span>
           </div>
