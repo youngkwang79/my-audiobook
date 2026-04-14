@@ -19,7 +19,18 @@ import OfflineRewardPopup from "./OfflineRewardPopup";
 export default function GameShell() {
   const { game, markInnEntryHandled, syncFromCloud, syncToCloud } = useGameStore() as any;
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("training");
+
+  useEffect(() => {
+    if (game.unlockEffectText) {
+      const timer = setTimeout(() => {
+        useGameStore.setState((s: any) => ({ game: { ...s.game, unlockEffectText: null } }));
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [game.unlockEffectText]);
+
+  const activeTab = game.activeTab || "training";
+  const setActiveTab = (tab: string) => useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: tab } }));
   const [mounted, setMounted] = useState(false);
   const [showFogWarp, setShowFogWarp] = useState(false);
   const handledWarpRef = useRef(0);
@@ -55,6 +66,8 @@ export default function GameShell() {
 
     const moveTimer = setTimeout(() => {
       setActiveTab("inn");
+      // 핸들링 완료를 서버/스토어에 알림
+      markInnEntryHandled();
     }, 4500);
 
     const hideTimer = setTimeout(() => {
@@ -111,7 +124,7 @@ export default function GameShell() {
         )}
         <div style={{ position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {activeTab === "training" && <TrainingPanel />}
-          {activeTab === "inn" && <InnPanel onRewardClose={() => setActiveTab("training")} />}
+          {activeTab === "inn" && <InnPanel />}
           {activeTab === "master" && <MasterPanel />}
           {activeTab === "library" && <LibraryPanel />}
           {activeTab === "forge" && <ForgePanel />}
@@ -311,6 +324,67 @@ export default function GameShell() {
               90% { opacity: 1; transform: scale(1) translateY(0); }
               100% { opacity: 0; transform: scale(1.04) translateY(-8px); }
             }
+          `}</style>
+        </div>
+      )}
+
+      {game.unlockEffectText && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            animation: "popupFadeIn 0.4s ease-out forwards",
+            cursor: "pointer"
+          }}
+          onClick={() => useGameStore.setState((s: any) => ({ game: { ...s.game, unlockEffectText: null } }))}
+        >
+          <div
+            style={{
+              padding: "40px 30px",
+              borderRadius: "24px",
+              background: "linear-gradient(145deg, #1a1a1f 0%, #0a0a0c 100%)",
+              border: "2px solid #ffd700",
+              boxShadow: "0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(255, 215, 0, 0.1)",
+              textAlign: "center",
+              width: "85%",
+              maxWidth: "340px",
+              animation: "contentScaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards",
+            }}
+          >
+            <div style={{ fontSize: 44, marginBottom: 20, filter: "drop-shadow(0 0 10px #ffd700)" }}>✨</div>
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 900,
+                color: "#ffd700",
+                textShadow: "0 2px 10px rgba(0,0,0,1)",
+                whiteSpace: "pre-line",
+                lineHeight: 1.5,
+                marginBottom: 20,
+              }}
+            >
+              {game.unlockEffectText}
+            </div>
+            <div
+              style={{
+                height: "3px",
+                background: "linear-gradient(90deg, transparent, #ffd700, transparent)",
+                margin: "15px 0",
+              }}
+            />
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600 }}>
+              기연(奇緣)을 얻으셨습니다!
+            </div>
+          </div>
+          <style jsx>{`
+            @keyframes popupFadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes contentScaleUp { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
           `}</style>
         </div>
       )}

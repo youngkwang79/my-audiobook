@@ -127,9 +127,11 @@ export default function MasterPanel() {
     );
   }
 
+  const totalMaxHp = useGameStore.getState().getTotalHp();
+  const totalMaxMp = useGameStore.getState().getTotalMp();
   const hpPercent = (masterDuel.rivalHp / masterDuel.rivalMaxHp) * 100;
-  const playerHpPercent = (game.hp / game.maxHp) * 100;
-  const playerMpPercent = (game.mp / game.maxMp) * 100;
+  const playerHpPercent = (game.hp / totalMaxHp) * 100;
+  const playerMpPercent = (game.mp / totalMaxMp) * 100;
 
   // Recommended Combat Power
   const recommendedCP = 500 * Math.pow(1.8, masterDuel.selectedLevel - 1);
@@ -258,10 +260,24 @@ export default function MasterPanel() {
             0% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
             25% { transform: translate(-5px, 5px); filter: brightness(1.5) sepia(1) hue-rotate(-50deg); }
             50% { transform: translate(5px, -5px); filter: brightness(2) sepia(1) hue-rotate(-50deg); }
-            75% { transform: translate(-5px, -5px); filter: brightness(1.5) sepia(1) hue-rotate(-50deg); }
             100% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
           }
+          @keyframes screenBerserkFlash {
+            0% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
+            50% { box-shadow: inset 0 0 80px rgba(255,0,0,0.4); }
+            100% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
+          }
         `}</style>
+
+        {/* Berserk Screen Overlay */}
+        {masterDuel.isBerserk && (
+          <div style={{
+            position: "absolute", inset: 0, 
+            animation: "screenBerserkFlash 0.6s infinite",
+            pointerEvents: "none", zIndex: 15,
+            border: "2px solid rgba(255,0,0,0.3)"
+          }} />
+        )}
 
         {/* Dynamic Background */}
         <div style={{
@@ -340,7 +356,7 @@ export default function MasterPanel() {
                 position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", 
                 fontSize: 10, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000", width: "100%", textAlign: "center", pointerEvents: "none"
               }}>
-                {Math.floor(game.hp).toLocaleString()} / {game.maxHp.toLocaleString()}
+                {Math.floor(game.hp).toLocaleString()} / {Math.floor(totalMaxHp).toLocaleString()}
               </div>
             </div>
             <div style={{ position: "relative" }}>
@@ -351,7 +367,7 @@ export default function MasterPanel() {
                 position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", 
                 fontSize: 8, fontWeight: 900, color: "#fff", textShadow: "1px 1px 1px #000", width: "100%", textAlign: "center", pointerEvents: "none"
               }}>
-                {Math.floor(game.mp).toLocaleString()} / {game.maxMp.toLocaleString()}
+                {Math.floor(game.mp).toLocaleString()} / {Math.floor(totalMaxMp).toLocaleString()}
               </div>
             </div>
           </div>
@@ -541,30 +557,95 @@ export default function MasterPanel() {
         )}
       </div>
 
-      {/* Result Popup */}
+      {/* Premium Result Popup */}
       {masterDuel.lastWinReward && (
-        <div style={{
-          position: "absolute",
-          top: "40%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 5000,
-          pointerEvents: "none",
-          textAlign: "center",
-          animation: "buffImpact 0.8s ease-out forwards",
-        }}>
-          <div style={{
-            fontSize: "28px",
-            fontWeight: "950",
-            color: "#fff",
-            fontStyle: "italic",
-            textShadow: "0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 40px #ff0000",
-            letterSpacing: "-1px",
-            WebkitTextStroke: "1px #ffd700",
-            whiteSpace: "pre-wrap",
-            lineHeight: 1.2
-          }}>
-            {masterDuel.lastWinReward}
+        <div 
+          onClick={() => setSelectedMasterLevel(masterDuel.selectedLevel)} // Dummy click to clear
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            backdropFilter: "blur(4px)",
+            padding: 20
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              background: "linear-gradient(135deg, #1a1a1c 0%, #0a0a0b 100%)",
+              border: "2px solid #ffd700",
+              borderRadius: "24px",
+              padding: "30px 20px",
+              textAlign: "center",
+              boxShadow: "0 0 30px rgba(255,215,0,0.3), inset 0 0 20px rgba(255,215,0,0.1)",
+              position: "relative",
+              animation: "buffImpact 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
+            }}
+          >
+            {/* Decoration */}
+            <div style={{ position: "absolute", top: -15, left: "50%", transform: "translateX(-50%)", background: "#ffd700", color: "#000", padding: "4px 20px", borderRadius: "10px", fontSize: 14, fontWeight: 900, boxShadow: "0 4px 10px rgba(0,0,0,0.5)" }}>
+              악적 처단 완료
+            </div>
+
+            <div style={{ marginTop: 15, marginBottom: 25 }}>
+              <div style={{ fontSize: 18, color: "#ffd700", fontWeight: 900, textShadow: "0 0 10px rgba(255,215,0,0.5)", marginBottom: 20 }}>
+                {masterDuel.rivalName} <span style={{ fontSize: 14, color: "#ff4d4d" }}>Lv.{masterDuel.selectedLevel}</span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+                {/* Reward Item (Accessory) */}
+                <div style={{ width: "100%", background: "rgba(255,215,0,0.05)", borderRadius: "16px", padding: "12px", border: "1px solid rgba(255,215,0,0.2)" }}>
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>획득 전리품</div>
+                  <div style={{ fontSize: 28, marginBottom: 4 }}>
+                    {masterDuel.lastWinReward.includes("목걸이") ? "📿" : (masterDuel.lastWinReward.includes("반지") ? "💍" : "💎")}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: "#fff" }}>
+                    {masterDuel.lastWinReward.split("\n")[0]}
+                  </div>
+                </div>
+
+                {/* Numeric Rewards */}
+                <div style={{ display: "flex", gap: 10, width: "100%" }}>
+                  <div style={{ flex: 1, background: "rgba(0,0,0,0.3)", borderRadius: "12px", padding: "10px", border: "1px solid #333" }}>
+                    <div style={{ fontSize: 10, color: "#ffd700", marginBottom: 4 }}>금화 / 명성</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>
+                      +{masterDuel.lastWinReward.split("\n")[1]?.replace("금화 +", "") || "0"}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, background: "rgba(0,0,0,0.3)", borderRadius: "12px", padding: "10px", border: "1px solid #333" }}>
+                    <div style={{ fontSize: 10, color: "#4dff4d", marginBottom: 4 }}>수련 정진</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>
+                      +{masterDuel.lastWinReward.split("\n")[2]?.replace("경험치 +", "") || "0"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => useGameStore.setState(s => ({ game: { ...s.game, masterDuel: { ...s.game.masterDuel, lastWinReward: undefined } } }))}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: "linear-gradient(180deg, #ffd700, #b8860b)",
+                border: "none",
+                borderRadius: "14px",
+                color: "#000",
+                fontSize: 16,
+                fontWeight: 900,
+                cursor: "pointer",
+                boxShadow: "0 5px 15px rgba(255,215,0,0.3)"
+              }}
+            >
+              확인
+            </button>
+            <div style={{ fontSize: 10, color: "#555", marginTop: 12 }}>팝업 바깥쪽을 누르면 닫힙니다.</div>
           </div>
         </div>
       )}

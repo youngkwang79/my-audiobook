@@ -186,6 +186,7 @@ export type TimingMissionState = {
   selectedGameType?: MiniGameType;
   highScores: Record<string, number>;
   lastScores: Record<string, number>;
+  isPractice?: boolean;
 };
 
 export type DuelState = {
@@ -228,6 +229,7 @@ export type GameSaveData = {
 
   hero: HeroProfile;
   hasStarted: boolean;
+  upgradeLevels: Record<string, number>;
 
   faction: FactionType;
   factionLocked: boolean;
@@ -297,6 +299,7 @@ export type GameSaveData = {
     duration: number; // in hours
   } | null;
   nextRivalTime: number; 
+  innHighScore: number; // 객잔 위명 점수
   nextRivalKills: number; 
 
   // New Progression & Upgrade System
@@ -314,4 +317,5 @@ export type GameSaveData = {
     autoGain: number;  // New: Increases passive gain
     offlineLimit: number; // New: Increases offline cap (hours)
   };
+  activeTab: TabType;
 };

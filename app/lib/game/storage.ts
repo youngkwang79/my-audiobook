@@ -22,6 +22,9 @@ export const defaultGameData: GameSaveData = {
     height: 175,
   },
   hasStarted: false,
+  upgradeLevels: {
+    hpRec: 0, mpRec: 0, atk: 0, def: 0, critRate: 0, critDmg: 0, eva: 0, luck: 0, autoGain: 0, offlineLimit: 0
+  },
 
   faction: null,
   factionLocked: false,
@@ -30,7 +33,7 @@ export const defaultGameData: GameSaveData = {
 
   exp: 0,
   touches: 0,
-  coins: 0,
+  coins: 10000,
   hasBreakthrough: false,
   coinDrops: [],
   baseAttack: 10,
@@ -53,8 +56,8 @@ export const defaultGameData: GameSaveData = {
   equippedGear: defaultEquippedGear,
 
   learnedSkills: [],
-  dummyHp: 110,
-  maxDummyHp: 110,
+  dummyHp: 1000,
+  maxDummyHp: 1000,
   totalDummyKills: 0,
   dummyKills: 0,
   questTarget: 10,
@@ -67,6 +70,8 @@ export const defaultGameData: GameSaveData = {
   buffTimeLeft: 0,
   lastReward: null,
   unlockEffectText: null,
+  activeTab: "training",
+  innHighScore: 0,
 
   timingMission: {
     unlocked: false,
@@ -87,8 +92,8 @@ export const defaultGameData: GameSaveData = {
     lastScores: {},
   },
   duel: {
-    rating: 1000,
-    tier: "입문",
+    rating: 100,
+    tier: "무명소졸",
     winStreak: 0,
     bestWinStreak: 0,
     totalWins: 0,
@@ -205,9 +210,26 @@ export function loadGame(): GameSaveData {
     if (kills >= 200 && !repairedTabs.includes("library")) repairedTabs.push("library");
     if (kills >= 300 && !repairedTabs.includes("inn")) repairedTabs.push("inn");
 
+    // Migration: derive upgradeLevels from statUpgrades if missing
+    const levels = v12Data.upgradeLevels || {};
+    const stats = v12Data.statUpgrades || {};
+    const keys = ["hpRec", "mpRec", "atk", "def", "critRate", "critDmg", "eva", "luck", "autoGain", "offlineLimit"];
+    keys.forEach(k => {
+      if (levels[k] === undefined) {
+        if (["luck", "autoGain", "offlineLimit"].includes(k)) {
+          levels[k] = stats[k] || 0;
+        } else {
+          // Derive level from value (atk: 250 per unit, etc.)
+          const unit = k === "hpRec" ? 2500 : (k === "mpRec" ? 1000 : 250);
+          levels[k] = Math.floor((stats[k] || 0) / unit);
+        }
+      }
+    });
+
     return {
       ...defaultGameData,
       ...v12Data,
+      upgradeLevels: levels,
       hero: {
         ...defaultGameData.hero,
         ...(v12Data.hero ?? {}),

@@ -803,14 +803,14 @@ export const SYNERGY_SETS: Record<string, { label: string, description: string }
 };
 
 export function rollTierAndOptions(item: any, level: number, luck: number = 0) {
-  const luckBonus = luck * 0.2; // 기연 1포인트당 가중치 0.2% 증가
+  const luckBonus = luck * 0.01; // 기연 1포인트당 가중치 0.01% 증가
   const rand = Math.random() * 100;
   let tier: ItemTier = "평범";
   let optionCount = 0;
 
   if (rand < (5 + luckBonus)) { tier = "신기"; optionCount = 3; }
-  else if (rand < (20 + luckBonus * 2)) { tier = "보구"; optionCount = 2; }
-  else if (rand < (50 + luckBonus * 4)) { tier = "명품"; optionCount = 1; }
+  else if (rand < (20 + luckBonus * 1.5)) { tier = "보구"; optionCount = 2; }
+  else if (rand < (50 + luckBonus * 2)) { tier = "명품"; optionCount = 1; }
 
   const options: RandomOption[] = [];
   const pool = [...RANDOM_OPTION_POOL];

@@ -1,4 +1,4 @@
-  "use client";
+"use client";
   import { useState, useEffect, useRef } from "react";
   import { useGameStore, REALM_SETTINGS } from "@/app/lib/game/useGameStore";
   import { FACTIONS } from "@/app/lib/game/factions";
@@ -29,14 +29,6 @@ const [lastTouchTime, setLastTouchTime] = useState(Date.now());
 const [hitEffects, setHitEffects] = useState<{ id: number; x: number; y: number, type: 'slash' | 'blue-slash' | 'flash' }[]>([]);
   const [textStrikes, setTextStrikes] = useState<{ id: any; char: string; x: number; y: number; groupId: number }[]>([]);
 
-useEffect(() => {
-  if (game.unlockEffectText) {
-    const timer = setTimeout(() => {
-      useGameStore.setState((s: any) => ({ game: { ...s.game, unlockEffectText: null } }));
-    }, 5000);
-    return () => clearTimeout(timer);
-  }
-}, [game.unlockEffectText]);
 
 const dismissedRealmRef = useRef<string | null>(null);
 const dismissedStarRef = useRef<number | null>(null);
@@ -420,7 +412,7 @@ const isTrainingStatReward =
           gap: "0px",
           width: "100%",
           position: "relative",
-          alignItems: "center",
+          alignItems: "center"
         }}
       >
 

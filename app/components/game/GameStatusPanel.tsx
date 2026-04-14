@@ -16,7 +16,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
     exp: Math.floor(game?.exp ?? 0),
     touches: Math.floor(game?.touches ?? 0),
     coins: Math.floor(game?.coins ?? 0),
-    reputation: Math.floor(game?.points ?? 0),
+    reputation: Math.floor(game?.reputation ?? 0),
     realm: game?.realm ?? "필부",
     faction: game?.faction ?? "무소속",
     hp: game?.hp ?? 150,

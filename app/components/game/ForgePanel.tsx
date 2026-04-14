@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FORGE_ITEMS, REALM_SET_OPTIONS } from "@/app/lib/game/items";
+import { FORGE_ITEMS, REALM_SET_OPTIONS, rollTierAndOptions } from "@/app/lib/game/items";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 import type { WeaponId, ConsumableId } from "@/app/lib/game/types";
 
@@ -76,6 +76,7 @@ export default function ForgePanel(props: Props) {
   const ownedIds = useMemo(() => game.ownedWeapons.map((item) => item.id), [game.ownedWeapons]);
 
   const [selectedRealm, setSelectedRealm] = useState("회복제");
+  const [purchaseEffect, setPurchaseEffect] = useState<{ name: string; icon: string } | null>(null);
 
   const filteredItems = useMemo(() => {
     return FORGE_ITEMS.filter(item => item.realm === selectedRealm);
@@ -95,7 +96,6 @@ export default function ForgePanel(props: Props) {
   const handleBuy = (itemId: WeaponId) => {
     const item = FORGE_ITEMS.find((gear) => gear.id === itemId);
     if (!item) return;
-    if (ownedIds.includes(item.id)) return;
     if (currentCoins < item.price) return;
 
     if (props.onBuy) {
@@ -103,8 +103,19 @@ export default function ForgePanel(props: Props) {
       return;
     }
 
+    const realmIdx = realms.indexOf(item.realm as any);
+    const rolledItem = rollTierAndOptions(
+      { ...item, id: `${item.id}_${Date.now()}` }, 
+      realmIdx !== -1 ? realmIdx : 1, 
+      game.upgradeLevels?.luck || 0
+    );
+
     addCoins(-item.price);
-    addWeapon(item);
+    addWeapon(rolledItem);
+
+    // 구매 이펙트 트리거
+    setPurchaseEffect({ name: rolledItem.name, icon: rolledItem.icon ?? "⚔️" });
+    setTimeout(() => setPurchaseEffect(null), 1800);
   };
 
   return (
@@ -124,6 +135,31 @@ export default function ForgePanel(props: Props) {
         boxSizing: "border-box"
       }}
     >
+      {/* 구매 성공 이펙트 오버레이 */}
+      {purchaseEffect && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 100,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(4px)",
+          animation: "fadeIn 0.2s ease-out forwards"
+        }}>
+          <div style={{
+            textAlign: "center",
+            animation: "purchasedScaleUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
+          }}>
+            <div style={{ fontSize: 60, filter: "drop-shadow(0 0 20px #ffd700)", marginBottom: 15 }}>{purchaseEffect.icon}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#ffd700", textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>장비 획득 성공!</div>
+            <div style={{ fontSize: 16, color: "#fff", marginTop: 5, opacity: 0.9 }}>[{purchaseEffect.name}]</div>
+            <div className="shine-line" />
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div style={{ fontSize: 18, fontWeight: 900, color: "#f5e6b3" }}>대장간</div>
         <div
@@ -327,6 +363,46 @@ export default function ForgePanel(props: Props) {
       </div>
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes purchasedScaleUp {
+          0% { transform: scale(0.5); opacity: 0; }
+          70% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .shine-line {
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #ffd700, transparent);
+          margin-top: 15px;
+          position: relative;
+          overflow: hidden;
+        }
+        .shine-line::after {
+          content: '';
+          position: absolute;
+          top: 0; left: -100%; width: 100%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+          animation: shineMove 1.5s infinite;
+        }
+        @keyframes shineMove {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+
+        button:active {
+          transform: scale(0.95);
+          transition: transform 0.1s;
+        }
+        
+        .buy-btn-pulse {
+          animation: btnPulse 2s infinite;
+        }
+        @keyframes btnPulse {
+          0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        }
       `}</style>
     </section>
   );
