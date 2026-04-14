@@ -119,6 +119,7 @@ export default function InventoryPanel(props: Props) {
     if (swipeOffset > 100) {
       if (confirm("정말판매하시겠습니까?")) {
         sellItem(swipeGearId);
+        setPopupItem(null);
       }
     }
     setSwipeGearId(null);
