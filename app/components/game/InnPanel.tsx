@@ -1238,9 +1238,8 @@ export default function InnPanel({
           }}
         >
           <div style={statLabel}>내 등급 (상세 혜택 탭)</div>
-          <div style={{ ...statValue, color: "#ffd700", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ ...statValue, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             {duel.tier} <span style={{ fontSize: 10, opacity: 0.7 }}>({duel.rating}점)</span>
-            <span style={{ fontSize: 12 }}>ℹ️</span>
           </div>
         </div>
         <div style={statBox}>
