@@ -544,15 +544,6 @@ export default function InnPanel({
     // We now always show the tutorial/explanation first to give the player a chance to prepare
   };
 
-  // Auto-start mission explanation when arriving at Inn with a pending mission
-  useEffect(() => {
-    if (game.timingMission.available && !isPlaying && !showTutorial && !isTransitioning && !isSuccessPopup && !isFailPopup) {
-      if (!finishLockRef.current) {
-        startMission();
-      }
-    }
-  }, [game.timingMission.available, isPlaying, showTutorial]);
-
   // --- GAME LOOPS ---
 
   useEffect(() => {
