@@ -83,8 +83,8 @@ export default function MasterPanel() {
 
   useEffect(() => {
     if (masterDuel.lastWinReward) {
-      // 승리/패배 팝업 모두 3초 유지 후 자동 소멸
-      const duration = 3000;
+      // 승리/패배 팝업 모두 4초 유지 후 자동 소멸
+      const duration = 4000;
 
       const timer = setTimeout(() => {
         useGameStore.setState(s => ({
@@ -245,11 +245,9 @@ export default function MasterPanel() {
             0% { opacity: 0; transform: translateX(20px) scale(0.9); filter: brightness(0) blur(10px); }
             100% { opacity: 1; transform: translateX(0) scale(1); filter: brightness(1) blur(0); }
           }
-          @keyframes buffImpact {
-            0% { transform: translate(-50%, -50%) scale(2); opacity: 0; filter: blur(10px); }
-            50% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: blur(0); }
-            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: blur(0); }
-            100% { transform: translate(-50%, -60%) scale(1.1); opacity: 0; filter: blur(5px); }
+          @keyframes masterPopupEnter {
+            0% { transform: scale(0.7); opacity: 0; filter: blur(10px); }
+            100% { transform: scale(1); opacity: 1; filter: blur(0); }
           }
           @keyframes duelBgPan {
             0% { background-position: 0% 50%; }
@@ -585,7 +583,7 @@ export default function MasterPanel() {
               textAlign: "center",
               boxShadow: "0 0 30px rgba(255,215,0,0.3), inset 0 0 20px rgba(255,215,0,0.1)",
               position: "relative",
-              animation: "buffImpact 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
+              animation: "masterPopupEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
             }}
           >
             {/* Decoration */}
