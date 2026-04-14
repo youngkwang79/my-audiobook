@@ -98,6 +98,19 @@ function getMeihuaRank(s: number) {
   return "초출강호";
 }
 
+const DUEL_TIER_DETAILS = [
+  { name: "천인합일", min: 60000, desc: "공격+50%, 금화+100%, 경험치+100%, 치댐+300%, 치확+15%" },
+  { name: "신화경", min: 30000, desc: "공격+35%, 금화+80%, 경험치+80%, 치댐+200%, 치확+10%" },
+  { name: "생사경", min: 15000, desc: "공격+25%, 금화+60%, 경험치+60%, 치댐+150%, 치확+8%" },
+  { name: "현경", min: 8000, desc: "공격+20%, 금화+50%, 경험치+50%, 치댐+100%, 치확+5%" },
+  { name: "화경", min: 4000, desc: "공격+15%, 금화+35%, 경험치+35%, 치댐+60%, 치확+3%" },
+  { name: "초절정", min: 2000, desc: "공격+10%, 금화+25%, 경험치+25%, 치댐+40%, 치확+2%" },
+  { name: "절정고수", min: 1000, desc: "공격+5%, 금화+20%, 경험치+20%, 치댐+20%" },
+  { name: "일류고수", min: 500, desc: "금화+15%, 경험치+15%, 치댐+10%" },
+  { name: "초출강호", min: 200, desc: "금화+10%, 경험치+5%" },
+  { name: "무명소졸", min: 0, desc: "아직 알려지지 않은 이름입니다." },
+];
+
 export default function InnPanel({
   onRewardClose,
 }: { onRewardClose?: () => void } = {}) {
@@ -148,6 +161,7 @@ export default function InnPanel({
   const [pulseTargets, setPulseTargets] = useState<{ id: number; x: number; y: number; progress: number }[]>([]);
   const [failReason, setFailReason] = useState("");
   const [localFailCount, setLocalFailCount] = useState(0);
+  const [showTierList, setShowTierList] = useState(false);
   const [laneFlash, setLaneFlash] = useState<number | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialTarget, setTutorialTarget] = useState<MiniGameType>("breath");
@@ -1177,6 +1191,16 @@ export default function InnPanel({
           50% { transform: translateY(-10px); }
           100% { transform: translateY(0); }
         }
+        @keyframes pulseGlow {
+          0% { box-shadow: 0 0 5px rgba(255,215,0,0.1); }
+          50% { box-shadow: 0 0 20px rgba(255,215,0,0.3); border-color: rgba(255,215,0,0.6); }
+          100% { box-shadow: 0 0 5px rgba(255,215,0,0.1); }
+        }
+        @keyframes borderBlink {
+          0% { border-color: rgba(255,215,0,0.2); }
+          50% { border-color: rgba(255,215,0,1); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
+          100% { border-color: rgba(255,215,0,0.2); }
+        }
         .duel-bg {
           position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
@@ -1201,9 +1225,23 @@ export default function InnPanel({
       </div>
 
       <div style={statsGrid}>
-        <div style={statBox}>
-          <div style={statLabel}>내 등급</div>
-          <div style={{ ...statValue, color: "#ffd700" }}>{duel.tier} ({duel.rating})</div>
+        <div 
+          onClick={() => setShowTierList(true)}
+          style={{ 
+            ...statBox, 
+            cursor: "pointer", 
+            position: "relative",
+            background: "rgba(255,215,0,0.08)",
+            boxShadow: "0 0 15px rgba(255,215,0,0.1)",
+            animation: "pulseGlow 2s infinite ease-in-out",
+            border: "1px solid rgba(255,215,0,0.3)"
+          }}
+        >
+          <div style={statLabel}>내 등급 (상세 혜택 탭)</div>
+          <div style={{ ...statValue, color: "#ffd700", display: "flex", alignItems: "center", gap: 6 }}>
+            {duel.tier} <span style={{ fontSize: 10, opacity: 0.7 }}>({duel.rating}점)</span>
+            <span style={{ fontSize: 12 }}>ℹ️</span>
+          </div>
         </div>
         <div style={statBox}>
           <div style={statLabel}>이번 상대</div>
@@ -1872,6 +1910,64 @@ export default function InnPanel({
           100% { transform: translate(-50%, -50%) scale(4); opacity: 0; filter: blur(10px); }
         }
       `}</style>
+      {/* TIER LIST MODAL */}
+      {showTierList && (
+        <div style={{
+          position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10000, 
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }} onClick={() => setShowTierList(false)}>
+          <div style={{
+            width: "100%", maxWidth: 360, background: "linear-gradient(135deg, #1a1a24 0%, #0d0d12 100%)", 
+            borderRadius: 24, padding: 24, border: "1px solid rgba(255,215,0,0.3)", 
+            maxHeight: "80%", overflow: "hidden", display: "flex", flexDirection: "column",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ color: "#ffd700", margin: 0, fontWeight: 900 }}>객잔 등급별 명예 혜택</h3>
+              <button 
+                onClick={() => setShowTierList(false)} 
+                style={{ background: "rgba(255,255,255,0.05)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer" }}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div style={{ overflowY: "auto", flex: 1, paddingRight: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+              {DUEL_TIER_DETAILS.map((t, i) => {
+                const isCurrent = duel.tier === t.name;
+                return (
+                  <div key={i} style={{
+                    padding: "14px 16px", borderRadius: 16,
+                    background: isCurrent ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.03)",
+                    border: isCurrent ? "2px solid #ffd700" : "1px solid rgba(255,255,255,0.08)",
+                    animation: isCurrent ? "borderBlink 1.5s infinite" : "none",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 900, color: isCurrent ? "#ffd700" : "#eee", fontSize: 16 }}>
+                        {isCurrent && "⭐ "}{t.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: isCurrent ? "#ffd700" : "#666", fontWeight: "bold" }}>
+                        {t.min.toLocaleString()}점+
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: isCurrent ? "#fff" : "#aaa", lineHeight: 1.5 }}>
+                      {t.desc}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <button 
+              onClick={() => setShowTierList(false)}
+              style={{ ...primaryButton, width: "100%", padding: 14, marginTop: 20, fontSize: 16 }}
+            >
+              성취를 위해 정진하기
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

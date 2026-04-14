@@ -185,15 +185,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     return Math.floor(baseTotal * (1 + get().getOptionSum("mp_pct") / 100));
   },
   getInnBonus: () => {
-    const s = get().game.innHighScore || 0;
-    if (s >= 50000) return { name: "무림지존", atk: 0.25, gold: 0.5, exp: 0.5, critDmg: 100 };
-    if (s >= 20000) return { name: "천하제일인", atk: 0.15, gold: 0.3, exp: 0.3, critDmg: 50 };
-    if (s >= 10000) return { name: "명동천하", atk: 0.05, gold: 0.2, exp: 0.2, critDmg: 30 };
-    if (s >= 5000) return { name: "전설의 고수", atk: 0, gold: 0.2, exp: 0.1, critDmg: 50 };
-    if (s >= 2500) return { name: "명진일방", atk: 0, gold: 0.15, exp: 0.15, critDmg: 0 };
-    if (s >= 1000) return { name: "객잔의 지배자", atk: 0, gold: 0.2, exp: 0, critDmg: 0 };
-    if (s >= 500) return { name: "초출강호", atk: 0, gold: 0.1, exp: 0, critDmg: 0 };
-    return { name: "무명소졸", atk: 0, gold: 0, exp: 0, critDmg: 0 };
+    const r = get().game.duel.rating || 0;
+    if (r >= 60000) return { name: "천인합일", atk: 0.5, gold: 1.0, exp: 1.0, critDmg: 300, critRate: 15 };
+    if (r >= 30000) return { name: "신화경", atk: 0.35, gold: 0.8, exp: 0.8, critDmg: 200, critRate: 10 };
+    if (r >= 15000) return { name: "생사경", atk: 0.25, gold: 0.6, exp: 0.6, critDmg: 150, critRate: 8 };
+    if (r >= 8000) return { name: "현경", atk: 0.2, gold: 0.5, exp: 0.5, critDmg: 100, critRate: 5 };
+    if (r >= 4000) return { name: "화경", atk: 0.15, gold: 0.35, exp: 0.35, critDmg: 60, critRate: 3 };
+    if (r >= 2000) return { name: "초절정", atk: 0.1, gold: 0.25, exp: 0.25, critDmg: 40, critRate: 2 };
+    if (r >= 1000) return { name: "절정고수", atk: 0.05, gold: 0.2, exp: 0.2, critDmg: 20, critRate: 0 };
+    if (r >= 500) return { name: "일류고수", atk: 0, gold: 0.15, exp: 0.15, critDmg: 10, critRate: 0 };
+    if (r >= 200) return { name: "초출강호", atk: 0, gold: 0.1, exp: 0.05, critDmg: 0, critRate: 0 };
+    return { name: "무명소졸", atk: 0, gold: 0, exp: 0, critDmg: 0, critRate: 0 };
   },
   getTotalCombatPower: () => Math.floor((get().getTotalAttack() * 2 + get().getTotalHp() / 10 + get().getTotalDefense() * 5) * (1 + get().getTotalCritRate() / 100)),
 
