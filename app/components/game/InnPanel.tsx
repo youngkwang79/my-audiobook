@@ -1727,6 +1727,7 @@ export default function InnPanel({
                       />
                     ))}
                   </div>
+                  </div>
                   {puzzleIsProcessing && (
                     <div style={{ position: "absolute", bottom: 15, left: "50%", transform: "translateX(-50%)", fontSize: 14, fontWeight: 900, color: "#ffd700", textShadow: "0 0 10px #000" }}>
                       {puzzleCombo > 1 ? `${puzzleCombo}연쇄 폭발!` : "기맥 공명 중..."}

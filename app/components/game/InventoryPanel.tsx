@@ -26,6 +26,7 @@ const slotMeta: {
   { slot: "robe", label: "도포", icon: "🥋", short: "도포" },
   { slot: "necklace", label: "목걸이", icon: "📿", short: "목걸이" },
   { slot: "ring", label: "반지", icon: "💍", short: "반지" },
+  { slot: "medicine" as any, label: "영약", icon: "🍵", short: "영약" },
 ];
 
 export default function InventoryPanel(props: Props) {
@@ -53,6 +54,9 @@ export default function InventoryPanel(props: Props) {
 
   const selectedItems = ownedWeapons.filter((item) => item.slot === selectedSlot);
   const selectedEquippedId = equippedGear?.[selectedSlot] ?? null;
+
+  const isMedicineSelected = (selectedSlot as any) === "medicine";
+
 
   const resolveEquippedItem = (slot: EquipSlot) =>
     ownedWeapons.find((item) => item.id === equippedGear?.[slot]) ?? null;
@@ -152,7 +156,7 @@ export default function InventoryPanel(props: Props) {
                   key={meta.slot}
                   onClick={() => setSelectedSlot(meta.slot)}
                   style={{
-    borderRadius: 12,
+                    borderRadius: 12,
                     border: active
                       ? "1px solid rgba(255,215,120,0.9)"
                       : "1px solid rgba(255,255,255,0.1)",
@@ -202,7 +206,25 @@ export default function InventoryPanel(props: Props) {
               touchAction: "pan-y"
             }}
           >
-            {selectedItems.length === 0 ? (
+            {isMedicineSelected ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {Object.entries(game.consumables).filter(([_, v]) => (v as number) > 0).map(([id, count]) => (
+                  <div key={id} style={{
+                    borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px"
+                  }}>
+                    <div style={{ fontSize: 24 }}>{getPotionIcon(id)}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffd778" }}>{getPotionName(id)}</div>
+                      <div style={{ fontSize: 11, color: "#aaa" }}>수량: {count}개</div>
+                    </div>
+                  </div>
+                ))}
+                {Object.values(game.consumables).every(v => v === 0) && (
+                  <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
+                )}
+              </div>
+            ) : selectedItems.length === 0 ? (
               <div
                 style={{
                   height: "100%",
@@ -624,8 +646,8 @@ function getPotionIcon(id: string) {
 
 function getPotionName(id: string) {
   const names: any = {
-    hp_small: "HP 회복제(小)", hp_medium: "HP 회복제(中)", hp_large: "HP 회복제(大)",
-    mp_small: "내공 회복제(小)", mp_medium: "내공 회복제(中)", mp_large: "내공 회복제(大)",
+    hp_small: "체력 회복제(小)", hp_medium: "체력환약", hp_large: "체력 회복제(大)",
+    mp_small: "내력 회복제(小)", mp_medium: "내력환약", mp_large: "내공단",
     trance_2: "무아지경(x2)", trance_5: "무아지경(x5)", trance_10: "무아지경(x10)"
   };
   return names[id] || id;

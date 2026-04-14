@@ -312,6 +312,22 @@ export default function CharacterModal({
                 {gearSummary || "없음"}
               </span>
             </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginTop: "4px" }}>
+              <span style={{ color: "#888" }}>보유 영약</span>
+              <span style={{ color: (safeGame.consumables && Object.values(safeGame.consumables).some(v => (v as number) > 0)) ? "#55ffaa" : "#666", textAlign: "right", maxWidth: "60%", fontSize: "10px", lineHeight: 1.2 }}>
+                {safeGame.consumables ? Object.entries(safeGame.consumables).map(([k, v]) => {
+                  if (!v) return null;
+                  const name = k === "hp_small" ? "소형 체력" : 
+                               k === "hp_medium" ? "체력환약" : 
+                               k === "hp_large" ? "대형 체력" : 
+                               k === "mp_small" ? "소형 내력" : 
+                               k === "mp_medium" ? "내력환약" : 
+                               k === "mp_large" ? "대형 내력" : "영약";
+                  return `${name} ${v}개`;
+                }).filter(Boolean).join(" / ") || "없음" : "없음"}
+              </span>
+            </div>
           </div>
         </div>
 
