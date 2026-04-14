@@ -406,12 +406,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get(); const offMs = Date.now() - (game.lastSaveTime || Date.now()); if (offMs < 60000) return;
     const offSec = Math.min(offMs / 1000, 3600 + (game.upgradeLevels.offlineLimit || 0) * 30);
     const lv = game.upgradeLevels.autoGain || 0; 
-    const expB = 1 + lv * 0.05; 
-    const goldB = 1 + lv * 0.05;
+    const expB = 1 + lv * 0.02; 
+    const goldB = 1 + lv * 0.02;
     
-    // 초당 기본 보상: 5 Exp, 3 Gold (경지 배율 및 업그레이드 반영)
-    const eExp = Math.floor((5.0 + lv * 0.1) * expB * offSec); 
-    const eGold = Math.floor((3.0 + lv * 0.1) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
+    // 오프라인 보상 현실화 (플레이 시보다 낮게 책정)
+    const eExp = Math.floor((1.5 + lv * 0.03) * expB * offSec); 
+    const eGold = Math.floor((0.8 + lv * 0.02) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
     
     set((s: any) => ({ 
       game: { 
