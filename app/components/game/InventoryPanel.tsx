@@ -114,14 +114,20 @@ export default function InventoryPanel(props: Props) {
     if (diff > 0) setSwipeOffset(diff); // Only right swipe
   };
 
-  const onGearTouchEnd = (e: React.TouchEvent) => {
+  const onGearTouchEnd = (e: React.TouchEvent, item: OwnedWeapon) => {
     if (!swipeGearId) return;
+    const dist = Math.sqrt(Math.pow(swipeOffset, 2)); // Simple dist
+    
     if (swipeOffset > 100) {
       if (confirm("정말판매하시겠습니까?")) {
         sellItem(swipeGearId);
         setPopupItem(null);
       }
+    } else if (dist < 10) {
+      // It's a tap
+      setPopupItem(item);
     }
+    
     setSwipeGearId(null);
     setSwipeOffset(0);
   };
@@ -348,13 +354,16 @@ export default function InventoryPanel(props: Props) {
                   return (
                     <button
                     key={item.id}
-                    onPointerDown={() => {
-                        // For desktop clicks
-                        setPopupItem(item);
+                    onClick={() => {
+                      // Fallback for desktop
+                      if (swipeOffset < 10) setPopupItem(item);
                     }}
                     onTouchStart={(e) => onGearTouchStart(e, item.id)}
                     onTouchMove={onGearTouchMove}
-                    onTouchEnd={onGearTouchEnd}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onGearTouchEnd(e, item);
+                    }}
                     style={{
                       position: "relative",
                       borderRadius: 12,
