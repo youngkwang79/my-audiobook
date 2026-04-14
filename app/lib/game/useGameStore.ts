@@ -568,10 +568,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 장신구 보상
       const rwd = generateRandomAccessory(game.realm, level, luck); 
       
-      // 금화 및 명성 보상 (레벨에 따라 지수적 성장)
-      const goldGain = Math.floor(5000 * Math.pow(1.8, level - 1));
-      // 경험치 보상 (수련 효율 반영)
-      const expGain = Math.floor(1000 * Math.pow(1.5, level - 1));
+      // 금화 및 명성 보상 (업그레이드 반영)
+      const goldB = 1 + (game.upgradeLevels.autoGain || 0) * 0.05;
+      const goldGain = Math.floor(5000 * Math.pow(1.8, level - 1) * goldB);
+      
+      // 수련도 보상 (수련 효율 반영 및 touches에 합산)
+      const expB = 1 + (game.upgradeLevels.autoGain || 0) * 0.1;
+      const expGain = Math.floor(1000 * Math.pow(1.5, level - 1) * expB);
 
       set((s:any) => ({ 
         game: { 
@@ -579,11 +582,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           coins: s.game.coins + goldGain,
           reputation: (s.game.reputation || 0) + goldGain,
           exp: s.game.exp + expGain,
+          touches: s.game.touches + expGain, // 수련도에 즉시 반영
           ownedWeapons: [...s.game.ownedWeapons, rwd], 
           masterDuel: { 
             ...s.game.masterDuel, 
             isPlaying: false, 
-            lastWinReward: `${rwd.name} 획득!\n금화 +${goldGain.toLocaleString()}\n경험치 +${expGain.toLocaleString()}`, 
+            lastWinReward: `${rwd.name} 획득!\n금화 +${goldGain.toLocaleString()}\n수련도 +${expGain.toLocaleString()}`, 
             currentLevel: s.game.masterDuel.selectedLevel === s.game.masterDuel.currentLevel 
               ? s.game.masterDuel.currentLevel + 1 
               : s.game.masterDuel.currentLevel 
