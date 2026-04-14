@@ -52,11 +52,33 @@ function getDuelTier(rating: number) {
 function getDummyStats(realm: string, star: number) {
   const realms = Object.keys(REALM_SETTINGS);
   const currentRealmIndex = realms.indexOf(realm);
-  let base = 1000; let atkBase = 10;
-  if (currentRealmIndex !== -1) { base = REALM_SETTINGS[realm].dummyHp; atkBase = 10 * Math.pow(2, currentRealmIndex); }
-  else if (realm.startsWith("환골탈퇴")) { const level = parseInt(realm.split(" ")[1]) || 1; base = REALM_SETTINGS["천인합일"].dummyHp * Math.pow(2.5, level); atkBase = 10 * Math.pow(2, 10) * Math.pow(1.5, level); }
-  const hp = Math.floor(base * Math.pow(1.5, star - 1));
-  return { hp, atk: Math.floor(atkBase * (1 + star * 0.2)) };
+  
+  let baseHp = 1000; 
+  let atkBase = 10;
+  let defBase = 0;
+  let evaBase = 0;
+
+  if (currentRealmIndex !== -1) { 
+    const settings = REALM_SETTINGS[realm];
+    baseHp = settings.dummyHp; 
+    atkBase = 10 * Math.pow(2, currentRealmIndex); 
+    // 방어력: 경지가 오를수록 기하급수적으로 상승 (전투력 인플레이션 대비)
+    defBase = currentRealmIndex > 0 ? 50 * Math.pow(7, currentRealmIndex - 1) : 0;
+    // 회피율: 경지당 1.2%, 성당 0.2% 추가
+    evaBase = currentRealmIndex * 1.2;
+  } else if (realm.startsWith("환골탈퇴")) { 
+    const level = parseInt(realm.split(" ")[1]) || 1; 
+    baseHp = REALM_SETTINGS["천인합일"].dummyHp * Math.pow(2.5, level); 
+    atkBase = 10 * Math.pow(2, 10) * Math.pow(1.5, level); 
+    defBase = 50 * Math.pow(7, 9) * Math.pow(1.8, level);
+    evaBase = 12 + level * 0.5;
+  }
+
+  const hp = Math.floor(baseHp * Math.pow(1.5, star - 1));
+  const def = Math.floor(defBase * (1 + (star - 1) * 0.15));
+  const eva = Math.min(25, evaBase + (star - 1) * 0.2); // 최대 25% 제한
+
+  return { hp, def, eva, atk: Math.floor(atkBase * (1 + star * 0.2)) };
 }
 
 export function getRealmSettings(realm: string) {
@@ -214,27 +236,33 @@ export const useGameStore = create<GameState>((set, get) => ({
       let tKills = s.game.totalDummyKills;
       let points = s.game.points || 0;
       let rep = s.game.reputation || 0;
-      const stats = getDummyStats(s.game.realm, s.game.star);
-      let dHp = s.game.dummyHp - totalAtk;
       let eGold = 0;
       let lastR = s.game.lastReward;
       const nTouches = s.game.touches + (1 + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0));
+
+      const stats = getDummyStats(s.game.realm, s.game.star);
+      
+      // 더미 방어력 및 회피 계산
+      let isDodged = Math.random() < stats.eva / 100;
+      let finalDamageToDummy = isDodged ? 0 : Math.max(1, totalAtk - stats.def);
+      
+      let dHp = s.game.dummyHp - finalDamageToDummy;
 
       if (Math.random() < 0.03) eGold += 2 * (REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1) * finalGoldB;
       
       if (dHp <= 0) {
         tKills += 1;
-        const baseHp = tKills >= 30 ? 5000 : stats.hp;
-        dHp = baseHp;
+        // 다음 더미 체력 결정
+        dHp = stats.hp;
         const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
         const kG = (s.game.attackMultiplier > 1 ? 100 * rG : 50 * rG) * finalGoldB;
         eGold += kG;
-        lastR = null; 
+        lastR = isDodged ? "빗나감!" : null; 
       }
       points += eGold;
       rep += eGold;
 
-      const currentMaxHp = tKills >= 30 ? 5000 : stats.hp;
+      const currentMaxHp = stats.hp;
 
       let qT = s.game.questTarget;
       let cMT = s.game.currentMissionTitle;
