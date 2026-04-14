@@ -83,8 +83,8 @@ export default function MasterPanel() {
 
   useEffect(() => {
     if (masterDuel.lastWinReward) {
-      // 승리/패배 팝업 모두 5초 유지 후 자동 소멸
-      const duration = 5000;
+      // 승리/패배 팝업 모두 3초 유지 후 자동 소멸
+      const duration = 3000;
 
       const timer = setTimeout(() => {
         useGameStore.setState(s => ({

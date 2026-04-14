@@ -115,7 +115,7 @@ export default function ForgePanel(props: Props) {
 
     // 구매 이펙트 트리거
     setPurchaseEffect({ name: rolledItem.name, icon: rolledItem.icon ?? "⚔️" });
-    setTimeout(() => setPurchaseEffect(null), 1800);
+    setTimeout(() => setPurchaseEffect(null), 1200);
   };
 
   return (
