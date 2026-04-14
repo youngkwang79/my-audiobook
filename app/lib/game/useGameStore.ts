@@ -525,14 +525,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       nextHp = Math.max(0, nextHp - bleedDmg);
     }
 
+    const isPlayerDead = nextHp <= 0;
+
     return { 
       game: { 
         ...s.game, 
-        hp: nextHp, 
+        hp: Math.max(0, nextHp), 
         masterDuel: { 
           ...s.game.masterDuel, 
           timeLeft: tLeft, 
-          isPlaying: nextHp > 0, 
+          isPlaying: !isPlayerDead, 
+          lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : s.game.masterDuel.lastWinReward,
           rivalAttackTimer: atkTimer, 
           chargeTimer: chargeT,
           damageTakenAccumulator: dmgAccum,
