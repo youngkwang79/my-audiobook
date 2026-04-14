@@ -284,7 +284,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           // 300킬 퀘스트 달성 이후는 qT를 계속 증가시켜 300킬마다 이벤트가 발생하게 함
           qT += 300;
           cMT = `무뢰배 추격 (${iEV + 1}차)\n허수아비를 더 처단하세요.`;
-          uET = "무뢰배 출현 예고!";
+          uET = null; // No unlock popup for thugs, handled by special fog warp
         }
       }
 
@@ -650,13 +650,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 장신구 보상
       const rwd = generateRandomAccessory(game.realm, level, luck); 
       
-      // 금화 및 명성 보상 (업그레이드 반영)
-      const goldB = 1 + (game.upgradeLevels.autoGain || 0) * 0.05;
-      const goldGain = Math.floor(5000 * Math.pow(1.8, level - 1) * goldB);
+      // 금화 및 명성 보상 (업그레이드 및 플레이어 레벨 반영)
+      const realmList = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+      const rIdx = Math.max(0, realmList.indexOf(game.realm));
+      const levelFactor = 0.5 + (rIdx * 0.1) + (game.star * 0.05); // Level based scaling
       
-      // 수련도 보상 (수련 효율 반영 및 touches에 합산)
+      const goldB = 1 + (game.upgradeLevels.autoGain || 0) * 0.05;
+      const goldGain = Math.floor(5000 * Math.pow(1.8, level - 1) * goldB * levelFactor);
+      
+      // 수련도 보상 (수련 효율 및 플레이어 레벨 반영)
       const expB = 1 + (game.upgradeLevels.autoGain || 0) * 0.1;
-      const expGain = Math.floor(1000 * Math.pow(1.5, level - 1) * expB);
+      const expGain = Math.floor(1000 * Math.pow(1.5, level - 1) * expB * levelFactor);
 
       set((s:any) => ({ 
         game: { 

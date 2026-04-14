@@ -68,11 +68,11 @@ export default function GameShell() {
       setActiveTab("inn");
       // 핸들링 완료를 서버/스토어에 알림
       markInnEntryHandled();
-    }, 4500);
+    }, 5000);
 
     const hideTimer = setTimeout(() => {
       setShowFogWarp(false);
-    }, 5000);
+    }, 5500);
 
     return () => {
       clearTimeout(moveTimer);
