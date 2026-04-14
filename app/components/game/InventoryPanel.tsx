@@ -119,7 +119,8 @@ export default function InventoryPanel(props: Props) {
     const dist = Math.sqrt(Math.pow(swipeOffset, 2)); // Simple dist
     
     if (swipeOffset > 100) {
-      if (confirm("정말판매하시겠습니까?")) {
+      const price = item.tier === "신기" ? 100000 : item.tier === "보구" ? 30000 : item.tier === "명품" ? 5000 : 1000;
+      if (confirm(`정말 판매하시겠습니까?\n판매 가격: ${price.toLocaleString()}냥`)) {
         sellItem(swipeGearId);
         setPopupItem(null);
       }
@@ -379,8 +380,14 @@ export default function InventoryPanel(props: Props) {
                       transition: swipeGearId === item.id ? "none" : "transform 0.3s ease"
                     }}
                   >
-                    {swipeGearId === item.id && swipeOffset > 50 && (
-                        <div style={{ position: "absolute", left: -60, color: "#ff4d4d", fontSize: 10, fontWeight: "bold" }}>판매 →</div>
+                    {swipeGearId === item.id && swipeOffset > 40 && (
+                        <div style={{ 
+                          position: "absolute", left: -90, color: "#ff4d4d", fontSize: 10, fontWeight: "bold",
+                          display: "flex", flexDirection: "column", alignItems: "flex-end"
+                        }}>
+                          <span>판매 →</span>
+                          <span style={{ fontSize: 8 }}>{ (item.tier === "신기" ? 100000 : item.tier === "보구" ? 30000 : item.tier === "명품" ? 5000 : 1000).toLocaleString() }냥</span>
+                        </div>
                     )}
                       <div style={{ fontSize: 22 }}>{item.icon ?? "📦"}</div>
                       <div

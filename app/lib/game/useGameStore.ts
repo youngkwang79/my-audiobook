@@ -389,7 +389,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   equipItem: (id: string) => set((s: any) => { const it = s.game.ownedWeapons.find((w:any) => w.id === id); if (!it) return s; return { game: { ...s.game, equippedGear: { ...s.game.equippedGear, [it.slot]: id } } }; }),
   unequipItem: (slot: EquipSlot) => set((s: any) => ({ game: { ...s.game, equippedGear: { ...s.game.equippedGear, [slot]: null } } })),
-  sellItem: (id: string) => set((s: any) => { const it = s.game.ownedWeapons.find((w:any) => w.id === id); if (!it) return s; const p = it.tier === "LEGEND" ? 50000 : it.tier === "EPIC" ? 15000 : 1000; return { game: { ...s.game, coins: s.game.coins + p, ownedWeapons: s.game.ownedWeapons.filter((w:any) => w.id !== id) } }; }),
+  sellItem: (id: string) => set((s: any) => { 
+    const it = s.game.ownedWeapons.find((w:any) => w.id === id); 
+    if (!it) return s; 
+    const p = it.tier === "신기" ? 100000 : it.tier === "보구" ? 30000 : it.tier === "명품" ? 5000 : 1000; 
+    return { game: { ...s.game, coins: s.game.coins + p, ownedWeapons: s.game.ownedWeapons.filter((w:any) => w.id !== id) } }; 
+  }),
   sellConsumable: (id: ConsumableId) => set((s: any) => {
     if ((s.game.consumables[id] || 0) <= 0) return s;
     const prices: Record<string, number> = { hp_small: 250, hp_medium: 1000, hp_large: 5000, mp_small: 250, mp_medium: 1000, mp_large: 5000 };
