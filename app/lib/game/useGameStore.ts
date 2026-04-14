@@ -288,9 +288,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
 
-      // 무뢰배 출현 로직 (300킬 단위마다 독립적으로 체크)
+      // 무뢰배 출현 로직 (300킬 단위마다 독립적으로 체크 + 300킬 이상 첫 진입 보정)
       let nTM = { ...s.game.timingMission };
-      if (tKills > 0 && tKills % 300 === 0 && !nTM.available) {
+      const isFirstTimeTrigger = tKills >= 300 && iEV === 0;
+      const isPeriodicTrigger = tKills > 0 && tKills % 300 === 0;
+
+      if ((isFirstTimeTrigger || isPeriodicTrigger) && !nTM.available) {
           const miniGames = ["breath", "dodge", "puzzle", "pulse"];
           const gameIdx = (s.game.innEventVersion || 0) % 4;
           const selectedGame = miniGames[gameIdx];
