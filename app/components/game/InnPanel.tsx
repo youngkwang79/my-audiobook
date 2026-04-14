@@ -505,11 +505,20 @@ export default function InnPanel({
   };
 
   const startMission = () => {
-    if (!mission?.available) return;
-    enterFullScreen();
+    if (!game.timingMission.available) return;
+    
+    // Reset all flags first
     clearAllIntervals();
     finishLockRef.current = false;
+    setIsSuccessPopup(false);
+    setIsFailPopup(false);
+    setShowTutorial(false);
+    setIsTransitioning(false);
 
+    // Enter Fullscreen
+    enterFullScreen();
+
+    // Reset scores and stages
     playerScoreRef.current = 0;
     setPlayerScore(0);
     setCurrentStage(1);
@@ -517,23 +526,21 @@ export default function InnPanel({
     setSuccessHits(0);
     setRound(1);
     
-    const selected = mission.selectedGameType || "breath";
+    const selected = game.timingMission.selectedGameType || "breath";
     setCurrentMiniGame(selected);
+    currentMiniGameRef.current = selected;
     
-    // Reset cumulative miss count for new session
+    // Reset cumulative miss count
     setBreathMissCount(0);
     breathMissCountRef.current = 0;
 
+    // Initialize game specific states
     resetGameState(selected);
     setResultText(`${MINI_GAMES.find(m => m.key === selected)?.name} 수련을 시작합니다.`);
 
-    if (game.innEventVersion === 1) {
-      setTutorialTarget(selected);
-      setShowTutorial(true);
-    } else {
-      setIsPlaying(true);
-      isPlayingRef.current = true;
-    }
+    // Start!
+    setIsPlaying(true);
+    isPlayingRef.current = true;
   };
 
   // --- GAME LOOPS ---
