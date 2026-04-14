@@ -655,7 +655,7 @@ export default function MasterPanel() {
                   <div style={{ flex: 1, background: "rgba(0,0,0,0.3)", borderRadius: "12px", padding: "10px", border: "1px solid #333" }}>
                     <div style={{ fontSize: 10, color: "#4dff4d", marginBottom: 4 }}>수련 정진</div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>
-                      +{masterDuel.lastWinReward.split("\n")[2]?.replace("경험치 +", "") || "0"}
+                      {masterDuel.lastWinReward.split("\n")[2] || "0"}
                     </div>
                   </div>
                 </div>
