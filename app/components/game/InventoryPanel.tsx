@@ -31,10 +31,12 @@ const slotMeta: {
 
 export default function InventoryPanel(props: Props) {
   const { 
-    game, equipItem, unequipItem, 
+    game, equipItem, unequipItem, sellItem, useConsumable,
     getTotalAttack, getTotalCritRate, getTotalCritDmg, 
     getTotalDefense, getTotalHp, getTotalEvasion, getTotalSpeed 
   } = useGameStore();
+  const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const unlocked = game.unlockedTabs.includes("inventory");
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>("mainWeapon");
   const [popupItem, setPopupItem] = useState<OwnedWeapon | null>(null);
@@ -85,15 +87,42 @@ export default function InventoryPanel(props: Props) {
 
   const handleMedicineTap = (id: ConsumableId) => {
     const now = Date.now();
-    if (now - lastTapTime < 300 && selectedMedicineId === id) {
+    // Use a ref-like state to track the previously clicked item ID
+    if (now - lastTapTime < 350 && selectedMedicineId === id) {
       // Double tap -> Use
-      (useGameStore.getState() as any).useConsumable(id);
+      useConsumable(id);
       setSelectedMedicineId(null);
+      setLastTapTime(0);
     } else {
-      // Single tap -> Open Modal
+      // Single tap -> Open Modal or update time
       setSelectedMedicineId(id);
       setLastTapTime(now);
     }
+  };
+
+  const onGearTouchStart = (e: React.TouchEvent, id: string) => {
+    setSwipeGearId(id);
+    const touch = e.touches[0];
+    setDragOrigin({ x: touch.clientX, y: touch.clientY });
+    setSwipeOffset(0);
+  };
+
+  const onGearTouchMove = (e: React.TouchEvent) => {
+    if (!swipeGearId) return;
+    const touch = e.touches[0];
+    const diff = touch.clientX - dragOrigin.x;
+    if (diff > 0) setSwipeOffset(diff); // Only right swipe
+  };
+
+  const onGearTouchEnd = (e: React.TouchEvent) => {
+    if (!swipeGearId) return;
+    if (swipeOffset > 100) {
+      if (confirm("정말판매하시겠습니까?")) {
+        sellItem(swipeGearId);
+      }
+    }
+    setSwipeGearId(null);
+    setSwipeOffset(0);
   };
 
   const onTouchStart = (e: React.TouchEvent, id: ConsumableId) => {
@@ -270,8 +299,10 @@ export default function InventoryPanel(props: Props) {
                     key={id} 
                     onTouchStart={(e) => onTouchStart(e, id)}
                     onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
-                    onClick={() => handleMedicineTap(id)}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onTouchEnd(e);
+                    }}
                     style={{
                       borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
                       display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
@@ -315,21 +346,32 @@ export default function InventoryPanel(props: Props) {
                   const isEquipped = selectedEquippedId === item.id;
                   return (
                     <button
-                      key={item.id}
-                      onClick={() => setPopupItem(item)}
-                      style={{
-                        position: "relative",
-                        borderRadius: 12,
-                        background: isEquipped ? "rgba(255,215,120,0.15)" : "rgba(255,255,255,0.06)",
-                        border: isEquipped ? "1px solid rgba(255,215,120,0.8)" : "1px solid rgba(255,255,255,0.1)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                        animation: isEquipped ? "goldGlow 2s infinite" : "none"
-                      }}
-                    >
+                    key={item.id}
+                    onPointerDown={() => {
+                        // For desktop clicks
+                        setPopupItem(item);
+                    }}
+                    onTouchStart={(e) => onGearTouchStart(e, item.id)}
+                    onTouchMove={onGearTouchMove}
+                    onTouchEnd={onGearTouchEnd}
+                    style={{
+                      position: "relative",
+                      borderRadius: 12,
+                      background: isEquipped ? "rgba(255,215,120,0.15)" : "rgba(255,255,255,0.06)",
+                      border: isEquipped ? "1px solid rgba(255,215,120,0.8)" : "1px solid rgba(255,255,255,0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                      animation: isEquipped ? "goldGlow 2s infinite" : "none",
+                      transform: swipeGearId === item.id ? `translateX(${swipeOffset}px)` : "none",
+                      transition: swipeGearId === item.id ? "none" : "transform 0.3s ease"
+                    }}
+                  >
+                    {swipeGearId === item.id && swipeOffset > 50 && (
+                        <div style={{ position: "absolute", left: -60, color: "#ff4d4d", fontSize: 10, fontWeight: "bold" }}>판매 →</div>
+                    )}
                       <div style={{ fontSize: 22 }}>{item.icon ?? "📦"}</div>
                       <div
                         style={{
