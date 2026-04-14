@@ -415,7 +415,29 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   incrementCombo: () => set((s: any) => ({ game: { ...s.game, comboCount: (s.game.comboCount || 0) + 1, lastAttackTime: Date.now() } })),
   setSelectedMasterLevel: (l: number) => set((s: any) => { const e = generateEnemy(l); return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, selectedLevel: l, rivalName: e.name, rivalHp: e.hp, rivalMaxHp: e.hp, lastWinReward: undefined } } }; }),
-  startMasterDuel: () => { const { game } = get(); if (get().getTotalHp() <= 0) return; const e = generateEnemy(game.masterDuel.selectedLevel); set((s: any) => ({ game: { ...s.game, masterDuel: { ...s.game.masterDuel, isPlaying: true, rivalHp: e.hp, rivalMaxHp: e.hp, rivalAtk: e.atk, timeLeft: 40, rivalAttackTimer: 0, isBerserk: false } } })); },
+  startMasterDuel: () => { 
+    const { game } = get(); 
+    if (get().getTotalHp() <= 0) return; 
+    const e = generateEnemy(game.masterDuel.selectedLevel); 
+    set((s: any) => ({ 
+      game: { 
+        ...s.game, 
+        masterDuel: { 
+          ...s.game.masterDuel, 
+          isPlaying: true, 
+          rivalHp: e.hp, 
+          rivalMaxHp: e.hp, 
+          rivalAtk: e.atk, 
+          timeLeft: 40, 
+          rivalAttackTimer: 0, 
+          chargeTimer: 0,
+          lastEffect: null,
+          damageTakenAccumulator: 0,
+          isBerserk: false 
+        } 
+      } 
+    })); 
+  },
   updateMasterDuel: (dt: number) => set((s: any) => { 
     if (!s.game.masterDuel.isPlaying) return s; 
     
@@ -426,25 +448,61 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { 
         game: { 
           ...s.game, 
-          masterDuel: { ...s.game.masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)" } 
+          masterDuel: { ...s.game.masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null } 
         } 
       }; 
     }
 
     let nextHp = s.game.hp; 
     let atkTimer = (s.game.masterDuel.rivalAttackTimer || 0) + dt; 
+    let chargeT = (s.game.masterDuel.chargeTimer || 0) + dt;
+    let dmgAccum = 0;
+    let effect = s.game.masterDuel.lastEffect;
     const isBerserk = tLeft <= 10;
 
-    // 1초마다 공격
-    if (atkTimer >= 1.0) { 
-      atkTimer -= 1.0; 
-      // 광폭화 시 데미지 3배 증폭 (추천 설정)
-      const rawAtk = s.game.masterDuel.rivalAtk * (isBerserk ? 3 : 1);
+    // 6초마다 강격(Special Attack)
+    if (chargeT >= 6.0) {
+      chargeT = 0;
+      const rawAtk = s.game.masterDuel.rivalAtk * (isBerserk ? 5 : 3.5);
       const defense = get().getTotalDefense();
-      // 최소 1데미지는 입도록 처리
-      const finalDmg = Math.max(1, rawAtk - defense);
-      nextHp = Math.max(0, nextHp - finalDmg); 
-    } 
+      const finalDmg = Math.max(20, Math.floor(rawAtk - defense));
+      
+      nextHp = Math.max(0, nextHp - finalDmg);
+      dmgAccum = finalDmg + Math.random() * 0.01;
+      effect = "CRITICAL";
+      // 내상 확률 30% (체력 비례 데미지 패널티 시작)
+      if (Math.random() < 0.3) effect = "BLEED";
+    }
+    // 1.2초마다 기본 공격
+    else if (atkTimer >= 1.2) { 
+      atkTimer = 0; 
+      
+      const evasionRate = get().getTotalEvasion();
+      // 회피 판정
+      if (Math.random() < evasionRate / 100) {
+        dmgAccum = 0;
+        effect = "DODGE";
+      } else {
+        const variance = 0.9 + Math.random() * 0.2; // 90%~110%
+        const rawAtk = s.game.masterDuel.rivalAtk * (isBerserk ? 2.5 : 1) * variance;
+        const defense = get().getTotalDefense();
+        const finalDmg = Math.max(1, Math.floor(rawAtk - defense));
+        
+        nextHp = Math.max(0, nextHp - finalDmg); 
+        // UI 트리거를 위해 0.0001 단위의 미세한 난수를 더해 값이 항상 변하게 함
+        dmgAccum = finalDmg + Math.random() * 0.01;
+        effect = null;
+      }
+    } else {
+      // 효과가 표시된 후 0.5초 뒤에는 제거 (DODGE 등 텍스트 유지 방지)
+      if (atkTimer > 0.5 && effect === "DODGE") effect = null;
+    }
+
+    // 내상 효과: 매 프레임 소량 감소
+    if (s.game.masterDuel.lastEffect === "BLEED") {
+      const bleedDmg = (get().getTotalHp() * 0.02) * dt; // 초당 2%
+      nextHp = Math.max(0, nextHp - bleedDmg);
+    }
 
     return { 
       game: { 
@@ -455,6 +513,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           timeLeft: tLeft, 
           isPlaying: nextHp > 0, 
           rivalAttackTimer: atkTimer, 
+          chargeTimer: chargeT,
+          damageTakenAccumulator: dmgAccum,
+          lastEffect: effect,
           isBerserk 
         } 
       } 

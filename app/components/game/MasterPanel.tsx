@@ -101,12 +101,15 @@ export default function MasterPanel() {
   const [isPlayerHit, setIsPlayerHit] = useState(false);
 
   useEffect(() => {
-    if (masterDuel.damageTakenAccumulator && masterDuel.damageTakenAccumulator > 0) {
-      spawnDamage(Math.floor(masterDuel.damageTakenAccumulator), false, "player");
+    if (masterDuel.damageTakenAccumulator !== undefined && masterDuel.damageTakenAccumulator > 0) {
+      spawnDamage(Math.floor(masterDuel.damageTakenAccumulator), masterDuel.lastEffect === "CRITICAL", "player");
       setIsPlayerHit(true);
       setTimeout(() => setIsPlayerHit(false), 300);
+    } else if (masterDuel.lastEffect === "DODGE") {
+      // 회피 시 0 데미지 텍스트 또는 특수 텍스트 표시 가능 (현재는 DamageText 컴포넌트 제약상 생략하거나 0으로 표시)
+      spawnDamage(0, false, "player"); 
     }
-  }, [masterDuel.damageTakenAccumulator]);
+  }, [masterDuel.damageTakenAccumulator, masterDuel.lastEffect]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(animate);
@@ -265,15 +268,32 @@ export default function MasterPanel() {
             50% { box-shadow: inset 0 0 80px rgba(255,0,0,0.4); }
             100% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
           }
+          @keyframes bossCharging {
+            0% { filter: brightness(1) drop-shadow(0 0 10px rgba(255,0,0,0.3)); transform: scale(1); }
+            50% { filter: brightness(2) drop-shadow(0 0 30px rgba(255,0,0,1)); transform: scale(1.05); }
+            100% { filter: brightness(1) drop-shadow(0 0 10px rgba(255,0,0,0.3)); transform: scale(1); }
+          }
+          @keyframes bleedPulse {
+            0% { box-shadow: inset 0 0 20px rgba(200,0,255,0.2); }
+            50% { box-shadow: inset 0 0 50px rgba(200,0,255,0.6); }
+            100% { box-shadow: inset 0 0 20px rgba(200,0,255,0.2); }
+          }
         `}</style>
 
-        {/* Berserk Screen Overlay */}
+        {/* Status Effects Overlays */}
         {masterDuel.isBerserk && (
           <div style={{
             position: "absolute", inset: 0, 
             animation: "screenBerserkFlash 0.6s infinite",
             pointerEvents: "none", zIndex: 15,
             border: "2px solid rgba(255,0,0,0.3)"
+          }} />
+        )}
+        {masterDuel.lastEffect === "BLEED" && (
+          <div style={{
+            position: "absolute", inset: 0, 
+            animation: "bleedPulse 1s infinite",
+            pointerEvents: "none", zIndex: 16
           }} />
         )}
 
@@ -340,9 +360,15 @@ export default function MasterPanel() {
               height: 180, 
               position: "relative",
               animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
-              filter: isPlayerHit ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" : "none"
+              filter: isPlayerHit ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" : (masterDuel.lastEffect === "BLEED" ? "sepia(0.5) hue-rotate(250deg)" : "none")
             }} 
           />
+          {masterDuel.lastEffect === "DODGE" && (
+            <div style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", color: "#00f2ff", fontSize: 24, fontWeight: 900, textShadow: "0 0 10px #00f2ff", zIndex: 200 }}>회피!</div>
+          )}
+          {masterDuel.lastEffect === "BLEED" && (
+            <div style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", color: "#c800ff", fontSize: 14, fontWeight: 900, textShadow: "0 0 5px #000", zIndex: 200 }}>내상(지속 피해)</div>
+          )}
           
           {/* Player Bars with Numeric View */}
           <div style={{ position: "absolute", bottom: 190, left: "50%", transform: "translateX(-50%)", width: 130 }}>
@@ -437,6 +463,7 @@ export default function MasterPanel() {
             filter: masterDuel.isBerserk 
               ? "drop-shadow(0 0 20px rgba(255,0,0,1)) brightness(1.5) sepia(0.5) hue-rotate(-50deg)" 
               : "drop-shadow(0 0 15px rgba(255,0,0,0.3))",
+            animation: (masterDuel.chargeTimer || 0) >= 4.5 ? "bossCharging 0.5s infinite" : "none",
             transition: "0.4s"
           }} />
           

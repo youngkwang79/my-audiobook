@@ -219,6 +219,8 @@ export type MasterDuelState = {
   rivalAttackTimer?: number;
   damageTakenAccumulator?: number;
   isBerserk?: boolean;
+  lastEffect?: "DODGE" | "CRITICAL" | "BLEED" | null;
+  chargeTimer?: number;
 };
 
 export type GameSaveData = {
