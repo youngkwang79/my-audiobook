@@ -420,9 +420,18 @@ export default function MasterPanel() {
                 }}>
                   {skill ? (
                     <>
-                      <div style={{ fontSize: 18 }}>🔥</div>
+                      <div style={{ fontSize: 18 }}>{idx === 0 ? "🔥" : idx === 1 ? "⚡" : "✨"}</div>
                       <div style={{ fontSize: 7, fontWeight: "bold", color: "#ffd700", textAlign: "center", marginTop: 1, padding: "0 2px" }}>{skill.name.slice(0, 4)}</div>
+                      <div style={{ 
+                        fontSize: 6, fontWeight: "bold", color: game.mp >= (skill.mpCost || 0) ? "#00f2ff" : "#ff4d4d", 
+                        background: "rgba(0,0,0,0.5)", padding: "1px 3px", borderRadius: 4, marginTop: 1
+                      }}>
+                        {skill.mpCost} MP
+                      </div>
                       {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", display: "grid", placeItems: "center", fontSize: 14, fontWeight: "bold", color: "#fff" }}>{Math.ceil(cd)}</div>}
+                      {game.mp < (skill.mpCost || 0) && cd <= 0 && (
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(0,242,255,0.05)", pointerEvents: "none" }} />
+                      )}
                     </>
                   ) : (
                     <div style={{ fontSize: 16, color: "#333" }}>+</div>

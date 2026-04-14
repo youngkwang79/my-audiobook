@@ -1,5 +1,5 @@
 "use client";
-import { useGameStore } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_SETTINGS } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 
 /**
@@ -53,7 +53,7 @@ export default function LibraryPanel() {
       atk: 0, // 구버전 호환성을 위해 0으로 남김
       multiplier: finalMulti,
       crit: finalCrit,
-      mpCost: Math.floor(base.multiplier * 5 + (skillRealmIndex * 15)),
+      mpCost: Math.floor((REALM_SETTINGS[realm]?.mp || 100) * 0.25),
       style: userFaction.style
     };
   });
@@ -122,7 +122,10 @@ export default function LibraryPanel() {
                   발동 위력 <span style={{ color: "#ff8888" }}>총공격력의 {skill.multiplier}배</span> | 
                   치명타율 보너스 <span style={{ color: "#88ff88" }}>{skill.crit}%</span>
                 </div>
-                <div style={{ fontSize: "11px", color: "#666" }}>필요 내공: {skill.innerPower}</div>
+                <div style={{ fontSize: "11px", color: userFaction.theme.accent, marginTop: "4px", fontWeight: "bold" }}>
+                  소모 내력: {skill.mpCost.toLocaleString()} MP
+                </div>
+                <div style={{ fontSize: "11px", color: "#666" }}>최소 경지: {skill.realm}</div>
               </div>
 
               <button
