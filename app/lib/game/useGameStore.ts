@@ -143,7 +143,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get(); 
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
-    return (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate");
+    const skillBonus = (game.learnedSkills || []).reduce((acc: number, sk: any) => acc + (sk.crit || 0), 0);
+    return (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate") + skillBonus;
   },
   getTotalCritDmg: () => 150 + get().game.ownedWeapons.filter((w: any) => Object.values(get().game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0), 0) + (get().game.upgradeLevels?.critDmg || 0) + (get().getInnBonus().critDmg) + get().getOptionSum("crit_dmg"),
   getTotalDefense: () => {
@@ -406,12 +407,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get(); const offMs = Date.now() - (game.lastSaveTime || Date.now()); if (offMs < 60000) return;
     const offSec = Math.min(offMs / 1000, 3600 + (game.upgradeLevels.offlineLimit || 0) * 30);
     const lv = game.upgradeLevels.autoGain || 0; 
-    const expB = 1 + lv * 0.02; 
-    const goldB = 1 + lv * 0.02;
+    const expB = 1 + lv * 0.01; 
+    const goldB = 1 + lv * 0.01;
     
-    // 오프라인 보상 현실화 (플레이 시보다 낮게 책정)
-    const eExp = Math.floor((1.5 + lv * 0.03) * expB * offSec); 
-    const eGold = Math.floor((0.8 + lv * 0.02) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
+    // 오프라인 보상 대폭 하향 (약 10% 수준으로 조정)
+    const eExp = Math.floor((0.15 + lv * 0.005) * expB * offSec); 
+    const eGold = Math.floor((0.08 + lv * 0.005) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
     
     set((s: any) => ({ 
       game: { 
