@@ -18,6 +18,26 @@ export const REALM_SETTINGS: Record<string, any> = {
   신화경: { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: "myth", label: "신화의 형상", hp: 120000, mp: 80000, goldMultiplier: 7000 },
   천인합일: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: "heaven", label: "천인합일의 경지", hp: 300000, mp: 200000, goldMultiplier: 20000 },
 };
+
+const DUEL_TIERS = [
+  { name: "무명소졸", min: 0 },
+  { name: "초출강호", min: 200 },
+  { name: "일류고수", min: 500 },
+  { name: "절정고수", min: 1000 },
+  { name: "초절정", min: 2000 },
+  { name: "화경", min: 4000 },
+  { name: "현경", min: 8000 },
+  { name: "생사경", min: 15000 },
+  { name: "신화경", min: 30000 },
+  { name: "천인합일", min: 60000 },
+];
+
+function getDuelTier(rating: number) {
+  for (let i = DUEL_TIERS.length - 1; i >= 0; i--) {
+    if (rating >= DUEL_TIERS[i].min) return DUEL_TIERS[i].name;
+  }
+  return "무명소졸";
+}
  
  function generateEnemy(level: number) {
    const rival = MASTER_RIVALS[(level - 1) % MASTER_RIVALS.length] || { name: "이름 없는 고수", hpMult: 1, atkMult: 1 };
@@ -451,6 +471,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           newConsumables[itemKey] = (newConsumables[itemKey] || 0) + 1;
         }
 
+        // 객잔 등급 정산
+        const ratingGain = 10 + actualStage * 3;
+        const newRating = (game.duel.rating || 100) + ratingGain;
+        const newTier = getDuelTier(newRating);
+
         set((s: any) => ({ 
           game: { 
             ...s.game, 
@@ -459,7 +484,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             consumables: newConsumables,
             activeBuff: "무아지경", 
             innHighScore: Math.max(game.innHighScore || 0, p.score || 0),
-            timingMission: { ...s.game.timingMission, available: false }
+            timingMission: { ...s.game.timingMission, available: false },
+            duel: {
+              ...s.game.duel,
+              rating: newRating,
+              tier: newTier,
+              totalWins: (s.game.duel.totalWins || 0) + 1,
+              winStreak: (s.game.duel.winStreak || 0) + 1
+            }
           } 
         }));
       }
