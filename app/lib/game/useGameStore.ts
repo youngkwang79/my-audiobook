@@ -405,9 +405,29 @@ export const useGameStore = create<GameState>((set, get) => ({
   checkOfflineRewards: () => {
     const { game } = get(); const offMs = Date.now() - (game.lastSaveTime || Date.now()); if (offMs < 60000) return;
     const offSec = Math.min(offMs / 1000, 3600 + (game.upgradeLevels.offlineLimit || 0) * 30);
-    const lv = game.upgradeLevels.autoGain || 0; const expB = 1 + lv * 0.0003; const goldB = 1 + lv * 0.0005;
-    const eExp = Math.floor((4.0 + lv * 0.01) * 5 * expB * offSec); const eGold = Math.floor((3.0 + lv * 0.01) * 5 * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
-    set((s: any) => ({ game: { ...s.game, lastSaveTime: Date.now(), coins: s.game.coins + eGold, exp: s.game.exp + eExp, points: (s.game.points || 0) + eGold, reputation: (s.game.reputation || 0) + eGold, lastOfflineRewards: { gold: eGold, exp: eExp, points: eGold, duration: Math.round(offSec/360) / 10 } } }));
+    const lv = game.upgradeLevels.autoGain || 0; 
+    const expB = 1 + lv * 0.05; 
+    const goldB = 1 + lv * 0.05;
+    
+    // 초당 기본 보상: 5 Exp, 3 Gold (경지 배율 및 업그레이드 반영)
+    const eExp = Math.floor((5.0 + lv * 0.1) * expB * offSec); 
+    const eGold = Math.floor((3.0 + lv * 0.1) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
+    
+    set((s: any) => ({ 
+      game: { 
+        ...s.game, 
+        lastSaveTime: Date.now(), 
+        coins: s.game.coins + eGold, 
+        exp: s.game.exp + eExp, 
+        touches: s.game.touches + eExp, // 오프라인 수련치도 touches에 합산하여 경지 돌파에 기여
+        reputation: (s.game.reputation || 0) + eGold, 
+        lastOfflineRewards: { 
+          gold: eGold, 
+          exp: eExp, 
+          duration: Math.round(offSec / 36) / 100 // 시간(h) 단위로 변환 표시
+        } 
+      } 
+    }));
   },
   claimOfflineRewards: () => set((s: any) => ({ game: { ...s.game, lastOfflineRewards: null } })),
   resolveTimingMission: (p: any) => {
