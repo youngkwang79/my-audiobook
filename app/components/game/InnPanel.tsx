@@ -1603,7 +1603,7 @@ export default function InnPanel({
 
               {/* 3. 내공폭주 (Puzzle) */}
               {currentMiniGame === "puzzle" && (
-                <div style={{ position: "relative", width: "100%", height: "430px", background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, display: "flex", flexDirection: "column" }}>
+                <div style={{ position: "relative", width: "100%", flex: 1, background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, display: "flex", flexDirection: "column" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                      <div style={{ fontSize: 13, color: "#ffd700", fontWeight: 'bold' }}>Stage {currentStage} 단전 정렬</div>
                      <div style={{ fontSize: 13, color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#fff" }}>잔여 시간: {puzzleTimeLeft.toFixed(1)}s</div>
@@ -1622,19 +1622,25 @@ export default function InnPanel({
                     </div>
                   </div>
                   
-                  {/* Puzzle Grid */}
-                  <div style={{ 
-                    flex: 1, 
-                    display: "grid", 
-                    gridTemplateColumns: "repeat(7, 1fr)", 
-                    gap: 4, 
-                    background: "rgba(255,255,255,0.03)", 
-                    padding: 4, 
-                    borderRadius: 8,
-                    perspective: "1000px",
-                    touchAction: "none", // Prevent scrolling while swiping
-                    position: "relative"
-                  }}>
+                  {/* Puzzle Grid Centering Wrapper */}
+                  <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", minHeight: 0, width: "100%" }}>
+                    <div style={{ 
+                      width: "100%", 
+                      height: "100%",
+                      maxHeight: "100%",
+                      maxWidth: "100%",
+                      aspectRatio: "1/1",
+                      display: "grid", 
+                      gridTemplateColumns: "repeat(7, 1fr)", 
+                      gridTemplateRows: "repeat(7, 1fr)",
+                      gap: "1%", 
+                      background: "rgba(255,255,255,0.03)", 
+                      padding: "2%", 
+                      borderRadius: 8,
+                      perspective: "1000px",
+                      touchAction: "none", // Prevent scrolling while swiping
+                      position: "relative"
+                    }}>
                     {puzzleGrid.map((row, r) => row.map((cell, c) => (
                       <div 
                         key={cell.id}
@@ -1642,7 +1648,8 @@ export default function InnPanel({
                         onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
                         onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
                         style={{
-                          aspectRatio: "1/1",
+                          width: "100%",
+                          height: "100%",
                           display: "flex",
                           justifyContent: "center",
                           alignItems: "center",
