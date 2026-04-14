@@ -98,6 +98,7 @@ interface GameState {
   updateBuffs: (dt: number) => void;
   checkOfflineRewards: () => void;
   claimOfflineRewards: () => void;
+  getOptionSum: (stat: string) => number;
   getStableAttack: () => number;
   getInnBonus: () => { name: string; atk: number; gold: number; exp: number; critDmg: number };
 }
@@ -108,15 +109,27 @@ export const useGameStore = create<GameState>((set, get) => ({
   game: { ...defaultGameData, ...loadGame(), name: loadGame().name ?? "무명협객" },
 
   setPlayerInfo: (info: any) => { set((s: any) => ({ game: { ...s.game, ...info, isInitialized: true } })); get().triggerSave(); },
+  getOptionSum: (stat: string) => {
+    const { game } = get();
+    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
+    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    return eq.reduce((sum, item) => {
+      const optVal = item.randomOptions?.filter(o => o.stat === stat).reduce((s, o) => s + o.value, 0) || 0;
+      return sum + optVal;
+    }, 0);
+  },
   getTotalAttack: () => {
     const { game } = get(); const faction = FACTIONS.find(f => f.name === game.faction);
-    const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
+    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
+    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     const gearAtk = eq.reduce((s, i) => s + (i.attackBonus || 0), 0);
     const realmMult = REALM_SETTINGS[game.realm]?.bonus || 1;
     const upgradeAtk = (game.upgradeLevels?.atk || 0) * 250;
     const mWeapon = game.ownedWeapons.find(w => w.id === (game.equippedGear?.mainWeapon || game.equippedWeaponId));
     const innBonus = get().getInnBonus();
-    let final = (game.baseAttack + gearAtk + upgradeAtk) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0)/100) * (1 + innBonus.atk);
+    const optionAtkPct = get().getOptionSum("atk_pct");
+    
+    let final = (game.baseAttack + gearAtk + upgradeAtk) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0)/100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100);
     if (game.faction === "무당") { const combo = (game.lastAttackTime && (Date.now() - game.lastAttackTime < 1500)) ? game.comboCount : 0; final *= (1 + Math.min(combo * 0.05, 1.0)); }
     return Math.floor(final);
   },
@@ -126,21 +139,29 @@ export const useGameStore = create<GameState>((set, get) => ({
     return Math.floor((game.baseAttack + gAtk + uAtk) * (REALM_SETTINGS[game.realm]?.bonus || 1));
   },
   getTotalCritRate: () => {
-    const { game } = get(); const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
-    return (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1;
+    const { game } = get(); 
+    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
+    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    return (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate");
   },
-  getTotalCritDmg: () => 150 + get().game.ownedWeapons.filter((w: any) => Object.values(get().game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0), 0) + (get().game.upgradeLevels?.critDmg || 0) + (get().getInnBonus().critDmg),
+  getTotalCritDmg: () => 150 + get().game.ownedWeapons.filter((w: any) => Object.values(get().game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0), 0) + (get().game.upgradeLevels?.critDmg || 0) + (get().getInnBonus().critDmg) + get().getOptionSum("crit_dmg"),
   getTotalDefense: () => {
     const { game } = get(); const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
     return Math.floor((game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.def || 0)/100));
   },
   getTotalHp: () => {
-    const { game } = get(); const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
-    return Math.floor((game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0), 0) + (game.upgradeLevels?.hpRec || 0) * 2500) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0)/100));
+    const { game } = get(); 
+    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
+    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    const baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0), 0) + (game.upgradeLevels?.hpRec || 0) * 2500) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0)/100);
+    return Math.floor(baseTotal * (1 + get().getOptionSum("hp_pct") / 100));
   },
-  getTotalEvasion: () => (get().game.eva || 0) + (get().game.upgradeLevels?.eva || 0) * 0.1,
+  getTotalEvasion: () => (get().game.eva || 0) + (get().game.upgradeLevels?.eva || 0) * 0.1 + get().getOptionSum("eva"),
   getTotalSpeed: () => 100 + get().game.ownedWeapons.filter(w => Object.values(get().game.equippedGear || {}).includes(w.id)).reduce((s, i) => s + (i.speedBonus || 0), 0),
-  getTotalMp: () => get().game.maxMp + (get().game.upgradeLevels?.mpRec || 0) * 1000,
+  getTotalMp: () => {
+    const baseTotal = get().game.maxMp + (get().game.upgradeLevels?.mpRec || 0) * 1000;
+    return Math.floor(baseTotal * (1 + get().getOptionSum("mp_pct") / 100));
+  },
   getInnBonus: () => {
     const s = get().game.innHighScore || 0;
     if (s >= 50000) return { name: "무림지존", atk: 0.25, gold: 0.5, exp: 0.5, critDmg: 100 };
@@ -160,7 +181,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const expB = 1 + (autoLv * 0.0003); const goldB = 1 + (autoLv * 0.0005);
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
     const innBonus = get().getInnBonus();
-    const finalExp = amount * eq.reduce((a, i) => a * (i.expMultiplier || 1), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0)/100) * expB * (1 + innBonus.exp);
+    const finalExp = amount * eq.reduce((a, i) => a * (i.expMultiplier || 1), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0)/100) * expB * (1 + innBonus.exp) * (1 + get().getOptionSum("exp_pct") / 100);
     const finalGoldB = goldB * (1 + innBonus.gold);
 
     set((s: any) => {
