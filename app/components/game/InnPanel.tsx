@@ -35,7 +35,7 @@ const MINI_GAMES: {
 }[] = [
   {
     key: "breath",
-    name: "천지운기",
+    name: "청운진기",
     desc: "하늘과 땅의 기운이 조화로운 지점에 도달할 때 타이밍에 맞춰 탭하세요.",
     icon: "🧘",
   },
@@ -169,10 +169,10 @@ export default function InnPanel({
 
   const TUTORIAL_INFO = {
     breath: {
-      title: "천지운기",
+      title: "청운진기",
       method: "하늘과 땅의 기운을 조화롭게 받아들이는 수련입니다.",
       controls: "위에서 내려오는 기운구슬(노트)이 하단의 원형 영역에 겹치는 순간, 해당 영역을 정확히 탭하세요.",
-      goal: "첫 번째 판 1000점 달성 시 자동으로 다음 단계로 넘어갑니다. 실패 전까지 무한히 도전하여 보상을 획득하세요!"
+      goal: "첫 번째 판 1000점 달성 시 자동으로 다음 단계로 넘어갑니다. 실패 전까지 보상을 획득하며 정진하세요!"
     },
     dodge: {
       title: "梅화樁 보법수련",
@@ -594,7 +594,7 @@ export default function InnPanel({
     const rIdx = realmList.indexOf(game.realm);
     
     const baseSpeed = currentStage === 1 ? 15 : (20 + rIdx * 3 + (currentStage - 2) * 15); 
-    const accel = (30 - nextTime) * (1.1 + currentStage * 0.15);
+    const accel = (currentStage - 1) * 2.5; // Stage based acceleration instead of time
     const speed = baseSpeed + accel;
 
     const nextNotes = breathNotesRef.current
@@ -641,10 +641,9 @@ export default function InnPanel({
 
     // Spawn rate by realm and stage
     let baseRate = 0.012 + rIdx * 0.004;
-    if (currentStage === 1) baseRate = 0.01; // Stage 1 is very easy
-    const stageBonus = (currentStage - 1) * 0.004;
-    const timeBonus = (30 - nextTime) * 0.001;
-    const spawnRate = baseRate + stageBonus + timeBonus;
+    if (currentStage === 1) baseRate = 0.01; 
+    const stageBonus = (currentStage - 1) * 0.005;
+    const spawnRate = baseRate + stageBonus;
     
     const maxNotesOnScreen = 5 + Math.floor(currentStage / 2);
     
@@ -1468,7 +1467,6 @@ export default function InnPanel({
               {currentMiniGame === "breath" && (
                 <div style={{ ...breathArea, height: 260, padding: 0 }}>
                    <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10, display: "flex", gap: 20 }}>
-                       <span>잔여 시간: {breathTimeLeft.toFixed(1)}s</span>
                        <span style={{ color: breathMissCount >= 10 ? "#ff4d4d" : "#ffd700" }}>MISS: {breathMissCount}/15</span>
                     </div>
                    <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
