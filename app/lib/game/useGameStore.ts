@@ -269,7 +269,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           uET = null;
           uTabs = Array.from(new Set([...uTabs, "inn"]));
           pIE = false; 
-          return { game: { ...s.game, timingMission: { ...s.game.timingMission, unlocked: true }, coins: s.game.coins + eGold, reputation: rep, exp: s.game.exp + finalExp, points, dummyHp: dHp, maxDummyHp: currentMaxHp, totalDummyKills: tKills, dummyKills: tKills, questTarget: qT, currentMissionTitle: cMT, unlockedTabs: uTabs, unlockEffectText: uET, attackMultiplier: aM, buffTimeLeft: bTL, activeBuff: aB, pendingInnEntry: pIE, innEventVersion: iEV, touches: nTouches, comboCount: combo, lastAttackTime: now, lastReward: lastR } };
+          // 객잔 개방 시 한 번 반환
         } else if (qT === 150) {
           qT = 200;
           cMT = "허수아비 누적 처치 200번\n[개방: 비급]";
@@ -280,15 +280,24 @@ export const useGameStore = create<GameState>((set, get) => ({
           cMT = "허수아비 누적 처치 300번\n[이벤트: 무뢰배]";
           uET = "비급 개방!";
           uTabs = Array.from(new Set([...uTabs, "library"]));
-        } else if (tKills > 0 && tKills % 300 === 0) {
-          uET = null; 
+        } else if (qT === 300) {
+          // 300킬 퀘스트 달성 이후는 qT를 계속 증가시켜 300킬마다 이벤트가 발생하게 함
+          qT += 300;
+          cMT = `무뢰배 추격 (${iEV + 1}차)\n허수아비를 더 처단하세요.`;
+          uET = "무뢰배 출현 예고!";
+        }
+      }
+
+      // 무뢰배 출현 로직 (300킬 단위마다 독립적으로 체크)
+      let nTM = { ...s.game.timingMission };
+      if (tKills > 0 && tKills % 300 === 0 && !nTM.available) {
           const miniGames = ["breath", "dodge", "puzzle", "pulse"];
           const gameIdx = (s.game.innEventVersion || 0) % 4;
           const selectedGame = miniGames[gameIdx];
           
           pIE = true;
           iEV = (s.game.innEventVersion || 0) + 1;
-          const newMission = {
+          nTM = {
             available: true,
             selectedGameType: selectedGame,
             rivalName: `객잔 무뢰배 (${iEV}차)`,
@@ -298,23 +307,36 @@ export const useGameStore = create<GameState>((set, get) => ({
             unlocked: true,
           };
           
-          // 300회 주기가 되면 다음 목표는 다시 300(상대적)으로 보이기 위해 qT는 누적값 보관
-          qT = tKills + 300; 
-          cMT = `무뢰배 추적 (${iEV + 1}차)\n객잔 주변을 순찰하십시오.`;
-          
-          setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 500);
-
-          return { game: { ...s.game, timingMission: newMission, coins: s.game.coins + eGold, reputation: rep, exp: s.game.exp + finalExp, points, dummyHp: dHp, maxDummyHp: currentMaxHp, totalDummyKills: tKills, dummyKills: 0, questTarget: 300, currentMissionTitle: cMT, unlockedTabs: uTabs, unlockEffectText: uET, attackMultiplier: aM, buffTimeLeft: bTL, activeBuff: aB, pendingInnEntry: pIE, innEventVersion: iEV, touches: nTouches, comboCount: combo, lastAttackTime: now, lastReward: lastR } };
-        }
-
-        // UI 소멸 로직은 GameShell의 useEffect에서 전역 관리됨
+          // 객잔으로 자동 이동 유도 (선택 사항)
+          setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 1000);
       }
-
-      // 300회 이후 순환 카운터 계산
-      const displayKills = tKills > 300 ? (tKills % 300) : tKills;
-      const displayTarget = tKills > 300 ? 300 : qT;
-
-      return { game: { ...s.game, coins: s.game.coins + eGold, reputation: rep, exp: s.game.exp + finalExp, points, dummyHp: dHp, maxDummyHp: currentMaxHp, totalDummyKills: tKills, dummyKills: displayKills, questTarget: displayTarget, currentMissionTitle: cMT, unlockedTabs: uTabs, unlockEffectText: uET, attackMultiplier: aM, buffTimeLeft: bTL, activeBuff: aB, pendingInnEntry: pIE, innEventVersion: iEV, touches: nTouches, comboCount: combo, lastAttackTime: now, lastReward: lastR } };
+      return { 
+        game: { 
+          ...s.game, 
+          timingMission: nTM,
+          coins: s.game.coins + eGold, 
+          reputation: rep, 
+          exp: s.game.exp + finalExp, 
+          points, 
+          dummyHp: dHp, 
+          maxDummyHp: currentMaxHp, 
+          totalDummyKills: tKills, 
+          dummyKills: tKills > 300 ? (tKills % 300) : tKills,
+          questTarget: tKills >= 300 ? 300 : qT,
+          currentMissionTitle: cMT, 
+          unlockedTabs: uTabs, 
+          unlockEffectText: uET, 
+          attackMultiplier: aM, 
+          buffTimeLeft: bTL, 
+          activeBuff: aB, 
+          pendingInnEntry: pIE, 
+          innEventVersion: iEV, 
+          touches: nTouches, 
+          comboCount: combo, 
+          lastAttackTime: now, 
+          lastReward: lastR 
+        } 
+      };
     });
     get().triggerSave();
   },
