@@ -704,7 +704,11 @@ export const useGameStore = create<GameState>((set, get) => ({
             lastWinReward: `${rwd.name} 획득!\n금화 +${goldGain.toLocaleString()}\n+${expGain.toLocaleString()}`, 
             currentLevel: s.game.masterDuel.selectedLevel === s.game.masterDuel.currentLevel 
               ? s.game.masterDuel.currentLevel + 1 
-              : s.game.masterDuel.currentLevel 
+              : s.game.masterDuel.currentLevel,
+            lastDefeatTimes: {
+              ...(s.game.masterDuel.lastDefeatTimes || {}),
+              [level]: Date.now()
+            }
           } 
         } 
       })); 

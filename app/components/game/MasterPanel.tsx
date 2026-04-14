@@ -29,6 +29,12 @@ export default function MasterPanel() {
   const [damages, setDamages] = useState<any[]>([]);
   const lastTickRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const isUnlocked = game.unlockedTabs.includes("master");
 
@@ -139,6 +145,19 @@ export default function MasterPanel() {
   // Recommended Combat Power
   const recommendedCP = 500 * Math.pow(1.8, masterDuel.selectedLevel - 1);
 
+  // Cooldown logic (24 hours)
+  const lastDefeat = masterDuel.lastDefeatTimes?.[masterDuel.selectedLevel] || 0;
+  const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+  const remainingMs = Math.max(0, lastDefeat + cooldownMs - now);
+  const isOnCooldown = remainingMs > 0;
+
+  const formatCooldown = (ms: number) => {
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div style={{
       display: "flex",
@@ -189,9 +208,15 @@ export default function MasterPanel() {
                   if (!options.includes(currentMax)) options.push(currentMax);
                 }
 
-                return Array.from(new Set(options)).sort((a, b) => a - b).map(lv => (
-                  <option key={lv} value={lv} disabled={lv > masterDuel.currentLevel}>Lv.{lv}</option>
-                ));
+                return Array.from(new Set(options)).sort((a, b) => a - b).map(lv => {
+                  const lvLastDefeat = masterDuel.lastDefeatTimes?.[lv] || 0;
+                  const lvIsOnCd = (lvLastDefeat + cooldownMs - now) > 0;
+                  return (
+                    <option key={lv} value={lv} disabled={lv > masterDuel.currentLevel}>
+                      Lv.{lv} {lvIsOnCd ? "⏳" : ""}
+                    </option>
+                  );
+                });
               })()}
             </select>
             <span style={{ fontSize: 11, fontWeight: 900, color: "#ff4444" }}>{masterDuel.rivalName}</span>
@@ -572,16 +597,27 @@ export default function MasterPanel() {
       <div style={{ textAlign: "center", paddingBottom: 20 }}>
         {!masterDuel.isPlaying && (
           <button
-            onClick={(e) => { e.stopPropagation(); startMasterDuel(); }}
+            onClick={(e) => { e.stopPropagation(); if (!isOnCooldown) startMasterDuel(); }}
+            disabled={isOnCooldown}
             style={{
               width: "95%", padding: "14px", borderRadius: 14,
-              background: "linear-gradient(135deg, #990000 0%, #ff0000 100%)",
-              border: "2px solid #ff4444", color: "#fff", fontSize: 18, fontWeight: 950,
-              boxShadow: "0 0 20px rgba(255,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)",
-              cursor: "pointer", transition: "0.2s"
+              background: isOnCooldown 
+                ? "rgba(50, 50, 50, 0.8)" 
+                : "linear-gradient(135deg, #990000 0%, #ff0000 100%)",
+              border: isOnCooldown ? "2px solid #444" : "2px solid #ff4444", 
+              color: isOnCooldown ? "#888" : "#fff", 
+              fontSize: 18, fontWeight: 950,
+              boxShadow: isOnCooldown ? "none" : "0 0 20px rgba(255,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)",
+              cursor: isOnCooldown ? "default" : "pointer", 
+              transition: "0.2s"
             }}
           >
-            ⚔️ 악적 처단하기
+            {isOnCooldown ? (
+              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span>악적이 달아나 몸을 숨겼습니다...</span>
+                <span style={{ color: "#ffd700", fontSize: 15 }}>다시 출현까지: {formatCooldown(remainingMs)}</span>
+              </div>
+            ) : "⚔️ 악적 처단하기"}
           </button>
         )}
         {masterDuel.isPlaying && (
