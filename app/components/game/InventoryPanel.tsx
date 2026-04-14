@@ -35,11 +35,15 @@ export default function InventoryPanel(props: Props) {
     getTotalAttack, getTotalCritRate, getTotalCritDmg, 
     getTotalDefense, getTotalHp, getTotalEvasion, getTotalSpeed 
   } = useGameStore();
+  const unlocked = game.unlockedTabs.includes("inventory");
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>("mainWeapon");
   const [popupItem, setPopupItem] = useState<OwnedWeapon | null>(null);
   const [selectingSlot, setSelectingSlot] = useState<number | null>(null);
-
-  const unlocked = game.unlockedTabs.includes("inventory");
+  const [selectedMedicineId, setSelectedMedicineId] = useState<ConsumableId | null>(null);
+  const [lastTapTime, setLastTapTime] = useState(0);
+  const [draggedMedicineId, setDraggedMedicineId] = useState<ConsumableId | null>(null);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
   const ownedWeapons = props.ownedWeapons ?? game.ownedWeapons;
   const equippedGear = game.equippedGear;
 
@@ -77,6 +81,59 @@ export default function InventoryPanel(props: Props) {
       }
     }
     setPopupItem(null);
+  };
+
+  const handleMedicineTap = (id: ConsumableId) => {
+    const now = Date.now();
+    if (now - lastTapTime < 300 && selectedMedicineId === id) {
+      // Double tap -> Use
+      (useGameStore.getState() as any).useConsumable(id);
+      setSelectedMedicineId(null);
+    } else {
+      // Single tap -> Open Modal
+      setSelectedMedicineId(id);
+      setLastTapTime(now);
+    }
+  };
+
+  const onTouchStart = (e: React.TouchEvent, id: ConsumableId) => {
+    setDraggedMedicineId(id);
+    const touch = e.touches[0];
+    setDragPos({ x: touch.clientX, y: touch.clientY });
+    setDragOrigin({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!draggedMedicineId) return;
+    const touch = e.touches[0];
+    setDragPos({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!draggedMedicineId) return;
+    
+    // Check if drop location is over a quick slot
+    // We can use document.elementFromPoint or a simpler rough coordinate check
+    const dropX = dragPos.x;
+    const dropY = dragPos.y;
+    
+    // Quick Slots area is usually at the bottom of the panel
+    // For simplicity, we'll look for elements with data-slot-index
+    const elem = document.elementFromPoint(dropX, dropY);
+    const slotIdxAttr = elem?.closest("[data-slot-index]")?.getAttribute("data-slot-index");
+    
+    if (slotIdxAttr !== null && slotIdxAttr !== undefined) {
+      const idx = parseInt(slotIdxAttr);
+      useGameStore.getState().setQuickSlot(idx, draggedMedicineId);
+    } else {
+       // If moved very little, treat as a tap
+       const dist = Math.sqrt(Math.pow(dragPos.x - dragOrigin.x, 2) + Math.pow(dragPos.y - dragOrigin.y, 2));
+       if (dist < 10) {
+         handleMedicineTap(draggedMedicineId);
+       }
+    }
+    
+    setDraggedMedicineId(null);
   };
 
   return (
@@ -208,16 +265,26 @@ export default function InventoryPanel(props: Props) {
           >
             {isMedicineSelected ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {Object.entries(game.consumables).filter(([_, v]) => (v as number) > 0).map(([id, count]) => (
-                  <div key={id} style={{
-                    borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-                    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px"
-                  }}>
-                    <div style={{ fontSize: 24 }}>{getPotionIcon(id)}</div>
-                    <div style={{ flex: 1 }}>
+                {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
+                  <div 
+                    key={id} 
+                    onTouchStart={(e) => onTouchStart(e, id)}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    onClick={() => handleMedicineTap(id)}
+                    style={{
+                      borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+                      opacity: draggedMedicineId === id ? 0.4 : 1,
+                      cursor: "pointer", touchAction: "none"
+                    }}
+                  >
+                    <div style={{ fontSize: 24, userSelect: "none" }}>{getPotionIcon(id)}</div>
+                    <div style={{ flex: 1, userSelect: "none" }}>
                       <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffd778" }}>{getPotionName(id)}</div>
-                      <div style={{ fontSize: 11, color: "#aaa" }}>수량: {count}개</div>
+                      <div style={{ fontSize: 11, color: "#aaa" }}>수량: {game.consumables[id]}개</div>
                     </div>
+                    <div style={{ fontSize: 9, color: "rgba(255,215,0,0.5)" }}>장착하려면 아래로 드래그</div>
                   </div>
                 ))}
                 {Object.values(game.consumables).every(v => v === 0) && (
@@ -319,6 +386,7 @@ export default function InventoryPanel(props: Props) {
               return (
                 <button
                   key={idx}
+                  data-slot-index={idx}
                   onClick={() => setSelectingSlot(idx)}
                   style={{
                     height: 50, borderRadius: 12, 
@@ -403,6 +471,89 @@ export default function InventoryPanel(props: Props) {
             </div>
             <button onClick={() => setSelectingSlot(null)} style={{ marginTop: 5, padding: 8, background: "#444", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}>닫기</button>
           </div>
+        </div>
+      )}
+
+      {/* 영약 상세 정보 모달 */}
+      {selectedMedicineId && (
+        <div
+          style={{
+            position: "absolute", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+          }}
+          onClick={() => setSelectedMedicineId(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 300, background: "#1c1c24", borderRadius: 16, border: "2px solid #ffd700",
+              padding: 20, display: "flex", flexDirection: "column", gap: 15,
+              boxShadow: "0 0 30px rgba(255, 215, 0, 0.3)"
+            }}
+          >
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ fontSize: 40 }}>{getPotionIcon(selectedMedicineId)}</div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#ffd700" }}>{getPotionName(selectedMedicineId)}</div>
+                <div style={{ fontSize: 12, color: "#aaa" }}>보유 수량: {game.consumables[selectedMedicineId]}개</div>
+              </div>
+            </div>
+            
+            <div style={{ 
+              background: "rgba(255,255,255,0.05)", padding: 12, borderRadius: 10,
+              fontSize: 13, color: "#eee", lineHeight: 1.6, border: "1px solid rgba(255,255,255,0.1)"
+            }}>
+              {getPotionDesc(selectedMedicineId)}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button 
+                onClick={() => {
+                  (useGameStore.getState() as any).useConsumable(selectedMedicineId);
+                  setSelectedMedicineId(null);
+                }}
+                style={{ 
+                  padding: "12px", borderRadius: 10, background: "linear-gradient(135deg, #ffd700, #ff9d00)", 
+                  color: "#000", border: "none", cursor: "pointer", fontWeight: 900, fontSize: 14,
+                  boxShadow: "0 4px 15px rgba(255,215,0,0.4)"
+                }}
+              >
+                사용하기 (따닥 터치 가능)
+              </button>
+              <button 
+                onClick={() => {
+                  (useGameStore.getState() as any).sellConsumable(selectedMedicineId);
+                  if (game.consumables[selectedMedicineId] <= 1) setSelectedMedicineId(null);
+                }}
+                style={{ 
+                  padding: "10px", borderRadius: 10, background: "rgba(255,255,255,0.05)", 
+                  color: "#ff4b4b", border: "1px solid rgba(255,75,75,0.3)", cursor: "pointer", fontSize: 12
+                }}
+              >
+                판매하기 (50% 환급)
+              </button>
+              <button 
+                onClick={() => setSelectedMedicineId(null)}
+                style={{ 
+                  padding: "10px", borderRadius: 10, background: "#333", 
+                  color: "#fff", border: "none", cursor: "pointer", fontSize: 12
+                }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 드래그 중인 아이템 비주얼 호버 */}
+      {draggedMedicineId && (
+        <div style={{
+          position: "fixed", top: dragPos.y, left: dragPos.x,
+          transform: "translate(-50%, -50%)", pointerEvents: "none",
+          zIndex: 9999, fontSize: 40, filter: "drop-shadow(0 0 10px rgba(255,215,0,0.8))"
+        }}>
+          {getPotionIcon(draggedMedicineId)}
         </div>
       )}
 
@@ -651,6 +802,13 @@ function getPotionName(id: string) {
     trance_2: "무아지경(x2)", trance_5: "무아지경(x5)", trance_10: "무아지경(x10)"
   };
   return names[id] || id;
+}
+
+function getPotionDesc(id: string) {
+  if (id.startsWith("hp_")) return "복용 시 손상된 기혈을 즉시 회복시킵니다. 대결 중 체력이 낮아지면 자동으로 복용될 수 있습니다.";
+  if (id.startsWith("mp_")) return "복용 시 소모된 내력을 즉시 보충합니다. 고차원적인 무공을 펼치기 위해 필수적인 영약입니다.";
+  if (id.startsWith("trance_")) return "정신을 집중하여 짧은 시간 동안 폭발적인 효율로 수련할 수 있게 돕는 희귀한 영약입니다.";
+  return "신비로운 기운이 서린 신비한 알약입니다.";
 }
 
 function slotLabel(slot: EquipSlot) {
