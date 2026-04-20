@@ -268,8 +268,8 @@ export default function ForgePanel(props: Props) {
                     { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 내공의 60% 회복", basePrice: 20000 },
                     { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 내공 100% 회복", basePrice: 40000 },
                     { id: "trance_2", name: "무아지경(x2)", icon: "⚡", desc: "공격력 2배 (30초)", basePrice: 200000 },
-                    { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 1500000 },
-                    { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 10000000 },
+                    { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 150000000 },
+                    { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 1000000000 },
                   ].map(p => (
                     <PotionItem key={p.id} p={p} game={game} buyPotion={buyPotion} unlocked={unlocked} currentCoins={currentCoins} />
                   ))}

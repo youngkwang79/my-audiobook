@@ -13,12 +13,12 @@ const TAB_CONFIG = [
   { key: 'mastery', name: '천명 비전', color: '#ffd700' },
 ];
 
-const MULTIPLIERS: (number | 'MAX')[] = [1, 10, 100, 'MAX'];
+const MULTIPLIERS: number[] = [1, 10, 100, 1000];
 
 export default function UpgradePanel() {
   const { game, getTotalAttack, getTotalDefense, getTotalHp, getTotalEvasion } = useGameStore() as any;
   const [activeTab, setActiveTab] = useState<TabType>('basic');
-  const [multiplier, setMultiplier] = useState<number | 'MAX'>(1);
+  const [multiplier, setMultiplier] = useState<number>(1);
   const [activeDesc, setActiveDesc] = useState<{ id: string; name: string; text: string } | null>(null);
 
   if (!game) return null;
@@ -49,7 +49,7 @@ export default function UpgradePanel() {
       displayName = faction.specialTraining.name;
       const type = faction.specialTraining.type;
       if (type === 'vitality') {
-        displayDesc = `${faction.specialTraining.desc} [레벨당 최대 생명력 +0.1%, 초당 생명력 회복 +100]`;
+        displayDesc = `${faction.specialTraining.desc} [레벨당 최대 생명력 +0.1%,\n 초당 생명력 회복 +100]`;
       } else if (type === 'armor') {
         displayDesc = `${faction.specialTraining.desc} [레벨당 방어력 +0.5%]`;
       } else if (type === 'aura') {
@@ -61,16 +61,16 @@ export default function UpgradePanel() {
       }
     } else {
       displayDesc = (([
-        { id: "atk", desc: "공격력을 영구적으로 증진시켜 적에게 더 큰 피해를 줍니다." },
-        { id: "def", desc: "신체를 금강석처럼 단단하게 하여 받는 피해를 줄입니다." },
-        { id: "hpRec", desc: "생명력을 증진시켜 생사 갈림길에서 더 오래 버티게 합니다." },
-        { id: "mpRec", desc: "단전확장: 무공을 더 자주, 강력하게 사용하게 합니다." },
+        { id: "atk", desc: "공격력을 영구적으로 증진시켜\n 적에게 더 큰 피해를 줍니다." },
+        { id: "def", desc: "신체를 금강석처럼 단단하게 하여\n 받는 피해를 줄입니다." },
+        { id: "hpRec", desc: "생명력을 증진시켜 생사 갈림길에서\n 더 오래 버티게 합니다." },
+        { id: "mpRec", desc: "강력한 무공을 사용할 수 있게\n'단전이 확장'됩니다." },
         { id: "critRate", desc: "공격 시 치명상을 입힐 확률을 높입니다." },
-        { id: "critDmg", desc: "치명타가 발생했을 때 주는 피해량을 늘립니다." },
-        { id: "eva", desc: "신묘한 보법을 익혀 적의 공격을 회피할 확률을 높입니다." },
-        { id: "luck", desc: "수행 중 기연을 만날 확률을 높여 귀한 보물을 얻게 합니다." },
-        { id: "autoGain", desc: "수행 시 얻는 재물과 성장의 효율을 영구적으로 높입니다." },
-        { id: "offlineLimit", desc: "명상의 최대 시간을 늘려 오래 수련할 수 있게 합니다." },
+        { id: "critDmg", desc: "치명타가 발생했을 때 주는\n 피해량을 늘립니다." },
+        { id: "eva", desc: "신묘한 보법을 익혀 적의 공격을\n 회피할 확률을 높입니다." },
+        { id: "luck", desc: "수행 중 기연을 만날 확률을 높여\n 귀한 보물을 얻게 합니다." },
+        { id: "autoGain", desc: "수행 시 얻는 재물과 성장의 효율을\n 영구적으로 높입니다." },
+        { id: "offlineLimit", desc: "명상의 최대 시간을 늘려\n 오래 수련할 수 있게 합니다." },
       ] as any[]).find(d => d.id === id)?.desc) || "";
     }
     
@@ -132,7 +132,7 @@ export default function UpgradePanel() {
             animation: 'masterPopupEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
           }}>
              <div style={{ fontSize: 24, fontWeight: 950, color: '#ffd700', marginBottom: 15 }}>{activeDesc.name}</div>
-             <div style={{ fontSize: 15, color: '#eee', lineHeight: 1.7, marginBottom: 25 }}>{activeDesc.text}</div>
+                           <div style={{ fontSize: 15, color: '#eee', lineHeight: 1.7, marginBottom: 25, whiteSpace: 'pre-line' }}>{activeDesc.text}</div>
              <div style={{ fontSize: 12, color: '#ffd700', opacity: 0.6, fontWeight: 700 }}>[ 화면을 터치하여 닫기 ]</div>
           </div>
         </div>
@@ -150,9 +150,7 @@ export default function UpgradePanel() {
              <span style={{ fontWeight: 900, color: "#00f2ff" }}>{Math.floor(currentRep).toLocaleString()}</span>
           </div>
         </div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>
-           무공 연마전 (武功 硏磨殿)
-        </div>
+       
       </div>
 
       {/* 2. Mini Stats Summary */}
@@ -195,7 +193,7 @@ export default function UpgradePanel() {
               transform: multiplier === m ? "scale(1.05)" : "scale(1)"
             }}
           >
-            {m === 'MAX' ? 'MAX' : `x${m}`}
+            {`x${m}`}
           </button>
         ))}
       </div>
@@ -224,35 +222,13 @@ export default function UpgradePanel() {
         {currentUpgrades.map(upgrade => {
           const store = useGameStore.getState() as any;
           
-          let actualM = multiplier === 'MAX' ? 1 : Number(multiplier);
-          if (multiplier === 'MAX') {
-             // Basic binary search for max affordance
-             let low = 1, high = 1000;
-             while(low <= high) {
-                let mid = Math.floor((low + high) / 2);
-                if (store.getMultiUpgradeCost(upgrade.id, mid, 'gold') <= Number(currentCoins)) {
-                   actualM = mid;
-                   low = mid + 1;
-                } else high = mid - 1;
-             }
-          }
-
+          const actualM = multiplier;
           const goldCost = store.getMultiUpgradeCost(upgrade.id, actualM, 'gold');
           const canAffordGold = currentCoins >= goldCost && goldCost > 0;
           
           // Reputation logic if applicable
           const canUseRep = upgrade.resources.includes('reputation');
-          let actualMRep = multiplier === 'MAX' ? 1 : Number(multiplier);
-          if (multiplier === 'MAX' && canUseRep) {
-             let low = 1, high = 1000;
-             while(low <= high) {
-                let mid = Math.floor((low + high) / 2);
-                if (store.getMultiUpgradeCost(upgrade.id, mid, 'reputation') <= Number(currentRep)) {
-                   actualMRep = mid;
-                   low = mid + 1;
-                } else high = mid - 1;
-             }
-          }
+          const actualMRep = multiplier;
           const repCost = canUseRep ? store.getMultiUpgradeCost(upgrade.id, actualMRep, 'reputation') : 0;
           const canAffordRep = canUseRep && currentRep >= repCost && repCost > 0;
 
@@ -375,14 +351,14 @@ export default function UpgradePanel() {
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
-  height: "100%", width: "100%", padding: "1px 6px",
+  height: "100%", width: "100%", padding: "15px 15px",
   background: "linear-gradient(165deg, rgba(20,20,30,0.8) 0%, rgba(10,10,15,0.9) 100%)",
   borderRadius: "32px", border: "1px solid rgba(255,215,0,0.1)",
   backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", boxSizing: "border-box"
 };
 
 const headerStyle: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 1
+  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24
 };
 
 const currencyBadge: React.CSSProperties = {
@@ -396,15 +372,15 @@ const summaryBarStyle: React.CSSProperties = {
 };
 
 const summaryItem: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, fontSize: 11
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, fontSize: 13
 };
 
 const multiplierGroupStyle: React.CSSProperties = {
-  display: "flex", gap: 8, marginBottom: 20
+  display: "flex", gap: 8, marginBottom: 18
 };
 
 const multiplierButtonStyle: React.CSSProperties = {
-  flex: 1, padding: "10px 0", borderRadius: "12px", border: "none", fontSize: 14, fontWeight: 900,
+  flex: 1, padding: "10px 0", borderRadius: "12px", border: "none", fontSize: 20, fontWeight: 900,
   cursor: "pointer", transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
 };
 
@@ -413,12 +389,12 @@ const tabGroupStyle: React.CSSProperties = {
 };
 
 const tabButtonStyle: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 0", 
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "25px 0", 
   background: "transparent", border: "none", cursor: "pointer", transition: "0.2s"
 };
 
 const listAreaStyle: React.CSSProperties = {
-  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12
+  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14
 };
 
 const cardStyle: React.CSSProperties = {
@@ -432,11 +408,11 @@ const iconBoxStyle: React.CSSProperties = {
 };
 
 const levelBadgeStyle: React.CSSProperties = {
-  position: "absolute", bottom: -5, right: -5, padding: "2px 6px", borderRadius: "6px",
+  position: "absolute", bottom: -5, right: -5, padding: "5px 13px", borderRadius: "9px",
   fontSize: 10, fontWeight: 950, color: "#000", border: "2px solid #000"
 };
 
 const actionButtonStyle: React.CSSProperties = {
-  width: 100, padding: "10px", borderRadius: "14px", border: "none", cursor: "pointer",
+  width: 100, padding: "10px", borderRadius: "14px",  border: "none", cursor: "pointer",
   display: "flex", flexDirection: "column", alignItems: "center", gap: 2, transition: "0.2s",  justifyContent: "center",
 };

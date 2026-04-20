@@ -60,7 +60,7 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "대각여래진", innerPower: "1000년", stats: { def: 2500000, hp: 15000000, atk: 150000 } },
     },
     movement: { entry: "나한보", peak: "금강비천보", final: "여래무영보" },
-    specialTraining: { type: "vitality", name: "불멸영체", desc: "불가의 법력으로 육신을 영험하게 만들어 생명력과 회복력을 극대화합니다." },
+    specialTraining: { type: "vitality", name: "불멸영체", desc: "불가의 법력으로 육신을 영험하게 만들어 생명력과 회복력을 극대화합니다.\n" },
     statAptitude: { atk: 1.0, def: 3.0, hp: 3.0, eva: 0.4, critRate: 0.8, critDmg: 0.8 },
   },
 

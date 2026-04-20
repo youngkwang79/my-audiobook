@@ -990,7 +990,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const eGold = Math.floor((0.08 + lv * 0.005) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
       const touchesPerSec = (1 + lv * 0.01) * expB;
       // [수정] 오프라인 수련치 보상 1/10 효율 적용
-      const eTouches = Math.floor(touchesPerSec * offSec * 0.1); 
+      const eTouches = Math.floor(touchesPerSec * offSec * 0.04); 
       const eExp = Math.floor((0.15 + lv * 0.005) * expB * offSec);
 
       return { 
