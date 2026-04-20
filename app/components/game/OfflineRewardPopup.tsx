@@ -46,13 +46,31 @@ export default function OfflineRewardPopup() {
             <span style={{ fontSize: 16, fontWeight: 900, color: "#ffd700" }}>+{rewards.gold.toLocaleString()}냥</span>
           </div>
           <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 14, color: "#ccc" }}>💠 획득 명성</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: "#00f2ff" }}>+{rewards.points.toLocaleString()}</span>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: 14, color: "#ccc" }}>✨ 수련 경험치</span>
             <span style={{ fontSize: 16, fontWeight: 900, color: "#a8ff7e" }}>+{rewards.exp.toLocaleString()}</span>
           </div>
           <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, color: "#ccc" }}>📜 명성 획득</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: "#7ee7ff" }}>+{rewards.points.toLocaleString()}</span>
+            <span style={{ fontSize: 14, color: "#ccc" }}>🧠 수련치 전환</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: "#7fffaa" }}>+{rewards.touches.toLocaleString()}</span>
           </div>
+          <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 14, color: "#ccc" }}>📉 명상 효율</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: "#88d8ff" }}>{rewards.efficiency}%</span>
+          </div>
+          {rewards.estimatedHoursToNextRealm > 0 ? (
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 14, color: "#ccc" }}>🌙 다음 경지까지</span>
+              <span style={{ fontSize: 16, fontWeight: 900, color: "#ffd770" }}>{rewards.estimatedHoursToNextRealm}시간 예상</span>
+            </div>
+          ) : (
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, color: "#a0ff9e" }}>
+              현재 경지에서 최대 수련 효율에 가까운 명상 보상을 받았습니다.
+            </div>
+          )}
         </div>
 
         <button 

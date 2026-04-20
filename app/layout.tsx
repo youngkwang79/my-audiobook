@@ -6,6 +6,7 @@ import { AuthProvider } from "@/app/providers/AuthProvider";
 import AuthSessionGuard from "@/app/components/AuthSessionGuard";
 import VisitorStats from "@/app/components/VisitorStats";
 import LayoutFooter from "@/app/components/LayoutFooter";
+import BackgroundAudio from "@/app/components/BackgroundAudio";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,9 +48,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="antialiased font-sans">
         <AuthProvider>
           <AuthSessionGuard />
+          <BackgroundAudio />
           {children}
           <VisitorStats />
           <LayoutFooter />

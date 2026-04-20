@@ -1,105 +1,187 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useGameStore } from "@/app/lib/game/useGameStore";
-import GameStatusPanel from "./GameStatusPanel";
+import { useState, useMemo } from "react";
+import { useGameStore, STAT_UPGRADE_CONFIG } from "@/app/lib/game/useGameStore";
+import { REALM_ORDER } from "@/app/lib/game/useGameStore";
+import { FACTIONS } from "@/app/lib/game/factions";
 
-const goldBtn: React.CSSProperties = {
-  borderRadius: 8,
-  border: "1px solid rgba(255,215,120,0.7)",
-  background:
-    "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-  color: "#2b1d00",
-  padding: "6px 12px",
-  fontSize: "12px",
-  fontWeight: 900,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  minWidth: "70px",
-};
+type TabType = 'basic' | 'technique' | 'mastery';
+
+const TAB_CONFIG = [
+  { key: 'basic', name: '기초 수련', icon: '🏮', color: '#ff4d4d' },
+  { key: 'technique', name: '심화 연마', icon: '⚔️', color: '#00f2ff' },
+  { key: 'mastery', name: '천명 비전', icon: '📜', color: '#ffd700' },
+];
+
+const MULTIPLIERS: (number | 'MAX')[] = [1, 10, 100, 'MAX'];
 
 export default function UpgradePanel() {
-  const { game } = useGameStore();
-  const currentCoins = game.coins;
+  const { game, getTotalAttack, getTotalDefense, getTotalHp, getTotalEvasion } = useGameStore() as any;
+  const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [multiplier, setMultiplier] = useState<number | 'MAX'>(1);
   const [activeDesc, setActiveDesc] = useState<{ id: string; name: string; text: string } | null>(null);
-  const [showInitialHint, setShowInitialHint] = useState(true);
-  
-  // 페이지 진입 시 배율 초기화
-  useEffect(() => {
-    setMultiplier(1);
-  }, []);
 
   if (!game) return null;
 
-  // 등차수열 합 계산기 (공용)
-  const calcSum = (lv: number, count: number, base: number) => {
-    const n = Number(count);
-    const a = (Number(lv) + 1) * base;
-    const l = (Number(lv) + n) * base;
-    return (n * (a + l)) / 2;
+  const currentCoins = game.coins;
+  const currentRep = game.reputation || 0;
+
+  // Stat Mappings to Tabs
+  const UPGRADE_GROUPS: Record<TabType, string[]> = {
+    basic: ['atk', 'def', 'hpRec', 'mpRec'],
+    technique: ['critRate', 'critDmg', 'eva'],
+    mastery: ['luck', 'autoGain', 'offlineLimit']
+  };
+
+  const faction = useMemo(() => FACTIONS.find(f => f.name === game.faction), [game.faction]);
+
+  const currentUpgrades = UPGRADE_GROUPS[activeTab].map(id => {
+    const defaultData = STAT_UPGRADE_CONFIG[id];
+    let displayName = defaultData.name;
+    let displayDesc = "";
+    
+    // Rename basic stats for clarity
+    if (id === 'atk') displayName = "공격력";
+    if (id === 'def') displayName = "방어력";
+    if (id === 'hpRec') displayName = "생명력";
+    
+    // Special Training Slot handling (Dodge, Armor, Vitality, Aura)
+    if (id === 'eva' && faction?.specialTraining) {
+      displayName = faction.specialTraining.name;
+      displayDesc = faction.specialTraining.desc;
+    } else {
+      displayDesc = (([
+        { id: "atk", desc: "공격력을 영구적으로 증진시켜 적에게 더 큰 피해를 줍니다." },
+        { id: "def", desc: "신체를 금강석처럼 단단하게 하여 받는 피해를 줄입니다." },
+        { id: "hpRec", desc: "생명력을 증진시켜 생사 갈림길에서 더 오래 버티게 합니다." },
+        { id: "mpRec", desc: "단전확장: 무공을 더 자주, 강력하게 사용하게 합니다." },
+        { id: "critRate", desc: "공격 시 치명상을 입힐 확률을 높입니다." },
+        { id: "critDmg", desc: "치명타가 발생했을 때 주는 피해량을 늘립니다." },
+        { id: "eva", desc: "신묘한 보법을 익혀 적의 공격을 회피할 확률을 높입니다." },
+        { id: "luck", desc: "수행 중 기연을 만날 확률을 높여 귀한 보물을 얻게 합니다." },
+        { id: "autoGain", desc: "수행 시 얻는 재물과 성장의 효율을 영구적으로 높입니다." },
+        { id: "offlineLimit", desc: "명상의 최대 시간을 늘려 오래 수련할 수 있게 합니다." },
+      ] as any[]).find(d => d.id === id)?.desc) || "";
+    }
+    
+    return {
+      id,
+      ...defaultData,
+      displayName,
+      level: (game.upgradeLevels as any)[id] || 0,
+      currentValue: (game.statUpgrades as any)[id] || 0,
+      desc: displayDesc
+    };
+  });
+
+  const formatStatValue = (id: string, val: number) => {
+    if (['critRate', 'critDmg', 'eva', 'autoGain', 'offlineLimit'].includes(id)) return `+${(val * 100).toFixed(2)}%`;
+    if (id === 'luck') return `${(val * 100).toFixed(4)}%`;
+    return Math.floor(val).toLocaleString();
+  };
+
+  const getStatIcon = (id: string) => {
+    if (id === 'eva' && faction?.specialTraining) {
+       if (faction.specialTraining.type === 'armor') return "🛡️";
+       if (faction.specialTraining.type === 'vitality') return "🧘";
+       if (faction.specialTraining.type === 'aura') return "🔥";
+       return "🏃";
+    }
+    const icons: Record<string, string> = {
+      atk: "⚔️", def: "🛡️", hpRec: "❤️", mpRec: "💎",
+      critRate: "🎯", critDmg: "💥", eva: "🏃",
+      luck: "🍀", autoGain: "💰", offlineLimit: "⏳"
+    };
+    return icons[id] || "✨";
+  };
+
+  const getStatColor = (id: string) => {
+    if (['atk', 'def', 'hpRec', 'mpRec'].includes(id)) return '#ff4d4d';
+    if (['critRate', 'critDmg', 'eva'].includes(id)) return '#00f2ff';
+    return '#ffd700';
   };
 
   return (
-    <section
-      onClick={() => setShowInitialHint(false)}
-      style={{
-        border: "1px solid rgba(255,215,120,0.18)", borderRadius: 24, background: "rgba(12,12,18,0.7)",
-        padding: "16px 12px", position: "relative", overflow: "hidden", 
-        height: "100%", maxHeight: "780px", display: "flex", flexDirection: "column", boxSizing: "border-box"
-      }}
-    >
-      {/* 일회성 안내 문구 (무아지경 스타일 + 블러 처리) */}
-      {showInitialHint && (
-        <div style={{ 
-          position: 'absolute', inset: 0, 
-          background: 'rgba(0,0,0,0.65)', 
-          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          zIndex: 500, 
-          display: 'grid', placeItems: 'center', animation: 'fadeIn 0.5s ease',
-          pointerEvents: 'auto'
-        }}>
-            <div style={{ 
-                color: '#ff3333', fontSize: 18, fontWeight: 900, 
-                textShadow: '0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4)', 
-                animation: 'pulse 1.2s infinite',
-                textAlign: 'center',
-                letterSpacing: '2px',
-                fontStyle: 'italic'
-            }}>
-                <div style={{ fontSize: 12, color: '#ff8888', marginBottom: 4, letterSpacing: '1px', fontStyle: 'normal' }}>武我地境 : 성장의 갈림길</div>
-                강화로 더욱 강력해지세요!
-                <div style={{ fontSize: 11, color: '#ffaaaa', opacity: 0.8, fontWeight: 500, marginTop: 10, fontStyle: 'normal' }}> [ 화면을 터치하여 무공 연마 시작 ] </div>
-            </div>
-        </div>
-      )}
+    <section style={containerStyle}>
+      {/* Description Overlay (Restored) */}
       {activeDesc && (
-        <div onClick={() => setActiveDesc(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'grid', placeItems: 'center', padding: 20, animation: 'fadeIn 0.2s ease' }}>
-          <div style={{ background: '#111', border: '2px solid #ffd700', borderRadius: 20, padding: 24, textAlign: 'center', maxWidth: 300, pointerEvents: 'auto', boxShadow: '0 0 40px rgba(0,0,0,0.8)' }}>
-             <div style={{ fontSize: 20, fontWeight: 900, color: '#ffd700', marginBottom: 12 }}>{activeDesc.name}</div>
-             <div style={{ fontSize: 14, color: '#eee', lineHeight: 1.6, marginBottom: 20 }}>{activeDesc.text}</div>
-             <div style={{ fontSize: 11, color: '#666' }}>[터치하여 닫기]</div>
+        <div 
+          onClick={() => setActiveDesc(null)} 
+          style={{ 
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', 
+            zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, 
+            animation: 'fadeIn 0.2s ease', backdropFilter: 'blur(5px)'
+          }}
+        >
+          <div style={{ 
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', 
+            border: '2px solid #ffd700', borderRadius: 24, padding: 30, 
+            textAlign: 'center', maxWidth: 320, pointerEvents: 'auto', 
+            boxShadow: '0 0 50px rgba(255,215,0,0.3)',
+            animation: 'masterPopupEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}>
+             <div style={{ fontSize: 24, fontWeight: 950, color: '#ffd700', marginBottom: 15 }}>{activeDesc.name}</div>
+             <div style={{ fontSize: 15, color: '#eee', lineHeight: 1.7, marginBottom: 25 }}>{activeDesc.text}</div>
+             <div style={{ fontSize: 12, color: '#ffd700', opacity: 0.6, fontWeight: 700 }}>[ 화면을 터치하여 닫기 ]</div>
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 20, fontWeight: 900, color: "#f5e6b3" }}>수련 강화</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <div style={{ padding: "6px 12px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 800, color: "#ffd700" }}>{Math.floor(currentCoins).toLocaleString()} 냥</div>
-          <div style={{ padding: "6px 12px", borderRadius: 12, background: "rgba(168,255,126,0.1)", border: "1px solid rgba(168,255,126,0.2)", fontSize: 11, fontWeight: 800, color: "#a8ff7e" }}>{Math.floor(game.reputation || 0).toLocaleString()} 명성</div>
+      {/* 1. Header: Quick Stats & Currencies */}
+      <div style={headerStyle}>
+        <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
+          <div style={currencyBadge}>
+             <span style={{ color: "#ffd700", opacity: 0.7 }}>💰</span> 
+             <span style={{ fontWeight: 900 }}>{Math.floor(currentCoins).toLocaleString()}</span>
+          </div>
+          <div style={{ ...currencyBadge, background: "rgba(0, 242, 255, 0.1)", border: "1px solid rgba(0, 242, 255, 0.2)" }}>
+             <span style={{ color: "#00f2ff", opacity: 0.7 }}>💠</span> 
+             <span style={{ fontWeight: 900, color: "#00f2ff" }}>{Math.floor(currentRep).toLocaleString()}</span>
+          </div>
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>
+           무공 연마전 (武功 硏磨殿)
         </div>
       </div>
 
-      <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 14, padding: 5, gap: 5, marginBottom: 16 }}>
-        {[1, 10, 100, 'MAX'].map(m => (
+      {/* 2. Mini Stats Summary */}
+      <div style={summaryBarStyle}>
+         <div style={summaryItem}>
+            <span style={{ opacity: 0.6 }}>공격</span>
+            <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{Math.floor(getTotalAttack()).toLocaleString()}</span>
+         </div>
+         <div style={summaryItem}>
+            <span style={{ opacity: 0.6 }}>방어</span>
+            <span style={{ color: "#00f2ff", fontWeight: 900 }}>{Math.floor(getTotalDefense()).toLocaleString()}</span>
+         </div>
+         <div style={summaryItem}>
+            <span style={{ opacity: 0.6 }}>생명</span>
+            <span style={{ color: "#4dff4d", fontWeight: 900 }}>{Math.floor(getTotalHp()).toLocaleString()}</span>
+         </div>
+         <div style={summaryItem}>
+            <span style={{ opacity: 0.6 }}>회피</span>
+            <span style={{ color: "#ffd700", fontWeight: 900 }}>{Math.floor(getTotalEvasion())}%</span>
+         </div>
+         {game.statUpgrades.damageReduction > 0 && (
+           <div style={summaryItem}>
+              <span style={{ opacity: 0.6 }}>피감</span>
+              <span style={{ color: "#bde7ff", fontWeight: 900 }}>{game.statUpgrades.damageReduction}%</span>
+           </div>
+         )}
+      </div>
+
+      {/* 3. Global Multiplier Selector */}
+      <div style={multiplierGroupStyle}>
+        {MULTIPLIERS.map(m => (
           <button
             key={m}
-            onClick={(e) => { e.stopPropagation(); setMultiplier(m as any); }}
+            onClick={() => setMultiplier(m)}
             style={{
-              flex: 1, padding: "12px 0", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 900, cursor: "pointer",
-              background: multiplier === m ? "rgba(255,215,0,0.35)" : "rgba(255,255,255,0.03)",
-              color: multiplier === m ? "#ffd700" : "#555", transition: 'all 0.2s', zIndex: 10
+              ...multiplierButtonStyle,
+              background: multiplier === m ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)" : "rgba(255,255,255,0.05)",
+              color: multiplier === m ? "#000" : "rgba(255,255,255,0.6)",
+              boxShadow: multiplier === m ? "0 4px 15px rgba(255,215,0,0.3)" : "none",
+              transform: multiplier === m ? "scale(1.05)" : "scale(1)"
             }}
           >
             {m === 'MAX' ? 'MAX' : `x${m}`}
@@ -107,126 +189,242 @@ export default function UpgradePanel() {
         ))}
       </div>
 
-      <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 }}>
-        {[
-          { id: "atk", name: "공심체", icon: "⚔️", desc: "공격력을 영구적으로 증진시켜 적에게 더 큰 피해를 줍니다." },
-          { id: "def", name: "금강불괴", icon: "🛡️", desc: "신체를 금강석처럼 단단하게 하여 받는 피해를 줄입니다." },
-          { id: "hpRec", name: "천심체", icon: "❤️", desc: "생명력을 증진시켜 생사 갈림길에서 더 오래 버티게 합니다." },
-          { id: "mpRec", name: "단전확장", icon: "💎", desc: "단전을 확장하여 무공을 더 자주, 강력하게 사용하게 합니다." },
-          { id: "luck", name: "천명 기연", icon: "🍀", desc: "수행 중 기연을 만날 확률을 높여 귀한 보물을 얻게 합니다." },
-          { id: "autoGain", name: "심득 성취", icon: "💰", desc: "수행 시 얻는 재물과 성장의 효율을 영구적으로 높입니다." },
-          { id: "offlineLimit", name: "명상 확장", icon: "⏳", desc: "명상의 깊이를 더하여 자리를 비운 동안의 수행 한도를 늘립니다." },
-        ].map(s => {
-          const level = Number((game.upgradeLevels as any)[s.id] || 0);
-          const store: any = useGameStore.getState();
-          let targetM = multiplier === 'MAX' ? 1 : Number(multiplier);
+      {/* 4. Tab Navigation */}
+      <div style={tabGroupStyle}>
+        {TAB_CONFIG.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as TabType)}
+            style={{
+              ...tabButtonStyle,
+              borderBottom: activeTab === tab.key ? `3px solid ${tab.color}` : "3px solid transparent",
+              color: activeTab === tab.key ? tab.color : "rgba(255,255,255,0.4)",
+              background: activeTab === tab.key ? `linear-gradient(to top, ${tab.color}15, transparent)` : "transparent"
+            }}
+          >
+            <span style={{ fontSize: 16, marginBottom: 4 }}>{tab.icon}</span>
+            <span style={{ fontSize: 11, fontWeight: 900 }}>{tab.name}</span>
+          </button>
+        ))}
+      </div>
 
+      {/* 5. Upgrade List */}
+      <div className="hide-scrollbar" style={listAreaStyle}>
+        {currentUpgrades.map(upgrade => {
+          const store = useGameStore.getState() as any;
+          
+          let actualM = multiplier === 'MAX' ? 1 : Number(multiplier);
           if (multiplier === 'MAX') {
-             let count = 0; let total = 0;
-             while (count < 100) {
-                const nextCost = (level + count + 1) * 500;
-                if (total + nextCost <= Number(currentCoins)) { total += nextCost; count++; } else break;
+             // Basic binary search for max affordance
+             let low = 1, high = 1000;
+             while(low <= high) {
+                let mid = Math.floor((low + high) / 2);
+                if (store.getMultiUpgradeCost(upgrade.id, mid, 'gold') <= Number(currentCoins)) {
+                   actualM = mid;
+                   low = mid + 1;
+                } else high = mid - 1;
              }
-             targetM = Math.max(1, count);
           }
 
-          const goldCost = Math.floor(calcSum(level, targetM, 500));
-          const repCost = Math.floor(calcSum(level, targetM, 100));
-          const currentRep = Math.floor(game.reputation ?? 0);
+          const goldCost = store.getMultiUpgradeCost(upgrade.id, actualM, 'gold');
+          const canAffordGold = currentCoins >= goldCost && goldCost > 0;
           
-          return (
-            <div key={s.id} className="upgrade-card" style={{ 
-              borderRadius: 16, border: "1px solid rgba(255,215,120,0.12)", background: "rgba(255,255,255,0.02)", 
-              padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, minHeight: 64, position: 'relative'
-            }}>
-              {/* 금빛 정보 구역 (설명보기) */}
-              <div 
-                onClick={(e) => { e.stopPropagation(); setActiveDesc({ id: s.id, name: s.name, text: s.desc }); }}
-                style={{ 
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 auto', minWidth: 0,
-                  padding: '6px', borderRadius: 12, border: '1px solid rgba(255,215,0,0.25)',
-                  background: 'rgba(255,215,0,0.05)', animation: 'borderGlow 3s infinite alternate ease-in-out',
-                  zIndex: 5, pointerEvents: 'auto'
-                }}
-              >
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, border: "1px solid rgba(255,215,120,0.3)", display: "grid", placeItems: "center", fontSize: 18, background: "rgba(255,215,120,0.1)" }}>{s.icon}</div>
-                    <div style={{ position: 'absolute', bottom: -4, right: -4, fontSize: 8, background: "#ffd700", color: "#000", padding: "1px 3px", borderRadius: 4, fontWeight: 900, border: "1px solid #000" }}>Lv.{level}</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: "#ffe08a", whiteSpace: 'nowrap' }}>{s.name}</div>
-                    <div style={{ fontSize: 10, color: "#ffd700", fontWeight: '800' }}>
-                    {(() => {
-                        const lv = level;
-                         if (s.id === 'atk') return `⚔️ ${(lv * 250).toLocaleString()}`;
-                         if (s.id === 'def') return `🛡️ ${(lv * 250).toLocaleString()}`;
-                         if (s.id === 'hpRec') return `❤️ ${(lv * 2500).toLocaleString()}`;
-                         if (s.id === 'mpRec') return `💎 ${(lv * 1000).toLocaleString()}`;
-                         if (s.id === 'autoGain') return `💰 +${(lv * 0.05).toFixed(2)}% | ✨ +${(lv * 0.03).toFixed(2)}%`;
-                         if (s.id === 'offlineLimit') return `⌛ ${(lv * 30).toLocaleString()}s`;
-                         if (s.id === 'luck') return `🍀 ${(lv * 0.001).toFixed(3)}%`;
-                        return `+${lv}`;
-                    })()}
-                    </div>
-                </div>
-              </div>
+          // Reputation logic if applicable
+          const canUseRep = upgrade.resources.includes('reputation');
+          let actualMRep = multiplier === 'MAX' ? 1 : Number(multiplier);
+          if (multiplier === 'MAX' && canUseRep) {
+             let low = 1, high = 1000;
+             while(low <= high) {
+                let mid = Math.floor((low + high) / 2);
+                if (store.getMultiUpgradeCost(upgrade.id, mid, 'reputation') <= Number(currentRep)) {
+                   actualMRep = mid;
+                   low = mid + 1;
+                } else high = mid - 1;
+             }
+          }
+          const repCost = canUseRep ? store.getMultiUpgradeCost(upgrade.id, actualMRep, 'reputation') : 0;
+          const canAffordRep = canUseRep && currentRep >= repCost && repCost > 0;
 
-              {/* 버튼 구역 (인식 문제 해결을 위해 Z-Index 높임) */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4, position: 'relative', zIndex: 50, flexShrink: 0 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: 'flex-end' }}>
-                  <div style={{ display: "flex", gap: 3 }}>
-                    {[2, 5, 10].map(m => {
-                      const isSelected = multiplier === m;
-                      const mCost = Math.floor(calcSum(level, m, 500));
-                      return (
-                        <button 
-                          key={m} 
-                          onClick={(e) => { e.stopPropagation(); setMultiplier(m as any); }} 
-                          style={{ 
-                            padding: "4px 6px", fontSize: 9, borderRadius: 6, 
-                            background: isSelected ? "rgba(255,215,0,0.6)" : "rgba(255,255,255,0.1)", 
-                            border: `1px solid ${isSelected ? "#ffd700" : "rgba(255,255,255,0.2)"}`,
-                            color: isSelected ? "#000" : "#aaa", cursor: "pointer", fontWeight: 900,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 36,
-                            pointerEvents: 'auto'
-                          }}
-                        >
-                          <span style={{ fontSize: 10 }}>x{m}</span>
-                          <span style={{ fontSize: 7, opacity: 0.8 }}>{mCost >= 1000 ? (mCost/1000).toFixed(1)+'k' : mCost}</span>
-                        </button>
-                      );
-                    })}
+          const statColor = getStatColor(upgrade.id);
+
+          return (
+            <div 
+              key={upgrade.id} 
+              className="upgrade-card"
+              style={cardStyle}
+              onClick={() => setActiveDesc({ id: upgrade.id, name: upgrade.displayName, text: upgrade.desc })}
+            >
+               {/* Animated Golden Border Glow (Lightning Effect) */}
+               <div className="card-glimmer"></div>
+
+               <div style={{ display: "flex", gap: 15, alignItems: "center", position: 'relative', zIndex: 1 }}>
+                  <div style={{ ...iconBoxStyle, border: `1px solid ${statColor}44`, background: `${statColor}11` }}>
+                    <span style={{ fontSize: 24 }}>{getStatIcon(upgrade.id)}</span>
+                    <div style={{ ...levelBadgeStyle, background: statColor }}>Lv.{upgrade.level}</div>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(s.id, targetM, 'gold'); }} disabled={currentCoins < goldCost} style={{
-                    padding: "8px 12px", borderRadius: 10, background: currentCoins >= goldCost ? "linear-gradient(135deg, #ffd700, #ff8c00)" : "#222",
-                    color: currentCoins >= goldCost ? "#000" : "#555", border: "none", fontSize: 11, fontWeight: 900, cursor: currentCoins >= goldCost ? "pointer" : "not-allowed",
-                    minWidth: 80, pointerEvents: 'auto'
-                  }}>
-                    {goldCost >= 1000000 ? `${(goldCost/1000000).toFixed(1)}M` : goldCost.toLocaleString()}
-                  </button>
-                </div>
-                <button onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(s.id, targetM, 'reputation'); }} disabled={currentRep < repCost} style={{
-                  padding: "6px", borderRadius: 10, background: currentRep >= repCost ? "linear-gradient(135deg, #00bfff, #1e90ff)" : "#1a1a1a",
-                  color: currentRep >= repCost ? "#fff" : "#444", border: "1px solid rgba(0,191,255,0.3)", fontSize: 10, fontWeight: 900, cursor: currentRep >= repCost ? "pointer" : "not-allowed",
-                  minWidth: 50, height: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto'
-                }}>
-                  <span style={{ fontSize: 8, opacity: 0.9 }}>명성</span>
-                  <span>{repCost >= 1000 ? `${(repCost/1000).toFixed(1)}K` : repCost.toLocaleString()}</span>
-                </button>
-              </div>
+                  <div style={{ flex: 1 }}>
+                     <div style={{ fontSize: 14, fontWeight: 900, color: "#fff", marginBottom: 2 }}>{upgrade.displayName}</div>
+                     <div style={{ fontSize: 18, fontWeight: 950, color: statColor }}>
+                        {formatStatValue(upgrade.id, upgrade.currentValue)}
+                     </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                     {/* Gold Upgrade (Gold Box) */}
+                     <button
+                        onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualM, 'gold'); }}
+                        disabled={!canAffordGold}
+                        style={{
+                          ...actionButtonStyle,
+                          background: canAffordGold 
+                            ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)" 
+                            : "rgba(255,255,255,0.05)",
+                          color: canAffordGold ? "#000" : "rgba(255,255,255,0.2)",
+                          boxShadow: canAffordGold ? "0 4px 15px rgba(255,215,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)" : "none",
+                          border: canAffordGold ? "1px solid #ffd700" : "none"
+                        }}
+                     >
+                        <span style={{ fontSize: 8, opacity: 0.8, fontWeight: 900 }}>x{actualM} 연마</span>
+                        <span style={{ fontWeight: 950 }}>{goldCost >= 1000000 ? (goldCost/1000000).toFixed(1)+'M' : goldCost.toLocaleString()}</span>
+                     </button>
+                     
+                     {/* Reputation Upgrade (Blue Box) */}
+                     {canUseRep && (
+                       <button
+                         onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualMRep, 'reputation'); }}
+                         disabled={!canAffordRep}
+                         style={{
+                           ...actionButtonStyle,
+                           padding: "6px",
+                           background: canAffordRep 
+                            ? "linear-gradient(135deg, #00f2ff 0%, #0077ff 100%)" 
+                            : "rgba(0, 242, 255, 0.05)",
+                           color: canAffordRep ? "#fff" : "rgba(0, 242, 255, 0.2)",
+                           boxShadow: canAffordRep ? "0 4px 15px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2)" : "none",
+                           border: canAffordRep ? "1px solid #00f2ff" : "none"
+                         }}
+                       >
+                         <span style={{ fontSize: 8, opacity: 0.9, fontWeight: 900 }}>x{actualMRep} 명예</span>
+                         <span style={{ fontWeight: 950 }}>{repCost >= 1000 ? (repCost/1000).toFixed(1)+'K' : repCost.toLocaleString()}</span>
+                       </button>
+                     )}
+                  </div>
+               </div>
             </div>
           );
         })}
       </div>
 
-      <style>{` 
-        .hide-scrollbar::-webkit-scrollbar { display: none; } 
-        .upgrade-card::after { content: ""; position: absolute; top: -50%; left: -60%; width: 20%; height: 200%; background: rgba(255, 255, 255, 0.05); transform: rotate(30deg); animation: shine 6s infinite linear; pointer-events: none; }
-        @keyframes shine { 0% { left: -60%; } 15% { left: 120%; } 100% { left: 120%; } }
-        @keyframes borderGlow { from { border-color: rgba(255,215,0,0.2); box-shadow: inset 0 0 5px rgba(255,215,0,0.05); } to { border-color: rgba(255,215,0,0.6); box-shadow: inset 0 0 15px rgba(255,215,0,0.15); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .upgrade-card {
+          transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          cursor: pointer;
+          border: 1px solid rgba(255,215,0,0.15) !important;
+          animation: border-pulse 3s infinite ease-in-out;
+        }
+        .upgrade-card:hover {
+          transform: translateY(-4px) scale(1.02);
+          background: rgba(255,255,255,0.06) !important;
+          border-color: rgba(255,215,0,0.6) !important;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 25px rgba(255,215,0,0.2);
+        }
+        .upgrade-card:active {
+          transform: translateY(-2px) scale(0.98);
+        }
+        .card-glimmer {
+          position: absolute;
+          top: 0; left: -100%; width: 100%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,215,0,0.05), transparent);
+          transform: skewX(-25deg);
+          animation: shimmer 4s infinite linear;
+          pointer-events: none;
+        }
+        @keyframes shimmer {
+          0% { left: -100%; }
+          30% { left: 150%; }
+          100% { left: 200%; }
+        }
+        @keyframes border-pulse {
+          0%, 100% { border-color: rgba(255,215,0,0.1); box-shadow: 0 0 5px rgba(255,215,0,0.05); }
+          50% { border-color: rgba(255,215,0,0.4); box-shadow: 0 0 15px rgba(255,215,0,0.15); }
+        }
+        @keyframes masterPopupEnter {
+          from { opacity: 0; transform: scale(0.8) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
       `}</style>
     </section>
   );
 }
+
+// --- Styles ---
+const containerStyle: React.CSSProperties = {
+  height: "100%", width: "100%", padding: "20px 15px",
+  background: "linear-gradient(165deg, rgba(20,20,30,0.8) 0%, rgba(10,10,15,0.9) 100%)",
+  borderRadius: "32px", border: "1px solid rgba(255,215,0,0.1)",
+  backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", boxSizing: "border-box"
+};
+
+const headerStyle: React.CSSProperties = {
+  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20
+};
+
+const currencyBadge: React.CSSProperties = {
+  background: "rgba(255, 215, 0, 0.1)", border: "1px solid rgba(255, 215, 0, 0.2)",
+  padding: "6px 14px", borderRadius: "14px", fontSize: 13, display: "flex", gap: 8, alignItems: "center", color: "#ffd700"
+};
+
+const summaryBarStyle: React.CSSProperties = {
+  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "12px", gap: 15, marginBottom: 20,
+  border: "1px solid rgba(255,255,255,0.05)"
+};
+
+const summaryItem: React.CSSProperties = {
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, fontSize: 11
+};
+
+const multiplierGroupStyle: React.CSSProperties = {
+  display: "flex", gap: 8, marginBottom: 20
+};
+
+const multiplierButtonStyle: React.CSSProperties = {
+  flex: 1, padding: "10px 0", borderRadius: "12px", border: "none", fontSize: 14, fontWeight: 900,
+  cursor: "pointer", transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+};
+
+const tabGroupStyle: React.CSSProperties = {
+  display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 20
+};
+
+const tabButtonStyle: React.CSSProperties = {
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 0", 
+  background: "transparent", border: "none", cursor: "pointer", transition: "0.2s"
+};
+
+const listAreaStyle: React.CSSProperties = {
+  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12
+};
+
+const cardStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.03)", borderRadius: "20px", padding: "15px", 
+  border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden"
+};
+
+const iconBoxStyle: React.CSSProperties = {
+  width: 64, height: 64, borderRadius: "18px", display: "flex", alignItems: "center", 
+  justifyContent: "center", position: "relative"
+};
+
+const levelBadgeStyle: React.CSSProperties = {
+  position: "absolute", bottom: -5, right: -5, padding: "2px 6px", borderRadius: "6px",
+  fontSize: 10, fontWeight: 950, color: "#000", border: "2px solid #000"
+};
+
+const actionButtonStyle: React.CSSProperties = {
+  width: 100, padding: "10px", borderRadius: "14px", border: "none", cursor: "pointer",
+  display: "flex", flexDirection: "column", alignItems: "center", gap: 2, transition: "0.2s"
+};

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useGameStore, REALM_SETTINGS } from "@/app/lib/game/useGameStore";
+import { useEffect, useState } from "react";
+import { useGameStore, REALM_SETTINGS, REALM_ORDER } from "@/app/lib/game/useGameStore";
 import CharacterModal from "./CharacterModal";
 
 export default function GameStatusPanel({ game }: { game: any }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { getTotalAttack } = useGameStore();
+  const { getTotalAttack, triggerSave } = useGameStore();
 
   // 데이터 유실 방지를 위한 초기화 및 매핑
   const safeGame: any = {
@@ -16,7 +16,8 @@ export default function GameStatusPanel({ game }: { game: any }) {
     exp: Math.floor(game?.exp ?? 0),
     touches: Math.floor(game?.touches ?? 0),
     coins: Math.floor(game?.coins ?? 0),
-    reputation: Math.floor(game?.reputation ?? 0),
+    reputation: Math.floor(game?.points ?? 0),
+    points: Math.floor(game?.points ?? 0),
     realm: game?.realm ?? "필부",
     faction: game?.faction ?? "무소속",
     hp: game?.hp ?? 150,
@@ -32,7 +33,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
   const totalAttack = getTotalAttack();
 
   // 경지 돌파 진행도 계산 (성급 반영)
-  const realmKeys = Object.keys(REALM_SETTINGS);
+  const realmKeys = REALM_ORDER;
   const currentIndex = realmKeys.indexOf(safeGame.realm);
   const isFinalRealm = currentIndex === realmKeys.length - 1;
   const nextRealm = !isFinalRealm ? realmKeys[currentIndex + 1] : null;
@@ -52,10 +53,10 @@ export default function GameStatusPanel({ game }: { game: any }) {
   const startTouches = safeGame.star === 1 ? currentRealmInfo.minTouches : getRequiredTouches(safeGame.realm, safeGame.star - 1);
   const targetTouches = getRequiredTouches(safeGame.realm, safeGame.star);
   
-  const progressPercent = isFinalRealm ? 100 : Math.min(
+  const progressPercent = isFinalRealm ? 100 : Math.max(0, Math.min(
     ((safeGame.touches - startTouches) / Math.max(1, targetTouches - startTouches)) * 100,
     100
-  );
+  ));
 
   const displayTarget = safeGame.star === 10 ? `${nextRealm} 도달` : `${safeGame.realm} ${safeGame.star + 1}성 도달`;
 
@@ -177,16 +178,23 @@ export default function GameStatusPanel({ game }: { game: any }) {
             </button>
             <button
               onClick={() => {
-                const state = useGameStore.getState();
-                state.addCoins(100000000);
-                // 강화 탭 즉시 해금 로직 추가
+                const hundredBillion = 100000000000;
                 useGameStore.setState((s: any) => ({
                   game: {
                     ...s.game,
-                    unlockedTabs: Array.from(new Set([...s.game.unlockedTabs, "upgrade"]))
+                    coins: hundredBillion,
+                    reputation: hundredBillion,
+                    points: hundredBillion,
+                    enhancementStones: hundredBillion,
+                    bossTokens: hundredBillion,
+                    wisdom: hundredBillion,
+                    isForgeFullUnlocked: true,
+                    unlockedTabs: ["training", "upgrade", "inn", "master", "library", "forge", "inventory"]
                   }
                 }));
-                alert("비밀 자금 1억냥 충전 및 강화 메뉴가 해금되었습니다!");
+                triggerSave(true);
+      
+                alert("⚠️ 천하제일인의 기운이 느껴집니다!\n\n금화/명성/강화석/징표/심득 1,000억 확보!\n모든 탭 개방 및 대장간 전 경지 해금 완료!\n(데이터가 즉시 저장되었습니다)");
               }}
               style={{
                 padding: "4px 6px",
@@ -200,6 +208,29 @@ export default function GameStatusPanel({ game }: { game: any }) {
               }}
             >
               G
+            </button>
+            <button
+              onClick={() => {
+                useGameStore.getState().toggleAudio();
+              }}
+              title="배경음악 켜기/끄기"
+              style={{
+                width: "26px",
+                height: "26px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "14px",
+                background: !safeGame.isAudioMuted ? "linear-gradient(180deg, #f3c969, #d4a23c)" : "#444",
+                border: !safeGame.isAudioMuted ? "none" : "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "8px",
+                color: !safeGame.isAudioMuted ? "#1a1612" : "#aaa",
+                cursor: "pointer",
+                marginLeft: "4px",
+                marginRight: "4px",
+              }}
+            >
+              {!safeGame.isAudioMuted ? "🎵" : "🔇"}
             </button>
           </div>
 
@@ -240,7 +271,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
                 fontWeight: "bold",
               }}
             >
-              <span>HP</span>
+              <span>생명력</span>
               <span>
                 {Math.floor(safeGame.hp).toLocaleString()} / {Math.floor(totalHp).toLocaleString()}
               </span>
@@ -277,7 +308,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
                 fontWeight: "bold",
               }}
             >
-              <span>MP</span>
+              <span>내공</span>
               <span>
                 {Math.floor(safeGame.mp).toLocaleString()} / {Math.floor(totalMp).toLocaleString()}
               </span>
@@ -342,7 +373,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr 1fr",
+            gridTemplateColumns: "repeat(5, 1fr)",
             gap: "2px",
             marginBottom: 8,
           }}
@@ -402,6 +433,21 @@ export default function GameStatusPanel({ game }: { game: any }) {
               minWidth: 0
             }}
           >
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>강화석</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {(safeGame.enhancementStones || 0).toLocaleString()}
+            </div>
+          </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              padding: "4px 1px",
+              borderRadius: "6px",
+              textAlign: "center",
+              border: "1px solid rgba(255,255,255,0.05)",
+              minWidth: 0
+            }}
+          >
             <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>공격력</div>
             <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ff4d4d", textShadow: "0 0 4px rgba(255,77,77,0.3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {totalAttack.toLocaleString()}
@@ -409,8 +455,66 @@ export default function GameStatusPanel({ game }: { game: any }) {
           </div>
         </div>
 
+        {/* 5. 활성화된 버프 (신법/물약 등) */}
+        {(safeGame.movementBuff || safeGame.activeBuff) && (
+          <div style={{ display: "flex", gap: "6px", marginTop: "2px", flexWrap: "wrap" }}>
+             {safeGame.movementBuff && (
+               <div
+                 style={{
+                   flex: 1,
+                   background: "linear-gradient(90deg, rgba(85,170,255,0.2), rgba(85,170,255,0.1))",
+                   border: "1px solid rgba(85,170,255,0.3)",
+                   borderRadius: "6px",
+                   padding: "3px 8px",
+                   display: "flex",
+                   justifyContent: "space-between",
+                   alignItems: "center",
+                   boxShadow: "0 0 10px rgba(85,170,255,0.1)",
+                   animation: "pulse 2s infinite"
+                 }}
+               >
+                 <div style={{ fontSize: "10px", color: "#8ccfff", fontWeight: "bold" }}>
+                   ⚡ {safeGame.movementBuff.name}
+                 </div>
+                 <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
+                   {safeGame.movementBuff.timeLeft.toFixed(1)}s
+                 </div>
+               </div>
+             )}
+             {safeGame.activeBuff && (
+               <div
+                 style={{
+                   flex: 1,
+                   background: "linear-gradient(90deg, rgba(255,215,120,0.2), rgba(255,215,120,0.1))",
+                   border: "1px solid rgba(255,215,120,0.3)",
+                   borderRadius: "6px",
+                   padding: "3px 8px",
+                   display: "flex",
+                   justifyContent: "space-between",
+                   alignItems: "center",
+                   animation: "pulse 2s infinite"
+                 }}
+               >
+                 <div style={{ fontSize: "10px", color: "#ffd778", fontWeight: "bold" }}>
+                   🔥 {safeGame.activeBuff}
+                 </div>
+                 <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
+                   {safeGame.buffTimeLeft.toFixed(1)}s
+                 </div>
+               </div>
+             )}
+          </div>
+        )}
 
       </aside>
+
+      <style jsx>{`
+        @keyframes pulse {
+          0% { opacity: 0.8; }
+          50% { opacity: 1; transform: scale(1.02); }
+          100% { opacity: 0.8; }
+        }
+      `}</style>
 
       <CharacterModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>

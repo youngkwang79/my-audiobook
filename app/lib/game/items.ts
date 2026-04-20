@@ -1,4 +1,4 @@
-import type { OwnedWeapon, ItemTier, RandomOption } from "./types";
+import type { OwnedWeapon, ItemTier, RandomOption, EquipSlot } from "./types";
 
 export type SetOption = {
   requiredPieces: number;
@@ -89,6 +89,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     description: "공격 +2 | 방어 +5",
   },
   {
+    id: "필부_necklace",
+    name: "무명 목걸이",
+    slot: "necklace",
+    realm: "필부",
+    attackBonus: 2,
+    mpBonus: 10,
+    price: 600,
+    icon: "📿",
+    description: "공격 +2 | 내공 +10",
+  },
+  {
+    id: "필부_ring",
+    name: "무명 반지",
+    slot: "ring",
+    realm: "필부",
+    attackBonus: 2,
+    mpBonus: 10,
+    price: 600,
+    icon: "💍",
+    description: "공격 +2 | 내공 +10",
+  },
+  {
+    id: "필부_bracelet",
+    name: "무명 팔찌",
+    slot: "bracelet",
+    realm: "필부",
+    attackBonus: 2,
+    hpBonus: 20,
+    mpBonus: 10,
+    price: 600,
+    icon: "📿",
+    description: "공격 +2 | 생명 +20 | 내공 +10",
+  },
+  {
     id: "삼류_mainWeapon",
     name: "강철장검",
     slot: "mainWeapon",
@@ -152,6 +186,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     price: 3000,
     icon: "🥋",
     description: "공격 +6 | 방어 +10",
+  },
+  {
+    id: "삼류_necklace",
+    name: "강철 목걸이",
+    slot: "necklace",
+    realm: "삼류",
+    attackBonus: 6,
+    mpBonus: 30,
+    price: 3000,
+    icon: "📿",
+    description: "공격 +6 | 내공 +30",
+  },
+  {
+    id: "삼류_ring",
+    name: "강철 반지",
+    slot: "ring",
+    realm: "삼류",
+    attackBonus: 6,
+    mpBonus: 30,
+    price: 3000,
+    icon: "💍",
+    description: "공격 +6 | 내공 +30",
+  },
+  {
+    id: "삼류_bracelet",
+    name: "강철 팔찌",
+    slot: "bracelet",
+    realm: "삼류",
+    attackBonus: 6,
+    hpBonus: 60,
+    mpBonus: 30,
+    price: 3000,
+    icon: "📿",
+    description: "공격 +6 | 생명 +60 | 내공 +30",
   },
   {
     id: "이류_mainWeapon",
@@ -219,6 +287,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     description: "공격 +16 | 방어 +20",
   },
   {
+    id: "이류_necklace",
+    name: "백련 목걸이",
+    slot: "necklace",
+    realm: "이류",
+    attackBonus: 16,
+    mpBonus: 80,
+    price: 15000,
+    icon: "📿",
+    description: "공격 +16 | 내공 +80",
+  },
+  {
+    id: "이류_ring",
+    name: "백련 반지",
+    slot: "ring",
+    realm: "이류",
+    attackBonus: 16,
+    mpBonus: 80,
+    price: 15000,
+    icon: "💍",
+    description: "공격 +16 | 내공 +80",
+  },
+  {
+    id: "이류_bracelet",
+    name: "백련 팔찌",
+    slot: "bracelet",
+    realm: "이류",
+    attackBonus: 16,
+    hpBonus: 160,
+    mpBonus: 80,
+    price: 15000,
+    icon: "📿",
+    description: "공격 +16 | 생명 +160 | 내공 +80",
+  },
+  {
     id: "일류_mainWeapon",
     name: "청강검",
     slot: "mainWeapon",
@@ -284,6 +386,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     description: "공격 +50 | 방어 +50",
   },
   {
+    id: "일류_necklace",
+    name: "청강 목걸이",
+    slot: "necklace",
+    realm: "일류",
+    attackBonus: 50,
+    mpBonus: 250,
+    price: 60000,
+    icon: "📿",
+    description: "공격 +50 | 내공 +250",
+  },
+  {
+    id: "일류_ring",
+    name: "청강 반지",
+    slot: "ring",
+    realm: "일류",
+    attackBonus: 50,
+    mpBonus: 250,
+    price: 60000,
+    icon: "💍",
+    description: "공격 +50 | 내공 +250",
+  },
+  {
+    id: "일류_bracelet",
+    name: "청강 팔찌",
+    slot: "bracelet",
+    realm: "일류",
+    attackBonus: 50,
+    hpBonus: 500,
+    mpBonus: 250,
+    price: 60000,
+    icon: "📿",
+    description: "공격 +50 | 생명 +500 | 내공 +250",
+  },
+  {
     id: "절정_mainWeapon",
     name: "벽력신검",
     slot: "mainWeapon",
@@ -347,6 +483,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     price: 300000,
     icon: "🥋",
     description: "공격 +160 | 방어 +120",
+  },
+  {
+    id: "절정_necklace",
+    name: "벽력 목걸이",
+    slot: "necklace",
+    realm: "절정",
+    attackBonus: 160,
+    mpBonus: 800,
+    price: 300000,
+    icon: "📿",
+    description: "공격 +160 | 내공 +800",
+  },
+  {
+    id: "절정_ring",
+    name: "벽력 반지",
+    slot: "ring",
+    realm: "절정",
+    attackBonus: 160,
+    mpBonus: 800,
+    price: 300000,
+    icon: "💍",
+    description: "공격 +160 | 내공 +800",
+  },
+  {
+    id: "절정_bracelet",
+    name: "벽력 팔찌",
+    slot: "bracelet",
+    realm: "절정",
+    attackBonus: 160,
+    hpBonus: 1600,
+    mpBonus: 800,
+    price: 300000,
+    icon: "📿",
+    description: "공격 +160 | 생명 +1,600 | 내공 +800",
   },
   {
     id: "초절정_mainWeapon",
@@ -418,6 +588,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     description: "공격 +500 | 방어 +300",
   },
   {
+    id: "초절정_necklace",
+    name: "용린 목걸이",
+    slot: "necklace",
+    realm: "초절정",
+    attackBonus: 500,
+    mpBonus: 2500,
+    price: 1200000,
+    icon: "📿",
+    description: "공격 +500 | 내공 +2500",
+  },
+  {
+    id: "초절정_ring",
+    name: "용린 반지",
+    slot: "ring",
+    realm: "초절정",
+    attackBonus: 500,
+    mpBonus: 2500,
+    price: 1200000,
+    icon: "💍",
+    description: "공격 +500 | 내공 +2500",
+  },
+  {
+    id: "초절정_bracelet",
+    name: "용린 팔찌",
+    slot: "bracelet",
+    realm: "초절정",
+    attackBonus: 500,
+    hpBonus: 5000,
+    mpBonus: 2500,
+    price: 1200000,
+    icon: "📿",
+    description: "공격 +500 | 생명 +5,000 | 내공 +2,500",
+  },
+  {
     id: "화경_mainWeapon",
     name: "태허무극검",
     slot: "mainWeapon",
@@ -485,6 +689,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     price: 6000000,
     icon: "🥋",
     description: "공격 +1,600 | 방어 +800",
+  },
+  {
+    id: "화경_necklace",
+    name: "태허 목걸이",
+    slot: "necklace",
+    realm: "화경",
+    attackBonus: 1600,
+    mpBonus: 8000,
+    price: 6000000,
+    icon: "📿",
+    description: "공격 +1,600 | 내공 +8,000",
+  },
+  {
+    id: "화경_ring",
+    name: "태허 반지",
+    slot: "ring",
+    realm: "화경",
+    attackBonus: 1600,
+    mpBonus: 8000,
+    price: 6000000,
+    icon: "💍",
+    description: "공격 +1,600 | 내공 +8,000",
+  },
+  {
+    id: "화경_bracelet",
+    name: "태허 팔찌",
+    slot: "bracelet",
+    realm: "화경",
+    attackBonus: 1600,
+    hpBonus: 16000,
+    mpBonus: 8000,
+    price: 6000000,
+    icon: "📿",
+    description: "공격 +1,600 | 생명 +16,000 | 내공 +8,000",
   },
   {
     id: "현경_mainWeapon",
@@ -556,6 +794,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     description: "공격 +5,000 | 방어 +2000",
   },
   {
+    id: "현경_necklace",
+    name: "천뢰 목걸이",
+    slot: "necklace",
+    realm: "현경",
+    attackBonus: 5000,
+    mpBonus: 25000,
+    price: 30000000,
+    icon: "📿",
+    description: "공격 +5,000 | 내공 +25,000",
+  },
+  {
+    id: "현경_ring",
+    name: "천뢰 반지",
+    slot: "ring",
+    realm: "현경",
+    attackBonus: 5000,
+    mpBonus: 25000,
+    price: 30000000,
+    icon: "💍",
+    description: "공격 +5,000 | 내공 +25,000",
+  },
+  {
+    id: "현경_bracelet",
+    name: "천뢰 팔찌",
+    slot: "bracelet",
+    realm: "현경",
+    attackBonus: 5000,
+    hpBonus: 50000,
+    mpBonus: 25000,
+    price: 30000000,
+    icon: "📿",
+    description: "공격 +5,000 | 생명 +50,000 | 내공 +25,000",
+  },
+  {
     id: "생사경_mainWeapon",
     name: "단혼멸살검",
     slot: "mainWeapon",
@@ -623,6 +895,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     price: 150000000,
     icon: "🥋",
     description: "공격 +16,000 | 방어 +5000",
+  },
+  {
+    id: "생사경_necklace",
+    name: "단혼 목걸이",
+    slot: "necklace",
+    realm: "생사경",
+    attackBonus: 16000,
+    mpBonus: 80000,
+    price: 150000000,
+    icon: "📿",
+    description: "공격 +16,000 | 내공 +80,000",
+  },
+  {
+    id: "생사경_ring",
+    name: "단혼 반지",
+    slot: "ring",
+    realm: "생사경",
+    attackBonus: 16000,
+    mpBonus: 80000,
+    price: 150000000,
+    icon: "💍",
+    description: "공격 +16,000 | 내공 +80,000",
+  },
+  {
+    id: "생사경_bracelet",
+    name: "단혼 팔찌",
+    slot: "bracelet",
+    realm: "생사경",
+    attackBonus: 16000,
+    hpBonus: 160000,
+    mpBonus: 80000,
+    price: 150000000,
+    icon: "📿",
+    description: "공격 +16,000 | 생명 +160,000 | 내공 +80,000",
   },
   {
     id: "신화경_mainWeapon",
@@ -694,6 +1000,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     description: "공격 +60,000 | 방어 +12000",
   },
   {
+    id: "신화경_necklace",
+    name: "신성 목걸이",
+    slot: "necklace",
+    realm: "신화경",
+    attackBonus: 60000,
+    mpBonus: 300000,
+    price: 600000000,
+    icon: "📿",
+    description: "공격 +60,000 | 내공 +300,000",
+  },
+  {
+    id: "신화경_ring",
+    name: "신성 반지",
+    slot: "ring",
+    realm: "신화경",
+    attackBonus: 60000,
+    mpBonus: 300000,
+    price: 600000000,
+    icon: "💍",
+    description: "공격 +60,000 | 내공 +300,000",
+  },
+  {
+    id: "신화경_bracelet",
+    name: "신성 팔찌",
+    slot: "bracelet",
+    realm: "신화경",
+    attackBonus: 60000,
+    hpBonus: 600000,
+    mpBonus: 300000,
+    price: 600000000,
+    icon: "📿",
+    description: "공격 +60,000 | 생명 +600,000 | 내공 +300,000",
+  },
+  {
     id: "천인합일_mainWeapon",
     name: "천지개벽검",
     slot: "mainWeapon",
@@ -762,6 +1102,40 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     icon: "🥋",
     description: "공격 +200,000 | 방어 +30000",
   },
+  {
+    id: "천인합일_necklace",
+    name: "천지 목걸이",
+    slot: "necklace",
+    realm: "천인합일",
+    attackBonus: 200000,
+    mpBonus: 1000000,
+    price: 3000000000,
+    icon: "📿",
+    description: "공격 +200,000 | 내공 +1,000,000",
+  },
+  {
+    id: "천인합일_ring",
+    name: "천지 반지",
+    slot: "ring",
+    realm: "천인합일",
+    attackBonus: 200000,
+    mpBonus: 1000000,
+    price: 3000000000,
+    icon: "💍",
+    description: "공격 +200,000 | 내공 +1,000,000",
+  },
+  {
+    id: "천인합일_bracelet",
+    name: "천지 팔찌",
+    slot: "bracelet",
+    realm: "천인합일",
+    attackBonus: 200000,
+    hpBonus: 2000000,
+    mpBonus: 1000000,
+    price: 3000000000,
+    icon: "📿",
+    description: "공격 +200,000 | 생명 +2,000,000 | 내공 +1,000,000",
+  },
 ];
 
 export const STARTER_EQUIPMENT: OwnedWeapon[] = [
@@ -773,16 +1147,16 @@ export const STARTER_EQUIPMENT: OwnedWeapon[] = [
 ];
 
 export const MASTER_RIVALS = [
-  { name: "창랑검객", hpMult: 1.2, atkMult: 1.1 },
-  { name: "혈랑도수", hpMult: 1.5, atkMult: 1.3 },
-  { name: "청운도인", hpMult: 2.0, atkMult: 1.6 },
-  { name: "백발마녀", hpMult: 3.0, atkMult: 2.2 },
-  { name: "귀영살수", hpMult: 5.0, atkMult: 4.0 },
-  { name: "북해빙궁주", hpMult: 10.0, atkMult: 8.0 },
-  { name: "남만중독왕", hpMult: 25.0, atkMult: 18.0 },
-  { name: "철혈무정객", hpMult: 60.0, atkMult: 45.0 },
-  { name: "천마외도", hpMult: 150.0, atkMult: 120.0 },
-  { name: "검신", hpMult: 500.0, atkMult: 400.0 },
+  { name: "창랑검객", hpMult: 1.0, atkMult: 1.0 },
+  { name: "혈랑도수", hpMult: 1.2, atkMult: 1.1 },
+  { name: "청운도인", hpMult: 1.5, atkMult: 1.3 },
+  { name: "백발마녀", hpMult: 1.8, atkMult: 1.5 },
+  { name: "귀영살수", hpMult: 2.2, atkMult: 1.8 },
+  { name: "북해빙궁주", hpMult: 2.6, atkMult: 2.1 },
+  { name: "남만중독왕", hpMult: 3.0, atkMult: 2.5 },
+  { name: "철혈무정객", hpMult: 3.5, atkMult: 3.0 },
+  { name: "천마외도", hpMult: 4.0, atkMult: 3.5 },
+  { name: "검신", hpMult: 4.5, atkMult: 4.0 },
 ];
 
 export const RANDOM_OPTION_POOL = [
@@ -802,7 +1176,14 @@ export const SYNERGY_SETS: Record<string, { label: string, description: string }
   "태극": { label: "태극 (균형)", description: "3세트: 공격력 15%, 치명타율 7% 증가 | 5세트: 모든 속성 10% 강화" },
 };
 
-export function rollTierAndOptions(item: any, level: number, luck: number = 0) {
+export const SYNERGY_CONFIG: Record<string, any> = {
+  "파천": { 3: { atkMult: 0.25 }, 5: { finalDmg: 0.20 } },
+  "멸절": { 3: { critDmg: 60 }, 5: { doubleDmgChance: 0.1 } },
+  "빙화": { 3: { critRate: 20 }, 5: { mpAbsorb: 0.02 } },
+  "태극": { 3: { atkMult: 0.15, critRate: 7 }, 5: { allStat: 0.10 } },
+};
+
+export function rollTierAndOptions(item: any, level: number, luck: number = 0, realmIndex: number = 0) {
   const luckBonus = luck * 0.01; // 기연 1포인트당 가중치 0.01% 증가
   const rand = Math.random() * 100;
   let tier: ItemTier = "평범";
@@ -823,7 +1204,8 @@ export function rollTierAndOptions(item: any, level: number, luck: number = 0) {
     const minVal = opt.range[0];
     const maxVal = opt.range[1];
     const luckRoll = Math.min(luck * 0.1, (maxVal - minVal) * 0.5);
-    const value = Math.floor(minVal + luckRoll + Math.random() * (maxVal - minVal + 1 - luckRoll));
+    const realmScale = 1 + realmIndex * 0.1;
+    const value = Math.floor((minVal + luckRoll + Math.random() * (maxVal - minVal + 1 - luckRoll)) * realmScale);
     
     options.push({ stat: opt.stat, value, label: `${opt.label} +${value}${opt.suffix}` });
   }
@@ -838,29 +1220,32 @@ export function rollTierAndOptions(item: any, level: number, luck: number = 0) {
   return { ...item, tier, randomOptions: options, setName };
 }
 
-export function generateRandomAccessory(realm: string, level: number, luck: number = 0): OwnedWeapon {
-  const isNecklace = Math.random() < 0.5;
-  const id = `${realm}_${isNecklace ? "necklace" : "ring"}_${Date.now()}`;
+export function generateRandomAccessory(realm: string, level: number, luck: number = 0, realmIndex: number = -1): OwnedWeapon {
+  const randAcce = Math.random();
+  const slot: EquipSlot = randAcce < 0.33 ? "necklace" : randAcce < 0.66 ? "ring" : "bracelet";
+  const id = `${realm}_${slot}_${Date.now()}`;
   
-  const baseName = isNecklace ? "목걸이" : "반지";
+  const baseName = slot === "necklace" ? "목걸이" : slot === "ring" ? "반지" : "팔찌";
   const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
-  const rIdx = realms.indexOf(realm);
+  const rIdx = realmIndex >= 0 ? realmIndex : realms.indexOf(realm);
+  const rFactor = 1 + Math.max(0, rIdx) * 0.2;
   const baseForgePrice = [1000, 5000, 25000, 100000, 500000, 2000000, 10000000, 50000000, 250000000, 1000000000, 5000000000][rIdx] || 1000;
   const calculatedPrice = Math.floor(baseForgePrice * (1 + level * 0.1) * 1.2);
 
   const baseItem: any = {
     id,
     name: `${realm}의 ${baseName}`,
-    slot: isNecklace ? "necklace" : "ring",
+    slot,
     realm: realm as any,
-    attackBonus: 10 + level * 20,
-    mpBonus: 20 + level * 30,
+    attackBonus: Math.floor((10 + level * 20) * rFactor),
+    mpBonus: Math.floor((20 + level * 30) * rFactor),
+    hpBonus: slot === "bracelet" ? Math.floor((40 + level * 60) * rFactor) : 0,
     price: calculatedPrice,
-    icon: isNecklace ? "📿" : "💍",
+    icon: slot === "necklace" ? "📿" : slot === "ring" ? "💍" : "📿",
     description: `대결을 통해 획득한 전리품입니다.`,
   };
 
-  const tieredItem = rollTierAndOptions(baseItem, level, luck);
+  const tieredItem = rollTierAndOptions(baseItem, level, luck, rIdx);
   
   // 신기 등급에는 특수 효과(스킬) 부여 확률
   if (tieredItem.tier === "신기" && Math.random() < (0.5 + luck * 0.02)) {
@@ -868,4 +1253,78 @@ export function generateRandomAccessory(realm: string, level: number, luck: numb
   }
 
   return tieredItem as OwnedWeapon;
+}
+
+/**
+ * [패왕비기상자] 전용 아이템 생성 로직
+ * - 등급: 무조건 '신기' (Divine)
+ * - 옵션: 공격력, 생명력, 내공 (확정) + 무작위 4개 (총 7개)
+ * - 세트: 시너지 세트 100% 확률 부여
+ */
+export function rollPaewangItem(item: any, level: number, luck: number = 0, realmIndex: number = 0): OwnedWeapon {
+  const tieredItem = { ...item };
+  tieredItem.tier = "신기";
+  
+  // [수정] 기본 스탯 설정 (사용자 요청: 공 3000, 생 3000, 내 1500)
+  tieredItem.attackBonus = 3000;
+  tieredItem.hpBonus = 3000;
+  tieredItem.mpBonus = 1500;
+  tieredItem.name = `[패왕] ${item.name}`; // 패왕 장비 식별자 추가
+  
+  const options: RandomOption[] = [];
+  const realmScale = 1 + (realmIndex >= 0 ? realmIndex : 0) * 0.15;
+  
+  // 랜덤 옵션만 4개 추가
+  const pool = [...RANDOM_OPTION_POOL];
+  for (let i = 0; i < 4; i++) {
+    if (pool.length === 0) break;
+    const idx = Math.floor(Math.random() * pool.length);
+    const opt = pool.splice(idx, 1)[0]; // 중복 제거
+    
+    const minVal = opt.range[0];
+    const maxVal = opt.range[1];
+    const luckRoll = Math.min(luck * 0.15, (maxVal - minVal) * 0.5);
+    const value = Math.floor((minVal + luckRoll + Math.random() * (maxVal - minVal + 1 - luckRoll)) * realmScale);
+    
+    options.push({ stat: opt.stat, value, label: `${opt.label} +${value}${opt.suffix}` });
+  }
+
+  tieredItem.randomOptions = options;
+
+  // 3. 시너지 세트 100% 부여
+  const setKeys = Object.keys(SYNERGY_SETS);
+  tieredItem.setName = setKeys[Math.floor(Math.random() * setKeys.length)];
+
+  // 4. 특수 스킬 제거 (사용자 요청)
+  tieredItem.equipmentSkill = undefined;
+
+  return tieredItem as OwnedWeapon;
+}
+
+// 장비 강화 레벨에 따른 능력치 증폭 계수 반환 (사용자 요청 반영)
+export function getEnhancementMultiplier(level: number): number {
+  if (level <= 0) return 1.0;
+  const table: Record<number, number> = {
+    1: 1.1,   // 0->1 10%
+    2: 1.15,  // 1->2 15%
+    3: 1.2,   // 2->3 20%
+    4: 1.3,   // 3->4 30%
+    5: 1.4,   // 4->5 40%
+    6: 1.55,  // 5->6 55%
+    7: 1.7,   // 6->7 70%
+    8: 1.85,  // 7->8 85%
+    9: 2.0,   // 8->9 100%
+    10: 2.3,  // 9->10 130%
+    11: 2.5,  // 10->11 150%
+    12: 3.0,  // 11->12 200%
+    13: 3.5,  // 12->13 250%
+    14: 4.0,  // 13->14 300%
+    15: 4.5,  // 14->15 350%
+    16: 5.0,  // 15->16 400%
+    17: 5.5,  // 16->17 450%
+    18: 6.0,  // 17->18 500%
+    19: 7.0,  // 18->19 600%
+    20: 9.0   // 19->20 800%
+  };
+  return table[level] ?? (1.0 + level * 0.15); // 안전장치
 }

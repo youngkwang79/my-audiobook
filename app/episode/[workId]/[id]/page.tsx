@@ -1145,10 +1145,18 @@ updateCaptionByTime(current);
               onPlay={() => {
                 setIsPlaying(true);
                 setStatus("재생 중");
+                window.dispatchEvent(new Event("fade-out-background-music"));
               }}
               onPause={() => {
                 setIsPlaying(false);
                 setStatus("일시정지");
+                window.dispatchEvent(new Event("play-default-music"));
+              }}
+              onEnded={() => {
+                setIsPlaying(false);
+                setStatus("다음으로 넘어가는 중...");
+                window.dispatchEvent(new Event("play-default-music"));
+                goNextPart();
               }}
               onError={() => {
                 if (audioIndex < audioCandidates.length - 1) {
@@ -1161,11 +1169,6 @@ updateCaptionByTime(current);
 
                 setIsPlaying(false);
                 setStatus("오디오 파일을 찾지 못했습니다. R2 파일명과 확장자를 확인해주세요.");
-              }}
-              onEnded={() => {
-                setIsPlaying(false);
-                setStatus("다음으로 넘어가는 중...");
-                goNextPart();
               }}
               onTimeUpdate={onTimeUpdate}
             />

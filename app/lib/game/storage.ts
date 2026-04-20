@@ -8,6 +8,7 @@ const defaultEquippedGear: EquippedGear = {
   robe: null,
   necklace: null,
   ring: null,
+  bracelet: null,
 };
 
 export const defaultGameData: GameSaveData = {
@@ -46,9 +47,9 @@ export const defaultGameData: GameSaveData = {
   maxMp: 60,
 
   agi: 5,
-  def: 0,
-  eva: 0,
-  critRate: 5,
+  def: 50,
+  eva: 0.1,
+  critRate: 0.1,
 
   unlockedTabs: ["training"],
   ownedWeapons: [],
@@ -72,6 +73,12 @@ export const defaultGameData: GameSaveData = {
   unlockEffectText: null,
   activeTab: "training",
   innHighScore: 0,
+  innBuffEndTime: 0,
+  wisdom: 0,
+  martialArtsSkills: [],
+  isForgeFullUnlocked: false,
+  lastInnEventKillCount: 0,
+  innEventIndex: 0,
 
   timingMission: {
     unlocked: false,
@@ -106,14 +113,17 @@ export const defaultGameData: GameSaveData = {
     currentLevel: 1,
     selectedLevel: 1,
     highestLevelReached: 0,
-    rivalName: "삼류 악적",
-    rivalHp: 100000,
-    rivalMaxHp: 100000,
+    rivalName: "창랑검객",
+    rivalHp: 1500,
+    rivalMaxHp: 1500,
     rivalAtk: 10,
     rivalDef: 5,
     timeLeft: 15.0,
     isPlaying: false,
     lastDefeatTimes: {},
+    ultimateGauge: 0,
+    villainDialogue: null,
+    activeCombatBuffs: {},
   },
   pendingInnEntry: false,
   innEventVersion: 0,
@@ -128,11 +138,20 @@ export const defaultGameData: GameSaveData = {
   isBerserk: false,
   poisonDuration: 0,
   stunDuration: 0,
+  movementBuff: null,
+  lastEvasionTime: 0,
+  nextHitMultiplier: 1,
+  isManaShieldActive: false,
 
   consumables: {
     hp_small: 0, hp_medium: 0, hp_large: 0,
     mp_small: 0, mp_medium: 0, mp_large: 0,
-    trance_2: 0, trance_5: 0, trance_10: 0
+    trance_2: 0, trance_5: 0, trance_10: 0,
+    oil_atk_3: 0, oil_crit_3: 0, oil_thunder: 0, oil_poison: 0, oil_bleed: 0,
+    oil_eva_3: 0, oil_def_3: 0, oil_reflect: 0, oil_vajra: 0, oil_vampire: 0,
+    oil_speed_3: 0, oil_luck_3: 0, oil_clarity: 0, oil_eye: 0,
+    oil_demon: 0, oil_triple_hit: 0, oil_formless: 0, oil_blessed: 0,
+    charm_luck: 0, exp_scroll: 0
   },
   quickSlots: [null, null, null, null, null],
   skillCooldowns: {},
@@ -141,15 +160,19 @@ export const defaultGameData: GameSaveData = {
 
   star: 1,
   points: 0,
+  bossTokens: 0,
+  enhancementStones: 0,
+  isAudioMuted: false,
   statUpgrades: {
-    hpRec: 0,
-    mpRec: 0,
-    atk: 0,
-    def: 0,
-    critRate: 0,
-    critDmg: 0,
-    eva: 0,
-    luck: 0,
+    hpRec: 1000,
+    mpRec: 200,
+    atk: 100,
+    def: 50,
+    critRate: 0.001,
+    critDmg: 0.5,
+    eva: 0.001,
+    damageReduction: 0,
+    luck: 0.00001,
     autoGain: 0,
     offlineLimit: 0,
   },
@@ -244,6 +267,8 @@ export function loadGame(): GameSaveData {
         loadedEquippedGear.mainWeapon ??
         null,
       equippedGear: loadedEquippedGear,
+      wisdom: v12Data.wisdom ?? 0,
+      martialArtsSkills: Array.isArray(v12Data.martialArtsSkills) ? v12Data.martialArtsSkills : [],
     };
   } catch (error) {
     console.error("게임 저장 데이터 불러오기 실패:", error);

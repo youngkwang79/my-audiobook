@@ -1,20 +1,27 @@
 "use client";
 import { useEffect } from "react";
-import { useGameStore } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_ORDER } from "@/app/lib/game/useGameStore";
+
+function getAutoTrainInterval(realm: string) {
+  const realmIndex = Math.max(0, REALM_ORDER.indexOf(realm));
+  const speedMultiplier = 1 + realmIndex * 0.35;
+  return Math.max(40, Math.round(200 / speedMultiplier));
+}
 
 export default function AutoTrainingManager() {
   const autoTrain = useGameStore((state) => state.autoTrain);
-  const updateBuffs = useGameStore((state) => (state as any).updateBuffs);
+  const updateBuffs = useGameStore((state) => state.updateBuffs);
+  const realm = useGameStore((state) => state.game.realm);
 
   useEffect(() => {
-    // 0.2초마다 자동 수련 및 버프 타이머 실행 (초당 5회)
+    const intervalMs = getAutoTrainInterval(realm);
     const timer = setInterval(() => {
       autoTrain();
-      if (updateBuffs) updateBuffs(0.2);
-    }, 200);
+      if (updateBuffs) updateBuffs(intervalMs / 1000);
+    }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [autoTrain, updateBuffs]);
+  }, [autoTrain, updateBuffs, realm]);
 
   return null; 
 }

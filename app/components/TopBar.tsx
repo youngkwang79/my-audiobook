@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 
@@ -10,6 +10,7 @@ export default function TopBar() {
   const { user, session, loading } = useAuth();
 
   const [points, setPoints] = useState<number>(0);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -92,6 +93,7 @@ export default function TopBar() {
 
   return (
     <div
+      ref={topBarRef}
       style={{
         display: "flex",
         alignItems: "center",

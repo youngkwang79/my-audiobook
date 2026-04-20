@@ -1,5 +1,5 @@
 "use client";
-import { useGameStore, REALM_SETTINGS } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_SETTINGS, REALM_ORDER } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 
 export default function CharacterModal({
@@ -50,13 +50,13 @@ export default function CharacterModal({
 
   const currentFactionInfo = FACTIONS.find(f => f.name === safeGame.faction);
   
-  const realmKeys = Object.keys(REALM_SETTINGS);
+  const realmKeys = REALM_ORDER;
   const currentIndex = realmKeys.indexOf(safeGame.realm);
   const isFinalRealm = currentIndex === realmKeys.length - 1;
   const nextRealm = !isFinalRealm ? realmKeys[currentIndex + 1] : null;
 
   const getRequiredTouches = (realm: string, star: number) => {
-    const list = Object.keys(REALM_SETTINGS);
+    const list = REALM_ORDER;
     const idx = list.indexOf(realm);
     const cur = (REALM_SETTINGS as any)[realm];
     const nxt = (REALM_SETTINGS as any)[list[idx + 1]] || cur;
@@ -66,10 +66,10 @@ export default function CharacterModal({
   const startTouches = safeGame.star === 1 ? (REALM_SETTINGS as any)[safeGame.realm].minTouches : getRequiredTouches(safeGame.realm, safeGame.star - 1);
   const targetTouches = getRequiredTouches(safeGame.realm, safeGame.star);
   
-  const progressPercent = isFinalRealm ? 100 : Math.min(
+  const progressPercent = isFinalRealm ? 100 : Math.max(0, Math.min(
     ((safeGame.touches - startTouches) / Math.max(1, targetTouches - startTouches)) * 100,
     100
-  );
+  ));
 
   const displayTarget = safeGame.star === 10 ? `${nextRealm} 도달` : `${safeGame.realm} ${safeGame.star + 1}성 도달`;
   const remainingTouches = Math.max(0, targetTouches - safeGame.touches);

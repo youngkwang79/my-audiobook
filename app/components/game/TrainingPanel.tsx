@@ -93,7 +93,7 @@ const currentTouchGoalRef = useRef<number | null>(null);
 
       if (msg.includes("수련 성과") || (msg.includes("HP +") && msg.includes("MP +"))) {
         return {
-                           reward: msg.replace("💪 ", ""),
+          reward: msg.replace("💪 ", ""),
         };
       }
 
@@ -243,6 +243,19 @@ const isTrainingStatReward =
       return () => clearInterval(interval);
     }, [lastTouchTime]);
 
+    useEffect(() => {
+      const regenInterval = setInterval(() => {
+        const state = useGameStore.getState();
+        const maxHp = state.getTotalHp();
+        const maxMp = state.getTotalMp();
+        const healAmount = Math.max(1, Math.floor(maxHp * 0.01));
+        const mpAmount = Math.max(1, Math.floor(maxMp * 0.01));
+        state.heal(healAmount);
+        state.restoreMp(mpAmount);
+      }, 1000);
+      return () => clearInterval(regenInterval);
+    }, []);
+
     const performHit = () => {
       setLastTouchTime(Date.now());
       setShowPrompt(false);
@@ -265,8 +278,8 @@ const isTrainingStatReward =
       const totalAtk = useGameStore.getState().getTotalAttack();
       const gameState = useGameStore.getState().game;
 
-      const dummyX = 75; // 허수아비가 오른쪽으로 배치됨에 따라 조정
-      const dummyY = 20; // 허수아비 머리 위쪽 (percentage)
+      const dummyX = 65; // 허수아비가 오른쪽으로 배치됨에 따라 조정
+      const dummyY = 35; // 허수아비 머리 위쪽 (percentage)
 
       let equipmentSkillProc = false;
       let eqSkillDamage = 0;
@@ -275,28 +288,24 @@ const isTrainingStatReward =
       const equippedIds = Object.values(gameState.equippedGear ?? {}).filter(Boolean);
       const equippedWeapons = gameState.ownedWeapons.filter(w => equippedIds.includes(w.id));
       const skillWeapons = equippedWeapons.filter(w => w.equipmentSkill);
-
-      if (skillWeapons.length > 0 && Math.random() < 0.1) {
-        equipmentSkillProc = true;
-        const bestEqSkill = skillWeapons.sort((a,b) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;
-        eqSkillName = bestEqSkill.name;
-        eqSkillDamage = totalAtk * bestEqSkill.multiplier;
-      }
+      const skillRoll = Math.random();
 
       let martialSkillProc = false;
       let martialSkillDamage = 0;
       let martialSkillName = "";
 
-      if (gameState.learnedSkills.length > 0 && Math.random() < 0.15) {
-        const bestSkill = [...gameState.learnedSkills].sort((a,b) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
-        const mpCost = (bestSkill as any).mpCost || 10;
-        
-        if (gameState.mp >= mpCost) {
+      if (skillRoll < 0.1) {
+        if (skillWeapons.length > 0) {
+          equipmentSkillProc = true;
+          const bestEqSkill = skillWeapons.sort((a,b) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;
+          eqSkillName = bestEqSkill.name;
+          eqSkillDamage = totalAtk * bestEqSkill.multiplier;
+        } else if (gameState.learnedSkills.length > 0) {
+          const bestSkill = [...gameState.learnedSkills].sort((a,b) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
           martialSkillProc = true;
           martialSkillName = bestSkill.name;
           martialSkillDamage = totalAtk * ((bestSkill as any).multiplier || 3);
-          // Consume MP
-          useGameStore.setState(s => ({ game: { ...s.game, mp: Math.max(0, s.game.mp - mpCost) } }));
+          // Training auto-proc does not consume inner power
         }
       }
 
@@ -743,7 +752,7 @@ const isTrainingStatReward =
             position: "relative",
             display: "flex",
             flexDirection: "column",
-            minHeight: "400px",
+            minHeight: "480px",
             width: "100%",
             borderRadius: "20px",
             overflow: "hidden",
@@ -817,6 +826,35 @@ const isTrainingStatReward =
                 }}
               >
                 무아지경 X{game.attackMultiplier}
+              </div>
+            </div>
+          )}
+
+          {game.movementBuff && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100px", // Adjusted to not overlap Trance
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 101,
+                pointerEvents: "none",
+                textAlign: "center",
+                width: "100%",
+                animation: "buffImpact 0.5s ease-out",
+              }}
+            >
+              <div style={{ 
+                background: "linear-gradient(90deg, transparent, rgba(0,242,255,0.7), transparent)", 
+                padding: "4px 0", borderTop: "1px solid #00f2ff", borderBottom: "1px solid #00f2ff",
+                boxShadow: "0 0 15px rgba(0,242,255,0.3)"
+              }}>
+                <div style={{ fontSize: "16px", fontWeight: "950", color: "#fff", textShadow: "0 0 10px #00f2ff" }}>
+                  {game.movementBuff.name} 극의 발동!
+                </div>
+                <div style={{ fontSize: "14px", fontWeight: "900", color: "#00f2ff" }}>
+                  남은 시간: {game.movementBuff.timeLeft.toFixed(1)}s
+                </div>
               </div>
             </div>
           )}
@@ -947,7 +985,7 @@ const isTrainingStatReward =
                   whiteSpace: "nowrap",
                 }}
               >
-                ↑ HP +{trainingStatFloat.hp}
+                ↑ 생명력 +{trainingStatFloat.hp}
               </div>
               <div
                 style={{
@@ -960,7 +998,7 @@ const isTrainingStatReward =
                   paddingLeft: "8px",
                 }}
               >
-                MP +{trainingStatFloat.mp}
+                내공 +{trainingStatFloat.mp}
               </div>
             </div>
           )}
@@ -1041,7 +1079,7 @@ const isTrainingStatReward =
             <div
               style={{
                 position: "absolute",
-                bottom: "45px",
+                bottom: "65px",
                 right: "-10%",
                 width: "320px",
                 transition: "transform 0.05s ease-out",
@@ -1064,7 +1102,7 @@ const isTrainingStatReward =
             <div
               style={{
                 position: "absolute",
-                bottom: characterAction === "attack" ? "-5px" : "10px",
+                bottom: characterAction === "attack" ? "15px" : "30px",
                 left: characterAction === "attack" ? "8%" : "5%",
                 width: characterAction === "attack" ? "150px" : "170px",
                 zIndex: 30,
@@ -1083,7 +1121,9 @@ const isTrainingStatReward =
                 alt="수행자"
                 style={{
                   width: "100%",
-                  filter: game.attackMultiplier > 1 ? "drop-shadow(0 0 15px #ff4500) brightness(1.2)" : "drop-shadow(10px 15px 12px rgba(0,0,0,0.9))",
+                  filter: game.movementBuff 
+                    ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" 
+                    : (game.attackMultiplier > 1 ? "drop-shadow(0 0 15px #ff4500) brightness(1.2)" : "drop-shadow(10px 15px 12px rgba(0,0,0,0.9))"),
                 }}
               />
             </div>
@@ -1105,7 +1145,7 @@ const isTrainingStatReward =
               whiteSpace: "nowrap",
             }}
           >
-            임무: {game.dummyKills}/{game.questTarget} | 총합: {game.totalDummyKills}
+            {missionSlide === 0 ? `임무: ${game.dummyKills}/${game.questTarget}` : `무뢰배: ${game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills}/${game.totalDummyKills < 300 ? 300 : game.questTarget}`} | 총합: {game.totalDummyKills}
           </div>
         </div>
 
@@ -1150,7 +1190,7 @@ const isTrainingStatReward =
               </span>
             ) : (
               <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
-                객잔 무뢰배 처단 (300회 처치 마다 발생)
+                객잔 무뢰배 추격 (현재: {game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills} / {game.totalDummyKills < 300 ? 300 : game.questTarget})
               </span>
             )}
           </div>
@@ -1167,7 +1207,7 @@ const isTrainingStatReward =
           >
             <div
               style={{
-                width: `${Math.min(100, (game.dummyKills / game.questTarget) * 100)}%`,
+                width: `${Math.min(100, (missionSlide === 0 ? (game.dummyKills / game.questTarget) : (game.totalDummyKills < 300 ? (game.totalDummyKills / 300) : (game.dummyKills / game.questTarget))) * 100)}%`,
                 height: "100%",
                 background: "linear-gradient(90deg, #f9d423, #ffdb01)",
                 boxShadow: "0 0 10px #ffd700",

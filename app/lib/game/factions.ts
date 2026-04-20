@@ -30,6 +30,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "무극매화검", innerPower: "1000년", stats: { atk: 700000, critRate: 50, critDmg: 500, speed: 100 } },
     },
     movement: { entry: "매화보", peak: "홍화비연보", final: "천화유영보" },
+    specialTraining: { type: "dodge", name: "매화보", desc: "매화 잎이 흩날리듯 유려한 신법으로 공격을 회피합니다." },
+    statAptitude: { atk: 1.8, def: 1.0, hp: 1.0, eva: 1.4, critRate: 1.8, critDmg: 1.5 },
   },
 
   {
@@ -58,6 +60,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "대각여래진", innerPower: "1000년", stats: { def: 2500000, hp: 15000000, atk: 150000 } },
     },
     movement: { entry: "나한보", peak: "금강비천보", final: "여래무영보" },
+    specialTraining: { type: "vitality", name: "불멸영체", desc: "불가의 법력으로 육신을 영험하게 만들어 생명력과 회복력을 극대화합니다." },
+    statAptitude: { atk: 1.0, def: 3.0, hp: 3.0, eva: 0.4, critRate: 0.8, critDmg: 0.8 },
   },
 
   {
@@ -86,6 +90,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "태극자연체", innerPower: "1000년", stats: { eva: 70, speed: 120, def: 2200000, atk: 500000 } },
     },
     movement: { entry: "운보", peak: "태극유운보", final: "무극무형보" },
+    specialTraining: { type: "dodge", name: "태극보", desc: "음양의 흐름을 타고 흐르는 물처럼 공격을 흘려보냅니다." },
+    statAptitude: { atk: 1.3, def: 1.2, hp: 1.2, eva: 3.0, critRate: 1.0, critDmg: 1.0 },
   },
 
   {
@@ -114,6 +120,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "용신강림", innerPower: "1000년", stats: { atk: 1500000, eva: 200, critRate: 120 } },
     },
     movement: { entry: "취개보", peak: "걸인신법", final: "용영비행" },
+    specialTraining: { type: "dodge", name: "취개보", desc: "술취한 듯 비틀거리는 변칙적인 동작으로 적을 교란합니다." },
+    statAptitude: { atk: 1.2, def: 1.0, hp: 1.3, eva: 2.5, critRate: 1.2, critDmg: 1.2 },
   },
 
   {
@@ -142,6 +150,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "무형청풍검", innerPower: "1000년", stats: { critRate: 1000, atk: 600000, eva: 180 } },
     },
     movement: { entry: "청풍보", peak: "비영신법", final: "무형풍신보" },
+    specialTraining: { type: "dodge", name: "비영보", desc: "바람처럼 은밀하고 잔상이 남는 신법으로 급소를 피합니다." },
+    statAptitude: { atk: 1.7, def: 0.8, hp: 0.9, eva: 1.8, critRate: 2.2, critDmg: 1.8 },
   },
 
   {
@@ -170,6 +180,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "광무검신", innerPower: "1000년", stats: { speed: 600000, critRate: 800, atk: 300000 } },
     },
     movement: { entry: "경보", peak: "비광신법", final: "광영무형보" },
+    specialTraining: { type: "dodge", name: "광영보", desc: "빛의 속도에 도달하려는 극한의 신법으로 찰나를 피합니다." },
+    statAptitude: { atk: 2.0, def: 0.8, hp: 0.9, eva: 1.7, critRate: 1.5, critDmg: 1.5 },
   },
 
   {
@@ -198,6 +210,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "혼원천지", innerPower: "1000년", stats: { atk: 2000000, def: 2000000, hp: 5000000 } },
     },
     movement: { entry: "혼원보", peak: "공동비영보", final: "천공무형보" },
+    specialTraining: { type: "vitality", name: "혼원심득", desc: "내외공의 조화를 통해 신체의 근원적인 활력을 끌어올립니다." },
+    statAptitude: { atk: 1.5, def: 1.8, hp: 2.2, eva: 0.8, critRate: 1.0, critDmg: 1.0 },
   },
 
   {
@@ -226,6 +240,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "무극유연체", innerPower: "1000년", stats: { eva: 1000, hp: 12000000, def: 500000, atk: 200000 } },
     },
     movement: { entry: "유연보", peak: "비선신법", final: "무상비영보" },
+    specialTraining: { type: "dodge", name: "비선보", desc: "하늘의 선녀가 춤추듯 부드러운 흐름으로 공격을 회피합니다." },
+    statAptitude: { atk: 1.2, def: 1.5, hp: 1.8, eva: 2.0, critRate: 1.0, critDmg: 1.0 },
   },
 
   {
@@ -254,6 +270,8 @@ export const FACTIONS: FactionInfo[] = [
         천인합일: { name: "무극빙천", innerPower: "1000년", stats: { atk: 2500000, def: 2500000, speed: 4000 } },
     },
     movement: { entry: "유운보", peak: "빙표보", final: "천운무형보" },
+    specialTraining: { type: "dodge", name: "유운보", desc: "흐르는 구름처럼 유려하게 움직이며 냉기를 뿜어냅니다." },
+    statAptitude: { atk: 1.5, def: 1.5, hp: 1.5, eva: 1.2, critRate: 1.0, critDmg: 1.0 },
   },
 
   // ================= 오대세가 =================
@@ -284,6 +302,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "천검천하", innerPower: "1000년", stats: { atk: 10000000, critDmg: 7000, critRate: 80 } },
     },
     movement: { entry: "검영보", peak: "천검비행", final: "무영검신법" },
+    specialTraining: { type: "armor", name: "제왕강기", desc: "검문의 제왕다운 긍지로 신체를 보호하는 절대적인 강기를 두릅니다." },
+    statAptitude: { atk: 2.2, def: 2.0, hp: 1.4, eva: 1.0, critRate: 1.5, critDmg: 1.8 },
   },
 
   {
@@ -312,6 +332,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "천기천변", innerPower: "1000년", stats: { speed: 500000, critRate: 400, atk: 400000 } },
     },
     movement: { entry: "기문보", peak: "팔괘신법", final: "무형진보" },
+    specialTraining: { type: "dodge", name: "기문보", desc: "기문둔갑의 방위를 이용하여 적이 예측할 수 없는 곳으로 움직입니다." },
+    statAptitude: { atk: 1.5, def: 1.2, hp: 1.2, eva: 1.5, critRate: 1.2, critDmg: 1.2 },
   },
 
   {
@@ -340,6 +362,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "무형내공체", innerPower: "1000년", stats: { def: 2200000, hp: 20000000, atk: 600000 } },
     },
     movement: { entry: "압기보", peak: "진기비행", final: "무형기보" },
+    specialTraining: { type: "vitality", name: "마기응축", desc: "사악한 마기를 역으로 이용하여 육체의 한계를 강제로 돌파합니다." },
+    statAptitude: { atk: 1.5, def: 2.5, hp: 3.0, eva: 0.6, critRate: 1.0, critDmg: 1.0 },
   },
 
   {
@@ -368,6 +392,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "패왕강림", innerPower: "1000년", stats: { atk: 25000000, critRate: 120, critDmg: 35000 } },
     },
     movement: { entry: "천강보", peak: "패왕비행", final: "천강신법" },
+    specialTraining: { type: "armor", name: "패왕강기", desc: "일격필살의 도법을 보조하기 위한 무겁고 단단한 강기를 형성합니다." },
+    statAptitude: { atk: 2.6, def: 1.8, hp: 1.5, eva: 1.5, critRate: 1.5, critDmg: 1.5 },
   },
 
   {
@@ -396,6 +422,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "독신강림", innerPower: "1000년", stats: { critRate: 1400, atk: 2000000, eva: 700 } },
     },
     movement: { entry: "독영보", peak: "무영암보", final: "천독비행" },
+    specialTraining: { type: "dodge", name: "무영보", desc: "독안개 속을 거니듯 그림자조차 남기지 않는 은밀한 신법입니다." },
+    statAptitude: { atk: 1.6, def: 1.0, hp: 1.1, eva: 1.8, critRate: 1.8, critDmg: 1.5 },
   },
 
   {
@@ -424,6 +452,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "일월귀일", innerPower: "1000년", stats: { atk: 5000000, hp: 15000000, def: 800000, critRate: 150 } },
     },
     movement: { entry: "월영보", peak: "일월유광보", final: "일월무형보" },
+    specialTraining: { type: "aura", name: "일월신법", desc: "일월의 기운을 몸에 둘러 공격마다 명부의 한기를 더합니다." },
+    statAptitude: { atk: 2.5, def: 1.2, hp: 1.2, eva: 1.2, critRate: 1.8, critDmg: 1.8 },
   },
 
   {
@@ -452,6 +482,8 @@ export const FACTIONS: FactionInfo[] = [
       천인합일: { name: "천마불멸", innerPower: "1000년", stats: { atk: 80000000, critDmg: 60000, critRate: 200 } },
     },
     movement: { entry: "혈영보", peak: "천마비영신법", final: "천마무극보" },
+    specialTraining: { type: "aura", name: "천마광휘", desc: "천마의 위엄을 방출하여 모든 공격의 위력을 신마의 경기로 끌어올립니다." },
+    statAptitude: { atk: 3.0, def: 0.7, hp: 0.7, eva: 1.2, critRate: 3.0, critDmg: 3.0 },
   },
 
 ];

@@ -26,7 +26,8 @@ const slotMeta: {
   { slot: "robe", label: "도포", icon: "🥋", short: "도포" },
   { slot: "necklace", label: "목걸이", icon: "📿", short: "목걸이" },
   { slot: "ring", label: "반지", icon: "💍", short: "반지" },
-  { slot: "medicine" as any, label: "영약", icon: "🍵", short: "영약" },
+  { slot: "bracelet", label: "팔찌", icon: "📿", short: "팔찌" },
+  { slot: "medicine" as any, label: "행낭", icon: "👜", short: "행낭" },
 ];
 
 export default function InventoryPanel(props: Props) {
@@ -119,7 +120,7 @@ export default function InventoryPanel(props: Props) {
     const dist = Math.sqrt(Math.pow(swipeOffset, 2)); // Simple dist
     
     if (swipeOffset > 100) {
-      const price = item.tier === "신기" ? 100000 : item.tier === "보구" ? 30000 : item.tier === "명품" ? 5000 : 1000;
+      const price = item.name.includes("[패왕]") ? 10000000 : Math.floor(item.price * 0.25);
       if (confirm(`정말 판매하시겠습니까?\n판매 가격: ${price.toLocaleString()}냥`)) {
         sellItem(swipeGearId);
         setPopupItem(null);
@@ -216,7 +217,6 @@ export default function InventoryPanel(props: Props) {
         </div>
       )}
 
-      <div style={{ opacity: unlocked ? 1 : 0.45 }}>
         {/* 상단 헤더 및 전체 능력치 */}
         <div
           style={{
@@ -224,9 +224,20 @@ export default function InventoryPanel(props: Props) {
             alignItems: "center",
             justifyContent: "space-between",
             marginBottom: 10,
+            flexShrink: 0
           }}
         >
           <div style={{ color: "#f5e6b3", fontSize: 18, fontWeight: 900 }}>장비</div>
+          <div style={{ 
+            display: "flex", alignItems: "center", gap: 6, 
+            padding: "4px 10px", borderRadius: 10, 
+            background: "rgba(0,180,255,0.1)", border: "1px solid rgba(0,180,255,0.2)" 
+          }}>
+            <span style={{ fontSize: 14 }}>💎</span>
+            <span style={{ fontSize: 12, color: "#00f0ff", fontWeight: 900 }}>
+              {(game.enhancementStones || 0).toLocaleString()}
+            </span>
+          </div>
         </div>
 
         {/* 메인 레이아웃: 좌측(부위별 슬롯) / 우측(해당 부위 장비 목록) */}
@@ -236,8 +247,10 @@ export default function InventoryPanel(props: Props) {
               gridTemplateColumns: "110px 1fr",
               gap: 8,
               flex: 1,
-              overflow: "hidden"
+              overflowY: "auto",
+              paddingRight: 4
             }}
+            className="hide-scrollbar"
           >
           {/* 좌측 슬롯 네비게이션 */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -386,7 +399,7 @@ export default function InventoryPanel(props: Props) {
                           display: "flex", flexDirection: "column", alignItems: "flex-end"
                         }}>
                           <span>판매 →</span>
-                          <span style={{ fontSize: 8 }}>{ (item.tier === "신기" ? 100000 : item.tier === "보구" ? 30000 : item.tier === "명품" ? 5000 : 1000).toLocaleString() }냥</span>
+                          <span style={{ fontSize: 8 }}>{ (item.name.includes("[패왕]") ? 10000000 : Math.floor(item.price * 0.25)).toLocaleString() }냥</span>
                         </div>
                     )}
                       <div style={{ fontSize: 22 }}>{item.icon ?? "📦"}</div>
@@ -470,7 +483,6 @@ export default function InventoryPanel(props: Props) {
             })}
           </div>
         </div>
-      </div>
 
       {/* 회복제 선택 모달 */}
       {selectingSlot !== null && (
@@ -508,7 +520,9 @@ export default function InventoryPanel(props: Props) {
               >
                 비우기
               </button>
-              {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
+              {(Object.keys(game.consumables) as ConsumableId[])
+                .filter(id => game.consumables[id] > 0 && !id.startsWith("oil_"))
+                .map(id => (
                 <button 
                   key={id} 
                   onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, id); setSelectingSlot(null); }}
@@ -533,7 +547,7 @@ export default function InventoryPanel(props: Props) {
         </div>
       )}
 
-      {/* 영약 상세 정보 모달 */}
+      {/* 행낭 상세 정보 모달 */}
       {selectedMedicineId && (
         <div
           style={{
@@ -691,8 +705,35 @@ export default function InventoryPanel(props: Props) {
               {/* 시너지 세트 표시 */}
               {popupItem.setName && (
                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div style={{ color: "#ffd700", fontWeight: "bold", fontSize: 11 }}>🧩 세트: {(SYNERGY_SETS as any)[popupItem.setName]?.label || popupItem.setName}</div>
-                  <div style={{ color: "#aaa", fontSize: 10, fontStyle: "italic" }}>{(SYNERGY_SETS as any)[popupItem.setName]?.description}</div>
+                  <div style={{ color: "#ffd700", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>🧩 세트: {(SYNERGY_SETS as any)[popupItem.setName]?.label || popupItem.setName}</div>
+                  {(() => {
+                    const counts = (useGameStore.getState() as any).getSetCounts();
+                    const activeCount = counts[popupItem.setName!] || 0;
+                    const setDesc = (SYNERGY_SETS as any)[popupItem.setName!]?.description || "";
+                    const parts = setDesc.split(" | ");
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {parts.map((part: string, idx: number) => {
+                          const requiredPieces = idx === 0 ? 3 : 5;
+                          const isActive = activeCount >= requiredPieces;
+                          return (
+                            <div key={idx} style={{ 
+                              color: isActive ? "#a8ff7e" : "#555", 
+                              fontSize: 11, 
+                              fontStyle: isActive ? "normal" : "normal", 
+                              fontWeight: isActive ? "bold" : "normal",
+                              textShadow: isActive ? "0 0 5px rgba(168,255,126,0.3)" : "none"
+                            }}>
+                              {part}
+                              <span style={{ fontSize: 9, marginLeft: 4, opacity: isActive ? 1 : 0.6 }}>
+                                {isActive ? "(활성화됨)" : `(${activeCount}/${requiredPieces})`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -718,6 +759,26 @@ export default function InventoryPanel(props: Props) {
                   </div>
                   <div style={{ color: "#f5e6b3", fontSize: 10 }}>
                     발동 시 공격력 {popupItem.equipmentSkill.multiplier}배 피해
+                  </div>
+                </div>
+              )}
+
+              {/* 연마 효과 상세 표시 */}
+              {popupItem.oilEffect && (
+                <div style={{ 
+                  marginTop: 8, 
+                  padding: "10px", 
+                  borderRadius: 10, 
+                  background: "rgba(0, 242, 255, 0.05)", 
+                  border: "1px solid rgba(0, 242, 255, 0.2)",
+                  boxShadow: "inset 0 0 10px rgba(0, 242, 255, 0.1)"
+                }}>
+                  <div style={{ color: "#00f2ff", fontWeight: "900", fontSize: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>{getPotionIcon("oil_" + popupItem.oilEffect.key)}</span>
+                    <span>{getPotionName("oil_" + popupItem.oilEffect.key).split('(')[0]}</span>
+                  </div>
+                  <div style={{ color: "#caf9ff", fontSize: 11, lineHeight: 1.5 }}>
+                    "{popupItem.oilEffect.chance}% 확률로 {popupItem.oilEffect.label.replace(/^[0-9~% ]*확률로 /, '')}"
                   </div>
                 </div>
               )}
@@ -787,44 +848,6 @@ export default function InventoryPanel(props: Props) {
         </div>
       )}
 
-      {/* 데이터 전송 (아이폰 Safari <-> 홈 화면 앱 연동용) */}
-      <div style={{ marginTop: "10px", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 8, paddingBottom: 10 }}>
-        <button 
-          onClick={() => {
-            const data = localStorage.getItem("murimbook-game-save-v12");
-            if (!data) return alert("저장된 데이터가 없습니다.");
-            const encoded = btoa(encodeURI(data));
-            prompt("수련 기록을 코드로 변환했습니다. 아래 내용을 복사하여 다른 환경에서 '가져오기'를 하세요:", encoded);
-          }}
-          style={{ flex: 1, padding: "10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#aaa", fontSize: 10, cursor: "pointer" }}
-        >
-          기록 내보내기 (기기 이동)
-        </button>
-        <button 
-          onClick={() => {
-            const code = prompt("가져올 수련 기록 코드를 입력하세요:");
-            if (!code) return;
-            try {
-              const decoded = decodeURI(atob(code));
-              JSON.parse(decoded);
-              localStorage.setItem("murimbook-game-save-v12", decoded);
-              alert("수련 기록을 불러왔습니다! 게임을 재시작합니다.");
-              window.location.reload();
-            } catch(e) { alert("잘못된 코드입니다."); }
-          }}
-          style={{ flex: 1, padding: "10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#aaa", fontSize: 10, cursor: "pointer" }}
-        >
-          기록 가져오기
-        </button>
-      </div>
-
-      <style jsx>{`
-        @keyframes goldGlow {
-          0% { border-color: rgba(255,215,0,0.4); box-shadow: 0 0 5px rgba(255,215,0,0.1); }
-          50% { border-color: rgba(255,215,0,1); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
-          100% { border-color: rgba(255,215,0,0.4); box-shadow: 0 0 5px rgba(255,215,0,0.1); }
-        }
-      `}</style>
     </section>
   );
 }
@@ -851,14 +874,27 @@ function getPotionIcon(id: string) {
   if (id.startsWith("hp_")) return id === "hp_small" ? "🧪" : id === "hp_medium" ? "🏺" : "💎";
   if (id.startsWith("mp_")) return id === "mp_small" ? "💧" : id === "mp_medium" ? "🌀" : "🌑";
   if (id.startsWith("trance_")) return id === "trance_2" ? "⚡" : id === "trance_5" ? "🔥" : "🌞";
-  return "💊";
+  
+  const icons: Record<string, string> = {
+    oil_atk_3: "🔥", oil_crit_3: "⚡", oil_thunder: "🌩️", oil_poison: "🧪", oil_bleed: "🩸",
+    oil_eva_3: "💨", oil_def_3: "🛡️", oil_reflect: "🪞", oil_vajra: "🔱", oil_vampire: "🧛",
+    oil_speed_3: "🌀", oil_luck_3: "🍀", oil_clarity: "✨", oil_eye: "👁️",
+    oil_demon: "👺", oil_triple_hit: "⚔️", oil_formless: "🔮"
+  };
+  return icons[id] || "💊";
 }
 
 function getPotionName(id: string) {
   const names: any = {
     hp_small: "체력 회복제(小)", hp_medium: "체력환약", hp_large: "체력 회복제(大)",
     mp_small: "내력 회복제(小)", mp_medium: "내력환약", mp_large: "내공단",
-    trance_2: "무아지경(x2)", trance_5: "무아지경(x5)", trance_10: "무아지경(x10)"
+    trance_2: "무아지경(x2)", trance_5: "무아지경(x5)", trance_10: "무아지경(x10)",
+    oil_atk_3: "광폭유(공격 3배)", oil_eva_3: "무영유(회피 3배)", oil_crit_3: "파천유(치명 3배)",
+    oil_def_3: "강철유(방어 3배)", oil_speed_3: "질풍유(속도 3배)", oil_vampire: "흡성유(흡혈)",
+    oil_triple_hit: "삼연유(3연격)", oil_thunder: "뇌전유(기절)", oil_poison: "만독유(방깎)",
+    oil_bleed: "혈염유(지속피해)", oil_reflect: "반탄유(반사)", oil_vajra: "금강유(무적)",
+    oil_luck_3: "기연유(행운 3배)", oil_clarity: "청명유(정화)", oil_eye: "영안유(약점)",
+    oil_demon: "천마유(일격필살)", oil_formless: "무상유(강화)"
   };
   return names[id] || id;
 }
@@ -867,6 +903,28 @@ function getPotionDesc(id: string) {
   if (id.startsWith("hp_")) return "복용 시 손상된 기혈을 즉시 회복시킵니다. 대결 중 체력이 낮아지면 자동으로 복용될 수 있습니다.";
   if (id.startsWith("mp_")) return "복용 시 소모된 내력을 즉시 보충합니다. 고차원적인 무공을 펼치기 위해 필수적인 영약입니다.";
   if (id.startsWith("trance_")) return "정신을 집중하여 짧은 시간 동안 폭발적인 효율로 수련할 수 있게 돕는 희귀한 영약입니다.";
+  
+  const descs: Record<string, string> = {
+    oil_atk_3: "광폭유 (Berserk Oil): [3배] 10% 확률로 공격력 3배 증가 (10초)",
+    oil_crit_3: "파천유 (Sky-Breaker Oil): [3배] 10% 확률로 치명타 피해 3배 증가 (10초)",
+    oil_thunder: "뇌전유 (Thunderbolt Oil): 10% 확률로 적에게 500% 대미지 및 2초간 기절",
+    oil_poison: "만독유 (Ten-Poison Oil): 5% 확률로 적의 방어력을 50% 감소시킴 (10초)",
+    oil_bleed: "혈염유 (Blood-Flame Oil): 10% 확률로 적에게 출혈 상태 부여 (5초간 최대HP 10% 지속 피해)",
+    oil_eva_3: "무영유 (Shadow-Step Oil): [3배] 10% 확률로 회피율 3배 증가 (10초)",
+    oil_def_3: "강철유 (Iron-Body Oil): [3배] 10% 확률로 방어력 3배 증가 (10초)",
+    oil_reflect: "반탄유 (Counter-Force Oil): 10% 확률로 8초간 받는 대미지 100% 반사",
+    oil_vajra: "금강유 (Vajra Oil): 5% 확률로 3초간 무적 상태 돌입",
+    oil_vampire: "흡성유 (Soul-Eater Oil): 타격 시 대미지의 5%만큼 체력/내공 흡수 (흡혈)",
+    oil_speed_3: "질풍유 (Gale Oil): [3배] 10% 확률로 공격 속도 3배 증가 (10초)",
+    oil_luck_3: "기연유 (Lesser Luck Oil): [3배] 10% 확률로 기연(Luck) 3배 증가 (10초)",
+    oil_clarity: "청명유 (Clarity Oil): 10% 확률로 전체 체력/내공 20% 즉시 회복 및 상태이상 해제",
+    oil_eye: "영안유 (Spirit-Eye Oil): 10% 확률로 10초간 치명 50% 상승 및 약점 노출",
+    oil_demon: "천마유 (Heavenly Demon Oil): 공격 시 2% 확률로 일격필살(1000% 대미지) 발동",
+    oil_triple_hit: "삼연유 (Triple-Strike Oil): 1타 3연격 옵션 상시 부여",
+    oil_formless: "무상유 (Formless Oil): 모든 '3배' 버프의 지속 시간 연장 및 발동 확률 2배 증가"
+  };
+  if (descs[id]) return descs[id] + "\n\n[제련 -> 연마] 탭에서 장비에 바를 수 있습니다.";
+  
   return "신비로운 기운이 서린 신비한 알약입니다.";
 }
 
@@ -879,6 +937,7 @@ function slotLabel(slot: EquipSlot) {
     case "robe": return "도포";
     case "necklace": return "목걸이";
     case "ring": return "반지";
+    case "bracelet": return "팔찌";
     default: return slot;
   }
 }

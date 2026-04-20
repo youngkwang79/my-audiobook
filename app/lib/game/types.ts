@@ -23,7 +23,7 @@ export type FactionType =
   | "남궁세가"
   | "제갈세가"
   | "사마세가"
-  | "팽가"
+  | "하북팽가"
   | "사천당가"
   | "일월신교"
   | "천마신교"
@@ -40,15 +40,21 @@ export type EquipSlot =
   | "shoes"
   | "robe"
   | "necklace"
-  | "ring";
- 
+  | "ring"
+  | "bracelet";
+
 export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade";
 export type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse";
 
-export type ConsumableId = 
-  | "hp_small" | "hp_medium" | "hp_large" 
+export type ConsumableId =
+  | "hp_small" | "hp_medium" | "hp_large"
   | "mp_small" | "mp_medium" | "mp_large"
-  | "trance_2" | "trance_5" | "trance_10";
+  | "trance_2" | "trance_5" | "trance_10"
+  | "oil_atk_3" | "oil_crit_3" | "oil_thunder" | "oil_poison" | "oil_bleed"
+  | "oil_eva_3" | "oil_def_3" | "oil_reflect" | "oil_vajra" | "oil_vampire"
+  | "oil_speed_3" | "oil_luck_3" | "oil_clarity" | "oil_eye"
+  | "oil_demon" | "oil_triple_hit" | "oil_formless" | "oil_blessed"
+  | "charm_luck" | "exp_scroll";
 
 export type ItemTier = "평범" | "명품" | "보구" | "신기";
 
@@ -87,6 +93,9 @@ export type OwnedWeapon = {
     multiplier: number;
   };
   setName?: string; // Synergy support
+  enhancement?: number; // New: Enhancement level (+1, +2, ...)
+  soulEffect?: { name: string; desc: string; key: string }; // New: Soul infusion effect
+  oilEffect?: { key: string; label: string; chance: number; }; // New: Oil enhancement effect
 };
 
 export type Skill = {
@@ -102,6 +111,9 @@ export type Skill = {
   critDmg?: number;
   atk?: number;
   mpCost: number;
+  // 서각 시스템 연동 필드
+  skillId?: string;
+  stars?: number;
 };
 
 export type FactionInfo = {
@@ -116,9 +128,9 @@ export type FactionInfo = {
     glow: string;
     accent: string;
   };
-  martial: Record<string, { 
-    name: string; 
-    innerPower: string; 
+  martial: Record<string, {
+    name: string;
+    innerPower: string;
     stats?: {
       atk?: number;
       def?: number;
@@ -150,6 +162,12 @@ export type FactionInfo = {
     ready: string;
     attack: string;
   };
+  specialTraining: {
+    type: "dodge" | "armor" | "vitality" | "aura";
+    name: string;
+    desc: string;
+  };
+  statAptitude: Record<string, number>;
 };
 
 export type CoinItem = {
@@ -219,8 +237,24 @@ export type MasterDuelState = {
   rivalAttackTimer?: number;
   damageTakenAccumulator?: number;
   isBerserk?: boolean;
-  lastEffect?: "DODGE" | "CRITICAL" | "BLEED" | null;
+  lastEffect?: "DODGE" | "CRITICAL" | "BLEED" | "STUN" | "PARRY" | "WEAKNESS" | "ULTIMATE" | null;
   chargeTimer?: number;
+  isStunned?: boolean;
+  stunTimer?: number;
+  ultimateGauge: number;     // 0-100
+  villainDialogue?: string | null;
+  activeCombatBuffs?: Record<string, number>; // buffKey -> remainTime
+  rivalDebuffs?: Record<string, number>;      // debuffKey -> remainTime
+  playerSpecialStatus?: Record<string, number>; // invincibility, reflect, etc.
+  skillEffect?: { name: string; description: string; timeLeft: number } | null;
+};
+
+export type MovementBuffStatus = {
+  skillId: string;
+  name: string;
+  timeLeft: number;
+  stars: number;
+  data: Record<string, number>; // Buff multipliers, etc.
 };
 
 export type GameSaveData = {
@@ -289,6 +323,12 @@ export type GameSaveData = {
   isBerserk: boolean;
   poisonDuration: number;
   stunDuration: number;
+  
+  // 신법(보법) 관련 상태
+  movementBuff: MovementBuffStatus | null;
+  lastEvasionTime: number;
+  nextHitMultiplier: number; // 청성파 유광보 등 일회성 강화용
+  isManaShieldActive: boolean; // 사마세가 마영보용
 
   consumables: Record<ConsumableId, number>;
   quickSlots: (ConsumableId | null)[];
@@ -298,15 +338,20 @@ export type GameSaveData = {
     gold: number;
     exp: number;
     points: number;
+    touches: number;
+    efficiency: number;
     duration: number; // in hours
+    estimatedHoursToNextRealm: number;
   } | null;
-  nextRivalTime: number; 
+  nextRivalTime: number;
   innHighScore: number; // 객잔 위명 점수
-  nextRivalKills: number; 
+  nextRivalKills: number;
 
   // New Progression & Upgrade System
-  star: number; 
-  points: number; 
+  star: number;
+  points: number;
+  bossTokens: number;
+  enhancementStones: number; // New: Material from Inn
   statUpgrades: {
     hpRec: number;
     mpRec: number;
@@ -315,9 +360,22 @@ export type GameSaveData = {
     critRate: number;
     critDmg: number;
     eva: number;
+    damageReduction: number; // New: For 'Golden Bell' (Armor type)
     luck: number;      // New: Increases better tier drop chance
     autoGain: number;  // New: Increases passive gain
     offlineLimit: number; // New: Increases offline cap (hours)
   };
   activeTab: TabType;
+  isAudioMuted: boolean;
+  innBuffEndTime: number; // New: Enhancement buff from Inn
+  wisdom: number; // New: Currency for Seogak refinement 
+  martialArtsSkills: {
+    skillId: string;
+    unlocked: boolean;
+    stars: number;
+    masteryExp: number;
+  }[];
+  isForgeFullUnlocked: boolean;
+  lastInnEventKillCount: number;
+  innEventIndex: number;
 };
