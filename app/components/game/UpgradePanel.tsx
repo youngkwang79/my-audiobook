@@ -8,9 +8,9 @@ import { FACTIONS } from "@/app/lib/game/factions";
 type TabType = 'basic' | 'technique' | 'mastery';
 
 const TAB_CONFIG = [
-  { key: 'basic', name: '기초 수련', icon: '🏮', color: '#ff4d4d' },
-  { key: 'technique', name: '심화 연마', icon: '⚔️', color: '#00f2ff' },
-  { key: 'mastery', name: '천명 비전', icon: '📜', color: '#ffd700' },
+  { key: 'basic', name: '기초 수련', color: '#ff4d4d' },
+  { key: 'technique', name: '심화 연마', color: '#00f2ff' },
+  { key: 'mastery', name: '천명 비전', color: '#ffd700' },
 ];
 
 const MULTIPLIERS: (number | 'MAX')[] = [1, 10, 100, 'MAX'];
@@ -45,10 +45,20 @@ export default function UpgradePanel() {
     if (id === 'def') displayName = "방어력";
     if (id === 'hpRec') displayName = "생명력";
     
-    // Special Training Slot handling (Dodge, Armor, Vitality, Aura)
     if (id === 'eva' && faction?.specialTraining) {
       displayName = faction.specialTraining.name;
-      displayDesc = faction.specialTraining.desc;
+      const type = faction.specialTraining.type;
+      if (type === 'vitality') {
+        displayDesc = `${faction.specialTraining.desc} [레벨당 최대 생명력 +0.1%, 초당 생명력 회복 +100]`;
+      } else if (type === 'armor') {
+        displayDesc = `${faction.specialTraining.desc} [레벨당 방어력 +0.5%]`;
+      } else if (type === 'aura') {
+        displayDesc = `${faction.specialTraining.desc} [레벨당 공격력 +0.2%, 치명타 피해 +1%]`;
+      } else if (type === 'dodge') {
+        displayDesc = `${faction.specialTraining.desc} [레벨당 회피율 +0.2%]`;
+      } else {
+        displayDesc = faction.specialTraining.desc;
+      }
     } else {
       displayDesc = (([
         { id: "atk", desc: "공격력을 영구적으로 증진시켜 적에게 더 큰 피해를 줍니다." },
@@ -75,7 +85,8 @@ export default function UpgradePanel() {
   });
 
   const formatStatValue = (id: string, val: number) => {
-    if (['critRate', 'critDmg', 'eva', 'autoGain', 'offlineLimit'].includes(id)) return `+${(val * 100).toFixed(2)}%`;
+    if (id === 'critDmg') return `${val.toFixed(2)}%`;
+    if (['critRate', 'eva', 'autoGain', 'offlineLimit'].includes(id)) return `+${(val * 100).toFixed(2)}%`;
     if (id === 'luck') return `${(val * 100).toFixed(4)}%`;
     return Math.floor(val).toLocaleString();
   };
@@ -96,7 +107,7 @@ export default function UpgradePanel() {
   };
 
   const getStatColor = (id: string) => {
-    if (['atk', 'def', 'hpRec', 'mpRec'].includes(id)) return '#ff4d4d';
+    if (['atk', 'def', 'hpRec', 'mpRec'].includes(id)) return '#fd3c3cff';
     if (['critRate', 'critDmg', 'eva'].includes(id)) return '#00f2ff';
     return '#ffd700';
   };
@@ -202,8 +213,8 @@ export default function UpgradePanel() {
               background: activeTab === tab.key ? `linear-gradient(to top, ${tab.color}15, transparent)` : "transparent"
             }}
           >
-            <span style={{ fontSize: 16, marginBottom: 4 }}>{tab.icon}</span>
-            <span style={{ fontSize: 11, fontWeight: 900 }}>{tab.name}</span>
+            <span style={{ fontSize: 14, marginBottom: 4 }}></span>
+            <span style={{ fontSize: 20, fontWeight: 900 }}>{tab.name}</span>
           </button>
         ))}
       </div>
@@ -263,8 +274,8 @@ export default function UpgradePanel() {
                     <div style={{ ...levelBadgeStyle, background: statColor }}>Lv.{upgrade.level}</div>
                   </div>
                   <div style={{ flex: 1 }}>
-                     <div style={{ fontSize: 14, fontWeight: 900, color: "#fff", marginBottom: 2 }}>{upgrade.displayName}</div>
-                     <div style={{ fontSize: 18, fontWeight: 950, color: statColor }}>
+                     <div style={{ fontSize: 20, fontWeight: 900, color: "#ffffffff", marginBottom: 2 }}>{upgrade.displayName}</div>
+                     <div style={{ fontSize: 21, fontWeight: 950, color: statColor }}>
                         {formatStatValue(upgrade.id, upgrade.currentValue)}
                      </div>
                   </div>
@@ -275,6 +286,7 @@ export default function UpgradePanel() {
                         disabled={!canAffordGold}
                         style={{
                           ...actionButtonStyle,
+                          padding: "4px", width: "130px", height: "50px",
                           background: canAffordGold 
                             ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)" 
                             : "rgba(255,255,255,0.05)",
@@ -283,8 +295,8 @@ export default function UpgradePanel() {
                           border: canAffordGold ? "1px solid #ffd700" : "none"
                         }}
                      >
-                        <span style={{ fontSize: 8, opacity: 0.8, fontWeight: 900 }}>x{actualM} 연마</span>
-                        <span style={{ fontWeight: 950 }}>{goldCost >= 1000000 ? (goldCost/1000000).toFixed(1)+'M' : goldCost.toLocaleString()}</span>
+                        
+                        <span style={{ fontWeight: 950,fontSize: 26 }}>{goldCost >= 1000000 ? (goldCost/1000000).toFixed(1)+'M' : goldCost.toLocaleString()}</span>
                      </button>
                      
                      {/* Reputation Upgrade (Blue Box) */}
@@ -294,7 +306,7 @@ export default function UpgradePanel() {
                          disabled={!canAffordRep}
                          style={{
                            ...actionButtonStyle,
-                           padding: "6px",
+                           padding: "4px", width: "130px", height: "50px", 
                            background: canAffordRep 
                             ? "linear-gradient(135deg, #00f2ff 0%, #0077ff 100%)" 
                             : "rgba(0, 242, 255, 0.05)",
@@ -303,8 +315,8 @@ export default function UpgradePanel() {
                            border: canAffordRep ? "1px solid #00f2ff" : "none"
                          }}
                        >
-                         <span style={{ fontSize: 8, opacity: 0.9, fontWeight: 900 }}>x{actualMRep} 명예</span>
-                         <span style={{ fontWeight: 950 }}>{repCost >= 1000 ? (repCost/1000).toFixed(1)+'K' : repCost.toLocaleString()}</span>
+                         
+                         <span style={{ fontWeight: 950,fontSize :26 }}>{repCost >= 1000000 ? (repCost/1000000).toFixed(1)+'M' : repCost.toLocaleString()}</span>
                        </button>
                      )}
                   </div>
@@ -363,23 +375,23 @@ export default function UpgradePanel() {
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
-  height: "100%", width: "100%", padding: "20px 15px",
+  height: "100%", width: "100%", padding: "1px 6px",
   background: "linear-gradient(165deg, rgba(20,20,30,0.8) 0%, rgba(10,10,15,0.9) 100%)",
   borderRadius: "32px", border: "1px solid rgba(255,215,0,0.1)",
   backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", boxSizing: "border-box"
 };
 
 const headerStyle: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20
+  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 1
 };
 
 const currencyBadge: React.CSSProperties = {
   background: "rgba(255, 215, 0, 0.1)", border: "1px solid rgba(255, 215, 0, 0.2)",
-  padding: "6px 14px", borderRadius: "14px", fontSize: 13, display: "flex", gap: 8, alignItems: "center", color: "#ffd700"
+  padding: "8px 14px", borderRadius: "14px", fontSize: 13, display: "flex", gap: 10, alignItems: "center", color: "#ffd700"
 };
 
 const summaryBarStyle: React.CSSProperties = {
-  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "12px", gap: 15, marginBottom: 20,
+  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "12px", gap: 15, marginBottom: 15,
   border: "1px solid rgba(255,255,255,0.05)"
 };
 
@@ -426,5 +438,5 @@ const levelBadgeStyle: React.CSSProperties = {
 
 const actionButtonStyle: React.CSSProperties = {
   width: 100, padding: "10px", borderRadius: "14px", border: "none", cursor: "pointer",
-  display: "flex", flexDirection: "column", alignItems: "center", gap: 2, transition: "0.2s"
+  display: "flex", flexDirection: "column", alignItems: "center", gap: 2, transition: "0.2s",  justifyContent: "center",
 };

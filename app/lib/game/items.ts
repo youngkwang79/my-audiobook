@@ -1186,12 +1186,28 @@ export const SYNERGY_CONFIG: Record<string, any> = {
 export function rollTierAndOptions(item: any, level: number, luck: number = 0, realmIndex: number = 0) {
   const luckBonus = luck * 0.01; // 기연 1포인트당 가중치 0.01% 증가
   const rand = Math.random() * 100;
-  let tier: ItemTier = "평범";
-  let optionCount = 0;
+  
+  // 1. 확률에 따른 등급 결정
+  let rolledTier: ItemTier = "평범";
+  if (rand < (5 + luckBonus)) { rolledTier = "신기"; }
+  else if (rand < (20 + luckBonus * 1.5)) { rolledTier = "보구"; }
+  else if (rand < (50 + luckBonus * 2)) { rolledTier = "명품"; }
 
-  if (rand < (5 + luckBonus)) { tier = "신기"; optionCount = 3; }
-  else if (rand < (20 + luckBonus * 1.5)) { tier = "보구"; optionCount = 2; }
-  else if (rand < (50 + luckBonus * 2)) { tier = "명품"; optionCount = 1; }
+  // 2. [수정] 재연마 시 등급 하락 방지 로직 추가
+  // 기존 등급이 있는 경우(재연마), 새로 굴린 등급이 기존보다 낮으면 기존 등급 유지
+  const tierOrder: ItemTier[] = ["평범", "명품", "보구", "신기"];
+  const currentTier = item.tier || "평범";
+  
+  let finalTier = rolledTier;
+  if (tierOrder.indexOf(rolledTier) < tierOrder.indexOf(currentTier)) {
+    finalTier = currentTier;
+  }
+
+  // 3. 최종 등급에 따른 옵션 개수 설정
+  let optionCount = 0;
+  if (finalTier === "신기") optionCount = 4;
+  else if (finalTier === "보구") optionCount = 2;
+  else if (finalTier === "명품") optionCount = 1;
 
   const options: RandomOption[] = [];
   const pool = [...RANDOM_OPTION_POOL];
@@ -1212,12 +1228,12 @@ export function rollTierAndOptions(item: any, level: number, luck: number = 0, r
 
   // 시너지 세트 부여 (명품 이상부터 40% 확률 + 기연 보조)
   let setName = undefined;
-  if (tier !== "평범" && Math.random() < (0.4 + luck * 0.01)) {
+  if (finalTier !== "평범" && Math.random() < (0.4 + luck * 0.01)) {
     const setKeys = Object.keys(SYNERGY_SETS);
     setName = setKeys[Math.floor(Math.random() * setKeys.length)];
   }
 
-  return { ...item, tier, randomOptions: options, setName };
+  return { ...item, tier: finalTier, randomOptions: options, setName };
 }
 
 export function generateRandomAccessory(realm: string, level: number, luck: number = 0, realmIndex: number = -1): OwnedWeapon {
@@ -1265,11 +1281,11 @@ export function rollPaewangItem(item: any, level: number, luck: number = 0, real
   const tieredItem = { ...item };
   tieredItem.tier = "신기";
   
-  // [수정] 기본 스탯 설정 (사용자 요청: 공 3000, 생 3000, 내 1500)
-  tieredItem.attackBonus = 3000;
-  tieredItem.hpBonus = 3000;
-  tieredItem.mpBonus = 1500;
-  tieredItem.name = `[패왕] ${item.name}`; // 패왕 장비 식별자 추가
+  // [수정] 기본 스탯 설정 (전달받은 scaled 값이 있으면 유지, 없으면 기본값 적용)
+  tieredItem.attackBonus = item.attackBonus || 3000;
+  tieredItem.hpBonus = item.hpBonus || 3000;
+  tieredItem.mpBonus = item.mpBonus || 1500;
+  tieredItem.name = `${item.name}`; // 패왕 장비 식별자 유지
   
   const options: RandomOption[] = [];
   const realmScale = 1 + (realmIndex >= 0 ? realmIndex : 0) * 0.15;

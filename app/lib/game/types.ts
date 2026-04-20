@@ -378,4 +378,5 @@ export type GameSaveData = {
   isForgeFullUnlocked: boolean;
   lastInnEventKillCount: number;
   innEventIndex: number;
+  regenAccumulator: number;
 };

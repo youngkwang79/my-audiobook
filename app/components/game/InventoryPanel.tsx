@@ -120,7 +120,7 @@ export default function InventoryPanel(props: Props) {
     const dist = Math.sqrt(Math.pow(swipeOffset, 2)); // Simple dist
     
     if (swipeOffset > 100) {
-      const price = item.name.includes("[패왕]") ? 10000000 : Math.floor(item.price * 0.25);
+      const price = item.name.includes("[패왕]") ? 40000000 : Math.floor(item.price * 0.25);
       if (confirm(`정말 판매하시겠습니까?\n판매 가격: ${price.toLocaleString()}냥`)) {
         sellItem(swipeGearId);
         setPopupItem(null);
@@ -399,7 +399,7 @@ export default function InventoryPanel(props: Props) {
                           display: "flex", flexDirection: "column", alignItems: "flex-end"
                         }}>
                           <span>판매 →</span>
-                          <span style={{ fontSize: 8 }}>{ (item.name.includes("[패왕]") ? 10000000 : Math.floor(item.price * 0.25)).toLocaleString() }냥</span>
+                          <span style={{ fontSize: 8 }}>{ (item.name.includes("[패왕]") ? 40000000 : Math.floor(item.price * 0.25)).toLocaleString() }냥</span>
                         </div>
                     )}
                       <div style={{ fontSize: 22 }}>{item.icon ?? "📦"}</div>
@@ -691,6 +691,7 @@ export default function InventoryPanel(props: Props) {
 
             <div style={{ background: "rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: 8, fontSize: 12, display: "flex", flexDirection: "column", gap: 4 }}>
               <div style={{ color: "#ff4d4d", fontWeight: "bold" }}>기본 공격력 +{popupItem.attackBonus}</div>
+              {popupItem.hpBonus && <div style={{ color: "#a8ff7e", fontWeight: "bold" }}>기본 생명력 +{popupItem.hpBonus}</div>}
               {popupItem.mpBonus && <div style={{ color: "#4d94ff", fontWeight: "bold" }}>기본 내공 +{popupItem.mpBonus}</div>}
               
               {/* 무작위 옵션 표시 */}
@@ -774,11 +775,11 @@ export default function InventoryPanel(props: Props) {
                   boxShadow: "inset 0 0 10px rgba(0, 242, 255, 0.1)"
                 }}>
                   <div style={{ color: "#00f2ff", fontWeight: "900", fontSize: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{getPotionIcon("oil_" + popupItem.oilEffect.key)}</span>
-                    <span>{getPotionName("oil_" + popupItem.oilEffect.key).split('(')[0]}</span>
+                    <span>{getPotionIcon(popupItem.oilEffect.key)}</span>
+                    <span>{getPotionName(popupItem.oilEffect.key).split('(')[0]}</span>
                   </div>
                   <div style={{ color: "#caf9ff", fontSize: 11, lineHeight: 1.5 }}>
-                    "{popupItem.oilEffect.chance}% 확률로 {popupItem.oilEffect.label.replace(/^[0-9~% ]*확률로 /, '')}"
+                    {getPotionDesc(popupItem.oilEffect.key).split('\n\n')[0]}
                   </div>
                 </div>
               )}
@@ -889,12 +890,12 @@ function getPotionName(id: string) {
     hp_small: "체력 회복제(小)", hp_medium: "체력환약", hp_large: "체력 회복제(大)",
     mp_small: "내력 회복제(小)", mp_medium: "내력환약", mp_large: "내공단",
     trance_2: "무아지경(x2)", trance_5: "무아지경(x5)", trance_10: "무아지경(x10)",
-    oil_atk_3: "광폭유(공격 3배)", oil_eva_3: "무영유(회피 3배)", oil_crit_3: "파천유(치명 3배)",
-    oil_def_3: "강철유(방어 3배)", oil_speed_3: "질풍유(속도 3배)", oil_vampire: "흡성유(흡혈)",
-    oil_triple_hit: "삼연유(3연격)", oil_thunder: "뇌전유(기절)", oil_poison: "만독유(방깎)",
-    oil_bleed: "혈염유(지속피해)", oil_reflect: "반탄유(반사)", oil_vajra: "금강유(무적)",
-    oil_luck_3: "기연유(행운 3배)", oil_clarity: "청명유(정화)", oil_eye: "영안유(약점)",
-    oil_demon: "천마유(일격필살)", oil_formless: "무상유(강화)"
+    oil_atk_3: "광폭유", oil_eva_3: "무영유", oil_crit_3: "파천유",
+    oil_def_3: "강철유", oil_speed_3: "질풍유", oil_vampire: "흡성유",
+    oil_triple_hit: "삼연유", oil_thunder: "뇌전유", oil_poison: "만독유",
+    oil_bleed: "혈염유", oil_reflect: "반탄유", oil_vajra: "금강유",
+    oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유",
+    oil_demon: "천마유", oil_formless: "무상유"
   };
   return names[id] || id;
 }
@@ -905,23 +906,23 @@ function getPotionDesc(id: string) {
   if (id.startsWith("trance_")) return "정신을 집중하여 짧은 시간 동안 폭발적인 효율로 수련할 수 있게 돕는 희귀한 영약입니다.";
   
   const descs: Record<string, string> = {
-    oil_atk_3: "광폭유 (Berserk Oil): [3배] 10% 확률로 공격력 3배 증가 (10초)",
-    oil_crit_3: "파천유 (Sky-Breaker Oil): [3배] 10% 확률로 치명타 피해 3배 증가 (10초)",
-    oil_thunder: "뇌전유 (Thunderbolt Oil): 10% 확률로 적에게 500% 대미지 및 2초간 기절",
-    oil_poison: "만독유 (Ten-Poison Oil): 5% 확률로 적의 방어력을 50% 감소시킴 (10초)",
-    oil_bleed: "혈염유 (Blood-Flame Oil): 10% 확률로 적에게 출혈 상태 부여 (5초간 최대HP 10% 지속 피해)",
-    oil_eva_3: "무영유 (Shadow-Step Oil): [3배] 10% 확률로 회피율 3배 증가 (10초)",
-    oil_def_3: "강철유 (Iron-Body Oil): [3배] 10% 확률로 방어력 3배 증가 (10초)",
-    oil_reflect: "반탄유 (Counter-Force Oil): 10% 확률로 8초간 받는 대미지 100% 반사",
-    oil_vajra: "금강유 (Vajra Oil): 5% 확률로 3초간 무적 상태 돌입",
-    oil_vampire: "흡성유 (Soul-Eater Oil): 타격 시 대미지의 5%만큼 체력/내공 흡수 (흡혈)",
-    oil_speed_3: "질풍유 (Gale Oil): [3배] 10% 확률로 공격 속도 3배 증가 (10초)",
-    oil_luck_3: "기연유 (Lesser Luck Oil): [3배] 10% 확률로 기연(Luck) 3배 증가 (10초)",
-    oil_clarity: "청명유 (Clarity Oil): 10% 확률로 전체 체력/내공 20% 즉시 회복 및 상태이상 해제",
-    oil_eye: "영안유 (Spirit-Eye Oil): 10% 확률로 10초간 치명 50% 상승 및 약점 노출",
-    oil_demon: "천마유 (Heavenly Demon Oil): 공격 시 2% 확률로 일격필살(1000% 대미지) 발동",
-    oil_triple_hit: "삼연유 (Triple-Strike Oil): 1타 3연격 옵션 상시 부여",
-    oil_formless: "무상유 (Formless Oil): 모든 '3배' 버프의 지속 시간 연장 및 발동 확률 2배 증가"
+    oil_atk_3: "[광폭] 15% 확률로 10초간 공격력 3배 증가",
+    oil_crit_3: "[파천] 15% 확률로 10초간 치명타 피해 3배 증가",
+    oil_thunder: "[뇌전] 15% 확률로 적에게 500% 대미지 및 2초간 기절",
+    oil_poison: "[만독] 10% 확률로 10초간 적의 방어력 50% 감소",
+    oil_bleed: "[혈염] 15% 확률로 5초간 적 최대HP 10% 지속 피해 부여",
+    oil_eva_3: "[무영] 15% 확률로 10초간 회피율 3배 증가",
+    oil_def_3: "[강철] 15% 확률로 10초간 방어력 3배 증가",
+    oil_reflect: "[반탄] 15% 확률로 8초간 받는 대미지 100% 반사",
+    oil_vajra: "[금강] 10% 확률로 3초간 무적 상태 돌입",
+    oil_vampire: "[흡성] 타격 시 대미지의 5%만큼 체력/내공 흡수 (상시)",
+    oil_speed_3: "[질풍] 15% 확률로 10초간 공격 속도 3배 증가",
+    oil_luck_3: "[기연] 15% 확률로 10초간 기연(Luck) 3배 증가",
+    oil_clarity: "[청명] 15% 확률로 전체 체력/내공 20% 즉시 회복 및 상태이상 해제",
+    oil_eye: "[영안] 15% 확률로 10초간 치명 50% 상승 및 약점 노출",
+    oil_demon: "[천마] 공격 시 2% 확률로 일격필살(1000% 대미지) 발동",
+    oil_triple_hit: "[삼연] 모든 공격 시 1타 3연격 옵션 상시 부여",
+    oil_formless: "[무상] 모든 '3배' 버프의 지속 시간 연장 및 발동 확률 2배 증가"
   };
   if (descs[id]) return descs[id] + "\n\n[제련 -> 연마] 탭에서 장비에 바를 수 있습니다.";
   

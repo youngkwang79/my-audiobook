@@ -66,7 +66,7 @@ export function getMovementBuff(faction: FactionType, stars: number): MovementBu
       return {
         name: "마영보(魔影步)",
         duration: 4 + ratio * 6, // 4.6s ~ 10s
-        multipliers: { manaShield: 0.7, manaEfficiency: 1.1 + ratio * 0.4 }, // MP 0.7소모, 내공강화 효율 1.5
+        multipliers: { manaShield: 1.0, manaEfficiency: 1.1 + ratio * 0.4 }, // MP 1.0소모 (완전 흡수), 내공강화 효율 1.5
         description: `마기로 신체를 보호하여 피해를 내력으로 대신하며 내공 효율이 극대화됩니다.`
       };
     case "아미파":

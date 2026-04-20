@@ -45,16 +45,16 @@ export const STAT_UPGRADE_CONFIG: Record<string, { name: string; resources: stri
 };
 
 export const STAT_INCREMENTS: Record<string, number> = {
-  atk: 20,
-  def: 15,
-  hpRec: 200,
-  mpRec: 75,
-  critRate: 0.00005,
-  critDmg: 0.00026,
-  eva: 0.00004,
-  luck: 0.000001,
-  autoGain: 0.00013,
-  offlineLimit: 0.0033,
+  atk: 250,
+  def: 250,
+  hpRec: 2500,
+  mpRec: 100,
+  critRate: 0.001,
+  critDmg: 1,
+  eva: 0.001,
+  luck: 0.00001,
+  autoGain: 0.01,
+  offlineLimit: 0.5,
 };
 
 export const STAT_UPGRADE_BASES: Record<string, { gold: number; rep: number }> = {
@@ -170,6 +170,8 @@ interface GameState {
   getTotalEvasion: () => number;
   getTotalSpeed: () => number;
   getTotalMp: () => number;
+  getTotalHpRecovery: () => number;
+  getTotalMpRecovery: () => number;
   getTotalCombatPower: () => number;
   addWeapon: (weapon: OwnedWeapon) => void;
   equipItem: (itemId: string) => void;
@@ -247,7 +249,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     return eq.reduce((sum, item) => {
       const optVal = item.randomOptions?.filter(o => o.stat === stat).reduce((s, o) => s + o.value, 0) || 0;
-      return sum + optVal;
+      // [수정] 강화 단계당 옵션 성능 0.3% 추가 증폭
+      const enhancementBonus = 1 + (item.enhancement || 0) * 0.003;
+      return sum + (optVal * enhancementBonus);
     }, 0);
   },
   getTotalAttack: () => {
@@ -282,6 +286,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0)/100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkBonus;
     
+    // Special Training: Aura Type (Atk Bonus)
+    if (faction?.specialTraining?.type === 'aura') {
+      const specLevel = game.upgradeLevels?.eva || 0;
+      final *= (1 + (specLevel * 0.002)); // 0.2% per level
+    }
+
     // Final Damage Synergy
     Object.entries(setCounts).forEach(([setName, count]) => {
       const syn = SYNERGY_CONFIG[setName];
@@ -337,8 +347,34 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 3 && syn[3]?.critDmg) setBonus += syn[3].critDmg;
     });
 
-    return (base + bonus + setBonus) * moveMult;
-  },  getTotalDefense: () => {
+    let auraBonus = 0;
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    if (faction?.specialTraining?.type === 'aura') {
+      const specLevel = game.upgradeLevels?.eva || 0;
+      auraBonus = specLevel * 1; // 1% per level
+    }
+
+    return (base + bonus + setBonus + auraBonus) * moveMult;
+  },  getTotalHpRecovery: () => {
+    const { game } = get();
+    const maxHp = get().getTotalHp();
+    const baseRegen = Math.max(1, Math.floor(maxHp * 0.01));
+    
+    let specBonus = 0;
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    if (faction?.specialTraining?.type === 'vitality') {
+      const specLevel = game.upgradeLevels?.eva || 0;
+      specBonus = specLevel * 100; // +100 per level
+    }
+    
+    return baseRegen + specBonus;
+  },
+  getTotalMpRecovery: () => {
+    const { game } = get();
+    const maxMp = get().getTotalMp();
+    return Math.max(1, Math.floor(maxMp * 0.01));
+  },
+  getTotalDefense: () => {
     const { game } = get(); const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
     let moveMult = 1;
     if (game.movementBuff && game.movementBuff.data.def) moveMult = game.movementBuff.data.def;
@@ -349,12 +385,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) setDefMult *= (1 + syn[5].allStat);
     });
 
-    return Math.floor((game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.def || 0)/100) * moveMult * setDefMult);
+    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.def || 0)/100) * moveMult * setDefMult;
+    
+    // Special Training: Armor Type (Def Bonus)
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    if (faction?.specialTraining?.type === 'armor') {
+      const specLevel = game.upgradeLevels?.eva || 0;
+      finalDef *= (1 + (specLevel * 0.005)); // 0.5% per level
+    }
+
+    return Math.floor(finalDef);
   },
   getTotalHp: () => {
     const { game } = get(); 
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
-    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
     const setCounts = get().getSetCounts();
     let setHpMult = 1;
     Object.entries(setCounts).forEach(([setName, count]) => {
@@ -362,12 +407,28 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) setHpMult *= (1 + syn[5].allStat);
     });
 
-    const baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.hpRec || 0) * 2500 + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0)/100) * setHpMult;
+    let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.hpRec || 0) * 2500 + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0)/100) * setHpMult;
+    
+    // Special Training: Vitality Type (HP Bonus)
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    if (faction?.specialTraining?.type === 'vitality') {
+      const specLevel = game.upgradeLevels?.eva || 0;
+      baseTotal *= (1 + (specLevel * 0.001)); // 0.1% per level
+    }
+
     return Math.floor(baseTotal * (1 + get().getOptionSum("hp_pct") / 100));
   },
   getTotalEvasion: () => {
     const { game } = get();
-    let eva = (game.eva || 0) + (game.upgradeLevels?.eva || 0) * 0.1 + get().getOptionSum("eva");
+    const faction = FACTIONS.find(f => f.name === game.faction);
+    let evaBonusPerLevel = 0.1;
+    if (faction?.specialTraining?.type === 'dodge') {
+      evaBonusPerLevel = 0.2; // 2x for dodge type
+    } else if (faction?.specialTraining) {
+      evaBonusPerLevel = 0; // Other special types don't give evasion
+    }
+
+    let eva = (game.eva || 0) + (game.upgradeLevels?.eva || 0) * evaBonusPerLevel + get().getOptionSum("eva");
     
     const setCounts = get().getSetCounts();
     Object.entries(setCounts).forEach(([setName, count]) => {
@@ -382,7 +443,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   getTotalMp: () => {
     const { game } = get();
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
-    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
     
     const setCounts = get().getSetCounts();
     let setMpMult = 1;
@@ -675,26 +736,25 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().triggerSave(true);
   },
   autoTrain: () => { const { game, addExp } = get(); if (game.pendingInnEntry || game.timingMission.available) return; addExp(4.0 + (game.upgradeLevels.autoGain || 0) * 0.01, true); },
-  takeDamage: (d: number) => set((s: any) => { 
-    let damage = d;
-    // 무당 태극보: 완전 면역
-    if (s.game.movementBuff && s.game.movementBuff.data.invincible) damage = 0;
+  takeDamage: (amount: number) => set((s: any) => {
+    let nextHp = s.game.hp;
+    let nextMp = s.game.mp;
     
-    if (damage <= 0) return s;
+    // 무당 태극보: 완전 면역
+    if (s.game.movementBuff && s.game.movementBuff.data.invincible) amount = 0;
+    if (amount <= 0) return s;
 
-    // 사마세가 마나 실드
-    if (s.game.isManaShieldActive) {
-      const mpDamage = damage * 0.7;
-      if (s.game.mp >= mpDamage) {
-        return { game: { ...s.game, mp: s.game.mp - mpDamage } };
-      } else {
-        // MP 부족 시 남은 대미지 HP로
-        const remainDmg = (mpDamage - s.game.mp) / 0.7;
-        return { game: { ...s.game, mp: 0, hp: Math.max(0, s.game.hp - remainDmg) } };
-      }
+    // 사마세가 마영보(압기보): 내력 방어막
+    if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
+      const shieldRate = s.game.movementBuff.data.manaShield;
+      const mpDmg = Math.floor(amount * shieldRate);
+      const actualMpDmg = Math.min(nextMp, mpDmg);
+      nextMp = Math.max(0, nextMp - actualMpDmg);
+      amount -= actualMpDmg;
     }
-
-    return { game: { ...s.game, hp: Math.max(0, s.game.hp - damage) } };
+    
+    nextHp = Math.max(0, nextHp - amount);
+    return { game: { ...s.game, hp: nextHp, mp: nextMp } };
   }),
   heal: (a: number) => set((s: any) => ({ game: { ...s.game, hp: Math.min(get().getTotalHp(), s.game.hp + a) } })),
   restoreMp: (amount: number) => {
@@ -803,12 +863,30 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    // --- Global Regeneration (1초 단위 정산) ---
+    // dt는 초 단위입니다. (보통 0.04 ~ 0.2초 사이)
+    const regenAccumulator = (s.game.regenAccumulator || 0) + dt;
+    let nextHp = s.game.hp;
+    let nextMp = s.game.mp;
+    let finalAccumulator = regenAccumulator;
+
+    if (regenAccumulator >= 1.0) {
+      const hpRec = get().getTotalHpRecovery();
+      const mpRec = get().getTotalMpRecovery();
+      nextHp = Math.min(get().getTotalHp(), nextHp + hpRec);
+      nextMp = Math.min(get().getTotalMp(), nextMp + mpRec);
+      finalAccumulator -= 1.0;
+    }
+
     // 이전에 이미 버프가 없고 쿨다운도 없다면 일찍 반환
-    if (s.game.buffTimeLeft <= 0 && !s.game.activeBuff && !hasCooldown && !s.game.movementBuff) return s;
+    if (s.game.buffTimeLeft <= 0 && !s.game.activeBuff && !hasCooldown && !s.game.movementBuff && nextHp === s.game.hp && nextMp === s.game.mp && finalAccumulator === s.game.regenAccumulator) return s;
     
     return { 
       game: { 
         ...s.game, 
+        hp: nextHp,
+        mp: nextMp,
+        regenAccumulator: finalAccumulator,
         skillCooldowns: nextSkillCooldowns,
         attackMultiplier: newBuffTimeLeft > 0 ? s.game.attackMultiplier : 1,
         activeBuff: newBuffTimeLeft > 0 ? s.game.activeBuff : null,
@@ -877,7 +955,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   sellItem: (id: string) => set((s: any) => { 
     const it = s.game.ownedWeapons.find((w:any) => w.id === id); 
     if (!it) return s; 
-    const p = (it.name.includes("[패왕]") || it.tier === "신기") ? 10000000 : Math.floor((it.price || 0) * 0.25); 
+    const p = (it.name.includes("[패왕]") || it.tier === "신기") ? 40000000 : Math.floor((it.price || 0) * 0.25); 
     return { game: { ...s.game, coins: s.game.coins + p, ownedWeapons: s.game.ownedWeapons.filter((w:any) => w.id !== id) } }; 
   }),
   sellConsumable: (id: ConsumableId) => set((s: any) => {
@@ -908,25 +986,33 @@ export const useGameStore = create<GameState>((set, get) => ({
     const remain = Math.max(0, reqTouches - game.touches);
     const estHours = Math.ceil(remain / (touchesPerSec * 3600));
 
-    set((s: any) => ({ 
-      game: { 
-        ...s.game, 
-        lastSaveTime: Date.now(), 
-        coins: s.game.coins + eGold, 
-        exp: s.game.exp + eExp, 
-        touches: s.game.touches + eTouches,
-        reputation: (s.game.reputation || 0) + eGold, 
-        lastOfflineRewards: { 
-          gold: eGold, 
-          exp: eExp, 
-          points: eGold,
-          touches: eTouches,
-          duration: Math.round(offSec / 36) / 100,
-          efficiency,
-          estimatedHoursToNextRealm: estHours > 1000 ? 999 : estHours
+    set((s: any) => {
+      const eGold = Math.floor((0.08 + lv * 0.005) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
+      const touchesPerSec = (1 + lv * 0.01) * expB;
+      // [수정] 오프라인 수련치 보상 1/10 효율 적용
+      const eTouches = Math.floor(touchesPerSec * offSec * 0.1); 
+      const eExp = Math.floor((0.15 + lv * 0.005) * expB * offSec);
+
+      return { 
+        game: { 
+          ...s.game, 
+          lastSaveTime: Date.now(), 
+          coins: s.game.coins + eGold, 
+          exp: s.game.exp + eExp, 
+          touches: s.game.touches + eTouches,
+          reputation: (s.game.reputation || 0) + eGold, 
+          lastOfflineRewards: { 
+            gold: eGold, 
+            exp: eExp, 
+            points: eGold,
+            touches: eTouches,
+            duration: Math.round(offSec / 36) / 100,
+            efficiency,
+            estimatedHoursToNextRealm: estHours > 1000 ? 999 : estHours
+          } 
         } 
-      } 
-    }));
+      };
+    });
   },
   claimOfflineRewards: () => set((s: any) => ({ game: { ...s.game, lastOfflineRewards: null } })),
   resolveTimingMission: (p: any) => {
@@ -1007,18 +1093,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   updateMasterDuel: (dt: number) => set((s: any) => { 
     if (!s.game.masterDuel.isPlaying) return s; 
     
+    const masterDuel = s.game.masterDuel;
     // 스턴 타이머 처리
-    let nextStunTimer = Math.max(0, (s.game.masterDuel.stunTimer || 0) - dt);
+    let nextStunTimer = Math.max(0, (masterDuel.stunTimer || 0) - dt);
     let nextIsStunned = nextStunTimer > 0;
 
     // 제갈세가 팔괘보: 적 시간 정지 혹은 스턴 상태인 경우 타이머 정지
     const isFrozen = s.game.movementBuff && s.game.movementBuff.data.freeze;
     const isTargetPaused = isFrozen || nextIsStunned;
     
-    const tLeft = Math.max(0, s.game.masterDuel.timeLeft - dt); 
+    const tLeft = Math.max(0, masterDuel.timeLeft - dt); 
     
     // 스킬 효과 타이머 처리
-    let nextSkillEffect = s.game.masterDuel.skillEffect;
+    let nextSkillEffect = masterDuel.skillEffect;
     if (nextSkillEffect) {
       const nextTime = nextSkillEffect.timeLeft - dt;
       if (nextTime <= 0) nextSkillEffect = null;
@@ -1030,29 +1117,29 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { 
         game: { 
           ...s.game, 
-          masterDuel: { ...s.game.masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null } 
+          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null } 
         } 
       }; 
     }
 
     let nextHp = s.game.hp; 
     let nextMp = s.game.mp;
-    let atkTimer = (s.game.masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt); 
-    let chargeT = (s.game.masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt);
+    let atkTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt); 
+    let chargeT = (masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt);
     let dmgAccum = 0;
-    let effect = s.game.masterDuel.lastEffect;
-    let rivalHp = s.game.masterDuel.rivalHp;
+    let effect = masterDuel.lastEffect;
+    let rivalHp = masterDuel.rivalHp;
     const isBerserk = tLeft <= 10;
 
     // 6초마다 강격(Special Attack)
     if (chargeT >= 6.0 && !isTargetPaused) {
       chargeT = 0;
-      const rawAtk = s.game.masterDuel.rivalAtk * (isBerserk ? 5 : 3.5);
+      const rawAtk = masterDuel.rivalAtk * (isBerserk ? 5 : 3.5);
       const defense = get().getTotalDefense();
       const finalDmgRaw = Math.max(20, Math.floor(rawAtk - defense));
       let finalDmg = finalDmgRaw;
 
-      // 사마세가 마영보: 내력 방어막
+      // 사마세가 마영보(압기보): 내력 방어막
       if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
         const shieldRate = s.game.movementBuff.data.manaShield;
         const mpDmg = Math.floor(finalDmg * shieldRate);
@@ -1069,7 +1156,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       nextHp = Math.max(0, nextHp - finalDmg);
       dmgAccum = finalDmg + Math.random() * 0.01;
       effect = "CRITICAL";
-      // 내상 확률 30% (체력 비례 데미지 패널티 시작)
       if (Math.random() < 0.3) effect = "BLEED";
     }
     // 1.2초마다 기본 공격
@@ -1077,18 +1163,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       atkTimer = 0; 
       
       const evasionRate = get().getTotalEvasion();
-      // 회피 판정
       if (Math.random() < evasionRate / 100) {
         dmgAccum = 0;
         effect = "DODGE";
         get().triggerMovementBuff();
       } else {
-        const variance = 0.9 + Math.random() * 0.2; // 90%~110%
-        const rawAtk = s.game.masterDuel.rivalAtk * (isBerserk ? 2.5 : 1) * variance;
+        const variance = 0.9 + Math.random() * 0.2;
+        const rawAtk = masterDuel.rivalAtk * (isBerserk ? 2.5 : 1) * variance;
         const defense = get().getTotalDefense();
         let finalDmg = Math.max(1, Math.floor(rawAtk - defense));
         
-        // 사마세가 마영보: 내력 방어막 (데미지의 70%를 내공으로 흡수)
+        // 사마세가 마영보(압기보): 내력 방어막
         if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
           const shieldRate = s.game.movementBuff.data.manaShield;
           const mpDmg = Math.floor(finalDmg * shieldRate);
@@ -1103,30 +1188,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
 
         nextHp = Math.max(0, nextHp - finalDmg); 
-        // UI 트리거를 위해 0.0001 단위의 미세한 난수를 더해 값이 항상 변하게 함
         dmgAccum = finalDmg + Math.random() * 0.01;
         effect = null;
       }
     } else {
-      // 효과가 표시된 후 0.5초 뒤에는 제거 (DODGE 등 텍스트 유지 방지)
       if (atkTimer > 0.5 && effect === "DODGE") effect = null;
     }
 
-    // 내상 효과: 매 프레임 소량 감소
-    if (s.game.masterDuel.lastEffect === "BLEED") {
-      const bleedDmg = (get().getTotalHp() * 0.02) * dt; // 초당 2%
+    if (masterDuel.lastEffect === "BLEED") {
+      const bleedDmg = (get().getTotalHp() * 0.02) * dt;
       nextHp = Math.max(0, nextHp - bleedDmg);
-    }
-
-    // [신법/보법 버프 지속 시간 감소 및 소멸 처리]
-    let nextBuff = s.game.movementBuff;
-    if (nextBuff) {
-      const nextTime = nextBuff.timeLeft - dt;
-      if (nextTime <= 0) {
-        nextBuff = null;
-      } else {
-        nextBuff = { ...nextBuff, timeLeft: nextTime };
-      }
     }
 
     const isPlayerDead = nextHp <= 0;
@@ -1136,13 +1207,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...s.game, 
         hp: Math.max(0, nextHp), 
         mp: Math.max(0, nextMp),
-        movementBuff: nextBuff, // 버프 상태 업데이트
         masterDuel: { 
-          ...s.game.masterDuel, 
+          ...masterDuel, 
+          playerHp: Math.max(0, nextHp), // 메인 HP와 싱크
+          playerMp: Math.max(0, nextMp), // 메인 MP와 싱크
           timeLeft: tLeft, 
           isPlaying: !isPlayerDead, 
-          rivalHp: rivalHp, // 반영된 체력 반영
-          lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : s.game.masterDuel.lastWinReward,
+          rivalHp: rivalHp,
+          lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : masterDuel.lastWinReward,
           rivalAttackTimer: atkTimer, 
           chargeTimer: chargeT,
           damageTakenAccumulator: dmgAccum,
@@ -1221,16 +1293,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         const oilChance = Math.random() < Math.min(0.25, 0.03 + (level * 0.007)); 
         const oilKeys = [
           "oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", 
-          "oil_dodge", "oil_def_3", "oil_reflect", "oil_invincible", "oil_vampire",
-          "oil_aspd", "oil_luck", "oil_cleanse", "oil_always_dodge", "oil_demon", "oil_triple_hit", "oil_formless"
+          "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire",
+          "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"
         ];
         const oilId = oilChance ? oilKeys[Math.floor(Math.random() * oilKeys.length)] : null;
         
         const oilNameMap: Record<string, string> = {
           oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", 
-          oil_bleed: "혈염유", oil_dodge: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", 
-          oil_invincible: "금강유", oil_vampire: "흡성유", oil_aspd: "질풍유", oil_luck: "기연유", 
-          oil_cleanse: "청명유", oil_always_dodge: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유"
+          oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", 
+          oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", 
+          oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유"
         };
         const oilName = oilId ? oilNameMap[oilId] : "";
 
@@ -1609,7 +1681,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     set((s: any) => {
       const nextWeapons = s.game.ownedWeapons.map((w: any) => {
-        if (w.id === itemId) return { ...w, oilEffect: { label: oilNames[oilId], id: oilId, chance: 15 } };
+        if (w.id === itemId) return { ...w, oilEffect: { label: `${oilNames[oilId]} (15%)`, id: oilId, chance: 15 } };
         return w;
       });
 
@@ -1669,7 +1741,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               skillEffect: {
                 name: name,
                 description: buffData ? buffData.description : "보법 발동",
-                timeLeft: 3.0
+                timeLeft: buffData ? buffData.duration : 3.0
               }
             }
           }

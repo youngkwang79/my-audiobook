@@ -243,18 +243,8 @@ const isTrainingStatReward =
       return () => clearInterval(interval);
     }, [lastTouchTime]);
 
-    useEffect(() => {
-      const regenInterval = setInterval(() => {
-        const state = useGameStore.getState();
-        const maxHp = state.getTotalHp();
-        const maxMp = state.getTotalMp();
-        const healAmount = Math.max(1, Math.floor(maxHp * 0.01));
-        const mpAmount = Math.max(1, Math.floor(maxMp * 0.01));
-        state.heal(healAmount);
-        state.restoreMp(mpAmount);
-      }, 1000);
-      return () => clearInterval(regenInterval);
-    }, []);
+    // Regeneration is now handled globally in useGameStore via updateBuffs
+
 
     const performHit = () => {
       setLastTouchTime(Date.now());

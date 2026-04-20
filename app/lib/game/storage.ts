@@ -164,18 +164,19 @@ export const defaultGameData: GameSaveData = {
   enhancementStones: 0,
   isAudioMuted: false,
   statUpgrades: {
-    hpRec: 1000,
-    mpRec: 200,
-    atk: 100,
+    hpRec: 150,
+    mpRec: 60,
+    atk: 10,
     def: 50,
     critRate: 0.001,
-    critDmg: 0.5,
+    critDmg: 150,
     eva: 0.001,
     damageReduction: 0,
     luck: 0.00001,
     autoGain: 0,
     offlineLimit: 0,
   },
+  regenAccumulator: 0,
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

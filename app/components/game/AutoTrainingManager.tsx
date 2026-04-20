@@ -17,7 +17,11 @@ export default function AutoTrainingManager() {
     const intervalMs = getAutoTrainInterval(realm);
     const timer = setInterval(() => {
       autoTrain();
-      if (updateBuffs) updateBuffs(intervalMs / 1000);
+      const isCombat = useGameStore.getState().game.masterDuel.isPlaying;
+      // 대결 중이 아닐 때만 글로벌 버프 업데이트 (대결 중에는 MasterPanel의 루프에서 처리)
+      if (updateBuffs && !isCombat) {
+        updateBuffs(intervalMs / 1000);
+      }
     }, intervalMs);
 
     return () => clearInterval(timer);

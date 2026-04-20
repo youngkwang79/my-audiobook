@@ -231,7 +231,7 @@ export default function MasterPanel() {
       color: "#eee",
       boxSizing: "border-box",
       overflowY: "auto",
-      padding: "85px 10px 40px", // Increased top for iPhone, bottom for Android
+      padding: "45px 10px 40px", // Increased top for iPhone, bottom for Android
       touchAction: "pan-y"
     }} className="hide-scrollbar">
 
@@ -297,8 +297,8 @@ export default function MasterPanel() {
       <div
         style={{
           position: "relative",
-          height: 340,
-          minHeight: 340,
+          height: 420,
+          minHeight: 420,
           background: "#000",
           borderRadius: 20,
           border: "1px solid #4a1a1a",
@@ -424,18 +424,20 @@ export default function MasterPanel() {
           </div>
         )}
 
-        {/* VS Indicator - Blinking only */}
-        <div style={{
-          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-          zIndex: 10, pointerEvents: "none", animation: "redFlash 1.5s infinite"
-        }}>
+        {/* VS Indicator - Blinking only - Visible only when NOT playing */}
+        {!masterDuel.isPlaying && (
           <div style={{
-            fontSize: 28, fontWeight: 950, color: "#fff",
-            textShadow: "0 0 10px #ff0000, 0 0 20px #000",
-            fontStyle: "italic", letterSpacing: 2,
-            opacity: masterDuel.isBerserk ? 0.3 : 1
-          }}>VS</div>
-        </div>
+            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            zIndex: 10, pointerEvents: "none", animation: "redFlash 1.5s infinite"
+          }}>
+            <div style={{
+              fontSize: 28, fontWeight: 950, color: "#fff",
+              textShadow: "0 0 10px #ff0000, 0 0 20px #000",
+              fontStyle: "italic", letterSpacing: 2,
+              opacity: masterDuel.isBerserk ? 0.3 : 1
+            }}>VS</div>
+          </div>
+        )}
 
         {/* Berserk Alert */}
         {masterDuel.isBerserk && (
@@ -469,7 +471,7 @@ export default function MasterPanel() {
             <div style={{
               position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
               width: "100%", textAlign: "center",
-              animation: "skillPopupEnter 3s forwards"
+              animation: `skillPopupEnter ${Math.min(5, masterDuel.skillEffect.timeLeft)}s forwards`
             }}>
               <div style={{
                 fontSize: 12, color: "#ffd700", fontWeight: 900, letterSpacing: 2,
@@ -515,7 +517,11 @@ export default function MasterPanel() {
               height: 180, 
               position: "relative",
               animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
-              filter: isPlayerHit ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" : (masterDuel.lastEffect === "BLEED" ? "sepia(0.5) hue-rotate(250deg)" : "none")
+              filter: isPlayerHit 
+                ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" 
+                : (game.movementBuff 
+                    ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" 
+                    : (masterDuel.lastEffect === "BLEED" ? "sepia(0.5) hue-rotate(250deg)" : "none"))
             }} 
           />
           {masterDuel.lastEffect === "DODGE" && (
