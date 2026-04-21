@@ -828,7 +828,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }));
     get().triggerSave(true);
   },
-  autoTrain: () => { const { game, addExp } = get(); if (game.pendingInnEntry || game.timingMission.available) return; addExp(4.0 + (game.upgradeLevels.autoGain || 0) * 0.01, true); },
+  autoTrain: () => { const { game, addExp } = get(); if (game.pendingInnEntry || game.timingMission.available) return; addExp(1.0 + (game.upgradeLevels.autoGain || 0) * 0.01, true); },
   takeDamage: (amount: number) => set((s: any) => {
     let nextHp = s.game.hp;
     let nextMp = s.game.mp;

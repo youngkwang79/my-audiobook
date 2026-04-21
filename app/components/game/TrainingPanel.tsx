@@ -251,7 +251,7 @@ const isTrainingStatReward =
 
     const performHit = () => {
       const now = Date.now();
-      if (now - lastHitTimeRef.current < 150) return; // 중복 호출 방지 강화 (150ms)
+      if (now - lastHitTimeRef.current < 220) return; // 중복 호출 방지 상향 (220ms) - 이중터치 방지강화
       lastHitTimeRef.current = now;
       
       setLastTouchTime(now);
@@ -437,9 +437,8 @@ const isTrainingStatReward =
 
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
       e.preventDefault();
-      // Handle up to 5 simultaneous touches in a single frame
-      const touches = Array.from(e.changedTouches).slice(0, 5);
-      touches.forEach(() => performHit());
+      // Handle only the first touch to prevent accidental double-counting with multi-finger
+      if (e.changedTouches.length > 0) performHit();
     };
 
 
@@ -639,12 +638,27 @@ const isTrainingStatReward =
           borderRadius: "24px",
           padding: "26px 18px 18px",
           textAlign: "center",
-          boxShadow:
-            "0 0 18px rgba(255,215,0,0.45), 0 0 36px rgba(255,180,80,0.28), 0 0 68px rgba(180,120,255,0.22), inset 0 0 24px rgba(255,220,120,0.08)",
-          animation: "breakthroughPopupFloat 2.2s ease-in-out infinite",
-          overflow: "hidden",
         }}
       >
+        {/* 경지 이미지 추가 (중앙 배경) */}
+        <div style={{
+          position: "absolute",
+          top: "40%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "220px",
+          height: "220px",
+          opacity: 0.25,
+          zIndex: 0,
+          pointerEvents: "none"
+        }}>
+          <img 
+            src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/warrior.png"}
+            alt="Character"
+            style={{ width: "100%", height: "100%", objectFit: "contain", filter: "brightness(2) contrast(1.5) drop-shadow(0 0 20px #ffd700)" }}
+          />
+        </div>
+
         <div
           style={{
             position: "absolute",
@@ -720,6 +734,66 @@ const isTrainingStatReward =
           >
             확인
           </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 */}
+  {game.pendingInnEntry && (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 3000,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.85)",
+        backdropFilter: "blur(10px)",
+        animation: "fadeIn 0.5s ease-out forwards",
+      }}
+    >
+      <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
+        <div style={{
+          fontSize: "42px",
+          fontWeight: 900,
+          color: "#ff3333",
+          textShadow: "0 0 20px #ff0000",
+          marginBottom: "20px",
+          animation: "pulse 1s infinite alternate"
+        }}>
+          🚨 무뢰배 난입! 🚨
+        </div>
+        
+        {/* 객잔 배경 & 무뢰배 이미지 */}
+        <div style={{ position: "relative", height: "300px", width: "100%", overflow: "hidden", marginBottom: "20px" }}>
+           <img 
+             src="/images/inn_bg.png" 
+             style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, filter: "brightness(0.5) contrast(1.2)" }} 
+             alt="Inn Background"
+           />
+           <img 
+             src="/images/inn_thug.png" 
+             style={{ 
+               position: "absolute", 
+               bottom: "10%", 
+               left: "50%", 
+               transform: "translateX(-50%)", 
+               height: "80%",
+               animation: "character3DPanDarkMild 3s infinite"
+             }} 
+             alt="Inn Thug"
+           />
+        </div>
+
+        <div style={{ color: "#fff", fontSize: "18px", fontWeight: "bold", padding: "0 20px" }}>
+          객잔에서 소란을 피우는 무뢰배들을 참교육하러 이동합니다...
+        </div>
+        
+        <div style={{ marginTop: "30px", width: "200px", height: "4px", background: "#333", borderRadius: "2px", margin: "30px auto" }}>
+           <div style={{ height: "100%", background: "#ff3333", borderRadius: "2px", animation: "loadingBar 1s linear forwards" }} />
         </div>
       </div>
     </div>
@@ -1461,6 +1535,23 @@ const isTrainingStatReward =
             30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
             85% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
             100% { transform: translate(-50%, -60%) scale(1.5); opacity: 0; }
+          }
+          @keyframes loadingBar {
+            0% { width: 0%; }
+            100% { width: 100%; }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.1); opacity: 1; }
+          }
+          @keyframes character3DPanDarkMild {
+            0% { transform: perspective(1000px) rotateY(-3deg) translateX(-53%) scale(1); filter: brightness(0.9); }
+            50% { transform: perspective(1000px) rotateY(3deg) translateX(-47%) scale(1.05); filter: brightness(1.1); }
+            100% { transform: perspective(1000px) rotateY(-3deg) translateX(-53%) scale(1); filter: brightness(0.9); }
           }
         `}</style>
       </div>

@@ -775,14 +775,14 @@ export default function InnPanel({
     const rIdx = realmList.indexOf(game.realm);
 
     // 청운진기 단계별 속도 고정 (사용자 요청: 1-3, 4-6, 7-10, 11+)
-    let baseSpeed = 15;
-    if (currentStage <= 3) baseSpeed = 15;
-    else if (currentStage <= 6) baseSpeed = 25;
-    else if (currentStage <= 10) baseSpeed = 40;
-    else baseSpeed = 60;
+    let baseSpeed = 12;
+    if (currentStage <= 3) baseSpeed = 12;
+    else if (currentStage <= 6) baseSpeed = 18;
+    else if (currentStage <= 10) baseSpeed = 28;
+    else baseSpeed = 40;
 
-    const accel = (currentStage - 1) * 2.5;
-    const speed = (baseSpeed + accel) * 2;
+    const accel = (currentStage - 1) * 1.5;
+    const speed = (baseSpeed + accel) * 1.5;
 
     const nextNotes = breathNotesRef.current
       .map((n) => ({ ...n, y: n.y + speed * dt }));
@@ -855,7 +855,7 @@ export default function InnPanel({
   const handleBreathTap = (lane: number) => {
     const now = Date.now();
     const key = `breath_${lane}`;
-    if (now - (lastHitTimeRef.current[key] || 0) < 100) return; // 레인별 중복 호출 방지
+    if (now - (lastHitTimeRef.current[key] || 0) < 180) return; // 레인별 중복 호출 방지 (이중터치 방지 상향)
     lastHitTimeRef.current[key] = now;
 
     if (!isPlaying || currentMiniGame !== "breath") return;
@@ -978,7 +978,7 @@ export default function InnPanel({
   const handlePolesStep = (side: number) => {
     const now = Date.now();
     const key = "dodge";
-    if (now - (lastHitTimeRef.current[key] || 0) < 100) return; // 보법 중복 방지
+    if (now - (lastHitTimeRef.current[key] || 0) < 180) return; // 보법 중복 방지 (이중터치 방지 상향)
     lastHitTimeRef.current[key] = now;
 
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
@@ -1374,17 +1374,17 @@ export default function InnPanel({
   // 5. Pulse Logic
   const updatePulse = (dt: number) => {
     // [기운응축 속도 밸런싱] 1-3: 천천히(1단계 수준), 4-6: 약간 빠르게, 7-10: 조조금더 빠르게
-    let baseSpeedFactor = 3.5;
-    if (currentStage <= 3) baseSpeedFactor = 3.5;
-    else if (currentStage <= 6) baseSpeedFactor = 6.0;
-    else if (currentStage <= 10) baseSpeedFactor = 9.0;
-    else baseSpeedFactor = 5.0 + currentStage * 0.5;
+    let baseSpeedFactor = 2.8;
+    if (currentStage <= 3) baseSpeedFactor = 2.8;
+    else if (currentStage <= 6) baseSpeedFactor = 4.5;
+    else if (currentStage <= 10) baseSpeedFactor = 6.5;
+    else baseSpeedFactor = 4.0 + currentStage * 0.3;
 
-    // 가속도 및 전체 속도 배율 추가 하향 (1.5 -> 0.8 / 1.2 -> 1.0 / 3 -> 1.8)
-    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.8)) * 1.0;
+    // 가속도 및 전체 속도 배율 추가 하향
+    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.6)) * 0.85;
     const moved = pulseTargetsRef.current.map(t => ({
       ...t,
-      progress: t.progress + speedFactor * dt * 1.8
+      progress: t.progress + speedFactor * dt * 1.5
     }));
     pulseTargetsRef.current = moved;
     setPulseTargets(moved);
@@ -1409,7 +1409,7 @@ export default function InnPanel({
   const handlePulseTap = (id: number) => {
     const now = Date.now();
     const key = `pulse_${id}`; // 펄스는 객체별 ID로 중복 방지
-    if (now - (lastHitTimeRef.current[key] || 0) < 200) return;
+    if (now - (lastHitTimeRef.current[key] || 0) < 250) return; // 중복 터치 방지 상향
     lastHitTimeRef.current[key] = now;
 
     const target = pulseTargetsRef.current.find(t => t.id === id);
