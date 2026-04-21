@@ -390,6 +390,93 @@ export default function GameShell() {
       )}
 
       {game.lastOfflineRewards && <OfflineRewardPopup />}
+
+      {game.yabawiEvent?.active && Date.now() < game.yabawiEvent.expiresAt && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            animation: "popupFadeIn 0.4s ease-out forwards",
+          }}
+        >
+          <div
+            style={{
+              padding: "30px 20px",
+              borderRadius: "20px",
+              background: "linear-gradient(145deg, #2a1a1f 0%, #1a0a0c 100%)",
+              border: "2px solid #ff4d4d",
+              boxShadow: "0 0 40px rgba(255, 0, 0, 0.3), inset 0 0 20px rgba(255, 0, 0, 0.1)",
+              textAlign: "center",
+              width: "85%",
+              maxWidth: "340px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 15,
+            }}
+          >
+            <div style={{ fontSize: 40, filter: "drop-shadow(0 0 10px #ff4d4d)" }}>👁️</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#ff4d4d", textShadow: "0 2px 5px rgba(0,0,0,1)" }}>은밀한 초대</div>
+            
+            <p style={{ fontSize: 14, color: "#ddd", lineHeight: 1.6, wordBreak: "keep-all", margin: "10px 0" }}>
+              객잔 구석에서 수상한 애꾸눈 노인이 은밀히 손짓합니다.<br /><br />
+              <span style={{ color: "#ffd700", fontWeight: 800 }}>"이보게 젊은이, 큰 돈 한번 만져볼 생각 없는가?"</span>
+            </p>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(0,0,0,0.5)", borderRadius: 10, border: "1px solid rgba(255,215,0,0.2)" }}>
+              <span style={{ fontSize: 13, color: "#aaa" }}>보유 명패:</span>
+              <span style={{ fontSize: 14, color: game.gamblingTokens > 0 ? "#4dff4d" : "#ff4d4d", fontWeight: "bold" }}>
+                {game.gamblingTokens || 0} 개
+              </span>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button
+                onClick={() => {
+                  useGameStore.setState((s: any) => ({ game: { ...s.game, yabawiEvent: null } }));
+                }}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: "10px",
+                  background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#fff", fontWeight: "bold", cursor: "pointer"
+                }}
+              >
+                무시한다
+              </button>
+              <button
+                onClick={() => {
+                  const store: any = useGameStore.getState();
+                  if (store.useGamblingToken()) {
+                    // 수락 시 투전판(yabawi) 활성화 후 객잔 이동
+                    useGameStore.setState((s: any) => ({ 
+                      game: { ...s.game, activeTab: "inn", pendingYabawiPlay: true } 
+                    }));
+                  } else {
+                    alert("투전판 명패가 부족합니다. (객잔 대련 승리 시 확률 획득)");
+                  }
+                }}
+                style={{
+                  flex: 1.5, padding: "12px", borderRadius: "10px",
+                  background: game.gamblingTokens > 0 ? "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)" : "gray",
+                  border: "none", color: "#000", fontWeight: 900, cursor: game.gamblingTokens > 0 ? "pointer" : "not-allowed",
+                  boxShadow: game.gamblingTokens > 0 ? "0 4px 10px rgba(255,215,0,0.4)" : "none"
+                }}
+              >
+                {game.gamblingTokens > 0 ? "수락 (명패 1개 소모)" : "명패 부족"}
+              </button>
+            </div>
+            
+            <div style={{ fontSize: 11, color: "#888", marginTop: 5 }}>
+              * 시간이 지나면 기회는 사라집니다.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

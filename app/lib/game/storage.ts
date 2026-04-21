@@ -179,6 +179,8 @@ export const defaultGameData: GameSaveData = {
   },
   regenAccumulator: 0,
   oilBuffs: {},
+  gamblingTokens: 0,
+  yabawiEvent: null,
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

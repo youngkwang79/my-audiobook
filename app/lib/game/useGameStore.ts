@@ -231,6 +231,9 @@ interface GameState {
   getSetCounts: () => Record<string, number>;
   openPaewangBox: () => { success: boolean; item?: OwnedWeapon; message?: string };
   applyOilResults: (oilRes: any) => void;
+  triggerYabawiEvent: () => void;
+  useGamblingToken: () => boolean;
+  giveGamblingToken: (amount: number) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -239,6 +242,39 @@ export const useGameStore = create<GameState>((set, get) => ({
   game: { ...defaultGameData, ...loadGame(), name: loadGame().name ?? "무명협객" },
 
   setPlayerInfo: (info: any) => { set((s: any) => ({ game: { ...s.game, ...info, isInitialized: true } })); get().triggerSave(); },
+  triggerYabawiEvent: () => {
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        yabawiEvent: { active: true, expiresAt: Date.now() + 3 * 60 * 1000 }
+      }
+    }));
+    get().triggerSave(true);
+  },
+  useGamblingToken: () => {
+    const { game } = get();
+    if (game.gamblingTokens > 0) {
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          gamblingTokens: s.game.gamblingTokens - 1,
+          yabawiEvent: null // 이벤트 성공적으로 사용 시 팝업 닫힘
+        }
+      }));
+      get().triggerSave(true);
+      return true;
+    }
+    return false;
+  },
+  giveGamblingToken: (amount: number) => {
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        gamblingTokens: (s.game.gamblingTokens || 0) + amount
+      }
+    }));
+    get().triggerSave(true);
+  },
   getSetCounts: () => {
     const { game } = get();
     const counts: Record<string, number> = {};
@@ -526,6 +562,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addExp: (amount: number, isAuto = false) => {
     const { game } = get(); if (game.pendingInnEntry || game.timingMission.available) return;
+    if (!isAuto && Math.random() < 0.002 && !game.yabawiEvent?.active) {
+      get().triggerYabawiEvent();
+    }
     const totalAtk = get().getTotalAttack(); const autoLv = game.upgradeLevels.autoGain || 0;
     const expB = 1 + (autoLv * 0.0003); const goldB = 1 + (autoLv * 0.0005);
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
@@ -883,8 +922,25 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   breakthrough: () => {
-    const { game } = get(); if (game.star < 10) { const nV = game.star + 1; const st = getDummyStats(game.realm, nV); set((s:any)=>({game:{...s.game, star:nV, dummyHp:st.hp, maxDummyHp:st.hp}})); }
-    else { const nxt = get().getNextRealmName(); if (nxt) { const st = getDummyStats(nxt, 1); set((s:any)=>({game:{...s.game, realm:nxt, star:1, hp:getRealmSettings(nxt).hp, maxHp:getRealmSettings(nxt).hp, dummyHp:st.hp, maxDummyHp:st.hp}})); } }
+    const { game } = get(); 
+    if (game.star < 10) { 
+      const nV = game.star + 1; 
+      const st = getDummyStats(game.realm, nV); 
+      set((s:any)=>({game:{...s.game, star:nV, dummyHp:st.hp, maxDummyHp:st.hp}})); 
+    }
+    else { 
+      const nxt = get().getNextRealmName(); 
+      if (nxt) { 
+        const st = getDummyStats(nxt, 1); 
+        set((s:any)=>({game:{...s.game, realm:nxt, star:1, hp:getRealmSettings(nxt).hp, maxHp:getRealmSettings(nxt).hp, dummyHp:st.hp, maxDummyHp:st.hp}})); 
+      } 
+    }
+    
+    // 경지 돌파 시 투전판 이벤트 확정 발생
+    if (!get().game.yabawiEvent?.active) {
+      setTimeout(() => get().triggerYabawiEvent(), 500);
+    }
+    
     get().triggerSave(true);
   },
   canBreakthrough: () => { const { game } = get(); const list = Object.keys(REALM_SETTINGS); const idx = list.indexOf(game.realm); const cur = REALM_SETTINGS[game.realm]; const nxt = REALM_SETTINGS[list[idx + 1]] || cur; return game.touches >= (cur.minTouches + Math.floor(((nxt.minTouches - cur.minTouches) / 10) * game.star)); },
@@ -1115,6 +1171,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         const newRating = (game.duel.rating || 100) + ratingGain;
         const newTier = getDuelTier(newRating);
 
+        // 투전판 명패 드롭 (첫 판 무료, 이후 5% 확률)
+        const isFirstWin = (game.duel.totalWins || 0) === 0;
+        let tokenGained = isFirstWin ? 1 : (Math.random() < 0.05 ? 1 : 0);
+        
+        // 투전판 이벤트 발생 확률 5%
+        if (Math.random() < 0.05 && !game.yabawiEvent?.active) {
+          setTimeout(() => get().triggerYabawiEvent(), 500); // 딜레이를 주어 상태 업데이트 후 실행
+        }
+
         set((s: any) => ({ 
           game: { 
             ...s.game, 
@@ -1126,6 +1191,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             innHighScore: Math.max(game.innHighScore || 0, p.score || 0),
             timingMission: { ...s.game.timingMission, available: false },
             activeTab: "training", // 수련장 복귀 추가
+            gamblingTokens: (s.game.gamblingTokens || 0) + tokenGained,
             duel: {
               ...s.game.duel,
               rating: newRating,

@@ -381,4 +381,7 @@ export type GameSaveData = {
   lastInnEventKillCount: number;
   innEventIndex: number;
   regenAccumulator: number;
+  gamblingTokens: number;
+  yabawiEvent: { active: boolean; expiresAt: number } | null;
+  pendingYabawiPlay?: boolean;
 };

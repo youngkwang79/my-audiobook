@@ -390,6 +390,15 @@ export default function InnPanel({
   const [rivalTimeLeft, setRivalTimeLeft] = useState("");
 
   useEffect(() => {
+    if (game.pendingYabawiPlay) {
+      resetGameState("yabawi");
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+      useGameStore.setState((s: any) => ({ game: { ...s.game, pendingYabawiPlay: false } }));
+    }
+  }, [game.pendingYabawiPlay]);
+
+  useEffect(() => {
     if (!game.nextRivalTime) return;
     const update = () => {
       const diff = game.nextRivalTime - Date.now();
@@ -475,8 +484,8 @@ export default function InnPanel({
   };
 
   const currentTotalAtk = getTotalAttack();
-  // [위명 위압] 최다 위명 기록 500점당 1% 공격력(점수 획득량) 보너스 적용
-  const prestigeBonus = Math.floor((game.innHighScore || 0) / 500) / 100;
+  // [위명 위압] 최다 위명 기록 50000점당 1% 공격력(점수 획득량) 보너스 적용
+  const prestigeBonus = Math.floor((game.innHighScore || 0) / 50000) / 100;
   const powerFactor = (1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 2) * (1 + prestigeBonus);
 
   const addFloatText = (text: string, color: string) => {
@@ -1504,6 +1513,11 @@ export default function InnPanel({
           50% { transform: perspective(1000px) rotateY(3deg) translateX(3px) scale(1.015); filter: drop-shadow(3px 0 15px rgba(255,215,0,0.4)) brightness(1.1); }
           100% { transform: perspective(1000px) rotateY(-3deg) translateX(-3px) scale(1); filter: drop-shadow(-3px 0 15px rgba(255,215,0,0.3)) brightness(1.05); }
         }
+        @keyframes character3DPanDarkMild {
+          0% { transform: perspective(1000px) rotateY(-3deg) translateX(-3px) scale(1); filter: drop-shadow(-3px 0 15px rgba(0,0,0,0.6)) brightness(0.9) sepia(0.2); }
+          50% { transform: perspective(1000px) rotateY(3deg) translateX(3px) scale(1.015); filter: drop-shadow(3px 0 15px rgba(0,0,0,0.8)) brightness(0.95) sepia(0.2); }
+          100% { transform: perspective(1000px) rotateY(-3deg) translateX(-3px) scale(1); filter: drop-shadow(-3px 0 15px rgba(0,0,0,0.6)) brightness(0.9) sepia(0.2); }
+        }
         @keyframes aura3DPan {
           0% { transform: perspective(1000px) rotateY(8deg) translateX(12px) scale(0.95); opacity: 0.6; }
           50% { transform: perspective(1000px) rotateY(-8deg) translateX(-12px) scale(1.05); opacity: 0.9; }
@@ -1517,11 +1531,6 @@ export default function InnPanel({
           0% { transform: translateY(40px) scale(1); opacity: 0; }
           50% { transform: translateY(-30px) scale(1.2); opacity: 0.4; }
           100% { transform: translateY(-120px) scale(1.5); opacity: 0; }
-        }
-        @keyframes emberRise {
-          0% { transform: translateY(0) translateX(0) scale(1); opacity: 1; filter: brightness(2); }
-          30% { transform: translateY(-100px) translateX(20px) scale(1.1); opacity: 1; }
-          100% { transform: translateY(-350px) translateX(-15px) scale(0); opacity: 0; }
         }
         @keyframes flameFlicker {
           0% { transform: scale(1, 1) rotate(-1deg); filter: brightness(1) blur(20px); }
@@ -1558,14 +1567,9 @@ export default function InnPanel({
       <div className="duel-bg" />
       {currentMiniGame !== "yabawi" && (
         <>
-          <div style={headerStyle}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "#ffd700" }}>{miniGameInfo?.icon}</span> {miniGameInfo?.name || "객잔 대련"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 13, gap: 2 }}>
-              <div style={{ color: "#ffd700", fontWeight: 'bold' }}>최고 기록: {mission.highScores?.[currentMiniGame] || 0}</div>
-              <div style={{ color: "#aaa" }}>이전 결과: {mission.lastScores?.[currentMiniGame] || 0}</div>
-            </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 10px", marginBottom: "10px", fontSize: "13px" }}>
+            <div style={{ color: "#ffd700", fontWeight: 'bold' }}>최고 기록: {mission.highScores?.[currentMiniGame] || 0}</div>
+            <div style={{ color: "#fff" }}>이전 결과: {mission.lastScores?.[currentMiniGame] || 0}</div>
           </div>
 
           <div style={statsGrid}>
@@ -1576,9 +1580,9 @@ export default function InnPanel({
                 cursor: "pointer",
                 position: "relative",
                 background: "linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.4) 100%)",
-                boxShadow: "0 0 20px rgba(255,215,0,0.2), inset 0 0 10px rgba(255,215,0,0.1)",
+                boxShadow: "0 0 20px rgba(255,215,0,0.3), inset 0 0 12px rgba(255,215,0,0.2)",
                 animation: "pulseGlow 2s infinite ease-in-out",
-                border: "2px solid #ffd700"
+                border: "3px solid #ffd700"
               }}
             >
               <div style={{ ...statLabel, color: "#ffd700", fontWeight: 900 }}>내 등급 (상세 혜택 탭)</div>
@@ -1586,10 +1590,21 @@ export default function InnPanel({
                 {duel.tier} <span style={{ fontSize: 12, opacity: 0.7 }}>({duel.rating}점)</span>
               </div>
             </div>
-            <div style={statBox}>
-              <div style={statLabel}>이번 상대</div>
-              <div style={{ ...statValue, color: "#ff4d4d" }}>
-                {missionAvailable ? mission.rivalName : (rivalTimeLeft ? `재출몰 대기 (${rivalTimeLeft})` : "무뢰배 유인 중...")}
+            <div
+              style={{
+                ...statBox,
+                background: "linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0.4) 100%)",
+                boxShadow: "0 0 20px rgba(255,215,0,0.3), inset 0 0 12px rgba(255,215,0,0.2)",
+                animation: "pulseGlow 2.5s infinite ease-in-out",
+                border: "3px solid #ffd700"
+              }}
+            >
+              <div style={{ ...statLabel, color: "#ffd700", fontWeight: 900 }}>최다 위명 기록</div>
+              <div style={{ ...statValue, fontSize: 16, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Counter value={game.innHighScore || 0} />
+                <span style={{ fontSize: 10, color: "#4dff4d", fontWeight: "800" }}>
+                  (+{Math.floor((game.innHighScore || 0) / 50000)}%)
+                </span>
               </div>
             </div>
           </div>
@@ -1600,7 +1615,7 @@ export default function InnPanel({
       {(missionAvailable || isPlaying) ? (
         <div style={{
           ...gameStage,
-          height: currentMiniGame === "yabawi" ? "580px" : "600px",
+          height: currentMiniGame === "yabawi" ? "610px" : "640px",
           position: "relative",
           overflow: currentMiniGame === "yabawi" ? "visible" : "hidden"
         }}>
@@ -2110,6 +2125,86 @@ export default function InnPanel({
             </div>
           ) : (
             <div style={{ ...lobbyOverlay, justifyContent: "space-between", padding: "20px", position: "relative" }}>
+              {/* 입체적인 화염 레이어 시스템 (이미지만 복원) */}
+              <div style={{
+                position: "absolute", bottom: "0", left: "0", width: "100%", height: "500px",
+                zIndex: 5, pointerEvents: "none", overflow: "hidden",
+                WebkitMaskImage: "linear-gradient(to top, black 20%, transparent 100%)",
+                maskImage: "linear-gradient(to top, black 20%, transparent 100%)"
+              }}>
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
+                  zIndex: 10
+                }}>
+                  {/* 1. 배경 레이어 */}
+                  <img
+                    src="/images/bg_inn_fire_back.png"
+                    alt="Fire Layer Back"
+                    style={{
+                      position: "absolute", bottom: "-20px", left: "60%", width: "140%", height: "280px",
+                      objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.4, zIndex: 10,
+                      filter: "contrast(1.1) brightness(1.0) blur(3px)",
+                      animation: "flamePulse 30s ease-in-out infinite alternate",
+                      animationDirection: "alternate, reverse",
+                      pointerEvents: "none", transform: "scaleX(1)",
+                      WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
+                      maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
+                    }}
+                  />
+
+                  {/* 2. 중간 레이어 */}
+                  <div style={{
+                    position: "absolute", bottom: "-95px", left: "-15%", width: "120%", height: "400px",
+                    animation: "wriggle 22s ease-in-out infinite",
+                    zIndex: 11
+                  }}>
+                    <img
+                      src="/images/bg_inn_fire_mid.png"
+                      alt="Fire Layer Mid"
+                      style={{
+                        width: "100%", height: "100%",
+                        objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.6,
+                        filter: "contrast(1.2) brightness(1.1) blur(2px)",
+                        animation: "flamePulse 40s ease-in-out infinite alternate",
+                        pointerEvents: "none", transform: "scaleX(-1)",
+                        WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
+                        maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
+                      }}
+                    />
+                  </div>
+
+                  {/* 3. 전면 레이어 */}
+                  <img
+                    src="/images/bg_inn_fire_front.png"
+                    alt="Fire Layer Front"
+                    style={{
+                      position: "absolute", bottom: "-110px", left: "0%", width: "150%", height: "320px",
+                      objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.8, zIndex: 12,
+                      filter: "contrast(1.3) brightness(1.2) blur(1px)",
+                      animation: "flamePulse 50s ease-in-out infinite alternate",
+                      pointerEvents: "none", transform: "scaleX(1)",
+                      WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
+                      maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
+                    }}
+                  />
+
+                  {/* 4. 최전면 오버레이 레이어 */}
+                  <img
+                    src="/images/bg_inn_fire_overlay.png"
+                    alt="Fire Layer Overlay"
+                    style={{
+                      position: "absolute", bottom: "-125px", left: "45%", width: "130%", height: "350px",
+                      objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.9, zIndex: 13,
+                      filter: "contrast(1.4) brightness(1.3) blur(0.5px)",
+                      animation: "flamePulse 45s ease-in-out infinite alternate",
+                      pointerEvents: "none", transform: "scaleX(-1)",
+                      WebkitMaskImage: "linear-gradient(to top, black 60%, transparent 100%)",
+                      maskImage: "linear-gradient(to top, black 60%, transparent 100%)"
+                    }}
+                  />
+                </div>
+              </div>
+
               {/* 0. 새로운 객잔 배경 이미지 */}
               <div style={{
                 position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
@@ -2117,14 +2212,14 @@ export default function InnPanel({
                 WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 95%)",
                 maskImage: "radial-gradient(ellipse at center, black 30%, transparent 95%)"
               }}>
-                <img 
-                  src="/images/inn_bg.png" 
-                  alt="Inn Background" 
-                  style={{ 
-                    width: "100%", height: "140%", 
-                    objectFit: "cover", opacity: 0.8, 
+                <img
+                  src="/images/inn_bg.png"
+                  alt="Inn Background"
+                  style={{
+                    width: "100%", height: "140%",
+                    objectFit: "cover", opacity: 0.8,
                     filter: "brightness(0.6) contrast(1.1)",
-                    transform: "translateY(-45%)" 
+                    transform: "translateY(-45%)"
                   }}
                 />
               </div>
@@ -2133,123 +2228,61 @@ export default function InnPanel({
               <div style={{ width: "100%", height: 10, zIndex: 5 }}></div>
 
               {/* 2. 시나리오 캐릭터 배치 (여인, 무뢰배, 주인공) */}
-              <div style={{ 
+              <div style={{
                 flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "center",
                 width: "100%", minHeight: "380px", overflow: "visible", margin: "0"
               }}>
-                {/* Parallax Aura Layer (Moves oppositely to character) */}
-                <div style={{
-                  position: "absolute", top: "45%", left: "50%", zIndex: 1,
-                  animation: "aura3DPan 7s ease-in-out infinite"
-                }}>
-                  <div style={{
-                    position: "absolute", width: "320px", height: "320px",
-                    background: "conic-gradient(from 0deg, rgba(255,215,0,0) 0%, rgba(255,180,0,0.25) 25%, rgba(255,215,0,0) 50%, rgba(255,140,0,0.25) 75%, rgba(255,215,0,0) 100%)",
-                    borderRadius: "50%", filter: "blur(20px)",
-                    animation: "auraSpin 12s linear infinite"
-                  }} />
-                  <div style={{
-                    position: "absolute", width: "220px", height: "220px",
-                    background: "radial-gradient(circle, rgba(255,215,0,0.25) 0%, transparent 70%)",
-                    borderRadius: "50%", transform: "translate(-50%, -50%)",
-                    animation: "pulse 3.5s infinite"
-                  }} />
-                </div>
+
 
                 {/* --- 시나리오 인물 추가 --- */}
-                
+
                 {/* [의자] 배경 소품 추가 */}
-                <img 
-                  src="/images/inn_chair.png" 
-                  alt="Inn Chair" 
+                <img
+                  src="/images/inn_chair.png"
+                  alt="Inn Chair"
                   style={{
                     position: "absolute", bottom: "20px", left: "30%", height: "220px",
                     objectFit: "contain", zIndex: 11, opacity: 1,
-                    animation: "character3DPanMild 10s ease-in-out infinite alternate", // 매우 천천히 움직임
                     filter: "drop-shadow(0 0 15px rgba(0,0,0,0.6))"
                   }}
                 />
 
                 {/* [여인] 피해를 입고 있는 모습 */}
-                <img 
-                  src="/images/inn_woman.png" 
-                  alt="Inn Woman" 
+                <img
+                  src="/images/inn_woman.png"
+                  alt="Inn Woman"
                   style={{
                     position: "absolute", bottom: "150px", left: "54%", height: "300px",
                     objectFit: "contain", zIndex: 3, opacity: 0.9,
-                    animation: "character3DPanMild 7.5s ease-in-out infinite alternate", // 주인공보다 더 차분한 움직임
-                    animationDelay: "-1s",
                     filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))"
                   }}
                 />
 
                 {/* [무뢰배] 여인을 위협하는 모습 */}
-                <img 
-                  src="/images/inn_thug.png" 
-                  alt="Inn Thug" 
+                <img
+                  src="/images/inn_thug.png"
+                  alt="Inn Thug"
                   style={{
                     position: "absolute", bottom: "120px", left: "50%", height: "320px",
                     objectFit: "contain", zIndex: 2, opacity: 1,
-                    animation: "character3DPan 6.5s ease-in-out infinite alternate", // 조금 더 거친 느낌
+                    animation: "character3DPanDarkMild 6.5s ease-in-out infinite alternate", // 움직임 절반으로 감소, 노란빛 제거
                     animationDelay: "-2s",
                     filter: "drop-shadow(0 0 15px rgba(0,0,0,0.7)) brightness(0.9) sepia(0.2)"
                   }}
                 />
 
                 {/* [주인공] 사용자가 조정한 포지션 유지 */}
-                <img 
-                  src={getPlayerImage()} 
-                  alt="My Character" 
-                  style={{ 
-                    maxWidth: "100%", height: "600px", objectFit: "contain", zIndex: 4, 
+                <img
+                  src={getPlayerImage()}
+                  alt="My Character"
+                  style={{
+                    maxWidth: "100%", height: "600px", objectFit: "contain", zIndex: 4,
                     animation: "character3DPan 7s ease-in-out infinite",
                     marginTop: "330px", marginLeft: "-180px",
                     filter: "drop-shadow(0 0 20px rgba(0,0,0,0.8)) brightness(1.1)"
                   }}
                 />
 
-                {/* 3D High Score Badge (Prestige Pressure) */}
-                <div style={{
-                  position: "absolute",
-                  left: "-10px",
-                  top: "-15px",
-                  zIndex: 10,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: "4px",
-                  background: "rgba(0,0,0,0.6)",
-                  padding: "8px 12px",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(255,215,0,0.3)",
-                  boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
-                  backdropFilter: "blur(4px)",
-                  animation: "floatUpDown 4s ease-in-out infinite"
-                }}>
-                  <div style={{ fontSize: "10px", color: "#aaa", fontWeight: "bold" }}>최다 위명 기록</div>
-                  <div style={{ fontSize: "15px", color: "#ffd700", fontWeight: "900", textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>
-                    <Counter value={game.innHighScore || 0} />
-                  </div>
-                  { (game.lastInnScore || 0) > 0 && (
-                    <>
-                      <div style={{ marginTop: "4px", fontSize: "10px", color: "#888", fontWeight: "bold" }}>이전 수련 기록</div>
-                      <div style={{ fontSize: "13px", color: "#eee", fontWeight: "800" }}>
-                        <Counter value={game.lastInnScore || 0} />
-                      </div>
-                    </>
-                  )}
-                  <div style={{ 
-                    marginTop: "6px",
-                    fontSize: "10px", 
-                    color: "#4dff4d", 
-                    fontWeight: "850",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "3px"
-                  }}>
-                    <span style={{ fontSize: "12px" }}>⚔️</span> 위명 위압 +{ Math.floor((game.innHighScore || 0) / 500) }%
-                  </div>
-                </div>
               </div>
 
               {/* 3. 설명 & 버튼 (하단 밀착) */}
@@ -2262,22 +2295,7 @@ export default function InnPanel({
                 <div style={{ display: "flex", flexDirection: "column", width: "100%", gap: "10px", alignItems: "center" }}>
                   <button onClick={startMission} style={{ ...primaryButton, width: "100%", maxWidth: "280px", padding: "14px", fontSize: "18px" }}>대련 시작</button>
                   <div style={{ display: "flex", width: "100%", maxWidth: "280px", gap: "10px" }}>
-                    <button
-                      onClick={() => {
-                        resetGameState("yabawi");
-                        setIsPlaying(true);
-                        isPlayingRef.current = true;
-                      }}
-                      style={{
-                        ...primaryButton,
-                        flex: 1.5,
-                        background: "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)",
-                        padding: "12px",
-                        fontSize: "14px"
-                      }}
-                    >
-                      🎰 투전판 입장
-                    </button>
+
                     <button
                       onClick={() => {
                         if (confirm("대련을 건너뛰시겠습니까? (보상을 획득할 수 없습니다.)")) {
@@ -2297,12 +2315,12 @@ export default function InnPanel({
                         transition: "all 0.2s",
                         boxShadow: "0 4px 10px rgba(0,0,0,0.3)"
                       }}
-                      onMouseEnter={(e) => { 
+                      onMouseEnter={(e) => {
                         e.currentTarget.style.background = "linear-gradient(to bottom, rgba(80, 80, 90, 0.9), rgba(50, 50, 60, 0.9))";
                         e.currentTarget.style.borderColor = "rgba(255, 215, 0, 0.5)";
                         e.currentTarget.style.color = "#ffd700";
                       }}
-                      onMouseLeave={(e) => { 
+                      onMouseLeave={(e) => {
                         e.currentTarget.style.background = "linear-gradient(to bottom, rgba(60, 60, 70, 0.8), rgba(30, 30, 40, 0.8))";
                         e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.3)";
                         e.currentTarget.style.color = "#eee";
@@ -2323,23 +2341,7 @@ export default function InnPanel({
           <p style={{ fontSize: 13, opacity: 0.7, maxWidth: 220, lineHeight: 1.6, marginTop: 10 }}>
             현재는 객잔이 평화롭습니다. 한가할 때 투전판에서 운을 시험해 보시겠습니까?
           </p>
-          <button
-            onClick={() => {
-              resetGameState("yabawi");
-              setIsPlaying(true);
-              isPlayingRef.current = true;
-              enterFullScreen();
-            }}
-            style={{
-              ...primaryButton,
-              marginTop: 20,
-              background: "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)",
-              padding: "12px 24px",
-              fontSize: "16px"
-            }}
-          >
-            🎰 투전판 입장
-          </button>
+
           <div style={{ marginTop: 20, padding: "12px 20px", background: "rgba(255,255,255,0.05)", borderRadius: 12, fontSize: 11, color: "#888" }}>
             (수련 페이지에서 허수아비를 처치하다 보면 무뢰배가 나타납니다)
           </div>
@@ -2447,182 +2449,7 @@ export default function InnPanel({
         </div>
       )}
 
-      {/* 객잔 전체 박스 하단에서 올라오는 활활 타오르는 화염과 혈무 (Blazing Fire & Blood Mist) */}
-      <div style={{
-        position: "absolute", bottom: "0", left: "0", width: "100%", height: "500px", // ⬅️ 높이를 충분히 늘려 상단 커팅 방지
-        zIndex: 10, pointerEvents: "none", overflow: "hidden",
-        WebkitMaskImage: "linear-gradient(to top, black 20%, transparent 100%)", // ⬅️ 컨테이너 전체에 마스크 적용
-        maskImage: "linear-gradient(to top, black 20%, transparent 100%)"
-      }}>
-        {/* 화염 베이스 광원 (Deeper Burnt Red & Brown Base) */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
-          background: "linear-gradient(to top, rgba(60,20,0,0.9) 0%, rgba(139,0,0,0.4) 40%, transparent 100%)",
-          animation: "flamePulse 45s infinite" // 극도로 느려진 베이스 숨결
-        }} />
 
-
-
-        {/* 활활 타오르는 날카로운 화염 (Wriggling Qi-Fire - Spacious & Ultra Slow) */}
-        {[...Array(8)].map((_, i) => (
-          <div key={`flame-${i}`} style={{
-            position: "absolute", bottom: "-50px", left: `${i * 13 - 2}%`,
-            width: "60px", height: "180px",
-            background: i % 2 === 0
-              ? "linear-gradient(to top, #4e3629 0%, #8b0000 40%, transparent 95%)"
-              : "linear-gradient(to top, #8b0000 0%, #ff0000 40%, transparent 95%)",
-            borderRadius: "100% 100% 0 0",
-            animation: `flameFlicker ${25 + Math.random() * 20}s ease-in-out infinite, wriggle ${20 + i * 2}s ease-in-out infinite`,
-            animationDelay: `${i * 2}s`,
-            opacity: 0.8, zIndex: 2,
-            filter: "blur(25px)",
-            transformOrigin: "bottom center"
-          }} />
-        ))}
-
-        {/* 검은 그을림 안개 (Black Soot & Dark Smoke - Eternal Drifting Ultra Slow) */}
-        {[...Array(6)].map((_, i) => (
-          <div key={`soot-${i}`} style={{
-            position: "absolute", bottom: "-40px", left: `${i * 20 + 10}%`,
-            width: "250px", height: "150px",
-            background: "rgba(0,0,0,0.35)",
-            borderRadius: "50%", filter: "blur(40px)",
-            animation: `sootRise ${80 + (i % 5) * 20}s ease-in-out infinite`,
-            animationDelay: `${i * 8}s`,
-            zIndex: 3
-          }} />
-        ))}
-
-        {/* Bottom Base Glow (Dense to Transparent Gradient) */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
-          background: "linear-gradient(to top, rgba(139,0,0,0.7) 0%, rgba(139,0,0,0.3) 30%, transparent 100%)",
-        }} />
-        {/* Rising Smoke Particles - Serene Mist Ultra Slow */}
-        {[...Array(10)].map((_, i) => (
-          <div key={i} style={{
-            position: "absolute", bottom: "-40px", left: `${i * 12 - 5}%`,
-            width: "220px", height: "120px",
-            background: "rgba(139,0,0,0.2)",
-            borderRadius: "50%", filter: "blur(40px)",
-            animation: `bloodMistRise ${45 + (i % 5) * 15}s ease-in-out infinite`,
-            animationDelay: `${i * 4}s`
-          }} />
-        ))}
-
-        {/* 입체적인 화염 레이어 시스템 (4-Layer Volumetric Fire) */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
-          zIndex: 10
-        }}>
-          {/* 붉은 마기 후광 레이어 (Red Demonic Aura behind flames) */}
-          <div style={{
-            position: "absolute", bottom: "100px", left: "50%", zIndex: 5,
-            transform: "translateX(-50%)",
-            animation: "character3DPan 7s ease-in-out infinite"
-          }}>
-            <div style={{
-              position: "absolute", width: "700px", height: "350px",
-              background: "conic-gradient(from 180deg, rgba(255,0,0,0) 0%, rgba(139,0,0,0.35) 25%, rgba(255,0,0,0) 50%, rgba(139,0,0,0.35) 75%, rgba(255,0,0,0) 100%)",
-              borderRadius: "50% 50% 0 0", filter: "blur(50px)",
-              animation: "auraSpin 15s linear infinite",
-              transform: "translateX(-50%)"
-            }} />
-            <div style={{
-              position: "absolute", width: "500px", height: "250px",
-              background: "radial-gradient(ellipse, rgba(255,0,0,0.45) 0%, transparent 80%)",
-              borderRadius: "50% 50% 0 0", filter: "blur(30px)",
-              animation: "pulse 4s infinite",
-              transform: "translateX(-50%)"
-            }} />
-          </div>
-
-          {/* 1. 배경 레이어 (Back) - 캐릭터와 반대 방향 */}
-          <img
-            src="/images/bg_inn_fire_back.png"
-            alt="Fire Layer Back"
-            style={{
-              position: "absolute", bottom: "-20px", left: "60%", width: "140%", height: "280px",
-              objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.4, zIndex: 10,
-              filter: "contrast(1.1) brightness(1.0) blur(3px)",
-              animation: "flamePulse 30s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
-              animationDirection: "alternate, reverse",
-              animationDelay: "0s", pointerEvents: "none", transform: "scaleX(1)",
-              WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
-              maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
-            }}
-          />
-
-          {/* 2. 중간 레이어 (Mid) - 캐릭터와 같은 방향 + 꿈틀거리는 기운 효과 */}
-          <div style={{
-            position: "absolute", bottom: "-95px", left: "-15%", width: "120%", height: "400px",
-            animation: "wriggle 22s ease-in-out infinite", // ⬅️ 2번에 일렁임 추가
-            zIndex: 11
-          }}>
-            <img
-              src="/images/bg_inn_fire_mid.png"
-              alt="Fire Layer Mid"
-              style={{
-                width: "100%", height: "100%",
-                objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.6,
-                filter: "contrast(1.2) brightness(1.1) blur(2px)",
-                animation: "flamePulse 40s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
-                animationDelay: "-7s", pointerEvents: "none", transform: "scaleX(-1)",
-                WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
-                maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
-              }}
-            />
-          </div>
-
-          {/* 3. 전면 레이어 (Front) - 캐릭터와 같은 방향 */}
-          <img
-            src="/images/bg_inn_fire_front.png"
-            alt="Fire Layer Front"
-            style={{
-              position: "absolute", bottom: "-70px", left: "0%", width: "150%", height: "320px",
-              objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.8, zIndex: 12,
-              filter: "contrast(1.3) brightness(1.2) blur(1px)",
-              animation: "flamePulse 50s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
-              animationDelay: "-14s", pointerEvents: "none", transform: "scaleX(1)",
-              WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
-              maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
-            }}
-          />
-
-          {/* 4. 최전면 오버레이 레이어 (Overlay) - 캐릭터와 같은 방향 */}
-          <img
-            src="/images/bg_inn_fire_overlay.png"
-            alt="Fire Layer Overlay"
-            style={{
-              position: "absolute", bottom: "-85px", left: "45%", width: "130%", height: "350px",
-              objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.9, zIndex: 13,
-              filter: "contrast(1.4) brightness(1.3) blur(0.5px)",
-              animation: "flamePulse 45s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
-              animationDelay: "-21s", pointerEvents: "none", transform: "scaleX(-1)",
-              WebkitMaskImage: "linear-gradient(to top, black 60%, transparent 100%)",
-              maskImage: "linear-gradient(to top, black 60%, transparent 100%)"
-            }}
-          />
-        </div>
-      </div>
-
-      {/* 최상단 레이어에서 튀어오르는 불씨 (Foreground Embers) */}
-      <div style={{
-        position: "absolute", bottom: "0", left: "0", width: "100%", height: "100%",
-        zIndex: 20, pointerEvents: "none", overflow: "hidden"
-      }}>
-        {[...Array(8)].map((_, i) => (
-          <div key={`ember-top-${i}`} style={{
-            position: "absolute", bottom: "10px", left: `${Math.random() * 100}%`,
-            width: `${Math.random() * 4 + 4}px`, height: `${Math.random() * 4 + 4}px`,
-            background: "#ff3300",
-            borderRadius: "50%",
-            boxShadow: "0 0 15px #ff0000, 0 0 25px #8b0000, 0 0 35px rgba(255,100,0,0.6)",
-            animation: `emberRise ${25 + Math.random() * 20}s linear infinite`,
-            animationDelay: `${Math.random() * 20}s`,
-          }} />
-        ))}
-      </div>
 
       {isHitFlash && <div style={flashOverlay} />}
 
