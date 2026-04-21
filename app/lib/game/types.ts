@@ -345,6 +345,7 @@ export type GameSaveData = {
   } | null;
   nextRivalTime: number;
   innHighScore: number; // 객잔 위명 점수
+  lastInnScore: number; // 최근 객잔 수련 점수
   nextRivalKills: number;
 
   // New Progression & Upgrade System

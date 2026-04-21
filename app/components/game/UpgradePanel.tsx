@@ -107,7 +107,7 @@ export default function UpgradePanel() {
   };
 
   const getStatColor = (id: string) => {
-    if (['atk', 'def', 'hpRec', 'mpRec'].includes(id)) return '#fd3c3cff';
+    if (['atk', 'def', 'hpRec', 'mpRec'].includes(id)) return '#fd3c3c';
     if (['critRate', 'critDmg', 'eva'].includes(id)) return '#00f2ff';
     return '#ffd700';
   };
@@ -252,13 +252,17 @@ export default function UpgradePanel() {
                <div className="card-glimmer"></div>
 
                <div style={{ display: "flex", gap: 15, alignItems: "center", position: 'relative', zIndex: 1 }}>
-                  <div style={{ ...iconBoxStyle, border: `1px solid ${statColor}44`, background: `${statColor}11` }}>
-                    <span style={{ fontSize: 24 }}>{getStatIcon(upgrade.id)}</span>
-                    <div style={{ ...levelBadgeStyle, background: statColor }}>Lv.{upgrade.level}</div>
+                  <div style={{ ...iconBoxStyle, border: `1px solid ${statColor}44`, background: `${statColor}08` }}>
+                    <span style={{ fontSize: 22 }}>{getStatIcon(upgrade.id)}</span>
+                    <div style={{ ...levelBadgeStyle, background: statColor, fontSize: 9, padding: "1px 6px" }}>Lv.{upgrade.level}</div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                     <div style={{ fontSize: 20, fontWeight: 900, color: "#ffffffff", marginBottom: 2 }}>{upgrade.displayName}</div>
-                     <div style={{ fontSize: 21, fontWeight: 950, color: statColor }}>
+                  <div style={{ 
+                    flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, 
+                    padding: "6px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 14, 
+                    border: "1px solid rgba(255,255,255,0.06)", boxShadow: "inset 0 0 10px rgba(0,0,0,0.2)"
+                  }}>
+                     <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 0.5 }}>{upgrade.displayName}</div>
+                     <div style={{ fontSize: 18, fontWeight: 950, color: statColor, textShadow: `0 0 10px ${statColor}33` }}>
                         {formatStatValue(upgrade.id, upgrade.currentValue)}
                      </div>
                   </div>

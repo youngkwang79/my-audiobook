@@ -73,6 +73,7 @@ export const defaultGameData: GameSaveData = {
   unlockEffectText: null,
   activeTab: "training",
   innHighScore: 0,
+  lastInnScore: 0,
   innBuffEndTime: 0,
   wisdom: 0,
   martialArtsSkills: [],

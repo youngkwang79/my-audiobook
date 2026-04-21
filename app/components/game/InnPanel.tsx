@@ -34,37 +34,37 @@ const MINI_GAMES: {
   desc: string;
   icon: string;
 }[] = [
-  {
-    key: "breath",
-    name: "청운진기",
-    desc: "하늘과 땅의 기운이 조화로운 지점에 도달할 때 타이밍에 맞춰 탭하세요.",
-    icon: "🧘",
-  },
-  {
-    key: "dodge",
-    name: "梅花樁 보법수련",
-    desc: "매화장 위에서 좌우 균형을 잡으며 수련하세요 (좌/우 탭).",
-    icon: "👟",
-  },
-  {
-    key: "puzzle",
-    name: "내공폭주 (Puzzle)",
-    desc: "기맥을 어지럽히는 기운을 정렬하여 단전을 안정시키세요.",
-    icon: "🎇",
-  },
-  {
-    key: "pulse",
-    name: "기운응축 (Pulse)",
-    desc: "팽창하는 동그라미가 가득 찼을 때 타이밍에 맞춰 터치하세요.",
-    icon: "🔘",
-  },
-  {
-    key: "yabawi",
-    name: "객잔 투전판",
-    desc: "옥구슬이 숨겨진 찻잔을 찾아 판돈의 3배를 획득하세요.",
-    icon: "🎲",
-  },
-];
+    {
+      key: "breath",
+      name: "청운진기",
+      desc: "하늘과 땅의 기운이 조화로운 지점에 도달할 때 타이밍에 맞춰 탭하세요.",
+      icon: "🧘",
+    },
+    {
+      key: "dodge",
+      name: "梅花樁 보법수련",
+      desc: "매화장 위에서 좌우 균형을 잡으며 수련하세요 (좌/우 탭).",
+      icon: "👟",
+    },
+    {
+      key: "puzzle",
+      name: "내공폭주 (Puzzle)",
+      desc: "기맥을 어지럽히는 기운을 정렬하여 단전을 안정시키세요.",
+      icon: "🎇",
+    },
+    {
+      key: "pulse",
+      name: "기운응축 (Pulse)",
+      desc: "팽창하는 동그라미가 가득 찼을 때 타이밍에 맞춰 터치하세요.",
+      icon: "🔘",
+    },
+    {
+      key: "yabawi",
+      name: "객잔 투전판",
+      desc: "옥구슬이 숨겨진 찻잔을 찾아 판돈의 3배를 획득하세요.",
+      icon: "🎲",
+    },
+  ];
 
 const RANK_REWARDS = [
   { score: 500, name: "초출강호", icon: "🌱", reward: "객잔 금화 +10%", bonus: { gold: 0.1 } },
@@ -83,6 +83,39 @@ function getGrade(diff: number, tolerance: number): Grade {
   return "MISS";
 }
 
+function getMeihuaRank(s: number) {
+  if (s >= 100000) return "전설의 매화꾼";
+  if (s >= 50000) return "매화 고수";
+  if (s >= 20000) return "숙련된 발놀림";
+  if (s >= 5000) return "익숙한 균형";
+  return "초보 수련생";
+}
+
+const Counter = ({ value, duration = 1500 }: { value: number, duration?: number }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime: number | null = null;
+    const startValue = 0;
+    const endValue = value;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const currentCount = Math.floor(progress * (endValue - startValue) + startValue);
+      setCount(currentCount);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [value, duration]);
+
+  return <>{count.toLocaleString()}</>;
+};
+
 function getGradeScore(grade: Grade) {
   if (grade === "PERFECT") return 110;
   if (grade === "GREAT") return 85;
@@ -95,14 +128,6 @@ function getGradeColor(grade: Grade) {
   if (grade === "GREAT") return "#00f2ff";  // Azure
   if (grade === "GOOD") return "#7cff70";   // Jade
   return "#ff4d4d";                         // Crimson
-}
-
-function getMeihuaRank(s: number) {
-  if (s >= 1000) return "천하제일인";
-  if (s >= 500) return "현경(玄境)";
-  if (s >= 300) return "화경(化境)";
-  if (s >= 100) return "일류고수";
-  return "초출강호";
 }
 
 const DUEL_TIER_DETAILS = [
@@ -144,7 +169,7 @@ const YABAWI_STAGES = [
 function formatKoreanGold(val: bigint | number): string {
   const bVal = typeof val === 'number' ? BigInt(Math.floor(val)) : val;
   if (bVal === 0n) return "0 냥";
-  
+
   let result = "";
   let remaining = bVal;
 
@@ -157,15 +182,15 @@ function formatKoreanGold(val: bigint | number): string {
   ];
 
   for (const unit of units) {
-     if (remaining >= unit.divisor) {
-        const count = remaining / unit.divisor;
-        result += `${count}${unit.label} `;
-        remaining %= unit.divisor;
-     }
+    if (remaining >= unit.divisor) {
+      const count = remaining / unit.divisor;
+      result += `${count}${unit.label} `;
+      remaining %= unit.divisor;
+    }
   }
 
   if (remaining > 0n || result === "") {
-     result += `${remaining}냥`;
+    result += `${remaining}냥`;
   }
 
   return result.trim();
@@ -180,10 +205,10 @@ export default function InnPanel({
   const duel = game.duel;
 
   const getTargetScore = (s: number) => {
-    switch(s) {
-      case 1: return 1000; 
-      case 2: return 4000; 
-      case 3: return 8000; 
+    switch (s) {
+      case 1: return 1000;
+      case 2: return 4000;
+      case 3: return 8000;
       case 4: return 15000;
       case 5: return 25000;
       case 6: return 38000;
@@ -199,15 +224,15 @@ export default function InnPanel({
     if (useGameStore.getState().game.isAudioMuted) return;
     const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3");
     audio.volume = 0.4;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   };
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentMiniGame, setCurrentMiniGame] = useState<MiniGameType>("breath");
   const [playerScore, setPlayerScore] = useState(0);
   const [currentStage, setCurrentStage] = useState(1);
-  const [successHits, setSuccessHits] = useState(0); 
-  const [currentProgress, setCurrentProgress] = useState(0); 
+  const [successHits, setSuccessHits] = useState(0);
+  const [currentProgress, setCurrentProgress] = useState(0);
   const [round, setRound] = useState(1);
   const [resultText, setResultText] = useState("객잔의 무뢰배들을 참교육하세요.");
   const [isHitFlash, setIsHitFlash] = useState(false);
@@ -344,7 +369,7 @@ export default function InnPanel({
     if (mission?.rivalName && RIVAL_IMAGE_MAP[mission.rivalName]) {
       return RIVAL_IMAGE_MAP[mission.rivalName];
     }
-    
+
     // Fallback based on stage (Tiers)
     if (stage <= 5) return RIVAL_IMAGE_MAP["tier1"];
     if (stage <= 15) return RIVAL_IMAGE_MAP["tier2"];
@@ -402,8 +427,8 @@ export default function InnPanel({
         do {
           t = types[Math.floor(Math.random() * types.length)];
         } while (
-          (r >= 2 && newGrid[r-1][c]?.type === t && newGrid[r-2][c]?.type === t) ||
-          (c >= 2 && row[c-1]?.type === t && row[c-2]?.type === t)
+          (r >= 2 && newGrid[r - 1][c]?.type === t && newGrid[r - 2][c]?.type === t) ||
+          (c >= 2 && row[c - 1]?.type === t && row[c - 2]?.type === t)
         );
         row.push({ id: Math.random(), type: t });
       }
@@ -450,8 +475,9 @@ export default function InnPanel({
   };
 
   const currentTotalAtk = getTotalAttack();
-  // Softened power factor: use logarithmic scaling to avoid astronomical scores at high attack levels
-  const powerFactor = 1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 2;
+  // [위명 위압] 최다 위명 기록 500점당 1% 공격력(점수 획득량) 보너스 적용
+  const prestigeBonus = Math.floor((game.innHighScore || 0) / 500) / 100;
+  const powerFactor = (1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 2) * (1 + prestigeBonus);
 
   const addFloatText = (text: string, color: string) => {
     const id = Date.now() + Math.random();
@@ -468,10 +494,10 @@ export default function InnPanel({
     setIsSuccessPopup(false);
     // Explicitly redirect to training after reward claimed
     useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training" } }));
-    resolveTimingMission({ 
-      success: true, 
-      score: playerScoreRef.current, 
-      grade: "PERFECT", 
+    resolveTimingMission({
+      success: true,
+      score: playerScoreRef.current,
+      grade: "PERFECT",
       maxStage: currentStage,
       gold: victoryRewards.gold,
       rep: victoryRewards.rep,
@@ -500,16 +526,16 @@ export default function InnPanel({
 
     try {
       if (typeof document !== "undefined" && document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
       }
-    } catch(e) {}
+    } catch (e) { }
 
     const clearedStage = success ? currentStage : currentStage - 1;
     setRound(1); // Reset round on finish
 
     // Robust reward check: if success OR any score was earned
     const finalScore = score || playerScoreRef.current;
-    
+
     if (success || finalScore > 0) {
       // 승리 보상 로직: useGameStore의 상향된 최신 밸런스 로직과 동기화
       const actualStage = Math.min(15, Math.max(1, clearedStage));
@@ -517,18 +543,18 @@ export default function InnPanel({
       const rIdx = realms.indexOf(game.realm);
       // useGameStore.ts의 getInnMiniGameRewardMultiplier 로직과 동일
       const innRewardMult = rIdx !== -1 ? (10 + rIdx * 5) : 10;
-      
+
       const commonFactor = Math.pow(1.45, actualStage) * (REALM_SETTINGS[game.realm]?.rewardMultiplier || 1) * innRewardMult;
       const gReward = Math.floor(3000 * commonFactor);
       const rReward = Math.floor(3000 * commonFactor);
-      
+
       // 강화석 보상 (스테이지당 1~3개 + 10단계 보너스 30개) -> 4배 상향
       let sReward = actualStage * (1 + Math.floor(Math.random() * 3)) * 4;
       if (actualStage >= 10) sReward += 120; // 30 * 4
 
       const items = ["체력 환약", "내력 환약", "청심단", "보명단"];
       const randomItem = Math.random() < 0.3 ? items[Math.floor(Math.random() * items.length)] : null;
-      
+
       // 심득 보상 계산 (기본 15 + 스테이지비례 + 경지 가중치)
       const wReward = Math.floor((15 + actualStage * 3) * (1 + (rIdx * 0.2)));
 
@@ -557,27 +583,27 @@ export default function InnPanel({
       // Winners will choose to claim or continue in the UI popup handled by YabawiGame
     } else {
       triggerShake();
-      
+
       // Milestone Protection Logic
       let protectionAmount = 0n;
       if (yabawiSession && yabawiSession.stage > 5) {
         const lastMilestoneLevel = Math.floor((yabawiSession.stage - 1) / 5) * 5;
         if (lastMilestoneLevel >= 5) {
-           // Provide 30% of what was accumulated at the last milestone
-           // For simplicity, we'll give a fixed consolatory reward based on milestone level
-           const milestoneRewards: Record<number, bigint> = {
-             5: 1000000000n, // 10억
-             10: 1000000000000n, // 1조
-             15: 1000000000000000n, // 1000조
-           };
-           protectionAmount = milestoneRewards[lastMilestoneLevel] || 0n;
+          // Provide 30% of what was accumulated at the last milestone
+          // For simplicity, we'll give a fixed consolatory reward based on milestone level
+          const milestoneRewards: Record<number, bigint> = {
+            5: 1000000000n, // 10억
+            10: 1000000000000n, // 1조
+            15: 1000000000000000n, // 1000조
+          };
+          protectionAmount = milestoneRewards[lastMilestoneLevel] || 0n;
         }
       }
 
-      const failMsg = protectionAmount > 0n 
+      const failMsg = protectionAmount > 0n
         ? `패배하였습니다! 하지만 마일스톤 보호로 ${formatKoreanGold(protectionAmount)}을 보전받았습니다.`
         : "옥구슬을 찾지 못했습니다. 모든 판돈을 잃었습니다.";
-      
+
       setFailReason(failMsg);
       setIsFailPopup(true);
 
@@ -603,34 +629,34 @@ export default function InnPanel({
     const targetScore = getTargetScore(currentStage);
 
     if (nextScore >= targetScore) {
-       // Stage Clear! Moving to next stage
-       const nextStage = currentStage + 1;
-       setCurrentStage(nextStage);
-       setResultText(`Stage ${currentStage} 돌파!!`);
-       
-       setIsPlaying(false);
-       setIsTransitioning(true);
-       setTransitionCountdown(3);
+      // Stage Clear! Moving to next stage
+      const nextStage = currentStage + 1;
+      setCurrentStage(nextStage);
+      setResultText(`Stage ${currentStage} 돌파!!`);
 
-       // Real 3, 2, 1 Countdown logic
-       const countdownInterval = setInterval(() => {
-          setTransitionCountdown(prev => {
-             if (prev <= 1) {
-                clearInterval(countdownInterval);
-                return 0;
-             }
-             return prev - 1;
-          });
-       }, 1000);
+      setIsPlaying(false);
+      setIsTransitioning(true);
+      setTransitionCountdown(3);
 
-       setTimeout(() => {
-          if (finishLockRef.current) return;
-          clearInterval(countdownInterval);
-          resetGameState(currentMiniGameRef.current);
-          setIsTransitioning(false);
-          setIsPlaying(true);
-          isPlayingRef.current = true;
-       }, 3000); // 3 seconds delay before next stage
+      // Real 3, 2, 1 Countdown logic
+      const countdownInterval = setInterval(() => {
+        setTransitionCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      setTimeout(() => {
+        if (finishLockRef.current) return;
+        clearInterval(countdownInterval);
+        resetGameState(currentMiniGameRef.current);
+        setIsTransitioning(false);
+        setIsPlaying(true);
+        isPlayingRef.current = true;
+      }, 3000); // 3 seconds delay before next stage
     }
   };
 
@@ -651,7 +677,7 @@ export default function InnPanel({
 
   const startMission = () => {
     if (!game.timingMission.available) return;
-    
+
     // Reset all flags first
     clearAllIntervals();
     finishLockRef.current = false;
@@ -670,11 +696,11 @@ export default function InnPanel({
     successHitsRef.current = 0;
     setSuccessHits(0);
     setRound(1);
-    
+
     const selected = game.timingMission.selectedGameType || "breath";
     setCurrentMiniGame(selected);
     currentMiniGameRef.current = selected;
-    
+
     // Reset cumulative miss count
     setBreathMissCount(0);
     breathMissCountRef.current = 0;
@@ -685,7 +711,7 @@ export default function InnPanel({
 
     // Start!
     setTutorialTarget(selected);
-    setShowTutorial(true); 
+    setShowTutorial(true);
     // We now always show the tutorial/explanation first to give the player a chance to prepare
   };
 
@@ -727,7 +753,7 @@ export default function InnPanel({
     if (nextTime <= 0) {
       const finalScore = playerScoreRef.current;
       const targetScore = getTargetScore(currentStage);
-      
+
       if (finalScore >= targetScore) {
         handleRoundSuccess("PERFECT", 200, `Stage ${currentStage} 성공!`);
       } else {
@@ -738,7 +764,7 @@ export default function InnPanel({
 
     const realmList = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
     const rIdx = realmList.indexOf(game.realm);
-    
+
     // 청운진기 단계별 속도 고정 (사용자 요청: 1-3, 4-6, 7-10, 11+)
     let baseSpeed = 15;
     if (currentStage <= 3) baseSpeed = 15;
@@ -746,7 +772,7 @@ export default function InnPanel({
     else if (currentStage <= 10) baseSpeed = 40;
     else baseSpeed = 60;
 
-    const accel = (currentStage - 1) * 2.5; 
+    const accel = (currentStage - 1) * 2.5;
     const speed = (baseSpeed + accel) * 2;
 
     const nextNotes = breathNotesRef.current
@@ -754,18 +780,18 @@ export default function InnPanel({
 
     if (nextNotes.some((n) => n.y > 96)) {
       const missedCount = nextNotes.filter(n => n.y > 96).length;
-      
+
       const newMissCount = breathMissCountRef.current + missedCount;
       breathMissCountRef.current = newMissCount;
       setBreathMissCount(newMissCount);
 
       const penalty = missedCount * 15; // Reduced penalty
       const newScore = playerScoreRef.current - penalty;
-      
+
       playerScoreRef.current = newScore;
       setPlayerScore(newScore);
       addFloatText(`-${penalty}`, "#ff4d4d");
-      
+
       if (newMissCount >= 5) {
         finishMission(false, "MISS", newScore, "기운을 지나치게 놓쳐 대련이 중단되었습니다. (5회 미스)");
         return;
@@ -775,11 +801,11 @@ export default function InnPanel({
         finishMission(true, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
         return;
       }
-      
+
       // Reset combo on missed notes
       setCombo(0);
       comboRef.current = 0;
-      
+
       // Filter out missed notes
       const filteredNotes = nextNotes.filter(n => n.y <= 96);
       breathNotesRef.current = filteredNotes;
@@ -792,22 +818,22 @@ export default function InnPanel({
 
     // Spawn rate by realm and stage
     let baseRate = 0.012 + rIdx * 0.004;
-    if (currentStage === 1) baseRate = 0.01; 
+    if (currentStage === 1) baseRate = 0.01;
     const stageBonus = (currentStage - 1) * 0.005;
     const spawnRate = baseRate + stageBonus;
-    
+
     const maxNotesOnScreen = 5 + Math.floor(currentStage / 2);
-    
+
     if (Math.random() < spawnRate && nextNotes.length < maxNotesOnScreen) {
       const lane = Math.floor(Math.random() * 5);
       // Prevent vertical overlap in the same lane
       const lastNoteInLane = nextNotes.find(n => n.lane === lane && n.y < 15);
-      
+
       if (!lastNoteInLane) {
         totalNotesSpawnedRef.current += 1;
-        const newNote: { id: number; y: number; lane: number } = { 
-          id: breathNoteIdRef.current++, 
-          y: 0, 
+        const newNote: { id: number; y: number; lane: number } = {
+          id: breathNoteIdRef.current++,
+          y: 0,
           lane
         };
         const updated = [...nextNotes, newNote];
@@ -824,9 +850,9 @@ export default function InnPanel({
     lastHitTimeRef.current[key] = now;
 
     if (!isPlaying || currentMiniGame !== "breath") return;
-    const hitZone = 88; 
+    const hitZone = 88;
     const tolerance = 10;
-    
+
     // Read from REF to avoid stale closure in logic
     const nearestNote = breathNotesRef.current.find(n => n.lane === lane && n.y > 60);
     if (!nearestNote) return;
@@ -839,7 +865,7 @@ export default function InnPanel({
       playerScoreRef.current = newScore;
       setPlayerScore(newScore);
       addFloatText("-20", "#ff4d4d");
-      
+
       const newMissCount = breathMissCountRef.current + 1;
       breathMissCountRef.current = newMissCount;
       setBreathMissCount(newMissCount);
@@ -856,11 +882,11 @@ export default function InnPanel({
         setBreathNotes(nextNotes);
         return;
       }
-      
+
       // Reset combo on miss
       setCombo(0);
       comboRef.current = 0;
-      
+
       const nextNotes = breathNotesRef.current.filter(n => n.id !== nearestNote.id);
       breathNotesRef.current = nextNotes;
       setBreathNotes(nextNotes);
@@ -874,19 +900,19 @@ export default function InnPanel({
       const baseScoreGain = scoreMap[grade] || 10;
       const scoreGain = Math.floor(baseScoreGain * powerFactor);
       const newScore = playerScoreRef.current + scoreGain;
-      
+
       playerScoreRef.current = newScore;
       setPlayerScore(newScore);
       addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
-      
+
       // Update combo
       const nextCombo = comboRef.current + 1;
       comboRef.current = nextCombo;
       setCombo(nextCombo);
       incrementCombo(); // 문파 특성 및 스탯 보너스 갱신용
-      
+
       playHitEffect();
-      
+
       // Real-time Stage Transition Check
       const targetScore = getTargetScore(currentStage);
       if (newScore >= targetScore) {
@@ -896,7 +922,7 @@ export default function InnPanel({
       if (nextCombo > 0 && nextCombo % 10 === 0) {
         addFloatText(`${nextCombo} COMBO!!`, "#ffd700");
       }
-      
+
       // Lane flash effect (Multiple support)
       setLaneFlashes(prev => ({ ...prev, [lane]: true }));
       setTimeout(() => {
@@ -922,8 +948,8 @@ export default function InnPanel({
 
     let timeScale = 1 + (currentStage - 1) * 0.15;
     if (currentStage >= 16) {
-       // Extreme speed mode for Stage 16+
-       timeScale = 1.8 + (currentStage - 16) * 0.35;
+      // Extreme speed mode for Stage 16+
+      timeScale = 1.8 + (currentStage - 16) * 0.35;
     }
 
     const nextTime = Math.max(0, dodgeTimeLeftRef.current - dt * timeScale);
@@ -954,7 +980,7 @@ export default function InnPanel({
       const nextScore = playerScoreRef.current + gain;
       playerScoreRef.current = nextScore;
       setPlayerScore(nextScore);
-      
+
       const nextCombo = comboRef.current + 1;
       comboRef.current = nextCombo;
       setCombo(nextCombo);
@@ -964,7 +990,7 @@ export default function InnPanel({
       const nextPoles = [...polesRef.current.slice(1), Math.floor(Math.random() * nPoles)];
       polesRef.current = nextPoles;
       setPoles(nextPoles);
-      
+
       playHitEffect();
 
       // Real-time Success Check Fix
@@ -978,7 +1004,7 @@ export default function InnPanel({
       const nextHp = Math.max(0, dodgeHpRef.current - penaltyHp);
       dodgeHpRef.current = nextHp;
       setDodgeHp(nextHp);
-      
+
       comboRef.current = 0;
       setCombo(0);
       triggerShake();
@@ -1061,7 +1087,7 @@ export default function InnPanel({
     }
 
     const allMatches: { coords: [number, number][], type: string, direction: 'h' | 'v' | 'both' }[] = [];
-    
+
     // Convert to structured match data
     horizontalItems.forEach((set, key) => {
       const [r, range] = key.split(',');
@@ -1086,128 +1112,128 @@ export default function InnPanel({
 
     let hasMatches = true;
     while (hasMatches && isPlayingRef.current) {
-    const rawGroups = findMatches(puzzleGridRef.current);
-    if (rawGroups.length === 0) {
-      hasMatches = false;
-      break;
-    }
+      const rawGroups = findMatches(puzzleGridRef.current);
+      if (rawGroups.length === 0) {
+        hasMatches = false;
+        break;
+      }
 
-    currentCombo++;
-    setPuzzleCombo(currentCombo);
-    incrementCombo();
-    playPopSFX();
+      currentCombo++;
+      setPuzzleCombo(currentCombo);
+      incrementCombo();
+      playPopSFX();
 
-    const newGrid = puzzleGridRef.current.map(r => r.map(c => ({ ...c })));
-    
-    // 1. 매칭 그룹 병합 (ㄱ, ㄴ, T자 처리용)
-    const mergedGroups: { coords: [number, number][], type: string }[] = [];
-    const usedRawIndices = new Set<number>();
+      const newGrid = puzzleGridRef.current.map(r => r.map(c => ({ ...c })));
 
-    for (let i = 0; i < rawGroups.length; i++) {
-      if (usedRawIndices.has(i)) continue;
-      
-      let currentGroupCoords = [...rawGroups[i].coords];
-      const currentType = rawGroups[i].type;
-      usedRawIndices.add(i);
+      // 1. 매칭 그룹 병합 (ㄱ, ㄴ, T자 처리용)
+      const mergedGroups: { coords: [number, number][], type: string }[] = [];
+      const usedRawIndices = new Set<number>();
 
-      // 연결된 다른 그룹 찾기
-      let foundMore = true;
-      while (foundMore) {
-        foundMore = false;
-        for (let j = 0; j < rawGroups.length; j++) {
-          if (usedRawIndices.has(j)) continue;
-          if (rawGroups[j].type !== currentType) continue;
+      for (let i = 0; i < rawGroups.length; i++) {
+        if (usedRawIndices.has(i)) continue;
 
-          // 보조 함수: 두 좌표 목록이 겹치는지 확인
-          const isOverlapping = rawGroups[j].coords.some(([r1, c1]) => 
-            currentGroupCoords.some(([r2, c2]) => r1 === r2 && c1 === c2)
-          );
+        let currentGroupCoords = [...rawGroups[i].coords];
+        const currentType = rawGroups[i].type;
+        usedRawIndices.add(i);
 
-          if (isOverlapping) {
-            // 합치기 (중복 제거)
-            rawGroups[j].coords.forEach(([r, c]) => {
-              if (!currentGroupCoords.some(([cr, cc]) => cr === r && cc === c)) {
-                currentGroupCoords.push([r, c]);
-              }
-            });
-            usedRawIndices.add(j);
-            foundMore = true;
+        // 연결된 다른 그룹 찾기
+        let foundMore = true;
+        while (foundMore) {
+          foundMore = false;
+          for (let j = 0; j < rawGroups.length; j++) {
+            if (usedRawIndices.has(j)) continue;
+            if (rawGroups[j].type !== currentType) continue;
+
+            // 보조 함수: 두 좌표 목록이 겹치는지 확인
+            const isOverlapping = rawGroups[j].coords.some(([r1, c1]) =>
+              currentGroupCoords.some(([r2, c2]) => r1 === r2 && c1 === c2)
+            );
+
+            if (isOverlapping) {
+              // 합치기 (중복 제거)
+              rawGroups[j].coords.forEach(([r, c]) => {
+                if (!currentGroupCoords.some(([cr, cc]) => cr === r && cc === c)) {
+                  currentGroupCoords.push([r, c]);
+                }
+              });
+              usedRawIndices.add(j);
+              foundMore = true;
+            }
           }
         }
+        mergedGroups.push({ coords: currentGroupCoords, type: currentType });
       }
-      mergedGroups.push({ coords: currentGroupCoords, type: currentType });
-    }
 
-    const cellsToDestroy: Set<string> = new Set();
-    const specialBlockToCreateArray: {r: number, c: number, type: string, special: string}[] = [];
+      const cellsToDestroy: Set<string> = new Set();
+      const specialBlockToCreateArray: { r: number, c: number, type: string, special: string }[] = [];
 
-    // 2. 특수 블록 생성 위치 결정 및 매칭된 셀 추가
-    mergedGroups.forEach(group => {
-      const len = group.coords.length;
-      // 가장 중앙에 가까운 위치를 피벗으로 (가운데 설치 선호)
-      const pivot = group.coords[Math.floor(group.coords.length / 2)];
-      
-      let specialType = null;
-      // ㄱ, ㄴ, T자 등 꺾인 형태 확인 (가로 세로가 섞인 경우)
-      const isLOrT = rawGroups.filter((rg, idx) => {
+      // 2. 특수 블록 생성 위치 결정 및 매칭된 셀 추가
+      mergedGroups.forEach(group => {
+        const len = group.coords.length;
+        // 가장 중앙에 가까운 위치를 피벗으로 (가운데 설치 선호)
+        const pivot = group.coords[Math.floor(group.coords.length / 2)];
+
+        let specialType = null;
+        // ㄱ, ㄴ, T자 등 꺾인 형태 확인 (가로 세로가 섞인 경우)
+        const isLOrT = rawGroups.filter((rg, idx) => {
           // 이 병합 그룹에 속한 원본 그룹들 중 방향이 다른 게 있는지
           return group.coords.some(([gr, gc]) => rg.coords.some(([rr, rc]) => rr === gr && rc === gc));
-      }).some((rg, _, arr) => arr.some(other => rg.direction !== other.direction));
+        }).some((rg, _, arr) => arr.some(other => rg.direction !== other.direction));
 
-      if (len >= 5) {
-        specialType = isLOrT ? 'area_clear' : 'cross_clear'; // 5개 이상 꺾였으면 4x4, 일직선이면 십자
-        if (len >= 6) specialType = 'cross_clear'; // 6개 이상은 무조건 십자
-      } else if (len === 4) {
-        // 4개 매칭 (일직선 방향 찾기)
-        const rg = rawGroups.find(r => r.coords.every(([rr, rc]) => group.coords.some(([gr, gc]) => rr === gr && rc === gc)));
-        specialType = rg?.direction === 'h' ? 'row_clear' : 'col_clear';
-      }
-
-      if (specialType) {
-        specialBlockToCreateArray.push({ r: pivot[0], c: pivot[1], type: group.type, special: specialType });
-      }
-
-      group.coords.forEach(([r, c]) => cellsToDestroy.add(`${r},${c}`));
-    });
-
-    // 3. 재귀적 연쇄 폭발 (특수 블록 트리거)
-    const processQueue = Array.from(cellsToDestroy);
-    let head = 0;
-    while (head < processQueue.length) {
-      const coord = processQueue[head++];
-      const [r, c] = coord.split(',').map(Number);
-      
-      const cell = newGrid[r][c];
-      if (cell.special) {
-        const s = cell.special;
-        const affected: string[] = [];
-        
-        if (s === 'row_clear') for(let i=0; i<9; i++) affected.push(`${r},${i}`);
-        else if (s === 'col_clear') for(let i=0; i<9; i++) affected.push(`${i},${c}`);
-        else if (s === 'area_clear' || s === 'cross_clear') {
-           const radius = s === 'area_clear' ? 2 : 1; // 5x5 (radius 2)
-           if (s === 'area_clear') {
-              for(let dr=-radius; dr<=radius; dr++) for(let dc=-radius; dc<=radius; dc++) {
-                const nr=r+dr, nc=c+dc; if(nr>=0 && nr<9 && nc>=0 && nc<9) affected.push(`${nr},${nc}`);
-              }
-           } else {
-              // cross_clear: 십자(전체줄) + 주변 3x3
-              for(let i=0; i<9; i++) { affected.push(`${r},${i}`); affected.push(`${i},${c}`); }
-              if (r>0) for(let i=0; i<9; i++) affected.push(`${r-1},${i}`);
-              if (r<8) for(let i=0; i<9; i++) affected.push(`${r+1},${i}`);
-              if (c>0) for(let i=0; i<9; i++) affected.push(`${i},${c-1}`);
-              if (c<8) for(let i=0; i<9; i++) affected.push(`${i},${c+1}`);
-           }
+        if (len >= 5) {
+          specialType = isLOrT ? 'area_clear' : 'cross_clear'; // 5개 이상 꺾였으면 4x4, 일직선이면 십자
+          if (len >= 6) specialType = 'cross_clear'; // 6개 이상은 무조건 십자
+        } else if (len === 4) {
+          // 4개 매칭 (일직선 방향 찾기)
+          const rg = rawGroups.find(r => r.coords.every(([rr, rc]) => group.coords.some(([gr, gc]) => rr === gr && rc === gc)));
+          specialType = rg?.direction === 'h' ? 'row_clear' : 'col_clear';
         }
-        
-        affected.forEach(a => {
-          if (!cellsToDestroy.has(a)) {
-            cellsToDestroy.add(a);
-            processQueue.push(a); // 새로 휘말린 셀도 큐에 추가하여 특수 효과 검사
+
+        if (specialType) {
+          specialBlockToCreateArray.push({ r: pivot[0], c: pivot[1], type: group.type, special: specialType });
+        }
+
+        group.coords.forEach(([r, c]) => cellsToDestroy.add(`${r},${c}`));
+      });
+
+      // 3. 재귀적 연쇄 폭발 (특수 블록 트리거)
+      const processQueue = Array.from(cellsToDestroy);
+      let head = 0;
+      while (head < processQueue.length) {
+        const coord = processQueue[head++];
+        const [r, c] = coord.split(',').map(Number);
+
+        const cell = newGrid[r][c];
+        if (cell.special) {
+          const s = cell.special;
+          const affected: string[] = [];
+
+          if (s === 'row_clear') for (let i = 0; i < 9; i++) affected.push(`${r},${i}`);
+          else if (s === 'col_clear') for (let i = 0; i < 9; i++) affected.push(`${i},${c}`);
+          else if (s === 'area_clear' || s === 'cross_clear') {
+            const radius = s === 'area_clear' ? 2 : 1; // 5x5 (radius 2)
+            if (s === 'area_clear') {
+              for (let dr = -radius; dr <= radius; dr++) for (let dc = -radius; dc <= radius; dc++) {
+                const nr = r + dr, nc = c + dc; if (nr >= 0 && nr < 9 && nc >= 0 && nc < 9) affected.push(`${nr},${nc}`);
+              }
+            } else {
+              // cross_clear: 십자(전체줄) + 주변 3x3
+              for (let i = 0; i < 9; i++) { affected.push(`${r},${i}`); affected.push(`${i},${c}`); }
+              if (r > 0) for (let i = 0; i < 9; i++) affected.push(`${r - 1},${i}`);
+              if (r < 8) for (let i = 0; i < 9; i++) affected.push(`${r + 1},${i}`);
+              if (c > 0) for (let i = 0; i < 9; i++) affected.push(`${i},${c - 1}`);
+              if (c < 8) for (let i = 0; i < 9; i++) affected.push(`${i},${c + 1}`);
+            }
           }
-        });
+
+          affected.forEach(a => {
+            if (!cellsToDestroy.has(a)) {
+              cellsToDestroy.add(a);
+              processQueue.push(a); // 새로 휘말린 셀도 큐에 추가하여 특수 효과 검사
+            }
+          });
+        }
       }
-    }
 
       const scoreGain = Math.floor(cellsToDestroy.size * 5 * (1 + currentCombo * 0.3) * powerFactor);
       totalScoreGain += scoreGain;
@@ -1222,7 +1248,7 @@ export default function InnPanel({
         const type = newGrid[r][c].type;
         newGrid[r][c].type = null;
         newGrid[r][c].special = null;
-        
+
         const effectId = Math.random();
         setPuzzleEffects(prev => [...prev, { id: effectId, r, c, color: '#fff' }]);
         setTimeout(() => setPuzzleEffects(prev => prev.filter(e => e.id !== effectId)), 500);
@@ -1313,7 +1339,7 @@ export default function InnPanel({
     const touch = e.changedTouches[0];
     const dx = touch.clientX - puzzleSwipeStart.x;
     const dy = touch.clientY - puzzleSwipeStart.y;
-    
+
     // Small movement is treated as a click/select
     if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
       handlePuzzleCellClick(puzzleSwipeStart.r, puzzleSwipeStart.c);
@@ -1340,23 +1366,23 @@ export default function InnPanel({
   const updatePulse = (dt: number) => {
     // [기운응축 속도 밸런싱] 1-3: 천천히(1단계 수준), 4-6: 약간 빠르게, 7-10: 조조금더 빠르게
     let baseSpeedFactor = 3.5;
-    if (currentStage <= 3) baseSpeedFactor = 3.5; 
-    else if (currentStage <= 6) baseSpeedFactor = 6.0; 
-    else if (currentStage <= 10) baseSpeedFactor = 9.0; 
-    else baseSpeedFactor = 5.0 + currentStage * 0.5; 
+    if (currentStage <= 3) baseSpeedFactor = 3.5;
+    else if (currentStage <= 6) baseSpeedFactor = 6.0;
+    else if (currentStage <= 10) baseSpeedFactor = 9.0;
+    else baseSpeedFactor = 5.0 + currentStage * 0.5;
 
     // 가속도 및 전체 속도 배율 추가 하향 (1.5 -> 0.8 / 1.2 -> 1.0 / 3 -> 1.8)
     const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.8)) * 1.0;
-    const moved = pulseTargetsRef.current.map(t => ({ 
-      ...t, 
-      progress: t.progress + speedFactor * dt * 1.8 
+    const moved = pulseTargetsRef.current.map(t => ({
+      ...t,
+      progress: t.progress + speedFactor * dt * 1.8
     }));
     pulseTargetsRef.current = moved;
     setPulseTargets(moved);
 
     if (moved.some(t => t.progress > 100)) {
-       finishMission(false, "MISS", playerScoreRef.current, "기운이 너무 팽창했습니다!");
-       return;
+      finishMission(false, "MISS", playerScoreRef.current, "기운이 너무 팽창했습니다!");
+      return;
     }
 
     if (moved.length === 0 && Math.random() < 0.04) {
@@ -1381,7 +1407,7 @@ export default function InnPanel({
     if (!target) return;
 
     const grade = target.progress > 20 ? (target.progress > 64 ? "PERFECT" : "GREAT") : (target.progress > 0 ? "GOOD" : "MISS");
-    
+
     if (grade === "MISS") {
       finishMission(false, "MISS", playerScoreRef.current, "타이밍이 맞지 않았습니다.");
     } else {
@@ -1395,11 +1421,11 @@ export default function InnPanel({
       incrementCombo();
 
       const targetForRound = 4 + (currentStage - 1) * 2;
-      
+
       const scoreGain = Math.floor(getGradeScore(grade) * powerFactor * 3);
       playerScoreRef.current += scoreGain;
       setPlayerScore(Math.floor(playerScoreRef.current));
-      
+
       addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
       playHitEffect();
 
@@ -1412,8 +1438,8 @@ export default function InnPanel({
   // Mission finish handling
   useEffect(() => {
     if (!isPlaying && !isTransitioning && !isFailPopup && mission?.available === false && onRewardClose) {
-       // Auto-close if mission is resolved
-       onRewardClose();
+      // Auto-close if mission is resolved
+      onRewardClose();
     }
   }, [isPlaying, isTransitioning, isFailPopup, mission?.available, onRewardClose]);
 
@@ -1445,7 +1471,7 @@ export default function InnPanel({
       ...containerStyle,
       transform: isShake ? "translateX(5px)" : "none",
       transition: "transform 0.05s linear",
-      backgroundImage: isPlaying ? "none" : "linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.85)), url('/bg-inn-duel.png')",
+      backgroundImage: isPlaying ? "none" : "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('/bg-inn-duel.png')",
     }}>
       <style>{`
         @keyframes bgMotion {
@@ -1468,6 +1494,55 @@ export default function InnPanel({
           50% { border-color: rgba(255,215,0,1); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
           100% { border-color: rgba(255,215,0,0.2); }
         }
+        @keyframes character3DPan {
+          0% { transform: perspective(1000px) rotateY(-8deg) translateX(-8px) scale(1); filter: drop-shadow(-5px 0 25px rgba(255,215,0,0.4)) brightness(1.1); }
+          50% { transform: perspective(1000px) rotateY(8deg) translateX(8px) scale(1.03); filter: drop-shadow(5px 0 25px rgba(255,215,0,0.6)) brightness(1.15); }
+          100% { transform: perspective(1000px) rotateY(-8deg) translateX(-8px) scale(1); filter: drop-shadow(-5px 0 25px rgba(255,215,0,0.4)) brightness(1.1); }
+        }
+        @keyframes character3DPanMild {
+          0% { transform: perspective(1000px) rotateY(-3deg) translateX(-3px) scale(1); filter: drop-shadow(-3px 0 15px rgba(255,215,0,0.3)) brightness(1.05); }
+          50% { transform: perspective(1000px) rotateY(3deg) translateX(3px) scale(1.015); filter: drop-shadow(3px 0 15px rgba(255,215,0,0.4)) brightness(1.1); }
+          100% { transform: perspective(1000px) rotateY(-3deg) translateX(-3px) scale(1); filter: drop-shadow(-3px 0 15px rgba(255,215,0,0.3)) brightness(1.05); }
+        }
+        @keyframes aura3DPan {
+          0% { transform: perspective(1000px) rotateY(8deg) translateX(12px) scale(0.95); opacity: 0.6; }
+          50% { transform: perspective(1000px) rotateY(-8deg) translateX(-12px) scale(1.05); opacity: 0.9; }
+          100% { transform: perspective(1000px) rotateY(8deg) translateX(12px) scale(0.95); opacity: 0.6; }
+        }
+        @keyframes auraSpin {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes bloodMistRise {
+          0% { transform: translateY(40px) scale(1); opacity: 0; }
+          50% { transform: translateY(-30px) scale(1.2); opacity: 0.4; }
+          100% { transform: translateY(-120px) scale(1.5); opacity: 0; }
+        }
+        @keyframes emberRise {
+          0% { transform: translateY(0) translateX(0) scale(1); opacity: 1; filter: brightness(2); }
+          30% { transform: translateY(-100px) translateX(20px) scale(1.1); opacity: 1; }
+          100% { transform: translateY(-350px) translateX(-15px) scale(0); opacity: 0; }
+        }
+        @keyframes flameFlicker {
+          0% { transform: scale(1, 1) rotate(-1deg); filter: brightness(1) blur(20px); }
+          50% { transform: scale(1.1, 1.2) rotate(1deg); filter: brightness(1.4) blur(15px); }
+          100% { transform: scale(1, 1) rotate(-1deg); filter: brightness(1) blur(20px); }
+        }
+        @keyframes flamePulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
+        }
+        @keyframes wriggle {
+          0%, 100% { transform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
+          25% { transform: translate(10px, -5px) rotate(2deg) skewX(4deg) scale(1.05); }
+          50% { transform: translate(0, -10px) rotate(0deg) skewX(0deg) scale(1.1); }
+          75% { transform: translate(-10px, -5px) rotate(-2deg) skewX(-4deg) scale(1.05); }
+        }
+        @keyframes sootRise {
+          0% { transform: translateY(40px) scale(1); opacity: 0; }
+          50% { transform: translateY(-20px) scale(1.3); opacity: 0.4; }
+          100% { transform: translateY(-150px) scale(1.6); opacity: 0; }
+        }
         .duel-bg {
           position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
@@ -1488,17 +1563,17 @@ export default function InnPanel({
               <span style={{ color: "#ffd700" }}>{miniGameInfo?.icon}</span> {miniGameInfo?.name || "객잔 대련"}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 13, gap: 2 }}>
-               <div style={{ color: "#ffd700", fontWeight: 'bold' }}>최고 기록: {mission.highScores?.[currentMiniGame] || 0}</div>
-               <div style={{ color: "#aaa" }}>이전 결과: {mission.lastScores?.[currentMiniGame] || 0}</div>
+              <div style={{ color: "#ffd700", fontWeight: 'bold' }}>최고 기록: {mission.highScores?.[currentMiniGame] || 0}</div>
+              <div style={{ color: "#aaa" }}>이전 결과: {mission.lastScores?.[currentMiniGame] || 0}</div>
             </div>
           </div>
 
           <div style={statsGrid}>
-            <div 
+            <div
               onClick={() => setShowTierList(true)}
-              style={{ 
-                ...statBox, 
-                cursor: "pointer", 
+              style={{
+                ...statBox,
+                cursor: "pointer",
                 position: "relative",
                 background: "linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.4) 100%)",
                 boxShadow: "0 0 20px rgba(255,215,0,0.2), inset 0 0 10px rgba(255,215,0,0.1)",
@@ -1518,15 +1593,16 @@ export default function InnPanel({
               </div>
             </div>
           </div>
+
         </>
       )}
 
       {(missionAvailable || isPlaying) ? (
-        <div style={{ 
-          ...gameStage, 
+        <div style={{
+          ...gameStage,
           height: currentMiniGame === "yabawi" ? "580px" : "600px",
-          position: "relative", 
-          overflow: currentMiniGame === "yabawi" ? "visible" : "hidden" 
+          position: "relative",
+          overflow: currentMiniGame === "yabawi" ? "visible" : "hidden"
         }}>
           {/* Faction Char vs Rival Vis */}
           {isPlaying && currentMiniGame !== "yabawi" && (
@@ -1536,38 +1612,38 @@ export default function InnPanel({
               alignItems: "center", padding: "0 20px", opacity: 0.6
             }}>
               {/* Player */}
-              <img 
-                src={getPlayerImage()} 
-                style={{ height: "120px", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))", animation: "floatUpDown 3s ease-in-out infinite" }} 
+              <img
+                src={getPlayerImage()}
+                style={{ height: "120px", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))", animation: "floatUpDown 3s ease-in-out infinite" }}
               />
               {/* vs */}
               <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", fontStyle: "italic", textShadow: "0 0 10px #ff4d4d" }}>VS</div>
               {/* Rival */}
-              <img 
-                src={getRivalImage()} 
-                style={{ height: "120px", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))", animation: "floatUpDown 3.5s ease-in-out infinite reverse" }} 
+              <img
+                src={getRivalImage()}
+                style={{ height: "120px", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))", animation: "floatUpDown 3.5s ease-in-out infinite reverse" }}
               />
             </div>
           )}
-          
+
           {showTutorial && tutorialTarget ? (
             <div style={{
-              position: "absolute", top: 0, left: 0, width: "100%", height: "100%", 
-              background: "radial-gradient(circle at center, rgba(10,10,20,0.98) 0%, rgba(0,0,0,0.95) 100%)", 
-              zIndex: 3000, display: "flex", 
+              position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+              background: "radial-gradient(circle at center, rgba(10,10,20,0.98) 0%, rgba(0,0,0,0.95) 100%)",
+              zIndex: 3000, display: "flex",
               flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px",
               textAlign: "center", borderRadius: "24px", backdropFilter: "blur(15px)",
               border: "1px solid rgba(255,215,0,0.3)",
               boxShadow: "inset 0 0 50px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.8)"
             }}>
               <div style={{
-                position: "absolute", top: "10%", fontSize: "80px", opacity: 0.15, 
+                position: "absolute", top: "10%", fontSize: "80px", opacity: 0.15,
                 filter: "grayscale(1) brightness(2)", pointerEvents: "none"
               }}>
                 {MINI_GAMES.find((m: any) => m.key === tutorialTarget)?.icon}
               </div>
 
-              <div style={{ 
+              <div style={{
                 width: "60px", height: "60px", borderRadius: "50%", background: "rgba(255,215,0,0.1)",
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px",
                 border: "2px solid #ffd700", marginBottom: "20px", boxShadow: "0 0 20px rgba(255,215,0,0.2)"
@@ -1575,15 +1651,15 @@ export default function InnPanel({
                 {MINI_GAMES.find((m: any) => m.key === tutorialTarget)?.icon}
               </div>
 
-              <h2 style={{ 
+              <h2 style={{
                 fontSize: "28px", fontWeight: 900, color: "#ffd700", marginBottom: "20px",
                 textShadow: "0 0 10px rgba(255,215,0,0.3)", letterSpacing: "1px"
               }}>
                 {TUTORIAL_INFO[tutorialTarget].title}
               </h2>
 
-              <div style={{ 
-                width: "100%", maxWidth: "320px", background: "rgba(255,255,255,0.03)", 
+              <div style={{
+                width: "100%", maxWidth: "320px", background: "rgba(255,255,255,0.03)",
                 padding: "24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)",
                 marginBottom: "30px", fontSize: "14px", lineHeight: "1.7", color: "#ccc",
                 textAlign: "left", display: "flex", flexDirection: "column", gap: "16px"
@@ -1602,10 +1678,10 @@ export default function InnPanel({
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => { setShowTutorial(false); setIsPlaying(true); isPlayingRef.current = true; }}
-                style={{ 
-                  ...primaryButton, 
+                style={{
+                  ...primaryButton,
                   width: "100%", maxWidth: "240px", padding: "11px", fontSize: "18px",
                   boxShadow: "0 10px 25px rgba(255,215,0,0.3)",
                   animation: "pulse 2s infinite"
@@ -1622,12 +1698,12 @@ export default function InnPanel({
             <div style={{ ...lobbyOverlay, animation: "pulse 1s infinite" }}>
               <div style={{ fontSize: 40, marginBottom: 20 }}>⚔️</div>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-                <img 
+                <img
                   src={(() => {
                     const fInfo = FACTIONS.find(f => f.name === game.faction);
                     return fInfo?.characterImages?.ready || "/warrior.png";
-                  })()} 
-                  alt="My Character" 
+                  })()}
+                  alt="My Character"
                   style={{ width: "100px", height: "auto", filter: "drop-shadow(0 0 10px rgba(255,215,0,0.3))" }}
                 />
               </div>
@@ -1649,102 +1725,102 @@ export default function InnPanel({
                 </div>
               )}
 
-            {currentMiniGame !== "yabawi" && <div style={roundBadge}>Stage {currentStage}</div>}
+              {currentMiniGame !== "yabawi" && <div style={roundBadge}>Stage {currentStage}</div>}
 
               {/* GAME RENDERERS */}
               {currentMiniGame === "breath" && (
                 <div style={{ ...breathArea, height: 360, padding: 0 }}>
-                   <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10, display: "flex", gap: 20 }}>
-                       <span style={{ color: breathMissCount >= 3 ? "#ff4d4d" : "#ffd700" }}>MISS: {breathMissCount}/5</span>
-                    </div>
-                   <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
-                      {[0, 1, 2, 3, 4].map(l => (
-                        <div 
-                          key={l} 
-                          onMouseDown={(e) => { e.preventDefault(); handleBreathTap(l); }}
-                          onTouchStart={(e) => { 
-                            e.preventDefault(); 
-                            const touches = Array.from(e.changedTouches);
-                            touches.forEach(() => handleBreathTap(l));
-                          }}
-                          style={{ 
-                            flex: 1, 
-                            borderRight: l < 4 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                            position: "relative",
-                            background: laneFlashes[l] ? "rgba(255, 215, 0, 0.25)" : "rgba(255,255,255,0.02)",
-                            transition: "background 0.1s",
-                            cursor: "pointer"
-                          }}
-                        >
-                          <div style={{ 
-                            position: "absolute", 
-                            bottom: "8%", 
-                            left: "50%", 
-                            transform: "translateX(-50%)",
-                            width: 38, 
-                            height: 38, 
-                            borderRadius: "50%", 
-                            border: `2px solid ${laneFlashes[l] ? "#ffd700" : "rgba(255,215,0,0.4)"}`,
-                            background: laneFlashes[l] ? "rgba(255,215,0,0.4)" : "rgba(0,0,0,0.5)",
-                            boxShadow: laneFlashes[l] ? "0 0 20px #ffd700" : "none",
-                            transition: "all 0.1s"
-                          }} />
+                  <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10, display: "flex", gap: 20 }}>
+                    <span style={{ color: breathMissCount >= 3 ? "#ff4d4d" : "#ffd700" }}>MISS: {breathMissCount}/5</span>
+                  </div>
+                  <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
+                    {[0, 1, 2, 3, 4].map(l => (
+                      <div
+                        key={l}
+                        onMouseDown={(e) => { e.preventDefault(); handleBreathTap(l); }}
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          const touches = Array.from(e.changedTouches);
+                          touches.forEach(() => handleBreathTap(l));
+                        }}
+                        style={{
+                          flex: 1,
+                          borderRight: l < 4 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                          position: "relative",
+                          background: laneFlashes[l] ? "rgba(255, 215, 0, 0.25)" : "rgba(255,255,255,0.02)",
+                          transition: "background 0.1s",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <div style={{
+                          position: "absolute",
+                          bottom: "8%",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          width: 38,
+                          height: 38,
+                          borderRadius: "50%",
+                          border: `2px solid ${laneFlashes[l] ? "#ffd700" : "rgba(255,215,0,0.4)"}`,
+                          background: laneFlashes[l] ? "rgba(255,215,0,0.4)" : "rgba(0,0,0,0.5)",
+                          boxShadow: laneFlashes[l] ? "0 0 20px #ffd700" : "none",
+                          transition: "all 0.1s"
+                        }} />
+                      </div>
+                    ))}
+                    {breathNotes.map(n => (
+                      <div
+                        key={n.id}
+                        style={{
+                          position: "absolute",
+                          top: `${n.y}%`,
+                          left: `${n.lane * 20 + 10}%`,
+                          transform: "translateX(-50%)",
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          background: "radial-gradient(circle, #ffd700, #ff8c00)",
+                          boxShadow: "0 0 12px rgba(255, 215, 0, 0.6)",
+                          pointerEvents: "none",
+                          zIndex: 5
+                        }}
+                      />
+                    ))}
+
+                    {/* Combo Overlay */}
+                    {combo > 0 && (
+                      <div style={{
+                        position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)",
+                        pointerEvents: "none", textAlign: "center", zIndex: 10
+                      }}>
+                        <div style={{
+                          fontSize: combo >= 30 ? 46 : (combo >= 20 ? 38 : (combo >= 10 ? 30 : 22)),
+                          fontWeight: 950,
+                          color: combo >= 30 ? "#ff2d55" : (combo >= 20 ? "#ffcc00" : (combo >= 10 ? "#00f2ff" : "#fff")),
+                          textShadow: `0 0 ${combo >= 10 ? 25 : 10}px ${combo >= 30 ? "#ff2d55" : (combo >= 20 ? "#ffcc00" : (combo >= 10 ? "#00f2ff" : "rgba(255,255,255,0.5)"))}`,
+                          animation: combo % 10 === 0 ? "textShake 0.3s ease-in-out" : "none",
+                          transition: "all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+                        }}>
+                          {combo}
                         </div>
-                      ))}
-                      {breathNotes.map(n => (
-                        <div 
-                          key={n.id} 
-                          style={{ 
-                            position: "absolute",
-                            top: `${n.y}%`,
-                            left: `${n.lane * 20 + 10}%`,
-                            transform: "translateX(-50%)",
-                            width: 32,
-                            height: 32,
-                            borderRadius: "50%",
-                            background: "radial-gradient(circle, #ffd700, #ff8c00)",
-                            boxShadow: "0 0 12px rgba(255, 215, 0, 0.6)",
-                            pointerEvents: "none",
-                            zIndex: 5
-                          }} 
-                        />
-                      ))}
-                      
-                      {/* Combo Overlay */}
-                      {combo > 0 && (
-                       <div style={{
-                         position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)",
-                         pointerEvents: "none", textAlign: "center", zIndex: 10
-                       }}>
-                         <div style={{ 
-                           fontSize: combo >= 30 ? 46 : (combo >= 20 ? 38 : (combo >= 10 ? 30 : 22)), 
-                           fontWeight: 950, 
-                           color: combo >= 30 ? "#ff2d55" : (combo >= 20 ? "#ffcc00" : (combo >= 10 ? "#00f2ff" : "#fff")),
-                           textShadow: `0 0 ${combo >= 10 ? 25 : 10}px ${combo >= 30 ? "#ff2d55" : (combo >= 20 ? "#ffcc00" : (combo >= 10 ? "#00f2ff" : "rgba(255,255,255,0.5)"))}`,
-                           animation: combo % 10 === 0 ? "textShake 0.3s ease-in-out" : "none",
-                           transition: "all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
-                         }}>
-                           {combo}
-                         </div>
-                         <div style={{ 
-                           fontSize: 9, fontWeight: 800, color: "#fff", opacity: 0.7, 
-                           letterSpacing: 2, textTransform: "uppercase", marginTop: -5 
-                         }}>
-                           Combo
-                         </div>
-                       </div>
-                      )}
-                   </div>
-                   <div style={gameTip}>하단 원에 맞춰 기운(노트)을 탭하세요!</div>
+                        <div style={{
+                          fontSize: 9, fontWeight: 800, color: "#fff", opacity: 0.7,
+                          letterSpacing: 2, textTransform: "uppercase", marginTop: -5
+                        }}>
+                          Combo
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div style={gameTip}>하단 원에 맞춰 기운(노트)을 탭하세요!</div>
                 </div>
               )}
 
               {currentMiniGame === "pulse" && (
                 <div style={{ ...reflectArea, position: "relative" }}>
                   {pulseTargets.map(t => (
-                    <div 
-                      key={t.id} 
-                      onClick={() => handlePulseTap(t.id)} 
+                    <div
+                      key={t.id}
+                      onClick={() => handlePulseTap(t.id)}
                       style={{
                         position: "absolute",
                         left: `${t.x}%`,
@@ -1781,22 +1857,22 @@ export default function InnPanel({
 
               {/* 5. 객잔 투전판 (Yabawi) */}
               {currentMiniGame === "yabawi" && (
-                <YabawiGame 
+                <YabawiGame
                   onResult={handleYabawiResult}
                   userCoins={game.coins}
                   session={yabawiSession}
                   onStartGame={(bet) => {
                     const bBet = BigInt(bet);
                     if (BigInt(Math.floor(game.coins)) < bBet && Number(game.coins) < Number(bBet)) return false;
-                    useGameStore.setState((s: any) => ({ 
-                      game: { ...s.game, coins: s.game.coins - Number(bBet) } 
+                    useGameStore.setState((s: any) => ({
+                      game: { ...s.game, coins: s.game.coins - Number(bBet) }
                     }));
-                    
+
                     // Initialize or update session stake
                     if (yabawiSession) {
-                      setYabawiSession(prev => prev ? ({ 
-                        ...prev, 
-                        stakedGold: prev.stakedGold + bBet 
+                      setYabawiSession(prev => prev ? ({
+                        ...prev,
+                        stakedGold: prev.stakedGold + bBet
                       }) : null);
                     } else {
                       setYabawiSession({
@@ -1811,8 +1887,8 @@ export default function InnPanel({
                   onClaimReward={(amount) => {
                     const wReward = yabawiSession ? yabawiSession.stage * 15 : 0;
                     useGameStore.setState((s: any) => ({
-                      game: { 
-                        ...s.game, 
+                      game: {
+                        ...s.game,
                         coins: s.game.coins + Number(amount),
                         wisdom: (s.game.wisdom || 0) + wReward
                       }
@@ -1838,9 +1914,9 @@ export default function InnPanel({
 
               {/* 3. Meihua Poles Minigame (Dodge) */}
               {currentMiniGame === "dodge" && (
-                <div style={{ 
-                  background: '#0a0a0a', color: 'white', padding: '15px', borderRadius: '25px', 
-                  textAlign: 'center', width: '100%', maxWidth: '340px', margin: '0 auto', 
+                <div style={{
+                  background: '#0a0a0a', color: 'white', padding: '15px', borderRadius: '25px',
+                  textAlign: 'center', width: '100%', maxWidth: '340px', margin: '0 auto',
                   border: '2px solid #b45309', boxShadow: '0 0 15px rgba(180, 83, 9, 0.3)',
                   display: 'flex', flexDirection: 'column', gap: '10px'
                 }}>
@@ -1850,32 +1926,32 @@ export default function InnPanel({
                       <div style={{ fontSize: '10px', color: '#78716c' }}>Time: {dodgeTimeLeft.toFixed(1)}s</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                       <div style={{ fontSize: '16px' }}>{'❤️'.repeat(dodgeHp)}{'🖤'.repeat(3 - dodgeHp)}</div>
-                       <div style={{ fontSize: '10px', color: '#78716c' }}>Combo: {combo}</div>
+                      <div style={{ fontSize: '16px' }}>{'❤️'.repeat(dodgeHp)}{'🖤'.repeat(3 - dodgeHp)}</div>
+                      <div style={{ fontSize: '10px', color: '#78716c' }}>Combo: {combo}</div>
                     </div>
                   </div>
 
                   <div style={{ background: '#000', height: '180px', position: 'relative', borderRadius: '15px', overflow: 'hidden', border: '1px solid #292524' }}>
                     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                       {poles.map((side, i) => {
-                         const nP = getNumPoles(currentStage);
-                         const laneWidth = 100 / nP;
-                         return (
-                           <div key={i} style={{
-                             position: 'absolute', bottom: `${i * 30 + 15}px`,
-                             left: `${side * laneWidth + (laneWidth * 0.1)}%`,
-                             width: `${laneWidth * 0.8}%`, height: '20px', 
-                             background: i === 0 ? 'linear-gradient(to right, #f59e0b, #d97706)' : '#292524',
-                             borderRadius: '6px', opacity: i === 0 ? 1 : 1 / (i + 1.5),
-                             transform: i === 0 ? 'scale(1.1)' : 'scale(1)',
-                             display: 'flex', justifyContent: 'center', alignItems: 'center',
-                             boxShadow: i === 0 ? '0 0 10px #fbbf24' : 'none',
-                             transition: 'all 0.1s ease-out'
-                           }}>
-                             <span style={{ fontSize: '11px', fontWeight: 'bold', color: i === 0 ? '#fff' : '#666' }}>{side + 1}</span>
-                           </div>
-                         );
-                       })}
+                      {poles.map((side, i) => {
+                        const nP = getNumPoles(currentStage);
+                        const laneWidth = 100 / nP;
+                        return (
+                          <div key={i} style={{
+                            position: 'absolute', bottom: `${i * 30 + 15}px`,
+                            left: `${side * laneWidth + (laneWidth * 0.1)}%`,
+                            width: `${laneWidth * 0.8}%`, height: '20px',
+                            background: i === 0 ? 'linear-gradient(to right, #f59e0b, #d97706)' : '#292524',
+                            borderRadius: '6px', opacity: i === 0 ? 1 : 1 / (i + 1.5),
+                            transform: i === 0 ? 'scale(1.1)' : 'scale(1)',
+                            display: 'flex', justifyContent: 'center', alignItems: 'center',
+                            boxShadow: i === 0 ? '0 0 10px #fbbf24' : 'none',
+                            transition: 'all 0.1s ease-out'
+                          }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: i === 0 ? '#fff' : '#666' }}>{side + 1}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -1885,8 +1961,8 @@ export default function InnPanel({
                         key={idx}
                         onPointerDown={(e) => { e.preventDefault(); handlePolesStep(idx); }}
                         style={{
-                          flex: 1, height: '60px', background: '#292524', color: 'white', 
-                          fontSize: '20px', fontWeight: '900', borderRadius: '15px', 
+                          flex: 1, height: '60px', background: '#292524', color: 'white',
+                          fontSize: '20px', fontWeight: '900', borderRadius: '15px',
                           border: '1px solid #444', cursor: 'pointer',
                           boxShadow: '0 4px #1a1817'
                         }}
@@ -1902,63 +1978,63 @@ export default function InnPanel({
               {currentMiniGame === "puzzle" && (
                 <div style={{ position: "relative", width: "100%", flex: 1, background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, display: "flex", flexDirection: "column" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                     <div style={{ fontSize: 13, color: "#ffd700", fontWeight: 'bold' }}>Stage {currentStage} 단전 정렬</div>
-                     <div style={{ fontSize: 13, color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#fff" }}>잔여 시간: {puzzleTimeLeft.toFixed(1)}s</div>
+                    <div style={{ fontSize: 13, color: "#ffd700", fontWeight: 'bold' }}>Stage {currentStage} 단전 정렬</div>
+                    <div style={{ fontSize: 13, color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#fff" }}>잔여 시간: {puzzleTimeLeft.toFixed(1)}s</div>
                   </div>
 
                   {/* Dantian Gauge */}
                   <div style={{ height: 12, width: "100%", background: "#333", borderRadius: 6, marginBottom: 10, position: "relative", overflow: "hidden" }}>
-                    <div style={{ 
-                       height: "100%", 
-                       width: `${puzzleDantian}%`, 
-                       background: puzzleDantian > 80 ? "linear-gradient(90deg, #ff4d4d, #b30000)" : (puzzleDantian > 50 ? "#ffcc00" : "#4dabf7"),
-                       transition: "width 0.3s ease-out, background 0.5s" 
+                    <div style={{
+                      height: "100%",
+                      width: `${puzzleDantian}%`,
+                      background: puzzleDantian > 80 ? "linear-gradient(90deg, #ff4d4d, #b30000)" : (puzzleDantian > 50 ? "#ffcc00" : "#4dabf7"),
+                      transition: "width 0.3s ease-out, background 0.5s"
                     }} />
                     <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 9, fontWeight: 900, color: "#fff", textShadow: "0 0 2px #000" }}>
                       단전 안정도: {Math.floor(puzzleDantian)}% {puzzleDantian > 80 ? "(폭주 주의!)" : ""}
                     </div>
                   </div>
-                  
+
                   {/* Puzzle Grid Centering Wrapper */}
                   <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", minHeight: 0, width: "100%" }}>
-                    <div style={{ 
-                      width: "100%", 
+                    <div style={{
+                      width: "100%",
                       height: "100%",
                       maxHeight: "100%",
                       maxWidth: "100%",
                       aspectRatio: "1/1",
-                      display: "grid", 
-                      gridTemplateColumns: "repeat(9, 1fr)", 
+                      display: "grid",
+                      gridTemplateColumns: "repeat(9, 1fr)",
                       gridTemplateRows: "repeat(9, 1fr)",
-                      gap: "1%", 
-                      background: "rgba(255,255,255,0.03)", 
-                      padding: "2%", 
+                      gap: "1%",
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "2%",
                       borderRadius: 8,
                       perspective: "1000px",
                       touchAction: "none", // Prevent scrolling while swiping
                       position: "relative"
                     }}>
-                    {puzzleGrid.map((row, r) => row.map((cell, c) => (
-                      <div 
-                        key={cell.id}
-                        onClick={() => handlePuzzleCellClick(r, c)}
-                        onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
-                        onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          borderRadius: 4,
-                          background: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "rgba(255,255,255,0.1)" : "transparent",
-                          transition: "all 0.2s",
-                          position: "relative",
-                          opacity: cell.type === null ? 0 : 1,
-                          transform: cell.type === null ? "scale(0)" : "scale(1)"
-                        }}
-                      >
-                         <div style={{
+                      {puzzleGrid.map((row, r) => row.map((cell, c) => (
+                        <div
+                          key={cell.id}
+                          onClick={() => handlePuzzleCellClick(r, c)}
+                          onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
+                          onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            borderRadius: 4,
+                            background: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "rgba(255,255,255,0.1)" : "transparent",
+                            transition: "all 0.2s",
+                            position: "relative",
+                            opacity: cell.type === null ? 0 : 1,
+                            transform: cell.type === null ? "scale(0)" : "scale(1)"
+                          }}
+                        >
+                          <div style={{
                             width: "94%",
                             height: "94%",
                             borderRadius: "8px", // More block-like
@@ -1970,7 +2046,7 @@ export default function InnPanel({
                             transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
                             border: "1px solid rgba(255,255,255,0.2)",
                             background: (() => {
-                              switch(cell.type) {
+                              switch (cell.type) {
                                 case 'fire': return 'linear-gradient(135deg, #ff6b6b, #b30000)';
                                 case 'water': return 'linear-gradient(135deg, #4dabf7, #1864ab)';
                                 case 'wind': return 'linear-gradient(135deg, #63e6be, #087f5b)';
@@ -1979,19 +2055,19 @@ export default function InnPanel({
                                 default: return 'transparent';
                               }
                             })(),
-                            boxShadow: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c 
-                               ? "0 0 20px #fff, inset 0 0 10px rgba(255,255,255,0.5)" 
-                               : (cell.special ? "0 0 15px #fff, 0 0 5px #ffd700" : "0 4px 0 rgba(0,0,0,0.4), inset 0 2px 2px rgba(255,255,255,0.3)"),
+                            boxShadow: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c
+                              ? "0 0 20px #fff, inset 0 0 10px rgba(255,255,255,0.5)"
+                              : (cell.special ? "0 0 15px #fff, 0 0 5px #ffd700" : "0 4px 0 rgba(0,0,0,0.4), inset 0 2px 2px rgba(255,255,255,0.3)"),
                             transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.1) translateZ(20px)" : "scale(1)",
                             position: "relative"
-                         }}>
-                            {cell.special === 'row_clear' && <div style={{position:'absolute', width:'100%', height:2, background:'#fff', boxShadow:'0 0 10px #fff'}} />}
-                            {cell.special === 'col_clear' && <div style={{position:'absolute', width:2, height:'100%', background:'#fff', boxShadow:'0 0 10px #fff'}} />}
-                            {cell.special === 'area_clear' && <div style={{position:'absolute', width:'100%', height:'100%', borderRadius:'50%', border:'2px solid #fff', animation:'pulse 1s infinite'}} />}
-                            {cell.special === 'cross_clear' && <div style={{position:'absolute', width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><div style={{width:'80%', height:'80%', border:'3px double #fff'}} /></div>}
-                            
+                          }}>
+                            {cell.special === 'row_clear' && <div style={{ position: 'absolute', width: '100%', height: 2, background: '#fff', boxShadow: '0 0 10px #fff' }} />}
+                            {cell.special === 'col_clear' && <div style={{ position: 'absolute', width: 2, height: '100%', background: '#fff', boxShadow: '0 0 10px #fff' }} />}
+                            {cell.special === 'area_clear' && <div style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '2px solid #fff', animation: 'pulse 1s infinite' }} />}
+                            {cell.special === 'cross_clear' && <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: '80%', height: '80%', border: '3px double #fff' }} /></div>}
+
                             {(() => {
-                              switch(cell.type) {
+                              switch (cell.type) {
                                 case 'fire': return '🔥';
                                 case 'water': return '💧';
                                 case 'wind': return '🌪️';
@@ -2000,30 +2076,29 @@ export default function InnPanel({
                                 default: return '';
                               }
                             })()}
-                         </div>
-                      </div>
-                    )))}
-                    {/* Explosion Effects */}
-                    {puzzleEffects.map(eff => (
-                      <div 
-                        key={eff.id}
-                        style={{
-                          position: "absolute",
-                          left: `${(eff.c * (100 / 9)) + (100 / 18)}%`,
-                          top: `${(eff.r * (100 / 9)) + (100 / 18)}%`,
-                          width: 40,
-                          height: 40,
-                          background: eff.color,
-                          borderRadius: "50%",
-                          transform: "translate(-50%, -50%)",
-                          pointerEvents: "none",
-                          animation: "puzzleBurst 0.6s ease-out forwards",
-                          zIndex: 10,
-                          filter: "blur(2px) brightness(1.5)"
-                        }}
-                      />
-                    ))}
-                  </div>
+                          </div>
+                        </div>
+                      )))}
+                      {/* Explosion Effects */}
+                      {puzzleEffects.map(eff => (
+                        <div
+                          key={eff.id}
+                          style={{
+                            position: "absolute",
+                            left: `${(eff.c * (100 / 9)) + (100 / 18)}%`,
+                            width: 40,
+                            height: 40,
+                            background: eff.color,
+                            borderRadius: "50%",
+                            transform: "translate(-50%, -50%)",
+                            pointerEvents: "none",
+                            animation: "puzzleBurst 0.6s ease-out forwards",
+                            zIndex: 10,
+                            filter: "blur(2px) brightness(1.5)"
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
                   {puzzleIsProcessing && (
                     <div style={{ position: "absolute", bottom: 15, left: "50%", transform: "translateX(-50%)", fontSize: 14, fontWeight: 900, color: "#ffd700", textShadow: "0 0 10px #000" }}>
@@ -2034,73 +2109,165 @@ export default function InnPanel({
               )}
             </div>
           ) : (
-            <div style={{ ...lobbyOverlay, justifyContent: "space-between", padding: "20px" }}>
+            <div style={{ ...lobbyOverlay, justifyContent: "space-between", padding: "20px", position: "relative" }}>
+              {/* 0. 새로운 객잔 배경 이미지 */}
               <div style={{
-                position: "absolute", top: -50, right: -50, width: 250, height: 250, 
-                background: "rgba(255,140,0,0.15)", borderRadius: "50%", filter: "blur(60px)"
-              }} />
-              
-              {/* 1. 타이틀 & 기록 (상단 밀착) */}
-              <div style={{ width: "100%", textAlign: "center", zIndex: 5 }}>
-                <div style={{ 
-                  background: "rgba(0,0,0,0.6)", padding: "10px 20px", borderRadius: "14px", 
-                  border: "1px solid rgba(255,215,0,0.4)", marginBottom: "12px",
-                  display: "inline-flex", alignItems: "center", gap: "10px"
-                }}>
-                  <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>무뢰배 출현!</h2>
-                </div>
-
-                <div style={{ 
-                  background: "linear-gradient(90deg, transparent, rgba(255,215,0,0.15), transparent)", 
-                  padding: "6px 20px", width: "100%", textAlign: "center",
-                  fontSize: "15px", color: "#ffd700", fontWeight: 900, textShadow: "0 0 10px rgba(0,0,0,0.5)"
-                }}>
-                  위명 등급: {getInnBonus().name}
-                </div>
-                <div style={{ fontSize: "12px", color: "rgba(255,215,0,0.7)", marginTop: "4px" }}>
-                  최다 위명 기록: {(game.innHighScore || 0).toLocaleString()}
-                </div>
-              </div>
-
-              {/* 2. 거대 상반신 캐릭터 (중앙 넓은 공간) */}
-              <div style={{ 
-                flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "center",
-                width: "100%", maxHeight: "300px", overflow: "hidden", margin: "10px 0"
+                position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                zIndex: 0, overflow: "hidden",
+                WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 95%)",
+                maskImage: "radial-gradient(ellipse at center, black 30%, transparent 95%)"
               }}>
-                <div style={{ 
-                  position: "absolute", width: "240px", height: "240px", 
-                  background: "radial-gradient(circle, rgba(255,215,0,0.25) 0%, transparent 70%)",
-                  borderRadius: "50%", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-                  animation: "pulse 2s infinite"
-                }} />
-                
                 <img 
-                  src={getPlayerImage()} 
-                  alt="My Character" 
+                  src="/images/inn_bg.png" 
+                  alt="Inn Background" 
                   style={{ 
-                    width: "280px", height: "auto", zIndex: 2, 
-                    marginTop: "20px", 
-                    filter: "drop-shadow(0 0 25px rgba(255,215,0,0.6)) brightness(1.15)" 
+                    width: "100%", height: "140%", 
+                    objectFit: "cover", opacity: 0.8, 
+                    filter: "brightness(0.6) contrast(1.1)",
+                    transform: "translateY(-45%)" 
                   }}
                 />
               </div>
 
+              {/* 1. 타이틀 & 기록 (상단 밀착) */}
+              <div style={{ width: "100%", height: 10, zIndex: 5 }}></div>
+
+              {/* 2. 시나리오 캐릭터 배치 (여인, 무뢰배, 주인공) */}
+              <div style={{ 
+                flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "center",
+                width: "100%", minHeight: "380px", overflow: "visible", margin: "0"
+              }}>
+                {/* Parallax Aura Layer (Moves oppositely to character) */}
+                <div style={{
+                  position: "absolute", top: "45%", left: "50%", zIndex: 1,
+                  animation: "aura3DPan 7s ease-in-out infinite"
+                }}>
+                  <div style={{
+                    position: "absolute", width: "320px", height: "320px",
+                    background: "conic-gradient(from 0deg, rgba(255,215,0,0) 0%, rgba(255,180,0,0.25) 25%, rgba(255,215,0,0) 50%, rgba(255,140,0,0.25) 75%, rgba(255,215,0,0) 100%)",
+                    borderRadius: "50%", filter: "blur(20px)",
+                    animation: "auraSpin 12s linear infinite"
+                  }} />
+                  <div style={{
+                    position: "absolute", width: "220px", height: "220px",
+                    background: "radial-gradient(circle, rgba(255,215,0,0.25) 0%, transparent 70%)",
+                    borderRadius: "50%", transform: "translate(-50%, -50%)",
+                    animation: "pulse 3.5s infinite"
+                  }} />
+                </div>
+
+                {/* --- 시나리오 인물 추가 --- */}
+                
+                {/* [의자] 배경 소품 추가 */}
+                <img 
+                  src="/images/inn_chair.png" 
+                  alt="Inn Chair" 
+                  style={{
+                    position: "absolute", bottom: "20px", left: "30%", height: "220px",
+                    objectFit: "contain", zIndex: 11, opacity: 1,
+                    animation: "character3DPanMild 10s ease-in-out infinite alternate", // 매우 천천히 움직임
+                    filter: "drop-shadow(0 0 15px rgba(0,0,0,0.6))"
+                  }}
+                />
+
+                {/* [여인] 피해를 입고 있는 모습 */}
+                <img 
+                  src="/images/inn_woman.png" 
+                  alt="Inn Woman" 
+                  style={{
+                    position: "absolute", bottom: "150px", left: "54%", height: "300px",
+                    objectFit: "contain", zIndex: 3, opacity: 0.9,
+                    animation: "character3DPanMild 7.5s ease-in-out infinite alternate", // 주인공보다 더 차분한 움직임
+                    animationDelay: "-1s",
+                    filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))"
+                  }}
+                />
+
+                {/* [무뢰배] 여인을 위협하는 모습 */}
+                <img 
+                  src="/images/inn_thug.png" 
+                  alt="Inn Thug" 
+                  style={{
+                    position: "absolute", bottom: "120px", left: "50%", height: "320px",
+                    objectFit: "contain", zIndex: 2, opacity: 1,
+                    animation: "character3DPan 6.5s ease-in-out infinite alternate", // 조금 더 거친 느낌
+                    animationDelay: "-2s",
+                    filter: "drop-shadow(0 0 15px rgba(0,0,0,0.7)) brightness(0.9) sepia(0.2)"
+                  }}
+                />
+
+                {/* [주인공] 사용자가 조정한 포지션 유지 */}
+                <img 
+                  src={getPlayerImage()} 
+                  alt="My Character" 
+                  style={{ 
+                    maxWidth: "100%", height: "600px", objectFit: "contain", zIndex: 4, 
+                    animation: "character3DPan 7s ease-in-out infinite",
+                    marginTop: "330px", marginLeft: "-180px",
+                    filter: "drop-shadow(0 0 20px rgba(0,0,0,0.8)) brightness(1.1)"
+                  }}
+                />
+
+                {/* 3D High Score Badge (Prestige Pressure) */}
+                <div style={{
+                  position: "absolute",
+                  left: "-10px",
+                  top: "-15px",
+                  zIndex: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "4px",
+                  background: "rgba(0,0,0,0.6)",
+                  padding: "8px 12px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,215,0,0.3)",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(4px)",
+                  animation: "floatUpDown 4s ease-in-out infinite"
+                }}>
+                  <div style={{ fontSize: "10px", color: "#aaa", fontWeight: "bold" }}>최다 위명 기록</div>
+                  <div style={{ fontSize: "15px", color: "#ffd700", fontWeight: "900", textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>
+                    <Counter value={game.innHighScore || 0} />
+                  </div>
+                  { (game.lastInnScore || 0) > 0 && (
+                    <>
+                      <div style={{ marginTop: "4px", fontSize: "10px", color: "#888", fontWeight: "bold" }}>이전 수련 기록</div>
+                      <div style={{ fontSize: "13px", color: "#eee", fontWeight: "800" }}>
+                        <Counter value={game.lastInnScore || 0} />
+                      </div>
+                    </>
+                  )}
+                  <div style={{ 
+                    marginTop: "6px",
+                    fontSize: "10px", 
+                    color: "#4dff4d", 
+                    fontWeight: "850",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "3px"
+                  }}>
+                    <span style={{ fontSize: "12px" }}>⚔️</span> 위명 위압 +{ Math.floor((game.innHighScore || 0) / 500) }%
+                  </div>
+                </div>
+              </div>
+
               {/* 3. 설명 & 버튼 (하단 밀착) */}
-              <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", zIndex: 5 }}>
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", zIndex: 20 }}>
                 <p style={{ fontSize: 13, margin: 0, opacity: 1, lineHeight: 1.5, color: "#eee", textAlign: "center" }}>
-                  객잔을 어지럽히는 <span style={{ color: "#ff4d4d", fontWeight: 800 }}>{mission.rivalName}</span> 무리를 제압하세요.<br/>
+                  객잔을 어지럽히는 <span style={{ color: "#ff4d4d", fontWeight: 800 }}>{mission.rivalName}</span> 무리를 제압하세요.<br />
                   <span style={{ color: "#ffd700", fontWeight: 800 }}>총 {mission.requiredHits}단계</span>의 수련을 완수해야 합니다.
                 </p>
 
                 <div style={{ display: "flex", flexDirection: "column", width: "100%", gap: "10px", alignItems: "center" }}>
                   <button onClick={startMission} style={{ ...primaryButton, width: "100%", maxWidth: "280px", padding: "14px", fontSize: "18px" }}>대련 시작</button>
                   <div style={{ display: "flex", width: "100%", maxWidth: "280px", gap: "10px" }}>
-                    <button 
+                    <button
                       onClick={() => {
                         resetGameState("yabawi");
                         setIsPlaying(true);
                         isPlayingRef.current = true;
-                      }} 
+                      }}
                       style={{
                         ...primaryButton,
                         flex: 1.5,
@@ -2111,24 +2278,35 @@ export default function InnPanel({
                     >
                       🎰 투전판 입장
                     </button>
-                    <button 
+                    <button
                       onClick={() => {
                         if (confirm("대련을 건너뛰시겠습니까? (보상을 획득할 수 없습니다.)")) {
                           resolveTimingMission({ success: false, score: 0, grade: "MISS", isFinal: true });
                         }
-                      }} 
+                      }}
                       style={{
                         flex: 1,
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        color: "#888",
+                        background: "linear-gradient(to bottom, rgba(60, 60, 70, 0.8), rgba(30, 30, 40, 0.8))",
+                        border: "1px solid rgba(255, 255, 255, 0.3)",
+                        color: "#eee",
                         padding: "12px",
                         borderRadius: "12px",
-                        fontSize: "11px",
-                        cursor: "pointer"
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        boxShadow: "0 4px 10px rgba(0,0,0,0.3)"
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#ccc"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#888"; }}
+                      onMouseEnter={(e) => { 
+                        e.currentTarget.style.background = "linear-gradient(to bottom, rgba(80, 80, 90, 0.9), rgba(50, 50, 60, 0.9))";
+                        e.currentTarget.style.borderColor = "rgba(255, 215, 0, 0.5)";
+                        e.currentTarget.style.color = "#ffd700";
+                      }}
+                      onMouseLeave={(e) => { 
+                        e.currentTarget.style.background = "linear-gradient(to bottom, rgba(60, 60, 70, 0.8), rgba(30, 30, 40, 0.8))";
+                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                        e.currentTarget.style.color = "#eee";
+                      }}
                     >
                       건너뛰기
                     </button>
@@ -2140,31 +2318,31 @@ export default function InnPanel({
         </div>
       ) : (
         <div style={{ ...lobbyOverlay, background: "rgba(0,0,0,0.8)", border: "1px dashed rgba(255,215,0,0.2)" }}>
-           <div style={{ fontSize: 50, marginBottom: 20 }}>🏮</div>
-           <h3 style={{ color: "#ffd700", fontWeight: 900 }}>평화로운 객잔</h3>
-           <p style={{ fontSize: 13, opacity: 0.7, maxWidth: 220, lineHeight: 1.6, marginTop: 10 }}>
-              현재는 객잔이 평화롭습니다. 한가할 때 투전판에서 운을 시험해 보시겠습니까?
-           </p>
-           <button 
-              onClick={() => {
-                resetGameState("yabawi");
-                setIsPlaying(true);
-                isPlayingRef.current = true;
-                enterFullScreen();
-              }} 
-              style={{
-                ...primaryButton,
-                marginTop: 20,
-                background: "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)",
-                padding: "12px 24px",
-                fontSize: "16px"
-              }}
-            >
-              🎰 투전판 입장
-            </button>
-           <div style={{ marginTop: 20, padding: "12px 20px", background: "rgba(255,255,255,0.05)", borderRadius: 12, fontSize: 11, color: "#888" }}>
-              (수련 페이지에서 허수아비를 처치하다 보면 무뢰배가 나타납니다)
-           </div>
+          <div style={{ fontSize: 50, marginBottom: 20 }}>🏮</div>
+          <h3 style={{ color: "#ffd700", fontWeight: 900 }}>평화로운 객잔</h3>
+          <p style={{ fontSize: 13, opacity: 0.7, maxWidth: 220, lineHeight: 1.6, marginTop: 10 }}>
+            현재는 객잔이 평화롭습니다. 한가할 때 투전판에서 운을 시험해 보시겠습니까?
+          </p>
+          <button
+            onClick={() => {
+              resetGameState("yabawi");
+              setIsPlaying(true);
+              isPlayingRef.current = true;
+              enterFullScreen();
+            }}
+            style={{
+              ...primaryButton,
+              marginTop: 20,
+              background: "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)",
+              padding: "12px 24px",
+              fontSize: "16px"
+            }}
+          >
+            🎰 투전판 입장
+          </button>
+          <div style={{ marginTop: 20, padding: "12px 20px", background: "rgba(255,255,255,0.05)", borderRadius: 12, fontSize: 11, color: "#888" }}>
+            (수련 페이지에서 허수아비를 처치하다 보면 무뢰배가 나타납니다)
+          </div>
         </div>
       )}
 
@@ -2187,10 +2365,10 @@ export default function InnPanel({
 
       {isSuccessPopup && (
         <div style={{ ...rewardOverlay }}>
-          <div 
-            style={{ 
-              ...rewardCard, 
-              borderColor: "#ffd700", 
+          <div
+            style={{
+              ...rewardCard,
+              borderColor: "#ffd700",
               background: "linear-gradient(165deg, #1a1a2e 0%, #16213e 100%)",
               minWidth: "280px",
               animation: "popupEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
@@ -2199,33 +2377,33 @@ export default function InnPanel({
             <div style={{ fontSize: 50, filter: "drop-shadow(0 0 10px #ffd700)" }}>🏆</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: "#ffd700", marginTop: 15, textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>대련 승리!</div>
             <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 20 }}>무뢰배들을 완벽하게 제압했습니다.</div>
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "25px" }}>
-               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,0,0.2)" }}>
-                  <span style={{ color: "#aaa", fontSize: 13 }}>금화 보상</span>
-                  <span style={{ color: "#ffd700", fontWeight: 700 }}>+{victoryRewards.gold.toLocaleString()}</span>
-               </div>
-               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(0,242,255,0.2)" }}>
-                  <span style={{ color: "#aaa", fontSize: 13 }}>명성 획득</span>
-                  <span style={{ color: "#00f2ff", fontWeight: 700 }}>+{victoryRewards.rep.toLocaleString()}</span>
-               </div>
-               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,120,0.4)" }}>
-                  <span style={{ color: "#aaa", fontSize: 13 }}>현철 강화석</span>
-                  <span style={{ color: "#ffd700", fontWeight: 700 }}>+{victoryRewards.stones.toLocaleString()}개</span>
-               </div>
-               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(102,204,255,0.1)", borderRadius: "12px", border: "1px solid rgba(102,204,255,0.4)" }}>
-                  <span style={{ color: "#aaa", fontSize: 13 }}>심득(깨달음)</span>
-                  <span style={{ color: "#66ccff", fontWeight: 700 }}>+{victoryRewards.wisdom.toLocaleString()} pt</span>
-               </div>
-               {victoryRewards.item && (
-                 <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.2)" }}>
-                    <span style={{ color: "#aaa", fontSize: 13 }}>추가 획득</span>
-                    <span style={{ color: "#fff", fontWeight: 700 }}>{victoryRewards.item}</span>
-                 </div>
-               )}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,0,0.2)" }}>
+                <span style={{ color: "#aaa", fontSize: 13 }}>금화 보상</span>
+                <span style={{ color: "#ffd700", fontWeight: 700 }}>+{victoryRewards.gold.toLocaleString()}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(0,242,255,0.2)" }}>
+                <span style={{ color: "#aaa", fontSize: 13 }}>명성 획득</span>
+                <span style={{ color: "#00f2ff", fontWeight: 700 }}>+{victoryRewards.rep.toLocaleString()}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,120,0.4)" }}>
+                <span style={{ color: "#aaa", fontSize: 13 }}>현철 강화석</span>
+                <span style={{ color: "#ffd700", fontWeight: 700 }}>+{victoryRewards.stones.toLocaleString()}개</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(102,204,255,0.1)", borderRadius: "12px", border: "1px solid rgba(102,204,255,0.4)" }}>
+                <span style={{ color: "#aaa", fontSize: 13 }}>심득(깨달음)</span>
+                <span style={{ color: "#66ccff", fontWeight: 700 }}>+{victoryRewards.wisdom.toLocaleString()} pt</span>
+              </div>
+              {victoryRewards.item && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <span style={{ color: "#aaa", fontSize: 13 }}>추가 획득</span>
+                  <span style={{ color: "#fff", fontWeight: 700 }}>{victoryRewards.item}</span>
+                </div>
+              )}
             </div>
 
-            <button 
+            <button
               onClick={closeSuccessAndExit}
               style={{ ...primaryButton, width: "100%", padding: "14px" }}
             >
@@ -2241,18 +2419,18 @@ export default function InnPanel({
             <div style={{ fontSize: 40 }}>❌</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: "#ff4d4d", marginTop: 10 }}>대련 패배</div>
             <div style={{ fontSize: 14, margin: "15px 0", opacity: 0.8 }}>{failReason}</div>
-            
+
             {localFailCount < 2 ? (
               <button onClick={startMission} style={{ ...primaryButton, background: "linear-gradient(135deg, #ff4d4d, #b30000)", boxShadow: "0 4px 15px rgba(255,77,77,0.3)", color: "#fff" }}>
                 다시 도전 (남은 기회 1회)
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => {
                   setIsFailPopup(false);
                   // 전역 탭 상태를 수련장으로 명시적 전환
                   useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training", timingMission: { ...s.game.timingMission, available: false } } }));
-                }} 
+                }}
                 style={{ ...primaryButton, background: "#333", color: "#888" }}
               >
                 수련으로 복귀 (보상 없음)
@@ -2260,14 +2438,191 @@ export default function InnPanel({
             )}
 
             <div style={{ marginTop: 15, fontSize: 11, opacity: 0.5, cursor: "pointer" }} onClick={() => {
-               setIsFailPopup(false);
-               useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training", timingMission: { ...s.game.timingMission, available: false } } }));
+              setIsFailPopup(false);
+              useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training", timingMission: { ...s.game.timingMission, available: false } } }));
             }}>
               나중에 하기
             </div>
           </div>
         </div>
       )}
+
+      {/* 객잔 전체 박스 하단에서 올라오는 활활 타오르는 화염과 혈무 (Blazing Fire & Blood Mist) */}
+      <div style={{
+        position: "absolute", bottom: "0", left: "0", width: "100%", height: "500px", // ⬅️ 높이를 충분히 늘려 상단 커팅 방지
+        zIndex: 10, pointerEvents: "none", overflow: "hidden",
+        WebkitMaskImage: "linear-gradient(to top, black 20%, transparent 100%)", // ⬅️ 컨테이너 전체에 마스크 적용
+        maskImage: "linear-gradient(to top, black 20%, transparent 100%)"
+      }}>
+        {/* 화염 베이스 광원 (Deeper Burnt Red & Brown Base) */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
+          background: "linear-gradient(to top, rgba(60,20,0,0.9) 0%, rgba(139,0,0,0.4) 40%, transparent 100%)",
+          animation: "flamePulse 45s infinite" // 극도로 느려진 베이스 숨결
+        }} />
+
+
+
+        {/* 활활 타오르는 날카로운 화염 (Wriggling Qi-Fire - Spacious & Ultra Slow) */}
+        {[...Array(8)].map((_, i) => (
+          <div key={`flame-${i}`} style={{
+            position: "absolute", bottom: "-50px", left: `${i * 13 - 2}%`,
+            width: "60px", height: "180px",
+            background: i % 2 === 0
+              ? "linear-gradient(to top, #4e3629 0%, #8b0000 40%, transparent 95%)"
+              : "linear-gradient(to top, #8b0000 0%, #ff0000 40%, transparent 95%)",
+            borderRadius: "100% 100% 0 0",
+            animation: `flameFlicker ${25 + Math.random() * 20}s ease-in-out infinite, wriggle ${20 + i * 2}s ease-in-out infinite`,
+            animationDelay: `${i * 2}s`,
+            opacity: 0.8, zIndex: 2,
+            filter: "blur(25px)",
+            transformOrigin: "bottom center"
+          }} />
+        ))}
+
+        {/* 검은 그을림 안개 (Black Soot & Dark Smoke - Eternal Drifting Ultra Slow) */}
+        {[...Array(6)].map((_, i) => (
+          <div key={`soot-${i}`} style={{
+            position: "absolute", bottom: "-40px", left: `${i * 20 + 10}%`,
+            width: "250px", height: "150px",
+            background: "rgba(0,0,0,0.35)",
+            borderRadius: "50%", filter: "blur(40px)",
+            animation: `sootRise ${80 + (i % 5) * 20}s ease-in-out infinite`,
+            animationDelay: `${i * 8}s`,
+            zIndex: 3
+          }} />
+        ))}
+
+        {/* Bottom Base Glow (Dense to Transparent Gradient) */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
+          background: "linear-gradient(to top, rgba(139,0,0,0.7) 0%, rgba(139,0,0,0.3) 30%, transparent 100%)",
+        }} />
+        {/* Rising Smoke Particles - Serene Mist Ultra Slow */}
+        {[...Array(10)].map((_, i) => (
+          <div key={i} style={{
+            position: "absolute", bottom: "-40px", left: `${i * 12 - 5}%`,
+            width: "220px", height: "120px",
+            background: "rgba(139,0,0,0.2)",
+            borderRadius: "50%", filter: "blur(40px)",
+            animation: `bloodMistRise ${45 + (i % 5) * 15}s ease-in-out infinite`,
+            animationDelay: `${i * 4}s`
+          }} />
+        ))}
+
+        {/* 입체적인 화염 레이어 시스템 (4-Layer Volumetric Fire) */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, width: "100%", height: "100%",
+          zIndex: 10
+        }}>
+          {/* 붉은 마기 후광 레이어 (Red Demonic Aura behind flames) */}
+          <div style={{
+            position: "absolute", bottom: "100px", left: "50%", zIndex: 5,
+            transform: "translateX(-50%)",
+            animation: "character3DPan 7s ease-in-out infinite"
+          }}>
+            <div style={{
+              position: "absolute", width: "700px", height: "350px",
+              background: "conic-gradient(from 180deg, rgba(255,0,0,0) 0%, rgba(139,0,0,0.35) 25%, rgba(255,0,0,0) 50%, rgba(139,0,0,0.35) 75%, rgba(255,0,0,0) 100%)",
+              borderRadius: "50% 50% 0 0", filter: "blur(50px)",
+              animation: "auraSpin 15s linear infinite",
+              transform: "translateX(-50%)"
+            }} />
+            <div style={{
+              position: "absolute", width: "500px", height: "250px",
+              background: "radial-gradient(ellipse, rgba(255,0,0,0.45) 0%, transparent 80%)",
+              borderRadius: "50% 50% 0 0", filter: "blur(30px)",
+              animation: "pulse 4s infinite",
+              transform: "translateX(-50%)"
+            }} />
+          </div>
+
+          {/* 1. 배경 레이어 (Back) - 캐릭터와 반대 방향 */}
+          <img
+            src="/images/bg_inn_fire_back.png"
+            alt="Fire Layer Back"
+            style={{
+              position: "absolute", bottom: "-20px", left: "60%", width: "140%", height: "280px",
+              objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.4, zIndex: 10,
+              filter: "contrast(1.1) brightness(1.0) blur(3px)",
+              animation: "flamePulse 30s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
+              animationDirection: "alternate, reverse",
+              animationDelay: "0s", pointerEvents: "none", transform: "scaleX(1)",
+              WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
+              maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
+            }}
+          />
+
+          {/* 2. 중간 레이어 (Mid) - 캐릭터와 같은 방향 + 꿈틀거리는 기운 효과 */}
+          <div style={{
+            position: "absolute", bottom: "-95px", left: "-15%", width: "120%", height: "400px",
+            animation: "wriggle 22s ease-in-out infinite", // ⬅️ 2번에 일렁임 추가
+            zIndex: 11
+          }}>
+            <img
+              src="/images/bg_inn_fire_mid.png"
+              alt="Fire Layer Mid"
+              style={{
+                width: "100%", height: "100%",
+                objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.6,
+                filter: "contrast(1.2) brightness(1.1) blur(2px)",
+                animation: "flamePulse 40s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
+                animationDelay: "-7s", pointerEvents: "none", transform: "scaleX(-1)",
+                WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
+                maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
+              }}
+            />
+          </div>
+
+          {/* 3. 전면 레이어 (Front) - 캐릭터와 같은 방향 */}
+          <img
+            src="/images/bg_inn_fire_front.png"
+            alt="Fire Layer Front"
+            style={{
+              position: "absolute", bottom: "-70px", left: "0%", width: "150%", height: "320px",
+              objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.8, zIndex: 12,
+              filter: "contrast(1.3) brightness(1.2) blur(1px)",
+              animation: "flamePulse 50s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
+              animationDelay: "-14s", pointerEvents: "none", transform: "scaleX(1)",
+              WebkitMaskImage: "linear-gradient(to top, black 70%, transparent 100%)",
+              maskImage: "linear-gradient(to top, black 70%, transparent 100%)"
+            }}
+          />
+
+          {/* 4. 최전면 오버레이 레이어 (Overlay) - 캐릭터와 같은 방향 */}
+          <img
+            src="/images/bg_inn_fire_overlay.png"
+            alt="Fire Layer Overlay"
+            style={{
+              position: "absolute", bottom: "-85px", left: "45%", width: "130%", height: "350px",
+              objectFit: "cover", objectPosition: "bottom", mixBlendMode: "screen", opacity: 0.9, zIndex: 13,
+              filter: "contrast(1.4) brightness(1.3) blur(0.5px)",
+              animation: "flamePulse 45s ease-in-out infinite alternate, character3DPan 7s ease-in-out infinite",
+              animationDelay: "-21s", pointerEvents: "none", transform: "scaleX(-1)",
+              WebkitMaskImage: "linear-gradient(to top, black 60%, transparent 100%)",
+              maskImage: "linear-gradient(to top, black 60%, transparent 100%)"
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 최상단 레이어에서 튀어오르는 불씨 (Foreground Embers) */}
+      <div style={{
+        position: "absolute", bottom: "0", left: "0", width: "100%", height: "100%",
+        zIndex: 20, pointerEvents: "none", overflow: "hidden"
+      }}>
+        {[...Array(8)].map((_, i) => (
+          <div key={`ember-top-${i}`} style={{
+            position: "absolute", bottom: "10px", left: `${Math.random() * 100}%`,
+            width: `${Math.random() * 4 + 4}px`, height: `${Math.random() * 4 + 4}px`,
+            background: "#ff3300",
+            borderRadius: "50%",
+            boxShadow: "0 0 15px #ff0000, 0 0 25px #8b0000, 0 0 35px rgba(255,100,0,0.6)",
+            animation: `emberRise ${25 + Math.random() * 20}s linear infinite`,
+            animationDelay: `${Math.random() * 20}s`,
+          }} />
+        ))}
+      </div>
 
       {isHitFlash && <div style={flashOverlay} />}
 
@@ -2300,26 +2655,26 @@ export default function InnPanel({
       {/* TIER LIST MODAL */}
       {showTierList && (
         <div style={{
-          position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10000, 
+          position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10000,
           background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)",
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20
         }} onClick={() => setShowTierList(false)}>
           <div style={{
-            width: "100%", maxWidth: 360, background: "linear-gradient(135deg, #1a1a24 0%, #0d0d12 100%)", 
-            borderRadius: 24, padding: 24, border: "1px solid rgba(255,215,0,0.3)", 
+            width: "100%", maxWidth: 360, background: "linear-gradient(135deg, #1a1a24 0%, #0d0d12 100%)",
+            borderRadius: 24, padding: 24, border: "1px solid rgba(255,215,0,0.3)",
             maxHeight: "80%", overflow: "hidden", display: "flex", flexDirection: "column",
             boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ color: "#ffd700", margin: 0, fontWeight: 900 }}>객잔 등급별 명예 혜택</h3>
-              <button 
-                onClick={() => setShowTierList(false)} 
+              <button
+                onClick={() => setShowTierList(false)}
                 style={{ background: "rgba(255,255,255,0.05)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer" }}
               >
                 &times;
               </button>
             </div>
-            
+
             <div style={{ overflowY: "auto", flex: 1, paddingRight: 6, display: "flex", flexDirection: "column", gap: 8 }}>
               {DUEL_TIER_DETAILS.map((t, i) => {
                 const isCurrent = duel.tier === t.name;
@@ -2345,8 +2700,8 @@ export default function InnPanel({
                 );
               })}
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setShowTierList(false)}
               style={{ ...primaryButton, width: "100%", padding: 14, marginTop: 20, fontSize: 16 }}
             >

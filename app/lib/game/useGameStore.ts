@@ -1122,6 +1122,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             reputation: (s.game.reputation || 0) + repGain,
             consumables: newConsumables,
             activeBuff: "무아지경", 
+            lastInnScore: p.score || 0,
             innHighScore: Math.max(game.innHighScore || 0, p.score || 0),
             timingMission: { ...s.game.timingMission, available: false },
             activeTab: "training", // 수련장 복귀 추가
