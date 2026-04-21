@@ -310,6 +310,7 @@ export default function InnPanel({
   const dodgeHpRef = useRef(3);
   const playerScoreRef = useRef(0);
   const totalNotesSpawnedRef = useRef(0);
+  const lastHitTimeRef = useRef<Record<string, number>>({});
 
   const animationRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -817,6 +818,11 @@ export default function InnPanel({
   };
 
   const handleBreathTap = (lane: number) => {
+    const now = Date.now();
+    const key = `breath_${lane}`;
+    if (now - (lastHitTimeRef.current[key] || 0) < 100) return; // 레인별 중복 호출 방지
+    lastHitTimeRef.current[key] = now;
+
     if (!isPlaying || currentMiniGame !== "breath") return;
     const hitZone = 88; 
     const tolerance = 10;
@@ -935,6 +941,11 @@ export default function InnPanel({
   };
 
   const handlePolesStep = (side: number) => {
+    const now = Date.now();
+    const key = "dodge";
+    if (now - (lastHitTimeRef.current[key] || 0) < 100) return; // 보법 중복 방지
+    lastHitTimeRef.current[key] = now;
+
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
 
     if (polesRef.current[0] === side) {
@@ -1361,6 +1372,11 @@ export default function InnPanel({
   };
 
   const handlePulseTap = (id: number) => {
+    const now = Date.now();
+    const key = `pulse_${id}`; // 펄스는 객체별 ID로 중복 방지
+    if (now - (lastHitTimeRef.current[key] || 0) < 200) return;
+    lastHitTimeRef.current[key] = now;
+
     const target = pulseTargetsRef.current.find(t => t.id === id);
     if (!target) return;
 
@@ -2018,99 +2034,106 @@ export default function InnPanel({
               )}
             </div>
           ) : (
-            <div style={lobbyOverlay}>
+            <div style={{ ...lobbyOverlay, justifyContent: "space-between", padding: "20px" }}>
               <div style={{
-                position: "absolute", top: -50, right: -50, width: 200, height: 200, 
-                background: "rgba(255,140,0,0.1)", borderRadius: "50%", filter: "blur(60px)"
+                position: "absolute", top: -50, right: -50, width: 250, height: 250, 
+                background: "rgba(255,140,0,0.15)", borderRadius: "50%", filter: "blur(60px)"
               }} />
               
-              <div style={{ 
-                background: "rgba(0,0,0,0.4)", padding: "8px 20px", borderRadius: "12px", 
-                border: "1px solid rgba(255,215,0,0.3)", marginBottom: "20px",
-                display: "flex", alignItems: "center", gap: "10px"
-              }}>
-               
-                <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>무뢰배 출현!</h2>
-              </div>
-
-              <div style={{ width: "100%", marginBottom: "25px", textAlign: "center" }}>
-                <div style={{ fontSize: "11px", color: "rgba(255,215,0,0.6)", marginBottom: "5px" }}>
-                  객잔 최다 위명 기록: <span style={{ color: "#ffd700", fontWeight: 900 }}>{(game.innHighScore || 0).toLocaleString()}</span>
+              {/* 1. 타이틀 & 기록 (상단 밀착) */}
+              <div style={{ width: "100%", textAlign: "center", zIndex: 5 }}>
+                <div style={{ 
+                  background: "rgba(0,0,0,0.6)", padding: "10px 20px", borderRadius: "14px", 
+                  border: "1px solid rgba(255,215,0,0.4)", marginBottom: "12px",
+                  display: "inline-flex", alignItems: "center", gap: "10px"
+                }}>
+                  <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>무뢰배 출현!</h2>
                 </div>
+
                 <div style={{ 
                   background: "linear-gradient(90deg, transparent, rgba(255,215,0,0.15), transparent)", 
-                  padding: "5px 20px", width: "100%", textAlign: "center",
-                  fontSize: "14px", color: "#ffd700", fontWeight: 900, textShadow: "0 0 10px rgba(255,215,0,0.5)"
+                  padding: "6px 20px", width: "100%", textAlign: "center",
+                  fontSize: "15px", color: "#ffd700", fontWeight: 900, textShadow: "0 0 10px rgba(0,0,0,0.5)"
                 }}>
                   위명 등급: {getInnBonus().name}
                 </div>
+                <div style={{ fontSize: "12px", color: "rgba(255,215,0,0.7)", marginTop: "4px" }}>
+                  최다 위명 기록: {(game.innHighScore || 0).toLocaleString()}
+                </div>
               </div>
 
-              <div style={{ position: "relative", marginBottom: 10, display: "flex", justifyContent: "center" }}>
-                {/* Character Aura */}
+              {/* 2. 거대 상반신 캐릭터 (중앙 넓은 공간) */}
+              <div style={{ 
+                flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "center",
+                width: "100%", maxHeight: "300px", overflow: "hidden", margin: "10px 0"
+              }}>
                 <div style={{ 
-                  position: "absolute", width: "90px", height: "90px", 
-                  background: "radial-gradient(circle, rgba(255,215,0,0.2) 0%, transparent 70%)",
+                  position: "absolute", width: "240px", height: "240px", 
+                  background: "radial-gradient(circle, rgba(255,215,0,0.25) 0%, transparent 70%)",
                   borderRadius: "50%", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
                   animation: "pulse 2s infinite"
                 }} />
                 
                 <img 
-                  src={(() => {
-                    const fInfo = FACTIONS.find(f => f.name === game.faction);
-                    return fInfo?.characterImages?.ready || "/warrior.png";
-                  })()} 
+                  src={getPlayerImage()} 
                   alt="My Character" 
                   style={{ 
-                    width: "90px", height: "auto", zIndex: 2, 
-                    filter: "drop-shadow(0 0 15px rgba(255,215,0,0.4)) brightness(1.1)" 
+                    width: "280px", height: "auto", zIndex: 2, 
+                    marginTop: "20px", 
+                    filter: "drop-shadow(0 0 25px rgba(255,215,0,0.6)) brightness(1.15)" 
                   }}
                 />
               </div>
 
-              <p style={{ fontSize: 12, marginBottom: 8, opacity: 0.9, lineHeight: 1.5, color: "#ddd", maxWidth: "260px" }}>
-                객잔을 어지럽히는 {mission.rivalName} 무리를 제압하세요.<br/>
-                <span style={{ color: "#ffd700", fontWeight: 700 }}>총 {mission.requiredHits}단계</span>의 수련을 완수해야 합니다.
-              </p>
+              {/* 3. 설명 & 버튼 (하단 밀착) */}
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", zIndex: 5 }}>
+                <p style={{ fontSize: 13, margin: 0, opacity: 1, lineHeight: 1.5, color: "#eee", textAlign: "center" }}>
+                  객잔을 어지럽히는 <span style={{ color: "#ff4d4d", fontWeight: 800 }}>{mission.rivalName}</span> 무리를 제압하세요.<br/>
+                  <span style={{ color: "#ffd700", fontWeight: 800 }}>총 {mission.requiredHits}단계</span>의 수련을 완수해야 합니다.
+                </p>
 
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
-                <button onClick={startMission} style={primaryButton}>대련 시작</button>
-                <button 
-                  onClick={() => {
-                    resetGameState("yabawi");
-                    setIsPlaying(true);
-                    isPlayingRef.current = true;
-                  }} 
-                  style={{
-                    ...primaryButton,
-                    background: "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)",
-                    padding: "12px 24px",
-                    fontSize: "14px"
-                  }}
-                >
-                  🎰 투전판 입장
-                </button>
-                <button 
-                  onClick={() => {
-                    if (confirm("대련을 건너뛰시겠습니까? (보상을 획득할 수 없습니다.)")) {
-                      resolveTimingMission({ success: false, score: 0, grade: "MISS", isFinal: true });
-                    }
-                  }} 
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    color: "#888",
-                    padding: "12px 20px",
-                    borderRadius: "12px",
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#ccc"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#888"; }}
-                >
-                  건너뛰기
-                </button>
+                <div style={{ display: "flex", flexDirection: "column", width: "100%", gap: "10px", alignItems: "center" }}>
+                  <button onClick={startMission} style={{ ...primaryButton, width: "100%", maxWidth: "280px", padding: "14px", fontSize: "18px" }}>대련 시작</button>
+                  <div style={{ display: "flex", width: "100%", maxWidth: "280px", gap: "10px" }}>
+                    <button 
+                      onClick={() => {
+                        resetGameState("yabawi");
+                        setIsPlaying(true);
+                        isPlayingRef.current = true;
+                      }} 
+                      style={{
+                        ...primaryButton,
+                        flex: 1.5,
+                        background: "linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%)",
+                        padding: "12px",
+                        fontSize: "14px"
+                      }}
+                    >
+                      🎰 투전판 입장
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (confirm("대련을 건너뛰시겠습니까? (보상을 획득할 수 없습니다.)")) {
+                          resolveTimingMission({ success: false, score: 0, grade: "MISS", isFinal: true });
+                        }
+                      }} 
+                      style={{
+                        flex: 1,
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        color: "#888",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        fontSize: "11px",
+                        cursor: "pointer"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#ccc"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#888"; }}
+                    >
+                      건너뛰기
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 "use client";
-import { useGameStore, REALM_SETTINGS, REALM_ORDER } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_SETTINGS, REALM_ORDER, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 
 export default function CharacterModal({
@@ -188,7 +188,7 @@ export default function CharacterModal({
                     return (
                       <div key={stat} style={{ fontSize: "10px", display: "flex", gap: "2px" }}>
                         <span style={{ color: "#888" }}>{labelMap[stat] || stat}:</span>
-                        <span style={{ color: colorMap[stat] || "#fff", fontWeight: "bold" }}>+{val.toLocaleString()}{suffix}</span>
+                        <span style={{ color: colorMap[stat] || "#fff", fontWeight: "bold" }}>+{formatCompactNumber(val)}{suffix}</span>
                       </div>
                     );
                   })}
@@ -228,7 +228,7 @@ export default function CharacterModal({
               <span style={{ color: "#888", fontSize: "11px" }}>경지:</span> {safeGame.realm} ({safeGame.star}성)
             </div>
             <div style={{ color: "#ffcc00", fontWeight: "bold" }}>
-              <span style={{ color: "#888", fontSize: "11px" }}>명성:</span> {game.points.toLocaleString()}
+              <span style={{ color: "#888", fontSize: "11px" }}>명성:</span> {formatCompactNumber(game.points)}
             </div>
           </div>
         </div>
@@ -277,22 +277,22 @@ export default function CharacterModal({
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <StatRow
               label="최종 공격력"
-              value={totalAttack.toLocaleString()}
+              value={formatCompactNumber(totalAttack)}
               color="#ff4d4d"
               sub={safeGame.comboCount > 0 ? `🔥 ${safeGame.comboCount}` : undefined}
             />
             <StatRow
               label="최종 생명력"
-              value={totalHp.toLocaleString()}
+              value={formatCompactNumber(totalHp)}
               color="#ff8c8c"
             />
             <StatRow
               label="현재 내공"
-              value={`${safeGame.mp.toLocaleString()} / ${safeGame.maxMp.toLocaleString()}`}
+              value={`${formatCompactNumber(safeGame.mp)} / ${formatCompactNumber(safeGame.maxMp)}`}
               color="#55aaff"
             />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
-                <StatRow label="방어력" value={totalDefense.toLocaleString()} color="#8ecbff" />
+                <StatRow label="방어력" value={formatCompactNumber(totalDefense)} color="#8ecbff" />
                 <StatRow label="회피율" value={`${totalEvasion}%`} color="#7fffd4" />
                 <StatRow label="치명타" value={`${totalCritRate}%`} color="#ffcc00" />
                 <StatRow label="치피" value={`${totalCritDmg}%`} color="#ff7e4d" />
@@ -343,12 +343,12 @@ export default function CharacterModal({
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#aaa" }}>
                 <span>
-                  목표까지: <b style={{ color: "#fff" }}>{remainingTouches.toLocaleString()}</b>회
+                  목표까지: <b style={{ color: "#fff" }}>{formatCompactNumber(remainingTouches)}</b>회
                 </span>
                 <span>{Math.floor(progressPercent)}%</span>
               </div>
               <div style={{ fontSize: "10px", color: "#666", marginTop: "4px", textAlign: "right" }}>
-                현재 수련도: {safeGame.touches.toLocaleString()} / {targetTouches.toLocaleString()}
+                현재 수련도: {formatCompactNumber(safeGame.touches)} / {formatCompactNumber(targetTouches)}
               </div>
             </>
           ) : (

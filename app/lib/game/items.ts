@@ -1189,9 +1189,9 @@ export function rollTierAndOptions(item: any, level: number, luck: number = 0, r
   
   // 1. 확률에 따른 등급 결정
   let rolledTier: ItemTier = "평범";
-  if (rand < (5 + luckBonus)) { rolledTier = "신기"; }
-  else if (rand < (20 + luckBonus * 1.5)) { rolledTier = "보구"; }
-  else if (rand < (50 + luckBonus * 2)) { rolledTier = "명품"; }
+  if (rand < (0.2 + luckBonus)) { rolledTier = "신기"; }
+  else if (rand < (10.2 + luckBonus * 1.5)) { rolledTier = "보구"; }
+  else if (rand < (40.2 + luckBonus * 2)) { rolledTier = "명품"; }
 
   // 2. [수정] 재연마 시 등급 하락 방지 로직 추가
   // 기존 등급이 있는 경우(재연마), 새로 굴린 등급이 기존보다 낮으면 기존 등급 유지

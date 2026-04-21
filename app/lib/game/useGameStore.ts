@@ -14,10 +14,19 @@ import {
   MARTIAL_COMPENDIUM
 } from "./martialArtsSystem";
 import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
+ 
+export function formatCompactNumber(num: number): string {
+  if (num < 0) return "0";
+  if (num < 1000) return Math.floor(num).toLocaleString();
+  if (num < 1000000) return (num / 1000).toFixed(1) + "K";
+  if (num < 1000000000) return (num / 1000000).toFixed(1) + "M";
+  if (num < 1000000000000) return (num / 1000000000).toFixed(1) + "B";
+  return (num / 1000000000000).toFixed(1) + "T";
+}
 
 export const REALM_SETTINGS: Record<string, any> = {
   필부: { bonus: 1.0, minTouches: 0, dummyHp: 1000, dummyType: "straw", label: "낡은 짚더미", hp: 150, mp: 60, goldMultiplier: 1 },
-  삼류: { bonus: 1.0, minTouches: 100000, dummyHp: 50000, dummyType: "straw", label: "말라비틀어진 짚더미", hp: 300, mp: 150, goldMultiplier: 3 },
+  삼류: { bonus: 1.0, minTouches: 30000, dummyHp: 50000, dummyType: "straw", label: "말라비틀어진 짚더미", hp: 300, mp: 150, goldMultiplier: 3 },
   이류: { bonus: 1.5, minTouches: 2500000, dummyHp: 400000, dummyType: "wood", label: "통나무 목인", hp: 600, mp: 350, goldMultiplier: 8 },
   일류: { bonus: 2.5, minTouches: 15000000, dummyHp: 3500000, dummyType: "leather", label: "가죽 목격인", hp: 1200, mp: 700, goldMultiplier: 20 },
   절정: { bonus: 4.5, minTouches: 100000000, dummyHp: 25000000, dummyType: "iron", label: "청강철 목인", hp: 2500, mp: 1500, goldMultiplier: 50 },
@@ -169,6 +178,7 @@ interface GameState {
   getTotalHp: () => number;
   getTotalEvasion: () => number;
   getTotalSpeed: () => number;
+  getTotalLuck: () => number;
   getTotalMp: () => number;
   getTotalHpRecovery: () => number;
   getTotalMpRecovery: () => number;
@@ -211,14 +221,16 @@ interface GameState {
   rerollWeaponOptions: (itemId: string) => { success: boolean; message: string };
   infuseSoul: (itemId: string, type: string) => { success: boolean; message: string };
   applyOil: (itemId: string, oilId: ConsumableId) => { success: boolean; message: string };
+  triggerOilEffects: () => { hitCount: number; ohk: boolean; buffsTriggered: string[] };
   toggleAudio: () => void;
   triggerUltimate: () => void;
   buyBossShopItem: (itemType: string) => void;
   parryBossAttack: () => void;
-  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean) => void;
+  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => void;
   restoreMp: (amount: number) => void;
   getSetCounts: () => Record<string, number>;
   openPaewangBox: () => { success: boolean; item?: OwnedWeapon; message?: string };
+  applyOilResults: (oilRes: any) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -292,6 +304,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       final *= (1 + (specLevel * 0.002)); // 0.2% per level
     }
 
+    // 연마유 광폭 버프 (공격력 3배)
+    if (game.oilBuffs?.oil_atk_3 > 0) {
+      final *= 3;
+    }
+    
+
     // Final Damage Synergy
     Object.entries(setCounts).forEach(([setName, count]) => {
       const syn = SYNERGY_CONFIG[setName];
@@ -329,7 +347,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     });
 
-    return (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate") + skillBonus + setCrit;
+    let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate") + skillBonus + setCrit;
+    
+    // 연마유 영안 버프 (치명타 50% 상승)
+    if (game.oilBuffs?.oil_eye > 0) {
+      finalCrit += 50;
+    }
+
+    return finalCrit;
   },
   getTotalCritDmg: () => {
     const { game } = get();
@@ -354,7 +379,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       auraBonus = specLevel * 1; // 1% per level
     }
 
-    return (base + bonus + setBonus + auraBonus) * moveMult;
+    let finalCritDmg = (base + bonus + setBonus + auraBonus) * moveMult;
+    
+    // 연마유 파천 버프 (치명 피해 3배)
+    if (game.oilBuffs?.oil_crit_3 > 0) {
+      finalCritDmg *= 3;
+    }
+
+
+    return finalCritDmg;
   },  getTotalHpRecovery: () => {
     const { game } = get();
     const maxHp = get().getTotalHp();
@@ -387,6 +420,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.def || 0)/100) * moveMult * setDefMult;
     
+    // 연마유 강철 버프 (방어력 3배 -> 로직 변경: 받는 피해 감소는 updateMasterDuel에서 처리)
+    // if (game.oilBuffs?.oil_def_3 > 0) { finalDef *= 3; }
+    
+
     // Special Training: Armor Type (Def Bonus)
     const faction = FACTIONS.find(f => f.name === game.faction);
     if (faction?.specialTraining?.type === 'armor') {
@@ -438,8 +475,25 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let cap = 70;
     if (game.movementBuff && game.movementBuff.data.evaCap) cap = game.movementBuff.data.evaCap;
+
+    // 연마유 무영 버프 (회피율 3배)
+    if (game.oilBuffs?.oil_eva_3 > 0) {
+      eva *= 3;
+    }
+    
+
     return Math.min(cap, eva);
-  },  getTotalSpeed: () => 100 + get().game.ownedWeapons.filter(w => Object.values(get().game.equippedGear || {}).includes(w.id)).reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0),
+  },  getTotalLuck: () => {
+    const { game } = get();
+    let luck = (game.upgradeLevels?.luck || 0);
+    if (game.oilBuffs?.oil_luck_3 > 0) luck *= 3;
+    return luck;
+  },  getTotalSpeed: () => {
+    const { game } = get();
+    let baseSpeed = 100 + game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id)).reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    if (game.oilBuffs?.oil_speed_3 > 0) baseSpeed *= 2; // 스크린샷 기준 2배
+    return baseSpeed;
+  },
   getTotalMp: () => {
     const { game } = get();
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
@@ -452,7 +506,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) setMpMult *= (1 + syn[5].allStat);
     });
 
-    const baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.mpRec || 0) * 1000 + get().getOptionSum("mp")) * setMpMult;
+    let baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.mpRec || 0) * 1000 + get().getOptionSum("mp")) * setMpMult;
     return Math.floor(baseTotal * (1 + get().getOptionSum("mp_pct") / 100));
   },
   getInnBonus: () => {
@@ -487,7 +541,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       let rep = s.game.reputation || 0;
       let eGold = 0;
       let lastR = s.game.lastReward;
-      const nTouches = s.game.touches + (1 + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0));
+      const nTouches = s.game.touches + (1 + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0)) * amount;
 
       const stats = getDummyStats(s.game.realm, s.game.star);
       
@@ -763,7 +817,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   openPaewangBox: () => {
     const { game } = get();
-    if ((game.bossTokens || 0) < 250) {
+    if ((game.bossTokens || 0) < 500) {
       return { success: false, message: "혈투의 징표가 부족합니다." };
     }
 
@@ -845,6 +899,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     });
 
+    const nextOilBuffs = { ...(s.game.oilBuffs || {}) };
+    let hasOilBuff = false;
+    Object.keys(nextOilBuffs).forEach(key => {
+      if (nextOilBuffs[key] > 0) {
+        nextOilBuffs[key] = Math.max(0, nextOilBuffs[key] - dt);
+        hasOilBuff = true;
+      }
+    });
+
     const newBuffTimeLeft = Math.max(0, s.game.buffTimeLeft - dt);
     
     // 신법(보법) 버프 업데이트
@@ -879,7 +942,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // 이전에 이미 버프가 없고 쿨다운도 없다면 일찍 반환
-    if (s.game.buffTimeLeft <= 0 && !s.game.activeBuff && !hasCooldown && !s.game.movementBuff && nextHp === s.game.hp && nextMp === s.game.mp && finalAccumulator === s.game.regenAccumulator) return s;
+    if (s.game.buffTimeLeft <= 0 && !s.game.activeBuff && !hasCooldown && !hasOilBuff && !s.game.movementBuff && nextHp === s.game.hp && nextMp === s.game.mp && finalAccumulator === s.game.regenAccumulator) return s;
     
     return { 
       game: { 
@@ -888,6 +951,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         mp: nextMp,
         regenAccumulator: finalAccumulator,
         skillCooldowns: nextSkillCooldowns,
+        oilBuffs: nextOilBuffs,
         attackMultiplier: newBuffTimeLeft > 0 ? s.game.attackMultiplier : 1,
         activeBuff: newBuffTimeLeft > 0 ? s.game.activeBuff : null,
         buffTimeLeft: newBuffTimeLeft,
@@ -927,6 +991,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     else if (id === "mp_small") nextMp = Math.min(maxMp, nextMp + maxMp * 0.2);
     else if (id === "mp_medium") nextMp = Math.min(maxMp, nextMp + maxMp * 0.5);
     else if (id === "mp_large") nextMp = maxMp;
+    else if (id.startsWith("trance_")) {
+      const multiplier = parseInt(id.split("_")[1]);
+      return {
+        game: {
+          ...s.game,
+          attackMultiplier: multiplier,
+          buffTimeLeft: 10, // 10초간 지속
+          activeBuff: "무아지경",
+          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 }
+        }
+      };
+    }
     else if (id === "paewang_box") {
       const baseList = FORGE_ITEMS.filter(i => i.realm === "천인합일" || i.realm === "신화경");
       const base = baseList[Math.floor(Math.random() * baseList.length)];
@@ -1094,9 +1170,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!s.game.masterDuel.isPlaying) return s; 
     
     const masterDuel = s.game.masterDuel;
+    const regenAccumulator = s.game.regenAccumulator || 0;
     // 스턴 타이머 처리
     let nextStunTimer = Math.max(0, (masterDuel.stunTimer || 0) - dt);
     let nextIsStunned = nextStunTimer > 0;
+    let rivalHp = masterDuel.rivalHp;
 
     // 제갈세가 팔괘보: 적 시간 정지 혹은 스턴 상태인 경우 타이머 정지
     const isFrozen = s.game.movementBuff && s.game.movementBuff.data.freeze;
@@ -1113,11 +1191,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // 시간 초과 패배 처리
-    if (tLeft <= 0) {
+    // 1초 단위 적 디버프 처리 (Bleed)
+    if (regenAccumulator >= 1.0) {
+       if (masterDuel.rivalDebuffs?.bleed) {
+          const bleedDmg = masterDuel.rivalMaxHp * 0.02; // 초당 2%
+          rivalHp = Math.max(0, rivalHp - bleedDmg);
+       }
+    }
+
+    // 1초 단위 디버프 타이머 감소
+    let nextRivalDebuffs = { ...(masterDuel.rivalDebuffs || {}) };
+    if (regenAccumulator >= 1.0) {
+       Object.keys(nextRivalDebuffs).forEach(k => {
+          if (nextRivalDebuffs[k] > 0) nextRivalDebuffs[k] = Math.max(0, nextRivalDebuffs[k] - 1.0);
+       });
+    }
+
+    if (tLeft <= 0) { 
       return { 
         game: { 
           ...s.game, 
-          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null } 
+          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null, rivalDebuffs: nextRivalDebuffs } 
         } 
       }; 
     }
@@ -1128,7 +1222,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     let chargeT = (masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt);
     let dmgAccum = 0;
     let effect = masterDuel.lastEffect;
-    let rivalHp = masterDuel.rivalHp;
     const isBerserk = tLeft <= 10;
 
     // 6초마다 강격(Special Attack)
@@ -1138,6 +1231,28 @@ export const useGameStore = create<GameState>((set, get) => ({
       const defense = get().getTotalDefense();
       const finalDmgRaw = Math.max(20, Math.floor(rawAtk - defense));
       let finalDmg = finalDmgRaw;
+
+      // 강철유: 모든 피해 50% 감소
+      if (s.game.oilBuffs?.oil_def_3 > 0) {
+        finalDmg = Math.floor(finalDmg * 0.5);
+      }
+
+      // 금강유: 무적
+      if (s.game.oilBuffs?.oil_vajra > 0) {
+        finalDmg = 0;
+        effect = "PARRY"; // 무적 이펙트 대용
+      }
+
+      // 영안유: 반드시 회피
+      if (s.game.oilBuffs?.oil_eye > 0) {
+        finalDmg = 0;
+        effect = "DODGE";
+      }
+
+      // 반탄유: 받은 피해 200% 반사
+      if (s.game.oilBuffs?.oil_reflect > 0 && finalDmgRaw > 0) {
+        rivalHp = Math.max(0, rivalHp - finalDmgRaw * 2.0);
+      }
 
       // 사마세가 마영보(압기보): 내력 방어막
       if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
@@ -1227,7 +1342,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       } 
     }; 
   }),
-  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean) => {
+  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => {
     const { game } = get(); 
     if (!game.masterDuel.isPlaying || game.masterDuel.isStunned) return;
     
@@ -1253,9 +1368,72 @@ export const useGameStore = create<GameState>((set, get) => ({
       
       // 방어력 적용
       const rivalDef = s.game.masterDuel.rivalDef || 0;
-      const baseDmg = Math.max(1, get().getTotalAttack() * (isCrit ? totalCritDmg / 100 : 1) * moveAtkMult - rivalDef);
-      const totalDmg = (baseDmg * hitCount) + bDmg * (isW ? 2 : 1);
+      const baseAtk = get().getTotalAttack() * (isCrit ? totalCritDmg / 100 : 1) * moveAtkMult;
       
+      // 연마유 효과 통합 트리거 (인자로 받지 않은 경우만 새로 굴림)
+      const finalOilRes = oilRes || get().triggerOilEffects();
+      
+      let finalHitCount = hitCount * finalOilRes.hitCount;
+      let OHKMultiplier = 1; // triggerOilEffects에서 ohk는 더이상 사용안함 (뇌전유로 대체)
+      
+      // 뇌전유 추가 대미지 (500%) / 천마유 추가 대미지 (1000%)
+      if (finalOilRes.buffsTriggered.includes("oil_thunder")) OHKMultiplier += 5;
+      if (finalOilRes.buffsTriggered.includes("oil_demon")) OHKMultiplier += 10;
+
+      let finalEffect: any = isCrit ? "CRITICAL" : null;
+      if (finalOilRes.buffsTriggered.includes("oil_thunder")) finalEffect = "STUN";
+
+      // 적 방어력 감소 (만독유)
+      let currentRivalDef = rivalDef;
+      if (s.game.masterDuel.rivalDebuffs?.armor_break) currentRivalDef *= 0.5;
+
+      const baseDmg = Math.max(1, baseAtk * OHKMultiplier - currentRivalDef);
+      let totalDmg = (baseDmg * finalHitCount) + bDmg * (isW ? 2 : 1);
+
+      // 무상유: 적 현재 체력 10% 즉시 삭감
+      if (finalOilRes.buffsTriggered.includes("oil_formless")) {
+         const currentRivalHp = s.game.masterDuel.rivalHp;
+         totalDmg += currentRivalHp * 0.10;
+      }
+      
+      // 버프/상태이상 업데이트 로직 통합
+      const nextBuffs = { ...(s.game.oilBuffs || {}) };
+      const nextMD = { ...s.game.masterDuel };
+      
+      finalOilRes.buffsTriggered.forEach((k: string) => {
+        if (k === "oil_thunder") {
+          nextMD.isStunned = true;
+          nextMD.stunTimer = (nextMD.stunTimer || 0) + 2.0;
+        } else if (k === "oil_poison") {
+          const debuffs = { ...(nextMD.rivalDebuffs || {}) };
+          debuffs.armor_break = 10;
+          nextMD.rivalDebuffs = debuffs;
+        } else if (k === "oil_bleed") {
+          const debuffs = { ...(nextMD.rivalDebuffs || {}) };
+          debuffs.bleed = 10;
+          nextMD.rivalDebuffs = debuffs;
+        } else if (k === "oil_vajra") {
+          nextBuffs[k] = 5;
+        } else if (k === "oil_atk_3" || k === "oil_crit_3") {
+          nextBuffs[k] = 5;
+        } else if (k === "oil_clarity") {
+          // 청명유 즉시 회복 (체력/내력 20%)
+          s.game.hp = Math.min(get().getTotalHp(), s.game.hp + get().getTotalHp() * 0.2);
+          s.game.mp = Math.min(get().getTotalMp(), s.game.mp + get().getTotalMp() * 0.2);
+          nextBuffs[k] = 1;
+        } else if (k === "oil_vampire" || k === "oil_formless" || k === "oil_demon") {
+          nextBuffs[k] = 1; // Instant effects
+        } else {
+          nextBuffs[k] = 10; // Others like 무영, 강철, 반탄, 질풍, 기연
+        }
+      });
+
+      // 흡성유: 대미지의 50% 흡혈
+      if (finalOilRes.buffsTriggered.includes("oil_vampire")) {
+         const vampHeal = totalDmg * 0.5;
+         s.game.hp = Math.min(get().getTotalHp(), s.game.hp + vampHeal);
+      }
+
       const currentRivalHp = s.game.masterDuel.rivalHp;
       const nHp = Math.max(0, currentRivalHp - totalDmg);
       const nGauge = Math.min(100, (s.game.masterDuel.ultimateGauge || 0) + (isW ? 15 : 5));
@@ -1289,8 +1467,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         const bossTokenGain = Math.floor(rewardBase); 
         const wisdomGain = Math.floor(rewardBase); 
         
-        // 연마유 확률: 레벨이 오를수록 완만하게 상승 (Lvl 1: 3%, Lvl 10: 10%, Lvl 50: 25%)
-        const oilChance = Math.random() < Math.min(0.25, 0.03 + (level * 0.007)); 
+        // 연마유 확률: [극한 희귀화] Lv.1에서 1%대 시작, 최대 10%로 제한
+        const oilChance = Math.random() < Math.min(0.10, 0.01 + (level * 0.0025)); 
         const oilKeys = [
           "oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", 
           "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire",
@@ -1323,11 +1501,13 @@ export const useGameStore = create<GameState>((set, get) => ({
             reputation: (s.game.reputation || 0) + goldGain, 
             bossTokens: (s.game.bossTokens || 0) + bossTokenGain,
             wisdom: (s.game.wisdom || 0) + wisdomGain,
+            touches: (s.game.touches || 0) + expGain,
             hp: Math.min(get().getTotalHp(), s.game.hp + healAmt), // 아미파 회복 적용
             nextHitMultiplier: nextHitMult, // 청성파 배율 소모 적용
             consumables: nextConsumables,
+            oilBuffs: nextBuffs,
             masterDuel: { 
-              ...s.game.masterDuel, 
+              ...nextMD, 
               isPlaying: false, 
               currentLevel: nextMaxLevel, // 최대 도달 레벨 갱신
               selectedLevel: nextLevel, 
@@ -1340,7 +1520,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               lastEffect: null,
               ultimateGauge: 0,
               lastDefeatTimes: {
-                ...(s.game.masterDuel.lastDefeatTimes || {}),
+                ...(nextMD.lastDefeatTimes || {}),
                 [level]: Date.now()
               }
             } 
@@ -1352,8 +1532,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           ...s.game, 
           hp: Math.min(get().getTotalHp(), s.game.hp + healAmt), // 아미파 회복 적용
           nextHitMultiplier: nextHitMult, // 청성파 배율 소모 적용
+          oilBuffs: nextBuffs,
           masterDuel: { 
-            ...s.game.masterDuel, 
+            ...nextMD, 
             rivalHp: nHp, 
             ultimateGauge: nGauge 
           } 
@@ -1411,10 +1592,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (type === "stone_pack") price = 60;
     else if (type === "exp_scroll") price = 300;
     else if (type === "charm_luck") price = 300;
-    else if (type === "oil_demon") price = 200;
-    else if (type === "oil_triple_hit") price = 200;
-    else if (type === "oil_formless") price = 200;
-    else if (type === "paewang_box") price = 250;
+    else if (type === "oil_demon") price = 400;
+    else if (type === "oil_triple_hit") price = 400;
+    else if (type === "oil_formless") price = 400;
+    else if (type === "paewang_box") price = 500;
     else if (type === "oil_blessed") price = 100;
     else if (type === "trance_pill") price = 10;
 
@@ -1442,7 +1623,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         const cur = REALM_SETTINGS[s.game.realm];
         const nxt = REALM_SETTINGS[realms[rIdx + 1]] || cur;
-        const target = cur.minTouches + Math.floor(((nxt.minTouches - cur.minTouches) / 10) * s.game.star);
+        
+        // [수정] 다음 '성'이 아니라 다음 '경지' 도달까지 필요한 잔여 숙련도 기준으로 변경
+        const target = nxt.minTouches;
         
         const remaining = Math.max(0, target - s.game.touches);
         const gain = Math.floor(remaining * (percent / 100));
@@ -1455,7 +1638,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       } else if (type === "paewang_box") {
         nextGame.consumables.paewang_box = (nextGame.consumables.paewang_box || 0) + 1;
       } else if (type === "trance_pill") {
-        nextGame.consumables.trance_10 = (nextGame.consumables.trance_10 || 0) + 1;
+        nextGame.consumables.trance_2 = (nextGame.consumables.trance_2 || 0) + 1;
       }
       
       return { game: nextGame };
@@ -1597,7 +1780,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const nextWeapons = s.game.ownedWeapons.map((w: any) => {
         if (w.id === itemId) {
-          return rollTierAndOptions(w, realmIdx, game.upgradeLevels?.luck || 0, realmIdx);
+          return rollTierAndOptions(w, realmIdx, get().getTotalLuck(), realmIdx);
         }
         return w;
       });
@@ -1679,9 +1862,61 @@ export const useGameStore = create<GameState>((set, get) => ({
       oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유"
     };
 
+    const oilDetails: Record<string, { chance: number, desc: string }> = {
+      oil_atk_3: { chance: 2, desc: "2% 확률로 공격력 3배 (5초)" },
+      oil_crit_3: { chance: 2, desc: "2% 확률로 치댐 3배 (5초)" },
+      oil_thunder: { chance: 5, desc: "5% 확률로 500% 대미지 + 기절" },
+      oil_poison: { chance: 5, desc: "5% 확률로 적 방어력 50% 감소 (10초)" },
+      oil_bleed: { chance: 5, desc: "5% 확률로 출혈 (최대 HP 10% 지속피해)" },
+      oil_eva_3: { chance: 5, desc: "5% 확률로 회피율 3배 (10초)" },
+      oil_def_3: { chance: 7, desc: "7% 확률로 모든 피해 50% 감소 (10초)" },
+      oil_reflect: { chance: 7, desc: "7% 확률로 받은 피해 200% 반사 (10초)" },
+      oil_vajra: { chance: 5, desc: "5% 확률로 5초간 무적 상태" },
+      oil_vampire: { chance: 5, desc: "5% 확률로 대미지 50% 흡혈" },
+      oil_speed_3: { chance: 5, desc: "5% 확률로 공속 2배 (10초)" },
+      oil_luck_3: { chance: 5, desc: "5% 확률로 전리품 등급 상승 확률 증가" },
+      oil_clarity: { chance: 8, desc: "8% 확률로 상이상 즉시 해제" },
+      oil_eye: { chance: 15, desc: "15% 확률로 적의 공격 반드시 회피" },
+      oil_demon: { chance: 2, desc: "2% 확률로 일격필살(1000% 대미지) 발동" },
+      oil_triple_hit: { chance: 5, desc: "5% 확률로 3배 연타 공격 발동" },
+      oil_formless: { chance: 3, desc: "3% 확률로 적 현재 체력 10% 즉시 삭감" }
+    };
+
     set((s: any) => {
-      const nextWeapons = s.game.ownedWeapons.map((w: any) => {
-        if (w.id === itemId) return { ...w, oilEffect: { label: `${oilNames[oilId]} (15%)`, id: oilId, chance: 15 } };
+      const nextConsumables = { ...s.game.consumables, [oilId]: s.game.consumables[oilId] - 1 };
+      const updatedWeapons = s.game.ownedWeapons.map((w: any) => {
+        if (w.id === itemId) {
+          const detail = oilDetails[oilId] || { chance: 15, desc: "발동 시 특수 효과" };
+          return { 
+            ...w, 
+            oilEffect: { 
+              label: `${oilNames[oilId]}: ${detail.desc}`, 
+              key: oilId, 
+              chance: detail.chance 
+            } 
+          };
+        }
+        // [마이그레이션] 기존 천마유/삼연유 아이템들 수치 최신화
+        if (w.oilEffect?.key === "oil_demon") {
+           return {
+             ...w,
+             oilEffect: {
+               ...w.oilEffect,
+               chance: 2,
+               label: "천마유: [천마] 공격 시 2% 확률로 일격필살(1000% 대미지) 발동"
+             }
+           };
+        }
+        if (w.oilEffect?.key === "oil_triple_hit") {
+           return {
+             ...w,
+             oilEffect: {
+               ...w.oilEffect,
+               chance: 5,
+               label: "삼연유: 5% 확률로 3배 연타 공격 발동"
+             }
+           };
+        }
         return w;
       });
 
@@ -1690,14 +1925,125 @@ export const useGameStore = create<GameState>((set, get) => ({
           ...s.game,
           reputation: s.game.reputation - repCost,
           enhancementStones: (s.game.enhancementStones || 0) - stoneCost,
-          consumables: { ...s.game.consumables, [oilId]: s.game.consumables[oilId] - 1 },
-          ownedWeapons: nextWeapons
+          consumables: nextConsumables,
+          ownedWeapons: updatedWeapons
         }
       };
     });
 
     get().triggerSave(true);
     return { success: true, message: `${oilNames[oilId]} 주입 성공!` };
+  },
+
+  triggerOilEffects: () => {
+    const { game } = get();
+    const equippedIds = Object.values(game.equippedGear ?? {}).filter(Boolean);
+    const equippedWeapons = game.ownedWeapons.filter((w: any) => equippedIds.includes(w.id));
+    
+    let hitCount = 1;
+    let ohk = false;
+    const buffsToTrigger: string[] = [];
+
+    equippedWeapons.forEach((w: any) => {
+      if (!w.oilEffect) return;
+      const oil = w.oilEffect;
+      
+      // 스크린샷 기준 공식 확률 적용
+      
+      // 무상유: 3% 확률 적 현재 체력 10% 삭감
+      if (oil.key === "oil_formless" && Math.random() < 0.03) buffsToTrigger.push("oil_formless");
+
+      // 삼연유: 5% 확률 3연타
+      if (oil.key === "oil_triple_hit" && Math.random() < 0.05) {
+        hitCount = 3;
+        buffsToTrigger.push("oil_triple_hit");
+      }
+      
+      // 천마유: 2% 확률로 1000% 대미지
+      if (oil.key === "oil_demon" && Math.random() < 0.02) buffsToTrigger.push("oil_demon");
+
+      // 파천유(치명3배): 2%
+      if (oil.key === "oil_crit_3" && Math.random() < 0.02) buffsToTrigger.push("oil_crit_3");
+
+      // 광폭유(공격3배): 2%
+      if (oil.key === "oil_atk_3" && Math.random() < 0.02) buffsToTrigger.push("oil_atk_3");
+
+      // 무영유(회피3배): 5%
+      if (oil.key === "oil_eva_3" && Math.random() < 0.05) buffsToTrigger.push("oil_eva_3");
+
+      // 강철유(피해감소 50%): 7%
+      if (oil.key === "oil_def_3" && Math.random() < 0.07) buffsToTrigger.push("oil_def_3");
+
+      // 반탄유(200% 반사): 7%
+      if (oil.key === "oil_reflect" && Math.random() < 0.07) buffsToTrigger.push("oil_reflect");
+
+      // 질풍유(공속 2배): 5%
+      if (oil.key === "oil_speed_3" && Math.random() < 0.05) buffsToTrigger.push("oil_speed_3");
+
+      // 기연유: 5%
+      if (oil.key === "oil_luck_3" && Math.random() < 0.05) buffsToTrigger.push("oil_luck_3");
+
+      // 뇌전유: 5% 확률로 500% 대미지 + 기절
+      if (oil.key === "oil_thunder" && Math.random() < 0.05) buffsToTrigger.push("oil_thunder");
+      
+      // 만독유: 5% 확률 적 방어력 50% 감소
+      if (oil.key === "oil_poison" && Math.random() < 0.05) buffsToTrigger.push("oil_poison");
+
+      // 혈염유: 5% 확률 출혈
+      if (oil.key === "oil_bleed" && Math.random() < 0.05) buffsToTrigger.push("oil_bleed");
+
+      // 금강유: 5% 확률 5초 무적
+      if (oil.key === "oil_vajra" && Math.random() < 0.05) buffsToTrigger.push("oil_vajra");
+
+      // 흡성유: 5% 확률 50% 흡혈
+      if (oil.key === "oil_vampire" && Math.random() < 0.05) buffsToTrigger.push("oil_vampire");
+
+      // 영안유: 15% 확률로 적 공격 회피
+      if (oil.key === "oil_eye" && Math.random() < 0.15) buffsToTrigger.push("oil_eye");
+
+      // 청명유: 8% 확률 즉시 회복
+      if (oil.key === "oil_clarity" && Math.random() < 0.08) {
+        buffsToTrigger.push("oil_clarity");
+      }
+    });
+
+    return { hitCount, ohk: false, buffsTriggered: buffsToTrigger };
+  },
+
+  applyOilResults: (oilRes: any) => {
+    if (!oilRes || oilRes.buffsTriggered.length === 0) return;
+    
+    set((s: any) => {
+      const nextBuffs = { ...(s.game.oilBuffs || {}) };
+      const nextMD = { ...s.game.masterDuel };
+      
+      oilRes.buffsTriggered.forEach((k: string) => {
+        if (k === "oil_thunder") {
+          if (nextMD.isPlaying) {
+            nextMD.isStunned = true;
+            nextMD.stunTimer = (nextMD.stunTimer || 0) + 2.0;
+          }
+        } else if (k === "oil_poison" || k === "oil_bleed") {
+          if (nextMD.isPlaying) {
+            const debuffs = { ...(nextMD.rivalDebuffs || {}) };
+            debuffs[k === "oil_poison" ? "armor_break" : "bleed"] = 10;
+            nextMD.rivalDebuffs = debuffs;
+          }
+        } else if (k === "oil_vajra" || k === "oil_atk_3" || k === "oil_crit_3") {
+          nextBuffs[k] = 5;
+        } else if (k === "oil_vampire" || k === "oil_formless" || k === "oil_demon" || k === "oil_clarity") {
+          nextBuffs[k] = 1;
+          if (k === "oil_clarity") {
+             s.game.hp = Math.min(get().getTotalHp(), s.game.hp + get().getTotalHp() * 0.2);
+             s.game.mp = Math.min(get().getTotalMp(), s.game.mp + get().getTotalMp() * 0.2);
+          }
+        } else {
+          nextBuffs[k] = 10;
+        }
+      });
+      
+      return { game: { ...s.game, oilBuffs: nextBuffs, masterDuel: nextMD } };
+    });
   },
 
   toggleAudio: () => set((s: any) => ({ game: { ...s.game, isAudioMuted: !s.game.isAudioMuted } })),
@@ -1759,17 +2105,61 @@ export const useGameStore = create<GameState>((set, get) => ({
       return;
     }
 
-    // 공격 무공인 경우 대미지 적용
+    // 공격 무공인 경우 대미지 적용 및 연마유 효과 트리거
     if (game.masterDuel.isPlaying) {
-      set((s: any) => ({ 
-        game: { 
-          ...s.game, 
-          masterDuel: { 
-            ...s.game.masterDuel, 
-            rivalHp: Math.max(0, s.game.masterDuel.rivalHp - get().getTotalAttack() * (sk.multiplier || 3)) 
+      const oilRes = get().triggerOilEffects();
+      const baseAtk = get().getTotalAttack();
+      const multiplier = sk.multiplier || 3;
+      
+      let ohkMult = 1;
+      if (oilRes.buffsTriggered.includes("oil_thunder")) ohkMult += 5;
+      if (oilRes.buffsTriggered.includes("oil_demon")) ohkMult += 10;
+
+      set((s: any) => {
+        const nextBuffs = { ...(s.game.oilBuffs || {}) };
+        const nextMD = { ...s.game.masterDuel };
+        
+        let totalDmg = baseAtk * multiplier * ohkMult;
+        
+        // 연마유 버프 적용 (스킬에서도 동일하게 버프 발생)
+        oilRes.buffsTriggered.forEach((k: string) => {
+          if (k === "oil_thunder") {
+            nextMD.isStunned = true;
+            nextMD.stunTimer = (nextMD.stunTimer || 0) + 2.0;
+          } else if (k === "oil_poison" || k === "oil_bleed") {
+            const debuffs = { ...(nextMD.rivalDebuffs || {}) };
+            debuffs[k === "oil_poison" ? "armor_break" : "bleed"] = 10;
+            nextMD.rivalDebuffs = debuffs;
+          } else if (k === "oil_vajra" || k === "oil_atk_3" || k === "oil_crit_3") nextBuffs[k] = 5;
+          else if (k === "oil_vampire" || k === "oil_formless" || k === "oil_demon" || k === "oil_clarity") {
+            nextBuffs[k] = 1;
+            if (k === "oil_clarity") {
+               s.game.hp = Math.min(get().getTotalHp(), s.game.hp + get().getTotalHp() * 0.2);
+               s.game.mp = Math.min(get().getTotalMp(), s.game.mp + get().getTotalMp() * 0.2);
+            }
+          }
+          else nextBuffs[k] = 10;
+        });
+
+        if (oilRes.buffsTriggered.includes("oil_formless")) {
+           totalDmg += nextMD.rivalHp * 0.10;
+        }
+
+        if (oilRes.buffsTriggered.includes("oil_vampire")) {
+           s.game.hp = Math.min(get().getTotalHp(), s.game.hp + totalDmg * 0.5);
+        }
+
+        return { 
+          game: { 
+            ...s.game, 
+            oilBuffs: nextBuffs,
+            masterDuel: { 
+              ...nextMD, 
+              rivalHp: Math.max(0, nextMD.rivalHp - totalDmg) 
+            } 
           } 
-        } 
-      }));
+        };
+      });
     }
   },
   syncToCloud: async () => { try { await fetch("/api/game/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(get().game) }); } catch (e) { } },

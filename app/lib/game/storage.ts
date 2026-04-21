@@ -177,6 +177,7 @@ export const defaultGameData: GameSaveData = {
     offlineLimit: 0,
   },
   regenAccumulator: 0,
+  oilBuffs: {},
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 
@@ -270,6 +271,7 @@ export function loadGame(): GameSaveData {
       equippedGear: loadedEquippedGear,
       wisdom: v12Data.wisdom ?? 0,
       martialArtsSkills: Array.isArray(v12Data.martialArtsSkills) ? v12Data.martialArtsSkills : [],
+      oilBuffs: v12Data.oilBuffs || {},
     };
   } catch (error) {
     console.error("게임 저장 데이터 불러오기 실패:", error);

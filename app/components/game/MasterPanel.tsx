@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useGameStore } from "@/app/lib/game/useGameStore";
+import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 import DamageText from "./elements/DamageText";
 
@@ -18,7 +18,7 @@ const POTION_UI: Record<string, PotionData> = {
   mp_small: { name: "MP(小)", emoji: "💧", color: "#00f2ff" },
   mp_medium: { name: "MP(中)", emoji: "💧", color: "#00d2ff" },
   mp_large: { name: "MP(大)", emoji: "🍵", color: "#00b2ff" },
-  trance_2: { name: "무아(x2)", emoji: "✨", color: "#ffd700" },
+  trance_2: { name: "무아 환약 X 2(공격력)", emoji: "✨", color: "#ffd700" },
   trance_5: { name: "무아(x5)", emoji: "🌟", color: "#ffd700" },
   trance_10: { name: "무아(x10)", emoji: "🔥", color: "#ffd700" },
   oil_atk_3: { name: "광폭유", emoji: "🧪", color: "#ff4d4d" },
@@ -38,6 +38,7 @@ const POTION_UI: Record<string, PotionData> = {
   oil_demon: { name: "천마유", emoji: "🧪", color: "#ff4d4d" },
   oil_triple_hit: { name: "삼연유", emoji: "🧪", color: "#ff4d4d" },
   oil_formless: { name: "무상유", emoji: "🧪", color: "#ff4d4d" },
+  oil_blessed: { name: "축복의 기름", emoji: "🧴", color: "#ffd700" },
 };
 
 const BOX_ANIM_CSS = `
@@ -53,8 +54,19 @@ const BOX_ANIM_CSS = `
     100% { opacity: 1; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
   }
   @keyframes itemAppear {
-    0% { transform: scale(0.5); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes auroraRed {
+    0% { color: #ff3333; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff00ff; filter: hue-rotate(0deg); }
+    50% { color: #ff0000; text-shadow: 0 0 20px #ff0000, 0 0 40px #ff00ff, 0 0 60px #4400ff; filter: hue-rotate(15deg); }
+    100% { color: #ff3333; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff00ff; filter: hue-rotate(0deg); }
+  }
+  @keyframes mysticScale {
+    0% { transform: translate(-50%, -40%) scale(0.5); opacity: 0; }
+    15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    85% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -60%) scale(1.5); opacity: 0; }
   }
 `;
 
@@ -63,6 +75,7 @@ export default function MasterPanel() {
   const { masterDuel } = game;
   const [damages, setDamages] = useState<any[]>([]);
   const lastTickRef = useRef<number>(0);
+  const lastHitTimeRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
   const [now, setNow] = useState(Date.now());
   const [showShop, setShowShop] = useState(false);
@@ -71,6 +84,8 @@ export default function MasterPanel() {
   const [showLevelModal, setShowLevelModal] = useState(false);
   const [boxOpenStep, setBoxOpenStep] = useState<0 | 1 | 2>(0); // 0: none, 1: opening, 2: result
   const [openedItem, setOpenedItem] = useState<any>(null);
+  const [activeOilText, setActiveOilText] = useState<string | null>(null);
+  const oilEffectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -79,11 +94,11 @@ export default function MasterPanel() {
 
   const isUnlocked = game.unlockedTabs.includes("master");
 
-  const spawnDamage = (value: number, critical: boolean, target: "player" | "rival") => {
+  const spawnDamage = (value: number, critical: boolean, target: "player" | "rival", skillText?: string, isRainbow?: boolean, isCyan?: boolean) => {
     const id = Date.now() + Math.random();
-    const x = target === "rival" ? 65 + Math.random() * 15 : 20 + Math.random() * 15;
-    const y = 35 + Math.random() * 15;
-    setDamages((prev) => [...prev, { id, damage: value, x, y, isCritical: critical, target }]);
+    const x = target === "rival" ? 68 + Math.random() * 8 : 22 + Math.random() * 8;
+    const y = 38 + Math.random() * 8;
+    setDamages((prev) => [...prev, { id, damage: value, x, y, isCritical: critical, target, skillText, isRainbow, isCyan }]);
     setTimeout(() => setDamages((prev) => prev.filter((d) => d.id !== id)), 800);
   };
 
@@ -99,14 +114,77 @@ export default function MasterPanel() {
   };
 
   const handleTap = () => {
+    const nowTime = Date.now();
+    if (nowTime - lastHitTimeRef.current < 150) return; // 중복 호출 방지 (150ms)
+    lastHitTimeRef.current = nowTime;
+
     if (!masterDuel.isPlaying) return;
+    
+    // 연마유 효과 트리거
+    const oilRes = useGameStore.getState().triggerOilEffects();
+    const hitCount = oilRes.hitCount;
+    const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
+    const isFormless = oilRes.buffsTriggered.includes("oil_formless");
+    const isDemon = oilRes.buffsTriggered.includes("oil_demon");
+    const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
+    
     const totalCritRate = useGameStore.getState().getTotalCritRate();
     const isCrit = Math.random() < (totalCritRate / 100);
     const baseAtk = useGameStore.getState().getTotalAttack();
     const critDmg = useGameStore.getState().getTotalCritDmg();
-    const displayDmg = Math.max(1, Math.floor(baseAtk * (isCrit ? (critDmg / 100) : 1) - (masterDuel.rivalDef || 0)));
-    spawnDamage(displayDmg, isCrit, "rival");
-    tapMasterDuel();
+    
+    // 뇌전유 배율
+    const thunderMult = isThunder ? 5 : 1;
+    
+    let baseDmg = Math.max(1, Math.floor(baseAtk * (isCrit ? (critDmg / 100) : 1) * thunderMult - (masterDuel.rivalDef || 0)));
+
+    // 다중 타격 시각화
+    for (let i = 0; i < hitCount; i++) {
+      let finalDisplayDmg = baseDmg;
+      let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i+1}연격` : undefined);
+      
+      // 천마유 발동 시 배율 적용
+      if (isDemon) {
+        finalDisplayDmg *= 10;
+      }
+      
+      // 무상유 추가 대미지 시각화 (첫 타격에만 합산 표시)
+      if (i === 0 && isFormless) {
+         finalDisplayDmg += Math.floor(masterDuel.rivalHp * 0.10);
+         label = label ? `[무상] ${label}` : "[무상] 10%삭감!";
+      }
+
+      // 버프 발동 시 라벨 추가 (첫 타격)
+      if (i === 0 && oilRes.buffsTriggered.length > 0) {
+        const buffNames: Record<string, string> = { 
+          oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍", 
+          oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
+          oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
+          oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
+          oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
+        };
+        // 천마유가 포함되어 있다면 천마유를 우선적으로 표시
+        const triggeredKey = oilRes.buffsTriggered.includes("oil_demon") ? "oil_demon" : oilRes.buffsTriggered[0];
+        const triggeredName = buffNames[triggeredKey];
+        if (triggeredName) {
+           if (triggeredKey !== "oil_formless" && triggeredKey !== "oil_thunder" && triggeredKey !== "oil_demon") {
+              label = `[${triggeredName}] ${label || ""}`;
+           }
+           
+           // 화면 중앙 이펙트 트리거 (4초)
+           if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
+           setActiveOilText(triggeredName + "!");
+           oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
+        }
+      }
+
+      // 약간의 시차를 두고 팝업 (연격 느낌)
+      setTimeout(() => {
+        spawnDamage(finalDisplayDmg, isCrit || isThunder, "rival", label, isDemon, isTriple);
+      }, i * 100);
+    }
+    
+    tapMasterDuel(0, false, oilRes);
   };
 
   const executeSkill = (skill: any) => {
@@ -234,6 +312,25 @@ export default function MasterPanel() {
       padding: "45px 10px 40px", // Increased top for iPhone, bottom for Android
       touchAction: "pan-y"
     }} className="hide-scrollbar">
+      
+      {/* 연마유 발동 화면 중앙 이펙트 */}
+      {activeOilText && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 10000,
+          fontSize: 30,
+          fontWeight: 950,
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          pointerEvents: "none",
+          animation: "auroraRed 2s infinite, mysticScale 4s forwards"
+        }}>
+          {activeOilText}
+        </div>
+      )}
 
       {/* 1. 상단 정보 영역 - 콤팩트화 */}
       {!masterDuel.isPlaying && (
@@ -269,7 +366,7 @@ export default function MasterPanel() {
     borderRadius: 6,
   }}
 >
-  <span>추천력: {Math.floor(recommendedCP).toLocaleString()}</span>
+  <span>추천력: {formatCompactNumber(recommendedCP)}</span>
   <button
     onClick={(e) => {
       e.stopPropagation();
@@ -541,7 +638,7 @@ export default function MasterPanel() {
                 position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", 
                 fontSize: 10, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000", width: "100%", textAlign: "center", pointerEvents: "none"
               }}>
-                {Math.floor(game.hp).toLocaleString()} / {Math.floor(totalMaxHp).toLocaleString()}
+                {formatCompactNumber(game.hp)} / {formatCompactNumber(totalMaxHp)}
               </div>
             </div>
             <div style={{ position: "relative" }}>
@@ -552,7 +649,7 @@ export default function MasterPanel() {
                 position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", 
                 fontSize: 8, fontWeight: 900, color: "#fff", textShadow: "1px 1px 1px #000", width: "100%", textAlign: "center", pointerEvents: "none"
               }}>
-                {Math.floor(game.mp).toLocaleString()} / {Math.floor(totalMaxMp).toLocaleString()}
+                {formatCompactNumber(game.mp)} / {formatCompactNumber(totalMaxMp)}
               </div>
             </div>
           </div>
@@ -644,7 +741,7 @@ export default function MasterPanel() {
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 2px", marginBottom: 2 }}>
               <span style={{ fontSize: 8, color: "#ff4d4d", fontWeight: 900 }}>HP</span>
-              <span style={{ fontSize: 9, color: "#fff", fontWeight: 700 }}>{Math.floor(masterDuel.rivalHp).toLocaleString()} / {Math.floor(masterDuel.rivalMaxHp).toLocaleString()}</span>
+              <span style={{ fontSize: 9, color: "#fff", fontWeight: 700 }}>{formatCompactNumber(masterDuel.rivalHp)} / {formatCompactNumber(masterDuel.rivalMaxHp)}</span>
             </div>
             <div style={{ height: 14, background: "#1a0505", borderRadius: 4, overflow: "hidden" }}>
               <div
@@ -854,16 +951,16 @@ export default function MasterPanel() {
                   { id: "stone_pack", icon: "💎", title: "현철 강화석 꾸러미", desc: "현철 강화석 20개 획득 (3:1 비율)", price: 60 },
                   { id: "exp_scroll", icon: "📜", title: "천외비전 (경험치)", desc: "경지별 차등 숙련도 즉시 획득", price: 300, hasDetails: true },
                   { id: "charm_luck", icon: "🛡️", title: "천운의 부적", desc: "제련 실패 시 단계 하락 1회 방어", price: 300 },
-                  { id: "oil_demon", icon: "🧪", title: "전설 연마제: 천마유", desc: "공격 시 일격필살(1000% 대미지) 발동", price: 200, color: "#a2ff00" },
-                  { id: "oil_triple_hit", icon: "🧪", title: "전설 연마제: 삼연유", desc: "상시 1타 3연격 옵션 부여", price: 200, color: "#a2ff00" },
-                  { id: "oil_formless", icon: "🧪", title: "전설 연마제: 무상유", desc: "기름 버프 확률 2배 및 지속시간 연장", price: 200, color: "#a2ff00" },
-                  { id: "paewang_box", icon: "👑", title: "패왕의 비보 상자", desc: "'신기' 장신구 확정 획득 (경지 반영)", price: 250, color: "#ffd700" },
+                  { id: "oil_demon", icon: "🧪", title: "전설 연마제: 천마유", desc: "공격 시 5% 확률로 일격필살(1000% 대미지) 발동", price: 400, color: "#a2ff00" },
+                  { id: "oil_triple_hit", icon: "🧪", title: "전설 연마제: 삼연유", desc: "공격 시 5% 확률로 3배 연타 공격 발동", price: 400, color: "#a2ff00" },
+                  { id: "oil_formless", icon: "🧪", title: "전설 연마제: 무상유", desc: "공격 시 3% 확률로 적 현재 체력 10% 즉시 삭감", price: 400, color: "#a2ff00" },
+                  { id: "paewang_box", icon: "👑", title: "패왕의 비보 상자", desc: "'신기' 장신구 확정 획득 (경지 반영)", price: 500, color: "#ffd700" },
                 ].map((item, idx) => (
                   <div
                     key={idx}
                     onClick={() => {
                       if (item.id === "paewang_box") {
-                        if ((game.bossTokens || 0) < 250) {
+                        if ((game.bossTokens || 0) < 500) {
                           alert("혈투의 징표가 부족합니다.");
                           return;
                         }
@@ -946,7 +1043,8 @@ export default function MasterPanel() {
                   }}
                 >
                   <div style={{ fontSize: 22 }}>🧴</div>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "#ffd700" }}>축복 기름</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#ffd700" }}>축복의 기름</div>
+                  <div style={{ fontSize: 10, color: "#aaa" }}>강화 확률 +5%</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#fff", opacity: 0.9 }}>
                     <span>🩸</span> 100
                   </div>
@@ -968,7 +1066,7 @@ export default function MasterPanel() {
                   }}
                 >
                   <div style={{ fontSize: 22, filter: "drop-shadow(0 0 8px rgba(255,215,0,0.4))" }}>✨</div>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: "#fff" }}>무아 환약</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: "#fff" }}>무아 환약 X 2(공격력)</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#fff", opacity: 0.9 }}>
                     <span>🩸</span> 10
                   </div>
@@ -1127,7 +1225,7 @@ export default function MasterPanel() {
                   </div>
                 </div>
                 <div style={{ fontSize: 11, color: "#777", marginTop: 12, lineHeight: 1.5 }}>
-                  • 획득한 징표는 <span style={{ color: "#ffd700", fontWeight: 700 }}>패왕 토벌 상점</span>에서 현철 강화석(1:1), 영약, 강화석, 전설 장비 등으로 교환할 수 있습니다.
+                  • 획득한 징표는 <span style={{ color: "#ffd700", fontWeight: 700 }}>패왕 토벌 상점</span>에서 현철 강화석(3:1), 영약, 강화석, 신기 장비 등으로 교환할 수 있습니다.
                 </div>
               </div>
 
@@ -1140,22 +1238,22 @@ export default function MasterPanel() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
-                  { name: "광폭유", prob: "10%", effect: "공격력 3배 (10초)", color: "#ff4d4d" },
-                  { name: "파천유", prob: "10%", effect: "치댐 3배 (10초)", color: "#ff4d4d" },
-                  { name: "뇌전유", prob: "10%", effect: "500% 대미지 + 기절", color: "#ff4d4d" },
+                  { name: "광폭유", prob: "2%", effect: "공격력 3배 (5초)", color: "#ff4d4d" },
+                  { name: "파천유", prob: "2%", effect: "치댐 3배 (5초)", color: "#ff4d4d" },
+                  { name: "뇌전유", prob: "5%", effect: "500% 대미지 + 기절", color: "#ff4d4d" },
                   { name: "만독유", prob: "5%", effect: "적 방어력 50% 감소 (10초)", color: "#ff4d4d" },
-                  { name: "혈염유", prob: "10%", effect: "출혈 (최대 HP 10% 지속피해)", color: "#ff4d4d" },
-                  { name: "무영유", prob: "10%", effect: "회피율 3배 (10초)", color: "#4d94ff" },
-                  { name: "강철유", prob: "10%", effect: "모든 피해 50% 감소 (10초)", color: "#4d94ff" },
-                  { name: "반탄유", prob: "10%", effect: "받은 피해 200% 반사 (10초)", color: "#4d94ff" },
+                  { name: "혈염유", prob: "5%", effect: "출혈 (최대 HP 10% 지속피해)", color: "#ff4d4d" },
+                  { name: "무영유", prob: "5%", effect: "회피율 3배 (10초)", color: "#4d94ff" },
+                  { name: "강철유", prob: "7%", effect: "모든 피해 50% 감소 (10초)", color: "#4d94ff" },
+                  { name: "반탄유", prob: "7%", effect: "받은 피해 200% 반사 (10초)", color: "#4d94ff" },
                   { name: "금강유", prob: "5%", effect: "5초간 무적 상태", color: "#4d94ff" },
-                  { name: "흡성유", prob: "10%", effect: "대미지 50% 흡혈", color: "#4d94ff" },
-                  { name: "질풍유", prob: "10%", effect: "공속 2배 (10초)", color: "#ffd700" },
-                  { name: "기연유", prob: "10%", effect: "전리품 등급 상승 확률 증가", color: "#ffd700" },
-                  { name: "청명유", prob: "20%", effect: "상이상 즉시 해제", color: "#ffd700" },
+                  { name: "흡성유", prob: "5%", effect: "대미지 50% 흡혈", color: "#4d94ff" },
+                  { name: "질풍유", prob: "5%", effect: "공속 2배 (10초)", color: "#ffd700" },
+                  { name: "기연유", prob: "5%", effect: "전리품 등급 상승 확률 증가", color: "#ffd700" },
+                  { name: "청명유", prob: "8%", effect: "상이상 즉시 해제", color: "#ffd700" },
                   { name: "영안유", prob: "15%", effect: "적의 공격 반드시 회피", color: "#ffd700" },
-                  { name: "천마유", prob: "5%", effect: "모든 공격 능력치 2배 (15초)", color: "#ff4d4d" },
-                  { name: "삼연유", prob: "10%", effect: "3배 연타 공격 발동", color: "#ff4d4d" },
+                  { name: "천마유", prob: "5%", effect: "공격 시 일격필살(1000%) 발동", color: "#ff4d4d" },
+                  { name: "삼연유", prob: "5%", effect: "3배 연타 공격 발동", color: "#ff4d4d" },
                   { name: "무상유", prob: "3%", effect: "적 현재 체력 10% 즉시 삭감", color: "#ff4d4d" },
                 ].map((oil, idx) => (
                   <div key={idx} style={{

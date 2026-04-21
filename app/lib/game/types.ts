@@ -368,6 +368,7 @@ export type GameSaveData = {
   activeTab: TabType;
   isAudioMuted: boolean;
   innBuffEndTime: number; // New: Enhancement buff from Inn
+  oilBuffs: Record<string, number>; // New: Polishing oil active buffs (key -> timeLeft)
   wisdom: number; // New: Currency for Seogak refinement 
   martialArtsSkills: {
     skillId: string;

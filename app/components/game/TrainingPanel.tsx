@@ -1,6 +1,6 @@
 "use client";
   import { useState, useEffect, useRef } from "react";
-  import { useGameStore, REALM_SETTINGS } from "@/app/lib/game/useGameStore";
+  import { useGameStore, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
   import { FACTIONS } from "@/app/lib/game/factions";
   import DamageText from "./elements/DamageText";
   import GameStatusPanel from "./GameStatusPanel";
@@ -10,7 +10,7 @@
     const { game, addExp, addCoins, breakthrough, getTotalCombatPower } = useGameStore();
 
     const [damages, setDamages] = useState<
-      { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean }[]
+      { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean; isRainbow?: boolean; isCyan?: boolean }[]
     >([]);
     const [isShaking, setIsShaking] = useState(false);
     const [characterAction, setCharacterAction] = useState("idle");
@@ -28,11 +28,14 @@ const [showPrompt, setShowPrompt] = useState(true);
 const [lastTouchTime, setLastTouchTime] = useState(Date.now());
 const [hitEffects, setHitEffects] = useState<{ id: number; x: number; y: number, type: 'slash' | 'blue-slash' | 'flash' }[]>([]);
   const [textStrikes, setTextStrikes] = useState<{ id: any; char: string; x: number; y: number; groupId: number }[]>([]);
+  const [activeOilText, setActiveOilText] = useState<string | null>(null);
+  const oilEffectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
 const dismissedRealmRef = useRef<string | null>(null);
 const dismissedStarRef = useRef<number | null>(null);
 const currentTouchGoalRef = useRef<number | null>(null);
+const lastHitTimeRef = useRef<number>(0);
 
   const realmKeys = Object.keys(REALM_SETTINGS);
   const currentRealmIndex = realmKeys.indexOf(game.realm);
@@ -247,14 +250,17 @@ const isTrainingStatReward =
 
 
     const performHit = () => {
-      setLastTouchTime(Date.now());
+      const now = Date.now();
+      if (now - lastHitTimeRef.current < 150) return; // 중복 호출 방지 강화 (150ms)
+      lastHitTimeRef.current = now;
+      
+      setLastTouchTime(now);
       setShowPrompt(false);
       if (showBreakthroughPopup) return;
 
       const totalCritRate = useGameStore.getState().getTotalCritRate ? useGameStore.getState().getTotalCritRate() : 5;
       const isCritical = Math.random() < totalCritRate / 100;
 
-      addExp(1);
 
       setAttackIdx(Math.floor(Math.random() * 5) + 1);
       setCharacterAction("attack");
@@ -300,17 +306,78 @@ const isTrainingStatReward =
       }
 
       const critDmgMult = useGameStore.getState().getTotalCritDmg ? useGameStore.getState().getTotalCritDmg() / 100 : 1.5;
-      const finalDmg = isCritical ? Math.floor(totalAtk * critDmgMult) : totalAtk;
+      const baseFinalDmg = isCritical ? Math.floor(totalAtk * critDmgMult) : totalAtk;
+
+      // 연마유 효과 통합 트리거
+      const oilRes = useGameStore.getState().triggerOilEffects();
+      useGameStore.getState().applyOilResults(oilRes); // 전역 버프 적용
+      
+      // [수정] 기본 hitCount는 1로 고정 (신법 등의 영향을 여기서 받지 않도록)
+      // 오직 삼연유일 때만 3으로 변경됨
+      const hitCount = oilRes.hitCount; 
+      const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
+      const isFormless = oilRes.buffsTriggered.includes("oil_formless");
+      const isDemon = oilRes.buffsTriggered.includes("oil_demon");
+      
+      // [수정] 삼연유 발동 시에만 클릭 3번 인정 (일반 공격은 1번)
+      const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
+      addExp(isTriple ? 3 : 1);
+      
+      let ohkMultiplier = isThunder ? 5 : 1; 
+      if (oilRes.buffsTriggered.includes("oil_demon")) ohkMultiplier = 10;
 
       setDamages(prev => {
         const next = [...prev];
-        next.push({
-          id: Date.now() + Math.random(),
-          damage: finalDmg,
-          x: dummyX + (Math.random() * 10 - 5),
-          y: dummyY + (Math.random() * 10 - 5),
-          isCritical: isCritical
-        });
+        
+        // 다중 타격 처리
+        const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
+        for (let i = 0; i < hitCount; i++) {
+          let finalDmg = baseFinalDmg * ohkMultiplier;
+          
+          // 무상유 추가 대미지 (적 현재 체력 10%)
+          if (i === 0 && isFormless) {
+            finalDmg += gameState.dummyHp * 0.10;
+          }
+
+          let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i+1}연격` : undefined);
+          
+          // 버프 발동 시 텍스트 추가
+          if (i === 0 && oilRes.buffsTriggered.length > 0) {
+            const buffNames: Record<string, string> = { 
+              oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍", 
+              oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
+              oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
+              oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
+              oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
+            };
+              const triggeredKey = oilRes.buffsTriggered[0];
+              const triggeredName = buffNames[triggeredKey];
+              if (triggeredName) {
+                  if (triggeredKey === "oil_formless") label = `[${triggeredName}] 10%삭감!`;
+                  else if (triggeredKey === "oil_demon") {
+                    // Do not add [천마] to label as requested, it will be rainbow instead
+                    label = label || undefined;
+                  }
+                  else label = `[${triggeredName}] ${label || ""}`;
+
+                 // 화면 중앙 이펙트 트리거 (4초)
+                 if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
+                 setActiveOilText(triggeredName + "!");
+                 oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
+              }
+          }
+
+          next.push({
+            id: Date.now() + Math.random() + i,
+            damage: finalDmg,
+            x: dummyX + (Math.random() * 16 - 8) + (i * 6),
+            y: dummyY + (Math.random() * 12 - 6) - (i * 3),
+            isCritical: isCritical || isThunder || isDemon,
+            skillText: label,
+            isRainbow: isDemon,
+            isCyan: isTriple
+          });
+        }
 
         if (equipmentSkillProc) {
           next.push({
@@ -416,6 +483,25 @@ const isTrainingStatReward =
       >
 
 <GameStatusPanel game={game} />
+
+        {/* 연마유 효과 중앙 팝업 */}
+        {activeOilText && (
+          <div style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 10000,
+            fontSize: 30,
+            fontWeight: 950,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            animation: "auroraRed 2s infinite, mysticScale 4s forwards"
+          }}>
+            {activeOilText}
+          </div>
+        )}
 
         {showMissionPopup &&
   game.lastReward &&
@@ -766,7 +852,7 @@ const isTrainingStatReward =
             border: "1px solid rgba(255,215,0,0.2)", backdropFilter: "blur(2px)",
             pointerEvents: "none"
           }}>
-            전투력: {getTotalCombatPower().toLocaleString()}
+            전투력: {formatCompactNumber(getTotalCombatPower())}
           </div>
           {/* 3D Panning Background */}
           <div
@@ -929,7 +1015,7 @@ const isTrainingStatReward =
               }}
             >
               {REALM_SETTINGS[game.realm]?.label || "허수아비"} (
-              {game.dummyHp.toLocaleString()} / {game.maxDummyHp.toLocaleString()})
+              {formatCompactNumber(game.dummyHp)} / {formatCompactNumber(game.maxDummyHp)})
             </div>
             <div
               style={{
@@ -1363,6 +1449,18 @@ const isTrainingStatReward =
             0% { opacity: 0.2; }
             50% { opacity: 0.8; }
             100% { opacity: 0.2; }
+          }
+          @keyframes auroraRed {
+            0% { color: #ff3333; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff00ff; filter: hue-rotate(0deg); }
+            50% { color: #ff0000; text-shadow: 0 0 20px #ff0000, 0 0 40px #ff00ff, 0 0 60px #4400ff; filter: hue-rotate(15deg); }
+            100% { color: #ff3333; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff00ff; filter: hue-rotate(0deg); }
+          }
+          @keyframes mysticScale {
+            0% { transform: translate(-50%, -40%) scale(0.5); opacity: 0; }
+            15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            85% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -60%) scale(1.5); opacity: 0; }
           }
         `}</style>
       </div>

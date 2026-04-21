@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { formatCompactNumber } from "@/app/lib/game/useGameStore";
 
 export default function TopBar() {
   const router = useRouter();
@@ -189,7 +190,7 @@ backdropFilter: "none",
           textAlign: "center",
         }}
       >
-        {points.toLocaleString("ko-KR")}P
+        {formatCompactNumber(points)}P
       </button>
 
       {/* ✅ 로그인 했을 때만 보이는 내정보 */}

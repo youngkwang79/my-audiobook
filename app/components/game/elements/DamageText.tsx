@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 
+import { formatCompactNumber } from "@/app/lib/game/useGameStore";
+
 interface DamageTextProps {
   id: number;
   damage: number;
@@ -9,13 +11,14 @@ interface DamageTextProps {
   isCritical?: boolean;
   skillText?: string;
   isSkillProc?: boolean;
+  isRainbow?: boolean;
+  isCyan?: boolean;
 }
 
-export default function DamageText({ damage, x, y, isCritical, skillText, isSkillProc }: DamageTextProps) {
+export default function DamageText({ damage, x, y, isCritical, skillText, isSkillProc, isRainbow, isCyan }: DamageTextProps) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    // 0.8초 뒤에 컴포넌트를 사라지게 함 (스킬은 더 길게)
     const timeout = isSkillProc ? 1200 : 800;
     const timer = setTimeout(() => setVisible(false), timeout);
     return () => clearTimeout(timer);
@@ -23,14 +26,32 @@ export default function DamageText({ damage, x, y, isCritical, skillText, isSkil
 
   if (!visible) return null;
 
+  const formattedDmg = formatCompactNumber(damage);
+
+  const rainbowStyle = isRainbow ? {
+    background: "linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    textShadow: "0 0 5px rgba(255,255,255,0.5)",
+    fontSize: "32px",
+    filter: "drop-shadow(0 0 8px rgba(255,255,255,0.8))"
+  } : {};
+
+  const cyanStyle = isCyan ? {
+    color: "#00f2ff",
+    textShadow: "0 0 10px #00f2ff, 0 0 20px #0077ff, 2px 2px 4px rgba(0,0,0,0.9)",
+    fontSize: "30px",
+    filter: "drop-shadow(0 0 5px #00f2ff)"
+  } : {};
+
   return (
     <div style={{
       position: "absolute",
       left: `${x}%`,
       top: `${y}%`,
-      color: isSkillProc ? "#00ffff" : isCritical ? "#ff4444" : "#ffcc00",
-      fontWeight: "bold",
-      fontSize: isSkillProc ? "36px" : isCritical ? "32px" : "24px",
+      color: isSkillProc ? "#00ffff" : isCritical ? "#ff4d4d" : "#ffcc00",
+      fontWeight: "950",
+      fontSize: isSkillProc ? "28px" : isCritical ? "24px" : "18px",
       pointerEvents: "none",
       animation: "floatUp 0.8s ease-out forwards",
       zIndex: 100,
@@ -38,10 +59,18 @@ export default function DamageText({ damage, x, y, isCritical, skillText, isSkil
       userSelect: "none",
       display: "flex",
       flexDirection: "column",
-      alignItems: "center"
+      alignItems: "center",
+      ...rainbowStyle,
+      ...(isCyan ? cyanStyle : {})
     }}>
-      {skillText && <span style={{ fontSize: "16px", marginBottom: "2px", color: "#ffffaa", textShadow: "0 0 5px orange" }}>{skillText}</span>}
-      <span>{isSkillProc ? `💥 ${damage.toLocaleString()}` : isCritical ? `💥 ${damage}` : damage}</span>
+      {skillText && <span style={{ 
+        fontSize: "16px", 
+        marginBottom: "2px", 
+        color: "#ffffaa", 
+        textShadow: "0 0 5px orange",
+        WebkitTextFillColor: (isRainbow || isCyan) ? "#fff" : "initial"
+      }}>{skillText}</span>}
+      <span>{isSkillProc ? `💥 ${formattedDmg}` : (isCritical || isRainbow || isCyan) ? `💥 ${formattedDmg}` : formattedDmg}</span>
     </div>
   );
-}
+}

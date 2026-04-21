@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { FORGE_ITEMS, REALM_SET_OPTIONS, rollTierAndOptions, RANDOM_OPTION_POOL, getEnhancementMultiplier } from "@/app/lib/game/items";
-import { useGameStore, REALM_ORDER, REALM_SETTINGS } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_ORDER, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import type { WeaponId, ConsumableId, EquipSlot } from "@/app/lib/game/types";
 
 type Props = {
@@ -123,8 +123,7 @@ export default function ForgePanel(props: Props) {
     const result = enhanceWeapon(selectedEnhanceItem, useBlessedOil, useHeavenlyTalisman);
     setEnhanceResult(result);
     if (result.success) {
-      setUseBlessedOil(false); 
-      setUseHeavenlyTalisman(false);
+      // Keep checkbox states as requested by user
     }
     setTimeout(() => setEnhanceResult(null), 2000);
   };
@@ -159,7 +158,6 @@ export default function ForgePanel(props: Props) {
         overflow: "hidden",
         touchAction: "none",
         height: "100%",
-        maxHeight: "720px",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box"
@@ -205,17 +203,27 @@ export default function ForgePanel(props: Props) {
             장비 제련
           </button>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-            <div style={{ display: "flex", gap: 4 }}>
-              <div style={{ padding: "2px 8px", borderRadius: 8, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.2)", fontSize: 10, fontWeight: 800, color: "#ffd700" }}>
-                명성: {Math.floor(game.points || 0).toLocaleString()}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ 
+                padding: "4px 10px", borderRadius: 10, 
+                background: "rgba(255, 215, 0, 0.08)", border: "1.2px solid rgba(255, 215, 0, 0.3)",
+                display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
+              }}>
+                 <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 11 }}>금화</span> 
+                 <span style={{ fontWeight: 950, color: "#ffd700", fontSize: 13 }}>{formatCompactNumber(currentCoins)}</span>
               </div>
-              <div style={{ padding: "2px 8px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 10, fontWeight: 800, color: "#fff" }}>
-                {Math.floor(currentCoins).toLocaleString()} 냥
+              <div style={{ 
+                padding: "4px 10px", borderRadius: 10, 
+                background: "rgba(0, 242, 255, 0.08)", border: "1.2px solid rgba(0, 242, 255, 0.3)",
+                display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
+              }}>
+                 <span style={{ color: "#00f2ff", fontWeight: 900, fontSize: 11 }}>명성</span> 
+                 <span style={{ fontWeight: 950, color: "#00f2ff", fontSize: 13 }}>{formatCompactNumber(game.points || 0)}</span>
               </div>
             </div>
-            <div style={{ padding: "2px 8px", borderRadius: 8, background: "rgba(0,180,255,0.1)", border: "1px solid rgba(0,180,255,0.2)", fontSize: 10, fontWeight: 800, color: "#00f0ff" }}>
-              강화석: {currentStones.toLocaleString()} 개
+            <div style={{ padding: "1px 8px", borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 9, fontWeight: 700, color: "#777" }}>
+              강화석: {formatCompactNumber(currentStones)} 개
             </div>
         </div>
       </div>
@@ -470,10 +478,11 @@ export default function ForgePanel(props: Props) {
                     </div>
                     
                     <div style={{ background: "#0e0f14", padding: "12px 10px", borderRadius: 16, marginBottom: 10, border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 0 20px rgba(0,0,0,0.5)" }}>
-                        <div style={{ padding: "0 0 12px 0", borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 12, color: "#ff4d4d", fontWeight: "bold" }}>{curLv} 단계</span>
-                          <span style={{ fontSize: 16, color: "#ffd700" }}>▶</span>
-                          <span style={{ fontSize: 12, color: "#00f0ff", fontWeight: "bold" }}>{curLv + 1} 단계</span>
+                        <div className="forge-row-grid" style={{ padding: "0 0 12px 0", borderBottom: "1px solid rgba(255,255,255,0.15)", marginBottom: 12 }}>
+                          <span style={{ fontSize: 11, color: "#888", fontWeight: "900" }}>강화 단계</span>
+                          <span style={{ fontSize: 13, color: "#ff4d4d", fontWeight: "900", textAlign: "center" }}>{curLv} 단계</span>
+                          <span style={{ textAlign: "center", fontSize: 16, color: "#ffd700" }}>▶</span>
+                          <span style={{ fontSize: 13, color: "#00f0ff", fontWeight: "900", textAlign: "center" }}>{curLv + 1} 단계</span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column" }}>
                           {statsToShow.map(key => {
@@ -482,10 +491,10 @@ export default function ForgePanel(props: Props) {
                             return (
                               <div key={key} className="forge-row-grid" style={{ padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                                  <span style={{ fontSize: 11, color: "#eee", fontWeight: "900" }}>{getStatLabel(key)}</span>
-                                 <span style={{ fontSize: 13, color: "#fff", textAlign: "center" }}>{Math.floor(curV).toLocaleString()}</span>
+                                 <span style={{ fontSize: 13, color: "#fff", textAlign: "center" }}>{formatCompactNumber(curV)}</span>
                                  <span style={{ textAlign: "center", fontSize: 11, color: "#ffd700", fontWeight: "900" }}>▶</span>
                                  <div className="gold-box-premium">
-                                    <span style={{ fontSize: 13, color: "#ffd700", fontWeight: "950" }}>{Math.floor(nxtV).toLocaleString()}</span>
+                                    <span style={{ fontSize: 13, color: "#ffd700", fontWeight: "950" }}>{formatCompactNumber(nxtV)}</span>
                                  </div>
                               </div>
                             );
@@ -522,42 +531,66 @@ export default function ForgePanel(props: Props) {
                       )}
                     </div>
 
-                    <div onClick={() => setUseBlessedOil(!useBlessedOil)} style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: 12, border: useBlessedOil ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.1)", marginBottom: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: 6, border: "1.5px solid #d4af37", background: useBlessedOil ? "#d4af37" : "transparent", display: "grid", placeItems: "center" }}>{useBlessedOil && <span style={{ color: "#000", fontSize: 12 }}>✓</span>}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "#fff" }}>축복받은 기름 사용 <span style={{ color: "#d4af37", fontSize: 10 }}>(성공률 +5%)</span></div>
-                        <div style={{ fontSize: 10, color: "#aaa" }}>보유 수량: {game.consumables["oil_blessed"] || 0}개</div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "stretch", marginBottom: 12 }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        {/* 축복의 기름 */}
+                        <div onClick={() => setUseBlessedOil(!useBlessedOil)} style={{ 
+                          background: "rgba(255,255,255,0.02)", padding: "10px 12px", borderRadius: 12, 
+                          border: useBlessedOil ? "1.5px solid #ffd700" : "1px solid rgba(255,255,255,0.1)", 
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: 10 
+                        }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 6, border: "1.5px solid #d4af37", background: useBlessedOil ? "#d4af37" : "transparent", display: "grid", placeItems: "center" }}>{useBlessedOil && <span style={{ color: "#000", fontSize: 12 }}>✓</span>}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 900, color: "#fff" }}>축복의 기름 <span style={{ color: "#ffd700", fontSize: 9 }}>(성공 확률 +5% 증가)</span></div>
+                            <div style={{ fontSize: 10, color: "#aaa" }}>보유: {formatCompactNumber(game.consumables["oil_blessed"] || 0)}개</div>
+                          </div>
+                          <span style={{ fontSize: 18 }}>🧴</span>
+                        </div>
+                        {/* 천운의 부적 */}
+                        <div onClick={() => setUseHeavenlyTalisman(!useHeavenlyTalisman)} style={{ 
+                          background: "rgba(255,255,255,0.02)", padding: "10px 12px", borderRadius: 12, 
+                          border: useHeavenlyTalisman ? "1.5px solid #00f0ff" : "1px solid rgba(255,255,255,0.1)", 
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: 10 
+                        }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 6, border: "1.5px solid #00f0ff", background: useHeavenlyTalisman ? "#00f0ff" : "transparent", display: "grid", placeItems: "center" }}>{useHeavenlyTalisman && <span style={{ color: "#000", fontSize: 12 }}>✓</span>}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 900, color: "#fff" }}>천운의 부적 <span style={{ color: "#00f0ff", fontSize: 9 }}>(실패 시 단계 하락 방지)</span></div>
+                            <div style={{ fontSize: 10, color: "#aaa" }}>보유: {formatCompactNumber(game.consumables["charm_luck"] || 0)}개</div>
+                          </div>
+                          <span style={{ fontSize: 18 }}>📜</span>
+                        </div>
                       </div>
-                      <span style={{ fontSize: 20 }}>🧴</span>
+
+                      {/* 제련 시작 버튼 */}
+                      <button onClick={handleEnhance} disabled={currentCoins < goldCost || (game.points || 0) < repCost || currentStones < stoneCost || (useBlessedOil && (game.consumables["oil_blessed"] || 0) <= 0) || (useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0)} style={{ 
+                        width: 105, borderRadius: 16, background: "linear-gradient(135deg, #ffd700, #b8860b)", 
+                        color: "#000", fontWeight: 950, cursor: "pointer", fontSize: 14, 
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+                        border: "none", boxShadow: "0 4px 15px rgba(255,215,0,0.2)"
+                      }}>
+                        <div style={{ fontSize: 26 }}>🔨</div>
+                        <div style={{ lineHeight: 1.2 }}>제련 시작</div>
+                        <div style={{ fontSize: 12, fontWeight: 900 }}>{totalRate}%</div>
+                      </button>
                     </div>
 
-                    <div onClick={() => setUseHeavenlyTalisman(!useHeavenlyTalisman)} style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: 12, border: useHeavenlyTalisman ? "1px solid #00f0ff" : "1px solid rgba(255,255,255,0.1)", marginBottom: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: 6, border: "1.5px solid #00f0ff", background: useHeavenlyTalisman ? "#00f0ff" : "transparent", display: "grid", placeItems: "center" }}>{useHeavenlyTalisman && <span style={{ color: "#000", fontSize: 12 }}>✓</span>}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: "#fff" }}>천운의 부적 사용 <span style={{ color: "#00f0ff", fontSize: 10 }}>(강화 단계 하락 방어)</span></div>
-                        <div style={{ fontSize: 10, color: "#aaa" }}>보유 수량: {game.consumables["charm_luck"] || 0}개</div>
-                      </div>
-                      <span style={{ fontSize: 20 }}>📜</span>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-                      <div className="cost-summary-box">
-                          <div className="cost-label">필요 금화</div>
-                          <div className="cost-value" style={{ color: currentCoins >= goldCost ? "#fff" : "#ff4d4d" }}>{goldCost.toLocaleString()}</div>
-                      </div>
-                      <div className="cost-summary-box">
-                          <div className="cost-label">필요 명성</div>
-                          <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{repCost.toLocaleString()}</div>
-                      </div>
-                      <div className="cost-summary-box">
-                          <div className="cost-label">강화석</div>
-                          <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{stoneCost.toLocaleString()}</div>
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11, color: "#888", marginBottom: 8, textAlign: "center", fontWeight: "900" }}>[ 강화 소모 재화 ]</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <div className="cost-summary-box">
+                            <div className="cost-label">금화</div>
+                            <div className="cost-value" style={{ color: currentCoins >= goldCost ? "#fff" : "#ff4d4d" }}>{formatCompactNumber(goldCost)}</div>
+                        </div>
+                        <div className="cost-summary-box">
+                            <div className="cost-label">명성</div>
+                            <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
+                        </div>
+                        <div className="cost-summary-box">
+                            <div className="cost-label">강화석</div>
+                            <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{formatCompactNumber(stoneCost)}</div>
+                        </div>
                       </div>
                     </div>
-
-                    <button onClick={handleEnhance} disabled={currentCoins < goldCost || (game.points || 0) < repCost || currentStones < stoneCost || (useBlessedOil && (game.consumables["oil_blessed"] || 0) <= 0) || (useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0)} style={{ width: "100%", padding: "14px", borderRadius: 16, background: "linear-gradient(135deg, #ffd700, #b8860b)", color: "#000", fontWeight: 950, cursor: "pointer", fontSize: 16 }}>
-                      제련 시작 ({totalRate}%)
-                    </button>
                   </div>
                 );
               }
@@ -588,11 +621,11 @@ export default function ForgePanel(props: Props) {
                     <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                       <div className="cost-summary-box">
                         <div className="cost-label">필요 명성</div>
-                        <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{repCost.toLocaleString()}</div>
+                        <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
                       </div>
                       <div className="cost-summary-box">
                         <div className="cost-label">강화석</div>
-                        <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{stoneCost.toLocaleString()}</div>
+                        <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{formatCompactNumber(stoneCost)}</div>
                       </div>
                     </div>
 
@@ -638,11 +671,11 @@ export default function ForgePanel(props: Props) {
                     <div style={{ display: "flex", gap: 6 }}>
                       <div className="cost-summary-box">
                         <div className="cost-label">필요 명성</div>
-                        <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#8a2be2" : "#ff4d4d" }}>{repCost.toLocaleString()}</div>
+                        <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#8a2be2" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
                       </div>
                       <div className="cost-summary-box">
                         <div className="cost-label">강화석</div>
-                        <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{stoneCost.toLocaleString()}</div>
+                        <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{formatCompactNumber(stoneCost)}</div>
                       </div>
                     </div>
                   </div>
@@ -705,11 +738,11 @@ export default function ForgePanel(props: Props) {
                       <div style={{ display: "flex", gap: 6 }}>
                         <div className="cost-summary-box">
                           <div className="cost-label">필요 명성</div>
-                          <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{repCost.toLocaleString()}</div>
+                          <div className="cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
                         </div>
                         <div className="cost-summary-box">
                           <div className="cost-label">강화석</div>
-                          <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{stoneCost.toLocaleString()}</div>
+                          <div className="cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{formatCompactNumber(stoneCost)}</div>
                         </div>
                       </div>
                   </div>

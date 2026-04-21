@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useGameStore, STAT_UPGRADE_CONFIG } from "@/app/lib/game/useGameStore";
+import { useGameStore, STAT_UPGRADE_CONFIG, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { REALM_ORDER } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 
@@ -140,32 +140,39 @@ export default function UpgradePanel() {
 
       {/* 1. Header: Quick Stats & Currencies */}
       <div style={headerStyle}>
-        <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
-          <div style={currencyBadge}>
-             <span style={{ color: "#ffd700", opacity: 0.7 }}>💰</span> 
-             <span style={{ fontWeight: 900 }}>{Math.floor(currentCoins).toLocaleString()}</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ 
+            padding: "4px 10px", borderRadius: 10, 
+            background: "rgba(255, 215, 0, 0.08)", border: "1.2px solid rgba(255, 215, 0, 0.3)",
+            display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
+          }}>
+             <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 11 }}>금화</span> 
+             <span style={{ fontWeight: 950, color: "#ffd700", fontSize: 13 }}>{formatCompactNumber(currentCoins)}</span>
           </div>
-          <div style={{ ...currencyBadge, background: "rgba(0, 242, 255, 0.1)", border: "1px solid rgba(0, 242, 255, 0.2)" }}>
-             <span style={{ color: "#00f2ff", opacity: 0.7 }}>💠</span> 
-             <span style={{ fontWeight: 900, color: "#00f2ff" }}>{Math.floor(currentRep).toLocaleString()}</span>
+          <div style={{ 
+            padding: "4px 10px", borderRadius: 10, 
+            background: "rgba(0, 242, 255, 0.08)", border: "1.2px solid rgba(0, 242, 255, 0.3)",
+            display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
+          }}>
+             <span style={{ color: "#00f2ff", fontWeight: 900, fontSize: 11 }}>명성</span> 
+             <span style={{ fontWeight: 950, color: "#00f2ff", fontSize: 13 }}>{formatCompactNumber(currentRep)}</span>
           </div>
         </div>
-       
       </div>
 
       {/* 2. Mini Stats Summary */}
       <div style={summaryBarStyle}>
          <div style={summaryItem}>
             <span style={{ opacity: 0.6 }}>공격</span>
-            <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{Math.floor(getTotalAttack()).toLocaleString()}</span>
+            <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{formatCompactNumber(getTotalAttack())}</span>
          </div>
          <div style={summaryItem}>
             <span style={{ opacity: 0.6 }}>방어</span>
-            <span style={{ color: "#00f2ff", fontWeight: 900 }}>{Math.floor(getTotalDefense()).toLocaleString()}</span>
+            <span style={{ color: "#00f2ff", fontWeight: 900 }}>{formatCompactNumber(getTotalDefense())}</span>
          </div>
          <div style={summaryItem}>
             <span style={{ opacity: 0.6 }}>생명</span>
-            <span style={{ color: "#4dff4d", fontWeight: 900 }}>{Math.floor(getTotalHp()).toLocaleString()}</span>
+            <span style={{ color: "#4dff4d", fontWeight: 900 }}>{formatCompactNumber(getTotalHp())}</span>
          </div>
          <div style={summaryItem}>
             <span style={{ opacity: 0.6 }}>회피</span>
@@ -272,7 +279,7 @@ export default function UpgradePanel() {
                         }}
                      >
                         
-                        <span style={{ fontWeight: 950,fontSize: 26 }}>{goldCost >= 1000000 ? (goldCost/1000000).toFixed(1)+'M' : goldCost.toLocaleString()}</span>
+                        <span style={{ fontWeight: 950,fontSize: 26 }}>{formatCompactNumber(goldCost)}</span>
                      </button>
                      
                      {/* Reputation Upgrade (Blue Box) */}
@@ -292,7 +299,7 @@ export default function UpgradePanel() {
                          }}
                        >
                          
-                         <span style={{ fontWeight: 950,fontSize :26 }}>{repCost >= 1000000 ? (repCost/1000000).toFixed(1)+'M' : repCost.toLocaleString()}</span>
+                         <span style={{ fontWeight: 950,fontSize :26 }}>{formatCompactNumber(repCost)}</span>
                        </button>
                      )}
                   </div>
