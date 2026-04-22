@@ -1701,7 +1701,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
       {(missionAvailable || isPlaying) ? (
         <div style={{
           ...gameStage,
-          height: currentMiniGame === "yabawi" ? "610px" : (currentMiniGame === "puzzle" ? "560px" : "560px"),
+          height: currentMiniGame === "yabawi" ? "610px" : (currentMiniGame === "puzzle" ? "600px" : "600px"),
           position: "relative",
           overflow: currentMiniGame === "yabawi" ? "visible" : "hidden",
           animation: "none"
@@ -1756,7 +1756,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               </h2>
 
               <div style={{
-                width: "100%", maxWidth: "340px", background: "rgba(255,255,255,0.03)",
+                width: "95%", maxWidth: "450px", background: "rgba(255,255,255,0.03)",
                 padding: "16px 24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)",
                 marginTop: "30px",
                 marginBottom: "20px", fontSize: "14px", lineHeight: "1.6", color: "#ccc",
@@ -1780,7 +1780,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 onClick={() => { setShowTutorial(false); setIsPlaying(true); isPlayingRef.current = true; }}
                 style={{
                   ...primaryButton,
-                  width: "100%", maxWidth: "240px", padding: "11px", fontSize: "18px",
+                  width: "90%", maxWidth: "400px", padding: "11px", fontSize: "18px",
                   marginTop: "10px",
                   boxShadow: "0 10px 25px rgba(255,215,0,0.3)"
                 }}
@@ -1841,7 +1841,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               {/* GAME RENDERERS */}
               {currentMiniGame === "breath" && (
                 <div style={{ ...breathArea, height: 360, padding: 0 }}>
-                  <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10, display: "flex", gap: 20 }}>
+                  <div style={{ position: "absolute", top: 10, right: 20, fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10 }}>
                     <span style={{ color: breathMissCount >= 3 ? "#ff4d4d" : "#ffd700" }}>MISS: {breathMissCount}/5</span>
                   </div>
                   <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
@@ -2465,12 +2465,12 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
 
               {/* 3. 버튼 (하단 고정) */}
               <div style={{
-                position: "absolute", bottom: "60px", left: "50%", transform: "translateX(-50%)",
+                position: "absolute", bottom: "25px", left: "50%", transform: "translateX(-50%)",
                 width: "100%", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 20
               }}>
                 <div style={{ display: "flex", flexDirection: "column", width: "100%", gap: "8px", alignItems: "center" }}>
-                  <button onClick={startMission} style={{ ...primaryButton, width: "100%", maxWidth: "280px", padding: "12px", fontSize: "17px" }}>대련 시작</button>
-                  <div style={{ display: "flex", width: "100%", maxWidth: "280px", gap: "8px", marginTop: "0px" }}>
+                  <button onClick={startMission} style={{ ...primaryButton, width: "90%", maxWidth: "400px", padding: "12px", fontSize: "17px" }}>대련 시작</button>
+                  <div style={{ display: "flex", width: "90%", maxWidth: "400px", gap: "8px", marginTop: "0px" }}>
 
                     <button
                       onClick={() => {
@@ -2736,12 +2736,12 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
 
 const containerStyle: React.CSSProperties = {
   position: "relative",
-  minHeight: "580px",
-  borderRadius: "24px",
+  minHeight: "640px",
+  borderRadius: "0px",
   overflow: "hidden",
   border: "1px solid rgba(255,215,120,0.25)",
   background: "#0a0a0f",
-  padding: "12px 15px 20px",
+  padding: "12px 0px 20px",
   textAlign: "center",
   color: "#fff",
   fontFamily: "'Inter', sans-serif",
@@ -2786,9 +2786,9 @@ const statValue: React.CSSProperties = {
 
 const gameStage: React.CSSProperties = {
   position: "relative",
-  height: "560px", // 게임 박스 크기 최적화 (3차)
+  height: "600px", // 게임 박스 하단 확장
   background: "rgba(0,0,0,0.3)",
-  borderRadius: "20px",
+  borderRadius: "0px",
   border: "1px solid rgba(255,255,255,0.05)",
   display: "flex",
   flexDirection: "column",
@@ -2801,9 +2801,9 @@ const lobbyOverlay: React.CSSProperties = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  padding: "30px",
+  padding: "0px",
   background: "radial-gradient(circle at center, rgba(60,40,20,0.4) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0.9) 100%)",
-  borderRadius: "20px",
+  borderRadius: "0px",
   position: "relative",
   overflow: "hidden",
 };

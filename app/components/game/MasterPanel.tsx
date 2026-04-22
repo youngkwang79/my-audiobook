@@ -261,7 +261,7 @@ export default function MasterPanel() {
 
   if (!isUnlocked) {
     return (
-      <div style={{ height: "100%", display: "grid", placeItems: "center", background: "rgba(0,0,0,0.8)", borderRadius: 24 }}>
+      <div style={{ height: "100%", display: "grid", placeItems: "center", background: "rgba(0,0,0,0.8)", borderRadius: 0 }}>
         <div style={{ textAlign: "center", color: "#ff4d4d" }}>
           <div style={{ fontSize: 48, marginBottom: 10 }}>💀</div>
           <div style={{ fontSize: 18, fontWeight: 900 }}>악적 처단 잠김</div>
@@ -312,7 +312,7 @@ export default function MasterPanel() {
       color: "#eee",
       boxSizing: "border-box",
       overflowY: "auto",
-      padding: "45px 10px 40px", // Increased top for iPhone, bottom for Android
+      padding: "35px 0px 30px", // Maximum expansion restored
       touchAction: "pan-y"
     }} className="hide-scrollbar">
       
@@ -324,12 +324,14 @@ export default function MasterPanel() {
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 10000,
-          fontSize: 30,
+          fontSize: 22,
           fontWeight: 950,
           textAlign: "center",
+          color: "#ff4d4d",
+          textShadow: "0 0 10px #000, 0 0 5px #ff0000",
           whiteSpace: "nowrap",
           pointerEvents: "none",
-          animation: "auroraRed 2s infinite, mysticScale 4s forwards"
+          animation: "mysticScale 4s forwards"
         }}>
           {activeOilText}
         </div>
@@ -372,8 +374,8 @@ export default function MasterPanel() {
   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
     <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
     <div style={{ display: "flex", gap: 6 }}>
-      <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
-      <span style={{ fontSize: 9, color: "#00f2ff" }}>✨ {game.wisdom || 0}</span>
+      <span style={{ fontSize: 9, color: "#ff6b6b" }}>징표: {formatCompactNumber(game.bossTokens || 0)}</span>
+      <span style={{ fontSize: 9, color: "#00f2ff" }}>심득: {formatCompactNumber(game.wisdom || 0)}</span>
     </div>
   </div>
   <button
@@ -403,10 +405,10 @@ export default function MasterPanel() {
       <div
         style={{
           position: "relative",
-          height: 360,
-          minHeight: 360,
+          height: 380,
+          minHeight: 380,
           background: "#000",
-          borderRadius: 20,
+          borderRadius: 0,
           border: "1px solid #4a1a1a",
           overflow: "hidden",
           boxShadow: "inset 0 0 40px rgba(0,0,0,0.9)",
@@ -616,6 +618,41 @@ export default function MasterPanel() {
 
         {/* Player */}
         <div style={{ position: "absolute", left: "12%", bottom: 85, zIndex: 5 }}>
+          {/* Vertical Potion Quickslots */}
+          <div style={{
+            position: "absolute", left: -46, top: -10,
+            display: "flex", flexDirection: "column", gap: 6, zIndex: 110
+          }}>
+            {game.quickSlots.map((id, idx) => {
+              const qty = id ? (game.consumables[id] || 0) : 0;
+              const data = id ? POTION_UI[id] : null;
+              return (
+                <div
+                  key={idx}
+                  onClick={(e) => { e.stopPropagation(); id && useConsumable(id); }}
+                  style={{
+                    width: 34, height: 34, background: "rgba(20,10,10,0.95)",
+                    border: id ? "1.5px solid #ffd700" : "1.5px dashed #ffd700",
+                    borderRadius: 7, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    cursor: id ? "pointer" : "default", opacity: id ? 1 : 0.5, transition: "0.2s", position: "relative",
+                    boxShadow: id ? "0 0 10px rgba(255,215,0,0.2)" : "inset 0 0 5px rgba(0,0,0,0.5)"
+                  }}
+                >
+                  {data && (
+                    <>
+                      <div style={{ fontSize: 12 }}>{data.emoji}</div>
+                      <div style={{
+                        position: "absolute", bottom: -2, right: -2, background: "#ffd700", color: "#000",
+                        fontSize: 8, padding: "0px 2px", borderRadius: 4, fontWeight: "900", border: "1px solid #000"
+                      }}>{qty}</div>
+                    </>
+                  )}
+                  {!id && <div style={{ color: "#332211", fontSize: 9, fontWeight: "bold" }}>+</div>}
+                </div>
+              );
+            })}
+          </div>
+
           <div style={{
             position: "absolute", bottom: -10, left: "50%", width: 140, height: 35,
             background: "radial-gradient(ellipse, rgba(0,242,255,0.4) 0%, transparent 80%)",
@@ -625,7 +662,7 @@ export default function MasterPanel() {
           <img 
             src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"} 
             style={{ 
-              height: 180, 
+              height: 200, 
               position: "relative",
               animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
               filter: isPlayerHit 
@@ -680,8 +717,8 @@ export default function MasterPanel() {
 
               return (
                 <div key={idx} style={{
-                  width: 50, height: 50, borderRadius: 12, 
-                  border: skill ? "1.5px solid #ffd700" : "2px dashed #ffd700",
+                  width: 42, height: 42, borderRadius: 10, 
+                  border: skill ? "1.5px solid #ffd700" : "1.5px dashed #ffd700",
                   background: canUse ? "linear-gradient(135deg, #4d3300 0%, #2a1b00 100%)" : "rgba(0,0,0,0.8)",
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   cursor: canUse ? "pointer" : "default", position: "relative", overflow: "hidden",
@@ -693,13 +730,14 @@ export default function MasterPanel() {
                 }}>
                   {skill ? (
                     <>
-                      <div style={{ fontSize: 18 }}>{idx === 0 ? "🔥" : idx === 1 ? "⚡" : "✨"}</div>
-                      <div style={{ fontSize: 7, fontWeight: "bold", color: "#ffd700", textAlign: "center", marginTop: 1, padding: "0 2px" }}>{skill.name.slice(0, 4)}</div>
+                      <div style={{ fontSize: 8, fontWeight: "950", color: "#ffd700", textAlign: "center", padding: "0 2px", lineHeight: 1.1 }}>
+                        {skill.name}
+                      </div>
                       <div style={{ 
                         fontSize: 6, fontWeight: "bold", color: game.mp >= (skill.mpCost || 0) ? "#00f2ff" : "#ff4d4d", 
-                        background: "rgba(0,0,0,0.5)", padding: "1px 3px", borderRadius: 4, marginTop: 1
+                        background: "rgba(0,0,0,0.5)", padding: "1px 3px", borderRadius: 4, marginTop: 2
                       }}>
-                        {skill.mpCost} MP
+                        {skill.mpCost}
                       </div>
                       {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", display: "grid", placeItems: "center", fontSize: 14, fontWeight: "bold", color: "#fff" }}>{Math.ceil(cd)}</div>}
                       {game.mp < (skill.mpCost || 0) && cd <= 0 && (
@@ -707,7 +745,7 @@ export default function MasterPanel() {
                       )}
                     </>
                   ) : (
-                    <div style={{ fontSize: 16, color: "#333" }}>+</div>
+                    <div style={{ fontSize: 14, color: "#333" }}>+</div>
                   )}
                 </div>
               );
@@ -740,7 +778,7 @@ export default function MasterPanel() {
             return "/images/villain_blood.png";
           })()} 
           style={{ 
-            height: 210, 
+            height: 240, 
             position: "relative", 
             filter: masterDuel.isBerserk 
               ? "drop-shadow(0 0 20px rgba(255,0,0,1)) brightness(1.5) sepia(0.5) hue-rotate(-50deg)" 
@@ -774,38 +812,7 @@ export default function MasterPanel() {
         </div>
       </div>
 
-      {/* 3. 회복제 퀵슬롯 */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 6, margin: "-2px auto 10px", position: "relative", zIndex: 110 }}>
-        {game.quickSlots.map((id, idx) => {
-          const qty = id ? (game.consumables[id] || 0) : 0;
-          const data = id ? POTION_UI[id] : null;
-          return (
-            <div
-              key={idx}
-              onClick={() => id && useConsumable(id)}
-              style={{
-                width: 50, height: 50, background: "rgba(20,10,10,0.95)",
-                border: id ? "1.5px solid #ffd700" : "2px dashed #ffd700",
-                borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                cursor: id ? "pointer" : "default", opacity: id ? 1 : 0.5, transition: "0.2s", position: "relative",
-                boxShadow: id ? "0 0 10px rgba(255,215,0,0.2)" : "inset 0 0 5px rgba(0,0,0,0.5)"
-              }}
-            >
-              {data && (
-                <>
-                  <div style={{ fontSize: 18 }}>{data.emoji}</div>
-                  <div style={{ fontSize: 7, color: "#ffd700", fontWeight: 'bold', marginTop: 1, textShadow: "0 0 2px #000" }}>{data.name}</div>
-                  <div style={{
-                    position: "absolute", bottom: -2, right: -2, background: "#ffd700", color: "#000",
-                    fontSize: 8, padding: "0px 3px", borderRadius: 4, fontWeight: "900", border: "1px solid #000"
-                  }}>{qty}</div>
-                </>
-              )}
-              {!id && <div style={{ color: "#332211", fontSize: 14, fontWeight: "bold" }}>+</div>}
-            </div>
-          );
-        })}
-      </div>
+
 
       {/* 4. 정보 박스 영역 */}
       {/* 4. 정보 박스 영역 */}
@@ -818,7 +825,7 @@ export default function MasterPanel() {
             style={{
               flex: 1, position: "relative", overflow: "hidden",
               background: "linear-gradient(#1a0a0a, #1a0a0a) padding-box, linear-gradient(135deg, #ff4d4d, #990000) border-box",
-              borderRadius: 14, padding: "10px", border: "1.5px solid transparent",
+              borderRadius: 14, padding: "8px", border: "1.5px solid transparent",
               boxShadow: "0 4px 15px rgba(0,0,0,0.5)", textAlign: "center", cursor: "pointer", color: "#eee",
               transition: "transform 0.2s, box-shadow 0.2s",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
@@ -839,16 +846,16 @@ export default function MasterPanel() {
               animation: "shimmer 3s infinite ease-in-out", pointerEvents: "none"
             }} />
 
-            <div style={{ fontSize: 13, fontWeight: 900, color: "#ff6b6b", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: "#ff6b6b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
               <span>☠️</span> 처단 규칙 <span style={{ fontSize: 10, opacity: 0.6 }}>▶</span>
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🛡️</div>
+                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🛡️</div>
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>입장 조건</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>⏱</div>
+                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>⏱</div>
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>제한 시간</div>
               </div>
             </div>
@@ -860,7 +867,7 @@ export default function MasterPanel() {
             style={{
               flex: 1, position: "relative", overflow: "hidden",
               background: "linear-gradient(#1a1a0a, #1a1a0a) padding-box, linear-gradient(135deg, #ffd700, #ff8c00) border-box",
-              borderRadius: 14, padding: "10px", border: "1.5px solid transparent",
+              borderRadius: 14, padding: "8px", border: "1.5px solid transparent",
               boxShadow: "0 4px 15px rgba(0,0,0,0.5)", textAlign: "center", cursor: "pointer", color: "#eee",
               transition: "transform 0.2s, box-shadow 0.2s",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
@@ -881,20 +888,20 @@ export default function MasterPanel() {
               animation: "shimmer 3s infinite ease-in-out", pointerEvents: "none"
             }} />
 
-            <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: "#ffd700", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <span>🎁</span> 처단 보상 <span style={{ fontSize: 10, opacity: 0.6 }}>▶</span>
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🩸</div>
+                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🩸</div>
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>징표</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🧪</div>
+                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🧪</div>
                 <div style={{ fontSize: 9, color: "#ffd700", marginTop: 6, fontWeight: 900 }}>전리품</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🛒</div>
+                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🛒</div>
                 <div style={{ fontSize: 9, color: "#ffd700", marginTop: 6, fontWeight: 900 }}>상점</div>
               </div>
             </div>
@@ -902,27 +909,34 @@ export default function MasterPanel() {
         </div>
       )}
 
+      {/* 도전 조건 현황판 (Relocated and Single Row) */}
+      {!masterDuel.isPlaying && (
+        <div style={{ width: "100%", padding: "0 5px", marginBottom: 6 }}>
+          <div style={{ 
+            background: "rgba(0,0,0,0.6)", border: "1px solid #333", borderRadius: 8, padding: "4px 2px",
+            display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2
+          }}>
+            {[
+              { label: '공격', key: 'atk' }, { label: '방어', key: 'def' }, { label: '생명', key: 'hpRec' },
+              { label: '확률', key: 'critRate' }, { label: '치댐', key: 'critDmg' }, { label: '회피', key: 'eva' }
+            ].map(stat => {
+              const cur = game.upgradeLevels[stat.key as keyof typeof game.upgradeLevels] || 0;
+              const isOk = cur >= masterDuel.selectedLevel;
+              return (
+                <div key={stat.key} style={{ fontSize: 12, textAlign: "center", color: isOk ? "#4dabf7" : "#ff4d4d", display: "flex", flexDirection: "column", gap: 1 }}>
+                  <div style={{ opacity: 0.9, fontSize: 10 }}>{stat.label}</div>
+                  <div style={{ fontWeight: 900 }}>{cur}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ textAlign: "center", paddingBottom: 10 }}>
         {!masterDuel.isPlaying && (
-          <div style={{ width: "95%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
-            {/* 도전 조건 현황판 */}
-            <div style={{ 
-              background: "rgba(0,0,0,0.6)", border: "1px solid #333", borderRadius: 12, padding: "8px 12px",
-              display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4
-            }}>
-              {[
-                { label: '공격', key: 'atk' }, { label: '방어', key: 'def' }, { label: '생명', key: 'hpRec' },
-                { label: '확률', key: 'critRate' }, { label: '치댐', key: 'critDmg' }, { label: '회피', key: 'eva' }
-              ].map(stat => {
-                const cur = game.upgradeLevels[stat.key as keyof typeof game.upgradeLevels] || 0;
-                const isOk = cur >= masterDuel.selectedLevel;
-                return (
-                  <div key={stat.key} style={{ fontSize: 10, textAlign: "left", color: isOk ? "#4dabf7" : "#ff4d4d" }}>
-                    {stat.label}: <span style={{ fontWeight: 900 }}>{cur}/{masterDuel.selectedLevel}</span>
-                  </div>
-                );
-              })}
-            </div>
+          <div style={{ width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* 도전 조건 현황판 (Removed from original position) */}
 
             <button
               onClick={(e) => { 
@@ -935,7 +949,7 @@ export default function MasterPanel() {
               }}
               disabled={isOnCooldown || isCurrentLevelLocked}
               style={{
-                width: "100%", padding: "14px", borderRadius: 14,
+                width: "100%", padding: "10px", borderRadius: 14,
                 background: (isOnCooldown || isCurrentLevelLocked)
                   ? "rgba(50, 50, 50, 0.8)" 
                   : "linear-gradient(135deg, #990000 0%, #ff0000 100%)",
@@ -1025,8 +1039,8 @@ export default function MasterPanel() {
                 <div style={{ fontSize: 11, color: "#ff6b6b", fontWeight: 800, marginBottom: 6, opacity: 0.9 }}>보유중인 혈투의 징표</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ fontSize: 28 }}>🩸</div>
-                  <div style={{ fontSize: 34, fontWeight: 950, color: "#fff", textShadow: "0 0 15px rgba(255,107,107,0.4)", letterSpacing: -1 }}>
-                    {game.bossTokens || 0}
+                  <div style={{ fontSize: 24, fontWeight: 950, color: "#fff", textShadow: "0 0 15px rgba(255,107,107,0.4)", letterSpacing: -0.5 }}>
+                    {formatCompactNumber(game.bossTokens || 0)}
                   </div>
                 </div>
               </div>
