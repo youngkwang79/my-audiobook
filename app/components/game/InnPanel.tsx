@@ -2052,14 +2052,16 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                             position: 'absolute', bottom: `${i * 30 + 15}px`,
                             left: `${side * laneWidth + (laneWidth * 0.1)}%`,
                             width: `${laneWidth * 0.8}%`, height: '20px',
-                            background: i === 0 ? 'linear-gradient(to right, #f59e0b, #d97706)' : '#292524',
-                            borderRadius: '6px', opacity: i === 0 ? 1 : 1 / (i + 1.5),
+                            background: i === 0 ? 'linear-gradient(to right, #f59e0b, #d97706)' : '#44403c',
+                            borderRadius: '6px', 
+                            opacity: i === 0 ? 1 : Math.max(0.4, 1 / (i + 1.2)),
                             transform: i === 0 ? 'scale(1.1)' : 'scale(1)',
                             display: 'flex', justifyContent: 'center', alignItems: 'center',
-                            boxShadow: i === 0 ? '0 0 10px #fbbf24' : 'none',
+                            boxShadow: i === 0 ? '0 0 10px #fbbf24' : 'inset 0 0 5px rgba(255,255,255,0.05)',
+                            border: i === 0 ? 'none' : '1px solid #555',
                             transition: 'all 0.1s ease-out'
                           }}>
-                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: i === 0 ? '#fff' : '#666' }}>{side + 1}</span>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: i === 0 ? '#fff' : '#ccc' }}>{side + 1}</span>
                           </div>
                         );
                       })}

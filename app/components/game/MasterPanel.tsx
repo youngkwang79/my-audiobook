@@ -69,6 +69,114 @@ const BOX_ANIM_CSS = `
     85% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     100% { transform: translate(-50%, -60%) scale(1.5); opacity: 0; }
   }
+  @keyframes glowPlayer {
+    0% { box-shadow: 0 0 10px rgba(0,242,255,0.2); transform: translateX(-50%) rotateX(60deg) scale(1); }
+    50% { box-shadow: 0 0 30px rgba(0,242,255,0.5); transform: translateX(-50%) rotateX(60deg) scale(1.1); }
+    100% { box-shadow: 0 0 10px rgba(0,242,255,0.2); transform: translateX(-50%) rotateX(60deg) scale(1); }
+  }
+  @keyframes glowBoss {
+    0% { box-shadow: 0 0 10px rgba(255,0,0,0.3); transform: translateX(-50%) rotateX(60deg) scale(1); }
+    50% { box-shadow: 0 0 35px rgba(255,0,0,0.6); transform: translateX(-50%) rotateX(60deg) scale(1.1); }
+    100% { box-shadow: 0 0 10px rgba(255,0,0,0.3); transform: translateX(-50%) rotateX(60deg) scale(1); }
+  }
+  @keyframes redFlash {
+    0% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); filter: blur(1px); }
+    100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes hpPulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  .hp-low { animation: hpPulse 0.5s infinite; }
+  @keyframes rivalReveal {
+    0% { opacity: 0; transform: translateX(20px) scale(0.9); filter: brightness(0) blur(10px); }
+    100% { opacity: 1; transform: translateX(0) scale(1); filter: brightness(1) blur(0); }
+  }
+  @keyframes masterPopupEnter {
+    0% { transform: scale(0.7); opacity: 0; filter: blur(10px); }
+    100% { transform: scale(1); opacity: 1; filter: blur(0); }
+  }
+  @keyframes duelBgPan {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes bossFlutter {
+    0% { transform: translateY(0) scale(1) rotate(0deg); filter: brightness(1); }
+    50% { transform: translateY(-15px) scale(1.02) rotate(0.5deg); filter: brightness(1.1); }
+    100% { transform: translateY(0) scale(1) rotate(0deg); filter: brightness(1); }
+  }
+  @keyframes character3DPanBoss {
+    0% { transform: perspective(1000px) rotateY(-8deg) rotateX(2deg) translateX(-10px); }
+    100% { transform: perspective(1000px) rotateY(8deg) rotateX(-2deg) translateX(10px); }
+  }
+  @keyframes playerHitShake {
+    0% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
+    25% { transform: translate(-5px, 5px); filter: brightness(1.5) sepia(1) hue-rotate(-50deg); }
+    50% { transform: translate(5px, -5px); filter: brightness(2) sepia(1) hue-rotate(-50deg); }
+    100% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
+  }
+  @keyframes screenBerserkFlash {
+    0% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
+    50% { box-shadow: inset 0 0 80px rgba(255,0,0,0.4); }
+    100% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
+  }
+  @keyframes bossCharging {
+    0% { filter: brightness(1) drop-shadow(0 0 10px rgba(255,0,0,0.3)); transform: scale(1); }
+    50% { filter: brightness(2) drop-shadow(0 0 30px rgba(255,0,0,1)); transform: scale(1.05); }
+    100% { filter: brightness(1) drop-shadow(0 0 10px rgba(255,0,0,0.3)); transform: scale(1); }
+  }
+  @keyframes bleedPulse {
+    0% { box-shadow: inset 0 0 20px rgba(200,0,255,0.2); }
+    50% { box-shadow: inset 0 0 50px rgba(200,0,255,0.6); }
+    100% { box-shadow: inset 0 0 20px rgba(200,0,255,0.2); }
+  }
+  @keyframes skillPopupEnter {
+    0% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; filter: blur(10px); }
+    15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; filter: blur(0); }
+    20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -20%) scale(0.9); opacity: 0; filter: blur(5px); }
+  }
+  @keyframes skillAuraSpin {
+    0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 0.3; }
+    50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); opacity: 0.3; }
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-150%) skewX(-20deg); }
+    50% { transform: translateX(150%) skewX(-20deg); }
+    100% { transform: translateX(150%) skewX(-20deg); }
+  }
+  .gold-shimmer-container {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a1a1c 0%, #0a0a0b 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,215,0,0.05);
+  }
+  .gold-shimmer-container::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 215, 0, 0.1),
+      rgba(255, 215, 0, 0.2),
+      rgba(255, 215, 0, 0.1),
+      transparent
+    );
+    animation: shimmer 3s infinite;
+    pointer-events: none;
+  }
+  .gold-shimmer-content {
+    position: relative;
+    z-index: 1;
+  }
 `;
 
 export default function MasterPanel() {
@@ -261,7 +369,7 @@ export default function MasterPanel() {
 
   if (!isUnlocked) {
     return (
-      <div style={{ height: "100%", display: "grid", placeItems: "center", background: "rgba(0,0,0,0.8)", borderRadius: 0 }}>
+      <div style={{ height: "100%", display: "grid", placeItems: "center", background: "rgba(0,0,0,0.8)", borderRadius: 24 }}>
         <div style={{ textAlign: "center", color: "#ff4d4d" }}>
           <div style={{ fontSize: 48, marginBottom: 10 }}>💀</div>
           <div style={{ fontSize: 18, fontWeight: 900 }}>악적 처단 잠김</div>
@@ -312,9 +420,9 @@ export default function MasterPanel() {
       color: "#eee",
       boxSizing: "border-box",
       overflowY: "auto",
-      padding: "35px 0px 30px", // Maximum expansion restored
-      touchAction: "pan-y"
+      padding: "45px 10px 40px", // Increased top for iPhone, bottom for Android
     }} className="hide-scrollbar">
+      <style>{BOX_ANIM_CSS}</style>
       
       {/* 연마유 발동 화면 중앙 이펙트 */}
       {activeOilText && (
@@ -324,14 +432,12 @@ export default function MasterPanel() {
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 10000,
-          fontSize: 22,
+          fontSize: 30,
           fontWeight: 950,
           textAlign: "center",
-          color: "#ff4d4d",
-          textShadow: "0 0 10px #000, 0 0 5px #ff0000",
           whiteSpace: "nowrap",
           pointerEvents: "none",
-          animation: "mysticScale 4s forwards"
+          animation: "auroraRed 2s infinite, mysticScale 4s forwards"
         }}>
           {activeOilText}
         </div>
@@ -374,8 +480,8 @@ export default function MasterPanel() {
   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
     <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
     <div style={{ display: "flex", gap: 6 }}>
-      <span style={{ fontSize: 9, color: "#ff6b6b" }}>징표: {formatCompactNumber(game.bossTokens || 0)}</span>
-      <span style={{ fontSize: 9, color: "#00f2ff" }}>심득: {formatCompactNumber(game.wisdom || 0)}</span>
+      <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
+      <span style={{ fontSize: 9, color: "#00f2ff" }}>✨ {game.wisdom || 0}</span>
     </div>
   </div>
   <button
@@ -401,431 +507,211 @@ export default function MasterPanel() {
         </div>
       )}
 
-      {/* 2. 전투 메인 영역 */}
-      <div
-        style={{
-          position: "relative",
-          height: 380,
-          minHeight: 380,
-          background: "#000",
-          borderRadius: 0,
-          border: "1px solid #4a1a1a",
-          overflow: "hidden",
-          boxShadow: "inset 0 0 40px rgba(0,0,0,0.9)",
-          touchAction: "none",
-          userSelect: "none",
-          flexShrink: 0
-        }}
-        onClick={handleTap}
-        onPointerDown={(e) => {
-          if (e.pointerType === 'touch') {
-            e.currentTarget.style.touchAction = 'none';
-          }
-        }}
-      >
-        <style>{`
-          @keyframes glowPlayer {
-            0% { box-shadow: 0 0 10px rgba(0,242,255,0.2); transform: translateX(-50%) rotateX(60deg) scale(1); }
-            50% { box-shadow: 0 0 30px rgba(0,242,255,0.5); transform: translateX(-50%) rotateX(60deg) scale(1.1); }
-            100% { box-shadow: 0 0 10px rgba(0,242,255,0.2); transform: translateX(-50%) rotateX(60deg) scale(1); }
-          }
-          @keyframes glowBoss {
-            0% { box-shadow: 0 0 10px rgba(255,0,0,0.3); transform: translateX(-50%) rotateX(60deg) scale(1); }
-            50% { box-shadow: 0 0 35px rgba(255,0,0,0.6); transform: translateX(-50%) rotateX(60deg) scale(1.1); }
-            100% { box-shadow: 0 0 10px rgba(255,0,0,0.3); transform: translateX(-50%) rotateX(60deg) scale(1); }
-          }
-          @keyframes redFlash {
-            0% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); filter: blur(1px); }
-            100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
-          }
-          @keyframes hpPulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-          }
-          .hp-low { animation: hpPulse 0.5s infinite; }
-          @keyframes rivalReveal {
-            0% { opacity: 0; transform: translateX(20px) scale(0.9); filter: brightness(0) blur(10px); }
-            100% { opacity: 1; transform: translateX(0) scale(1); filter: brightness(1) blur(0); }
-          }
-          @keyframes masterPopupEnter {
-            0% { transform: scale(0.7); opacity: 0; filter: blur(10px); }
-            100% { transform: scale(1); opacity: 1; filter: blur(0); }
-          }
-          @keyframes duelBgPan {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          @keyframes playerHitShake {
-            0% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
-            25% { transform: translate(-5px, 5px); filter: brightness(1.5) sepia(1) hue-rotate(-50deg); }
-            50% { transform: translate(5px, -5px); filter: brightness(2) sepia(1) hue-rotate(-50deg); }
-            100% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
-          }
-          @keyframes screenBerserkFlash {
-            0% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
-            50% { box-shadow: inset 0 0 80px rgba(255,0,0,0.4); }
-            100% { box-shadow: inset 0 0 0px rgba(255,0,0,0); }
-          }
-          @keyframes bossCharging {
-            0% { filter: brightness(1) drop-shadow(0 0 10px rgba(255,0,0,0.3)); transform: scale(1); }
-            50% { filter: brightness(2) drop-shadow(0 0 30px rgba(255,0,0,1)); transform: scale(1.05); }
-            100% { filter: brightness(1) drop-shadow(0 0 10px rgba(255,0,0,0.3)); transform: scale(1); }
-          }
-          @keyframes bleedPulse {
-            0% { box-shadow: inset 0 0 20px rgba(200,0,255,0.2); }
-            50% { box-shadow: inset 0 0 50px rgba(200,0,255,0.6); }
-            100% { box-shadow: inset 0 0 20px rgba(200,0,255,0.2); }
-          }
-          @keyframes skillPopupEnter {
-            0% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; filter: blur(10px); }
-            15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; filter: blur(0); }
-            20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-            100% { transform: translate(-50%, -20%) scale(0.9); opacity: 0; filter: blur(5px); }
-          }
-          @keyframes skillAuraSpin {
-            0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 0.3; }
-            50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); opacity: 0.6; }
-            100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); opacity: 0.3; }
-          }
-          @keyframes shimmer {
-            0% { transform: translateX(-150%) skewX(-20deg); }
-            50% { transform: translateX(150%) skewX(-20deg); }
-            100% { transform: translateX(150%) skewX(-20deg); }
-          }
-        `}</style>
-
-        {/* Status Effects Overlays */}
-        {masterDuel.isBerserk && (
+      {/* --- LOBBY VIEW --- */}
+      {!masterDuel.isPlaying && (
+        <div className="master-lobby" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{
-            position: "absolute", inset: 0, 
-            animation: "screenBerserkFlash 0.6s infinite",
-            pointerEvents: "none", zIndex: 15,
-            border: "2px solid rgba(255,0,0,0.3)"
-          }} />
-        )}
-        {masterDuel.lastEffect === "BLEED" && (
-          <div style={{
-            position: "absolute", inset: 0, 
-            animation: "bleedPulse 1s infinite",
-            pointerEvents: "none", zIndex: 16
-          }} />
-        )}
-
-        {/* Dynamic Background */}
-        <div style={{
-          position: "absolute", inset: "-20%", // Padding for panning
-          backgroundImage: "url('/bg-master-vibrant.png')",
-          backgroundSize: "cover",
-          zIndex: 0,
-          opacity: 0.6,
-          animation: "duelBgPan 30s ease-in-out infinite"
-        }} />
-
-        {/* Timer - Top Center */}
-        {masterDuel.isPlaying && (
-          <div style={{
-            position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
-            zIndex: 20, textAlign: "center"
-          }}>
-            <div style={{ fontSize: 34, fontWeight: 950, color: "#ffd700", textShadow: "0 0 15px rgba(0,0,0,0.8), 0 0 10px #ffd700" }}>
-              {Math.ceil(masterDuel.timeLeft)}s
-            </div>
-          </div>
-        )}
-
-        {/* VS Indicator - Blinking only - Visible only when NOT playing */}
-        {!masterDuel.isPlaying && (
-          <div style={{
-            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            zIndex: 10, pointerEvents: "none", animation: "redFlash 1.5s infinite"
+            height: 280, display: "flex", alignItems: "center", justifyContent: "center",
+            background: "linear-gradient(135deg, #1a0a0a 0%, #000 100%)",
+            border: "1px solid #331111", borderRadius: 16, margin: "10px 0",
+            position: "relative", overflow: "hidden"
           }}>
             <div style={{
-              fontSize: 28, fontWeight: 950, color: "#fff",
-              textShadow: "0 0 10px #ff0000, 0 0 20px #000",
-              fontStyle: "italic", letterSpacing: 2,
-              opacity: masterDuel.isBerserk ? 0.3 : 1
+              position: "absolute", inset: 0, 
+              backgroundImage: "url('/bg-master-vibrant.png')", backgroundSize: "cover", opacity: 0.2
+            }} />
+            <div style={{
+              fontSize: 40, fontWeight: 950, color: "#ff4444", textShadow: "0 0 20px #000",
+              fontStyle: "italic", zIndex: 2
             }}>VS</div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Berserk Alert */}
-        {masterDuel.isBerserk && (
-          <div style={{
-            position: "absolute", top: "25%", left: "50%", transform: "translateX(-50%)",
-            zIndex: 30, pointerEvents: "none"
-          }}>
+      {/* --- COMBAT VIEW (Full Screen Overlay) --- */}
+      {masterDuel.isPlaying && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 5000, background: "#000",
+          display: "flex", flexDirection: "column", overflow: "hidden"
+        }}>
+          {/* Status Effects Overlays */}
+          {masterDuel.isBerserk && (
             <div style={{
-              fontSize: 20, fontWeight: 950, color: "#ff0000",
-              textShadow: "0 0 10px #fff, 0 0 5px #ff0000",
-              animation: "redFlash 0.5s infinite"
-            }}>⚠ 광폭화! ⚠</div>
-          </div>
-        )}
-
-        {/* Skill Activation Effect */}
-        {masterDuel.skillEffect && (
-          <div style={{
-            position: "absolute", inset: 0, zIndex: 100, pointerEvents: "none",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%)"
-          }}>
-            {/* Golden Aura Background */}
-            <div style={{
-              position: "absolute", top: "50%", left: "50%", width: 300, height: 300,
-              borderRadius: "50%", border: "2px solid rgba(255,215,0,0.3)",
-              background: "conic-gradient(from 0deg, transparent, rgba(255,215,0,0.2), transparent)",
-              animation: "skillAuraSpin 2s linear infinite"
+              position: "absolute", inset: 0, 
+              animation: "screenBerserkFlash 0.6s infinite",
+              pointerEvents: "none", zIndex: 15,
+              border: "4px solid rgba(255,0,0,0.5)"
             }} />
-            
-            <div style={{
-              position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-              width: "100%", textAlign: "center",
-              animation: `skillPopupEnter ${Math.min(5, masterDuel.skillEffect.timeLeft)}s forwards`
-            }}>
-              <div style={{
-                fontSize: 12, color: "#ffd700", fontWeight: 900, letterSpacing: 2,
-                textShadow: "0 0 10px rgba(255,215,0,0.8)", marginBottom: 4
-              }}>
-                [ 무공 발동 ]
-              </div>
-              <div style={{
-                fontSize: 32, fontWeight: 950, color: "#fff",
-                textShadow: "0 0 20px #ffd700, 2px 2px 0px #000",
-                fontFamily: "'Gungsuh', 'Batang', serif",
-                marginBottom: 8
-              }}>
-                {masterDuel.skillEffect.name}
-              </div>
-              <div style={{
-                background: "rgba(0,0,0,0.7)", border: "1px solid #ffd700", borderRadius: "12px",
-                padding: "6px 16px", display: "inline-block",
-                boxShadow: "0 0 15px rgba(255,215,0,0.3)"
-              }}>
-                <div style={{ fontSize: 13, color: "#00f2ff", fontWeight: "bold" }}>
-                  {masterDuel.skillEffect.description}
-                </div>
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>
-                  재사용 대기시간: <span style={{ color: "#fff" }}>{Math.ceil(game.skillCooldowns[masterDuel.skillEffect.name] || 0)}초</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Player */}
-        <div style={{ position: "absolute", left: "12%", bottom: 85, zIndex: 5 }}>
-          {/* Vertical Potion Quickslots */}
-          <div style={{
-            position: "absolute", left: -46, top: -10,
-            display: "flex", flexDirection: "column", gap: 6, zIndex: 110
-          }}>
-            {game.quickSlots.map((id, idx) => {
-              const qty = id ? (game.consumables[id] || 0) : 0;
-              const data = id ? POTION_UI[id] : null;
-              return (
-                <div
-                  key={idx}
-                  onClick={(e) => { e.stopPropagation(); id && useConsumable(id); }}
-                  style={{
-                    width: 34, height: 34, background: "rgba(20,10,10,0.95)",
-                    border: id ? "1.5px solid #ffd700" : "1.5px dashed #ffd700",
-                    borderRadius: 7, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    cursor: id ? "pointer" : "default", opacity: id ? 1 : 0.5, transition: "0.2s", position: "relative",
-                    boxShadow: id ? "0 0 10px rgba(255,215,0,0.2)" : "inset 0 0 5px rgba(0,0,0,0.5)"
-                  }}
-                >
-                  {data && (
-                    <>
-                      <div style={{ fontSize: 12 }}>{data.emoji}</div>
-                      <div style={{
-                        position: "absolute", bottom: -2, right: -2, background: "#ffd700", color: "#000",
-                        fontSize: 8, padding: "0px 2px", borderRadius: 4, fontWeight: "900", border: "1px solid #000"
-                      }}>{qty}</div>
-                    </>
-                  )}
-                  {!id && <div style={{ color: "#332211", fontSize: 9, fontWeight: "bold" }}>+</div>}
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{
-            position: "absolute", bottom: -10, left: "50%", width: 140, height: 35,
-            background: "radial-gradient(ellipse, rgba(0,242,255,0.4) 0%, transparent 80%)",
-            border: "1px solid rgba(0,242,255,0.5)", borderRadius: "50%",
-            animation: "glowPlayer 4s infinite"
-          }} />
-          <img 
-            src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"} 
-            style={{ 
-              height: 200, 
-              position: "relative",
-              animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
-              filter: isPlayerHit 
-                ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" 
-                : (game.movementBuff 
-                    ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" 
-                    : (masterDuel.lastEffect === "BLEED" ? "sepia(0.5) hue-rotate(250deg)" : "none"))
-            }} 
-          />
-          {masterDuel.lastEffect === "DODGE" && (
-            <div style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", color: "#00f2ff", fontSize: 24, fontWeight: 900, textShadow: "0 0 10px #00f2ff", zIndex: 200 }}>회피!</div>
           )}
           {masterDuel.lastEffect === "BLEED" && (
-            <div style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", color: "#c800ff", fontSize: 14, fontWeight: 900, textShadow: "0 0 5px #000", zIndex: 200 }}>내상(지속 피해)</div>
+            <div style={{
+              position: "absolute", inset: 0, 
+              animation: "bleedPulse 1s infinite",
+              pointerEvents: "none", zIndex: 16
+            }} />
           )}
-          
-          {/* Player Bars with Numeric View */}
-          <div style={{ position: "absolute", bottom: 190, left: "50%", transform: "translateX(-50%)", width: 130 }}>
-            <div style={{ position: "relative", marginBottom: 4 }}>
-              <div style={{ height: 16, background: "#221111", borderRadius: 6, border: "1px solid #442222", overflow: "hidden" }}>
-                <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s" }} />
-              </div>
-              <div style={{ 
-                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", 
-                fontSize: 10, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000", width: "100%", textAlign: "center", pointerEvents: "none"
-              }}>
-                {formatCompactNumber(game.hp)} / {formatCompactNumber(totalMaxHp)}
-              </div>
+
+          {/* Dynamic Background */}
+          <div style={{
+            position: "absolute", inset: "-10%",
+            backgroundImage: "url('/bg-master-vibrant.png')", backgroundSize: "cover",
+            opacity: 0.4, animation: "duelBgPan 20s linear infinite"
+          }} />
+
+          {/* Timer - Top Center */}
+          <div style={{ position: "relative", zIndex: 20, paddingTop: 40, textAlign: "center" }}>
+            <div style={{ fontSize: 42, fontWeight: 950, color: "#ffd700", textShadow: "0 0 20px #000, 0 0 10px #ffd700" }}>
+              {Math.ceil(masterDuel.timeLeft)}s
             </div>
-            <div style={{ position: "relative" }}>
-              <div style={{ height: 10, background: "#111122", borderRadius: 4, border: "1px solid #222244", overflow: "hidden" }}>
-                <div style={{ width: `${playerMpPercent}%`, height: "100%", background: "#00f2ff", transition: "0.2s" }} />
-              </div>
-              <div style={{ 
-                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", 
-                fontSize: 8, fontWeight: 900, color: "#fff", textShadow: "1px 1px 1px #000", width: "100%", textAlign: "center", pointerEvents: "none"
-              }}>
-                {formatCompactNumber(game.mp)} / {formatCompactNumber(totalMaxMp)}
-              </div>
-            </div>
+            <div style={{ marginTop: 10, fontSize: 18, color: "#fff", fontWeight: 900, textShadow: "0 2px 4px #000" }}>{masterDuel.rivalName}</div>
           </div>
 
-          {/* Player Skills */}
-          <div style={{
-            position: "absolute", bottom: -65, left: "50%", transform: "translateX(-50%)",
-            display: "flex", gap: 6, zIndex: 100, width: "max-content"
-          }}>
-            {[0, 1, 2].map(idx => {
-              const skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
-              const cd = skill ? (game.skillCooldowns[skill.name] || 0) : 0;
-              const canUse = skill && game.mp >= (skill.mpCost || 10) && cd <= 0;
-
-              return (
-                <div key={idx} style={{
-                  width: 42, height: 42, borderRadius: 10, 
-                  border: skill ? "1.5px solid #ffd700" : "1.5px dashed #ffd700",
-                  background: canUse ? "linear-gradient(135deg, #4d3300 0%, #2a1b00 100%)" : "rgba(0,0,0,0.8)",
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  cursor: canUse ? "pointer" : "default", position: "relative", overflow: "hidden",
-                  boxShadow: canUse ? "0 0 15px rgba(255,215,0,0.4)" : "none",
-                  transition: "0.2s"
-                }} onPointerDown={(e) => {
-                  e.stopPropagation();
-                  if (canUse && skill) executeSkill(skill);
-                }}>
-                  {skill ? (
-                    <>
-                      <div style={{ fontSize: 8, fontWeight: "950", color: "#ffd700", textAlign: "center", padding: "0 2px", lineHeight: 1.1 }}>
-                        {skill.name}
-                      </div>
-                      <div style={{ 
-                        fontSize: 6, fontWeight: "bold", color: game.mp >= (skill.mpCost || 0) ? "#00f2ff" : "#ff4d4d", 
-                        background: "rgba(0,0,0,0.5)", padding: "1px 3px", borderRadius: 4, marginTop: 2
-                      }}>
-                        {skill.mpCost}
-                      </div>
-                      {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", display: "grid", placeItems: "center", fontSize: 14, fontWeight: "bold", color: "#fff" }}>{Math.ceil(cd)}</div>}
-                      {game.mp < (skill.mpCost || 0) && cd <= 0 && (
-                        <div style={{ position: "absolute", inset: 0, background: "rgba(0,242,255,0.05)", pointerEvents: "none" }} />
-                      )}
-                    </>
-                  ) : (
-                    <div style={{ fontSize: 14, color: "#333" }}>+</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Rival */}
-        <div
-          key={`rival-${masterDuel.selectedLevel}`}
-          style={{
-            position: "absolute", right: "6%", bottom: 65, zIndex: 5,
-            animation: "rivalReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards"
-          }}
-        >
-          <div style={{
-            position: "absolute", bottom: -10, left: "50%", width: 170, height: 45,
-            background: "radial-gradient(ellipse, rgba(255,0,0,0.5) 0%, transparent 80%)",
-            border: "1px solid rgba(255,0,0,0.6)", borderRadius: "50%",
-            animation: "glowBoss 4s infinite 2s"
-          }} />
-          <img src={(() => {
-            const lv = masterDuel.selectedLevel;
-            if (lv <= 10) return "/images/villain_tier1.png";
-            if (lv <= 25) return "/images/villain_tier2.png";
-            if (lv <= 40) return "/images/villain_tier3.png";
-            if (lv <= 55) return "/images/villain_drunken_master.png";
-            if (lv <= 70) return "/images/villain_tiger.png";
-            if (lv <= 85) return "/images/villain_poison.png";
-            return "/images/villain_blood.png";
-          })()} 
-          style={{ 
-            height: 240, 
-            position: "relative", 
-            filter: masterDuel.isBerserk 
-              ? "drop-shadow(0 0 20px rgba(255,0,0,1)) brightness(1.5) sepia(0.5) hue-rotate(-50deg)" 
-              : "drop-shadow(0 0 15px rgba(255,0,0,0.3))",
-            animation: (masterDuel.chargeTimer || 0) >= 4.5 ? "bossCharging 0.5s infinite" : "none",
-            transition: "0.4s"
-          }} />
-          
-          <div style={{
-            position: "absolute", bottom: 210, left: "50%", transform: "translateX(-50%)",
-            width: 160, padding: 3, background: "linear-gradient(180deg, #444 0%, #222 100%)",
-            borderRadius: 8, border: "2px solid #632a2a", boxShadow: "0 4px 8px rgba(0,0,0,0.6)"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 2px", marginBottom: 2 }}>
-              <span style={{ fontSize: 8, color: "#ff4d4d", fontWeight: 900 }}>HP</span>
-              <span style={{ fontSize: 9, color: "#fff", fontWeight: 700 }}>{formatCompactNumber(masterDuel.rivalHp)} / {formatCompactNumber(masterDuel.rivalMaxHp)}</span>
+          <div style={{ flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "flex-end", overflow: "hidden" }} onClick={handleTap}>
+            {/* Rival Upper Body (Large & Intimidating) */}
+            <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 5 }}>
+              <div style={{
+                position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)",
+                width: 300, height: 100, background: "radial-gradient(ellipse, rgba(255,0,0,0.6) 0%, transparent 80%)",
+                filter: "blur(20px)", animation: "glowBoss 2s infinite"
+              }} />
+              <img src={(() => {
+                const lv = masterDuel.selectedLevel;
+                if (lv <= 10) return "/images/villain_tier1.png";
+                if (lv <= 25) return "/images/villain_tier2.png";
+                if (lv <= 40) return "/images/villain_tier3.png";
+                if (lv <= 55) return "/images/villain_drunken_master.png";
+                if (lv <= 70) return "/images/villain_tiger.png";
+                if (lv <= 85) return "/images/villain_poison.png";
+                return "/images/villain_blood.png";
+              })()} 
+              style={{ 
+                height: "85vh", // Very large
+                width: "120%", 
+                objectFit: "contain", 
+                objectPosition: "top",
+                filter: masterDuel.isBerserk ? "brightness(1.5) sepia(0.3) hue-rotate(-30deg)" : "none",
+                animation: "bossFlutter 5s ease-in-out infinite, character3DPanBoss 10s ease-in-out infinite alternate"
+              }} />
             </div>
-            <div style={{ height: 14, background: "#1a0505", borderRadius: 4, overflow: "hidden" }}>
-              <div
-                style={{ width: `${hpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s" }}
-                className={hpPercent < 30 ? "hp-low" : ""}
+
+            {/* Rival HP Bar Overlay */}
+            <div style={{
+              position: "absolute", top: "25%", left: "50%", transform: "translateX(-50%)",
+              width: "80%", maxWidth: 400, zIndex: 30
+            }}>
+              <div style={{ height: 14, background: "#1a0505", borderRadius: 7, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000" }}>
+                <div
+                  style={{ width: `${hpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s" }}
+                  className={hpPercent < 30 ? "hp-low" : ""}
+                />
+              </div>
+            </div>
+
+            {/* Player Side */}
+            <div style={{ position: "absolute", left: "10%", bottom: "15%", zIndex: 50 }}>
+              <img 
+                src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"} 
+                style={{ 
+                  height: 180, 
+                  animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
+                  filter: isPlayerHit 
+                    ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" 
+                    : (game.movementBuff ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" : "none")
+                }} 
               />
+              {masterDuel.lastEffect === "DODGE" && (
+                <div style={{ position: "absolute", top: -30, left: "50%", transform: "translateX(-50%)", color: "#00f2ff", fontSize: 32, fontWeight: 950, textShadow: "0 0 10px #00f2ff" }}>회피!</div>
+              )}
+              
+              {/* Player HP/MP Bars in Combat */}
+              <div style={{ position: "absolute", bottom: 190, left: "50%", transform: "translateX(-50%)", width: 130 }}>
+                <div style={{ height: 12, background: "#221111", borderRadius: 6, border: "1px solid #442222", overflow: "hidden", marginBottom: 4 }}>
+                  <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)" }} />
+                </div>
+                <div style={{ height: 8, background: "#111122", borderRadius: 4, border: "1px solid #222244", overflow: "hidden" }}>
+                  <div style={{ width: `${playerMpPercent}%`, height: "100%", background: "#00f2ff" }} />
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: 10, textAlign: "center", color: "#ffd700", marginTop: 4, fontWeight: 900, textShadow: "1px 1px 2px #000" }}>{masterDuel.rivalName}</div>
+
+            {/* Skills & Potions (Combat HUD) */}
+            <div style={{
+              position: "absolute", bottom: 20, left: 0, right: 0,
+              display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, zIndex: 100,
+              padding: "0 10px"
+            }}>
+              {/* Potions */}
+              <div style={{ display: "flex", gap: 6 }}>
+                {game.quickSlots.map((id, idx) => {
+                  const qty = id ? (game.consumables[id] || 0) : 0;
+                  const data = id ? POTION_UI[id] : null;
+                  return (
+                    <div key={idx} onClick={() => id && useConsumable(id)} style={{
+                      width: 55, height: 55, background: "rgba(0,0,0,0.8)", border: id ? "2px solid #ffd700" : "2px dashed #444", borderRadius: 12,
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative"
+                    }}>
+                      {data && (
+                        <>
+                          <div style={{ fontSize: 20 }}>{data.emoji}</div>
+                          <div style={{ position: "absolute", bottom: 2, right: 2, background: "#ffd700", color: "#000", fontSize: 10, padding: "0 4px", borderRadius: 4, fontWeight: 900 }}>{qty}</div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Skills */}
+              <div style={{ display: "flex", gap: 6 }}>
+                {[0, 1, 2].map(idx => {
+                  const skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
+                  const cd = skill ? (game.skillCooldowns[skill.name] || 0) : 0;
+                  const canUse = skill && game.mp >= (skill.mpCost || 10) && cd <= 0;
+                  return (
+                    <div key={idx} onClick={(e) => { e.stopPropagation(); if (canUse && skill) executeSkill(skill); }} style={{
+                      width: 55, height: 55, background: canUse ? "linear-gradient(135deg, #4d3300, #2a1b00)" : "rgba(0,0,0,0.8)",
+                      border: skill ? "2px solid #ffd700" : "2px dashed #444", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative"
+                    }}>
+                      {skill ? (
+                        <>
+                          <div style={{ fontSize: 22 }}>{idx === 0 ? "🔥" : idx === 1 ? "⚡" : "✨"}</div>
+                          {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 900 }}>{Math.ceil(cd)}</div>}
+                        </>
+                      ) : <div style={{ color: "#444" }}>+</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Damage Texts */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 120 }}>
+              {damages.map(d => <DamageText key={d.id} {...d} />)}
+            </div>
           </div>
         </div>
-
-        {/* Damage Texts */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 100 }}>
-          {damages.map(d => <DamageText key={d.id} {...d} />)}
-        </div>
-      </div>
-
-
+      )}
 
       {/* 4. 정보 박스 영역 */}
       {/* 4. 정보 박스 영역 */}
       {/* 4. 정보 박스 영역 */}
       {!masterDuel.isPlaying && (
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ 
+          display: "flex", 
+          gap: 10, 
+          overflowX: "auto", 
+          padding: "5px 2px 10px",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch"
+        }} className="hide-scrollbar">
           {/* 처단 규칙 박스 */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowRules(true); }}
             style={{
-              flex: 1, position: "relative", overflow: "hidden",
+              flex: "0 0 calc(50% - 5px)", minWidth: 160, scrollSnapAlign: "start",
+              position: "relative", overflow: "hidden",
               background: "linear-gradient(#1a0a0a, #1a0a0a) padding-box, linear-gradient(135deg, #ff4d4d, #990000) border-box",
-              borderRadius: 14, padding: "8px", border: "1.5px solid transparent",
+              borderRadius: 14, padding: "10px", border: "1.5px solid transparent",
               boxShadow: "0 4px 15px rgba(0,0,0,0.5)", textAlign: "center", cursor: "pointer", color: "#eee",
               transition: "transform 0.2s, box-shadow 0.2s",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
@@ -846,16 +732,16 @@ export default function MasterPanel() {
               animation: "shimmer 3s infinite ease-in-out", pointerEvents: "none"
             }} />
 
-            <div style={{ fontSize: 12, fontWeight: 900, color: "#ff6b6b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#ff6b6b", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
               <span>☠️</span> 처단 규칙 <span style={{ fontSize: 10, opacity: 0.6 }}>▶</span>
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🛡️</div>
+                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🛡️</div>
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>입장 조건</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>⏱</div>
+                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>⏱</div>
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>제한 시간</div>
               </div>
             </div>
@@ -865,9 +751,10 @@ export default function MasterPanel() {
           <button
             onClick={(e) => { e.stopPropagation(); setShowReward(true); }}
             style={{
-              flex: 1, position: "relative", overflow: "hidden",
+              flex: "0 0 calc(50% - 5px)", minWidth: 160, scrollSnapAlign: "start",
+              position: "relative", overflow: "hidden",
               background: "linear-gradient(#1a1a0a, #1a1a0a) padding-box, linear-gradient(135deg, #ffd700, #ff8c00) border-box",
-              borderRadius: 14, padding: "8px", border: "1.5px solid transparent",
+              borderRadius: 14, padding: "10px", border: "1.5px solid transparent",
               boxShadow: "0 4px 15px rgba(0,0,0,0.5)", textAlign: "center", cursor: "pointer", color: "#eee",
               transition: "transform 0.2s, box-shadow 0.2s",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
@@ -888,20 +775,20 @@ export default function MasterPanel() {
               animation: "shimmer 3s infinite ease-in-out", pointerEvents: "none"
             }} />
 
-            <div style={{ fontSize: 12, fontWeight: 900, color: "#ffd700", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <span>🎁</span> 처단 보상 <span style={{ fontSize: 10, opacity: 0.6 }}>▶</span>
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🩸</div>
+                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🩸</div>
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>징표</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🧪</div>
+                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🧪</div>
                 <div style={{ fontSize: 9, color: "#ffd700", marginTop: 6, fontWeight: 900 }}>전리품</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🛒</div>
+                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🛒</div>
                 <div style={{ fontSize: 9, color: "#ffd700", marginTop: 6, fontWeight: 900 }}>상점</div>
               </div>
             </div>
@@ -909,34 +796,34 @@ export default function MasterPanel() {
         </div>
       )}
 
-      {/* 도전 조건 현황판 (Relocated and Single Row) */}
-      {!masterDuel.isPlaying && (
-        <div style={{ width: "100%", padding: "0 5px", marginBottom: 6 }}>
-          <div style={{ 
-            background: "rgba(0,0,0,0.6)", border: "1px solid #333", borderRadius: 8, padding: "4px 2px",
-            display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2
-          }}>
-            {[
-              { label: '공격', key: 'atk' }, { label: '방어', key: 'def' }, { label: '생명', key: 'hpRec' },
-              { label: '확률', key: 'critRate' }, { label: '치댐', key: 'critDmg' }, { label: '회피', key: 'eva' }
-            ].map(stat => {
-              const cur = game.upgradeLevels[stat.key as keyof typeof game.upgradeLevels] || 0;
-              const isOk = cur >= masterDuel.selectedLevel;
-              return (
-                <div key={stat.key} style={{ fontSize: 12, textAlign: "center", color: isOk ? "#4dabf7" : "#ff4d4d", display: "flex", flexDirection: "column", gap: 1 }}>
-                  <div style={{ opacity: 0.9, fontSize: 10 }}>{stat.label}</div>
-                  <div style={{ fontWeight: 900 }}>{cur}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div style={{ textAlign: "center", paddingBottom: 10 }}>
         {!masterDuel.isPlaying && (
-          <div style={{ width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
-            {/* 도전 조건 현황판 (Removed from original position) */}
+          <div style={{ width: "95%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* 도전 조건 현황판 */}
+            <div style={{ 
+              background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "6px 8px",
+              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, overflowX: "auto"
+            }} className="hide-scrollbar">
+              {[
+                { label: '공격', key: 'atk' }, { label: '방어', key: 'def' }, { label: '생명', key: 'hpRec' },
+                { label: '확률', key: 'critRate' }, { label: '치댐', key: 'critDmg' }, { label: '회피', key: 'eva' }
+              ].map(stat => {
+                const cur = game.upgradeLevels[stat.key as keyof typeof game.upgradeLevels] || 0;
+                const isOk = cur >= masterDuel.selectedLevel;
+                return (
+                  <div key={stat.key} style={{ 
+                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                    color: isOk ? "#4dabf7" : "#ff4d4d"
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.8 }}>{stat.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 950 }}>{cur}</span>
+                  </div>
+                );
+              })}
+            </div>
 
             <button
               onClick={(e) => { 
@@ -949,7 +836,7 @@ export default function MasterPanel() {
               }}
               disabled={isOnCooldown || isCurrentLevelLocked}
               style={{
-                width: "100%", padding: "10px", borderRadius: 14,
+                width: "100%", padding: "14px", borderRadius: 14,
                 background: (isOnCooldown || isCurrentLevelLocked)
                   ? "rgba(50, 50, 50, 0.8)" 
                   : "linear-gradient(135deg, #990000 0%, #ff0000 100%)",
@@ -1039,8 +926,8 @@ export default function MasterPanel() {
                 <div style={{ fontSize: 11, color: "#ff6b6b", fontWeight: 800, marginBottom: 6, opacity: 0.9 }}>보유중인 혈투의 징표</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ fontSize: 28 }}>🩸</div>
-                  <div style={{ fontSize: 24, fontWeight: 950, color: "#fff", textShadow: "0 0 15px rgba(255,107,107,0.4)", letterSpacing: -0.5 }}>
-                    {formatCompactNumber(game.bossTokens || 0)}
+                  <div style={{ fontSize: 34, fontWeight: 950, color: "#fff", textShadow: "0 0 15px rgba(255,107,107,0.4)", letterSpacing: -1 }}>
+                    {game.bossTokens || 0}
                   </div>
                 </div>
               </div>
@@ -1283,7 +1170,7 @@ export default function MasterPanel() {
                 flexDirection: "column"
               }}
             >
-              <div className="gold-shimmer-content" style={{ display: "flex", flexDirection: "column" }}>
+              <div className="gold-shimmer-content" style={{ display: "flex", flexDirection: "column", maxHeight: "inherit", height: "100%" }}>
                 <div style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -1405,11 +1292,12 @@ export default function MasterPanel() {
               className="gold-shimmer-container"
               style={{
                 width: "100%", maxWidth: 340,
+                maxHeight: "85vh",
                 display: "flex",
                 flexDirection: "column"
               }}
             >
-              <div className="gold-shimmer-content" style={{ padding: 24, display: "flex", flexDirection: "column" }}>
+              <div className="gold-shimmer-content" style={{ padding: 24, display: "flex", flexDirection: "column", maxHeight: "inherit", height: "100%" }}>
                 <div className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950, marginBottom: 20, textAlign: "center" }}>☠️ 처단 규칙 안내</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div style={{ display: "flex", gap: 12 }}>
