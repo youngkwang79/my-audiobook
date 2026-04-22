@@ -1252,16 +1252,20 @@ export default function InnPanel({
       puzzleDantianRef.current = nextDantian;
       setPuzzleDantian(nextDantian);
 
+      const newEffects: { id: number, r: number, c: number, color: string }[] = [];
       cellsToDestroy.forEach(coord => {
         const [r, c] = coord.split(',').map(Number);
-        const type = newGrid[r][c].type;
         newGrid[r][c].type = null;
         newGrid[r][c].special = null;
 
-        const effectId = Math.random();
-        setPuzzleEffects(prev => [...prev, { id: effectId, r, c, color: '#fff' }]);
-        setTimeout(() => setPuzzleEffects(prev => prev.filter(e => e.id !== effectId)), 500);
+        newEffects.push({ id: Math.random(), r, c, color: '#fff' });
       });
+
+      if (newEffects.length > 0) {
+        setPuzzleEffects(prev => [...prev, ...newEffects]);
+        const idsToRemove = newEffects.map(e => e.id);
+        setTimeout(() => setPuzzleEffects(prev => prev.filter(e => !idsToRemove.includes(e.id))), 500);
+      }
 
       // Spawn special blocks at pivots
       specialBlockToCreateArray.forEach(sb => {
@@ -1431,7 +1435,7 @@ export default function InnPanel({
 
       const targetForRound = 4 + (currentStage - 1) * 2;
 
-      const scoreGain = Math.floor(getGradeScore(grade) * powerFactor * 3);
+      const scoreGain = Math.floor(getGradeScore(grade) * powerFactor * 1.5);
       playerScoreRef.current += scoreGain;
       setPlayerScore(Math.floor(playerScoreRef.current));
 
@@ -1991,128 +1995,197 @@ export default function InnPanel({
 
               {/* 3. 내공폭주 (Puzzle) */}
               {currentMiniGame === "puzzle" && (
-                <div style={{ position: "relative", width: "100%", flex: 1, background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, display: "flex", flexDirection: "column" }}>
+                <div style={{
+                  position: "relative",
+                  width: "100%",
+                  flex: 1,
+                  background: "rgba(0,0,0,0.7)", // 조금 더 어둡게 배경 처리
+                  backdropFilter: "blur(4px)",   // 배경 블러로 집중도 상향
+                  borderRadius: 24,
+                  padding: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  border: "1px solid rgba(255,215,0,0.1)"
+                }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ fontSize: 13, color: "#ffd700", fontWeight: 'bold' }}>Stage {currentStage} 단전 정렬</div>
                     <div style={{ fontSize: 13, color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#fff" }}>잔여 시간: {puzzleTimeLeft.toFixed(1)}s</div>
                   </div>
 
                   {/* Dantian Gauge */}
-                  <div style={{ height: 12, width: "100%", background: "#333", borderRadius: 6, marginBottom: 10, position: "relative", overflow: "hidden" }}>
+                  <div style={{
+                    width: "100%",
+                    height: "12px",
+                    background: "rgba(255,255,255,0.05)",
+                    borderRadius: "6px",
+                    position: "relative",
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    marginBottom: 4
+                  }}>
                     <div style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
                       height: "100%",
                       width: `${puzzleDantian}%`,
-                      background: puzzleDantian > 80 ? "linear-gradient(90deg, #ff4d4d, #b30000)" : (puzzleDantian > 50 ? "#ffcc00" : "#4dabf7"),
-                      transition: "width 0.3s ease-out, background 0.5s"
+                      background: puzzleDantian > 80
+                        ? "linear-gradient(90deg, #ff4d4d, #b30000)"
+                        : "linear-gradient(90deg, #4dabf7, #00f2ff)",
+                      boxShadow: "0 0 15px rgba(0,242,255,0.6)",
+                      transition: "width 0.3s ease",
                     }} />
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 9, fontWeight: 900, color: "#fff", textShadow: "0 0 2px #000" }}>
-                      단전 안정도: {Math.floor(puzzleDantian)}% {puzzleDantian > 80 ? "(폭주 주의!)" : ""}
-                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#aaa", textAlign: "center", marginBottom: 12, fontWeight: "bold", letterSpacing: 1 }}>
+                    단전 안정도: {Math.floor(puzzleDantian)}% {puzzleDantian > 80 ? "(폭주 임박!)" : ""}
                   </div>
 
                   {/* Puzzle Grid Centering Wrapper */}
-                  <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", minHeight: 0, width: "100%" }}>
+                  <div style={{
+                    flex: 1,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    minHeight: 0,
+                    width: "100%",
+                    padding: "4px"
+                  }}>
+                    {/* Wuxia Decorative Frame */}
                     <div style={{
+                      position: "relative",
                       width: "100%",
-                      height: "100%",
-                      maxHeight: "100%",
                       maxWidth: "100%",
                       aspectRatio: "1/1",
-                      display: "grid",
-                      gridTemplateColumns: "repeat(9, 1fr)",
-                      gridTemplateRows: "repeat(9, 1fr)",
-                      gap: "1%",
-                      background: "rgba(255,255,255,0.03)",
-                      padding: "2%",
-                      borderRadius: 8,
-                      perspective: "1000px",
-                      touchAction: "none", // Prevent scrolling while swiping
-                      position: "relative"
+                      padding: "12px", // 프레임 공간
+                      background: "linear-gradient(135deg, #0f172a, #1e1b4b)", // 깊은 남색 계열로 배경 색상화
+                      borderRadius: 16,
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,215,0,0.05)",
+                      border: "1px solid rgba(255,215,0,0.2)"
                     }}>
-                      {puzzleGrid.map((row, r) => row.map((cell, c) => (
-                        <div
-                          key={cell.id}
-                          onClick={() => handlePuzzleCellClick(r, c)}
-                          onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
-                          onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            borderRadius: 4,
-                            background: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "rgba(255,255,255,0.1)" : "transparent",
-                            transition: "all 0.2s",
-                            position: "relative",
-                            opacity: cell.type === null ? 0 : 1,
-                            transform: cell.type === null ? "scale(0)" : "scale(1)"
-                          }}
-                        >
-                          <div style={{
-                            width: "94%",
-                            height: "94%",
-                            borderRadius: "8px", // More block-like
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            fontSize: 16,
-                            cursor: "pointer",
-                            transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-                            border: "1px solid rgba(255,255,255,0.2)",
-                            background: (() => {
-                              switch (cell.type) {
-                                case 'fire': return 'linear-gradient(135deg, #ff6b6b, #b30000)';
-                                case 'water': return 'linear-gradient(135deg, #4dabf7, #1864ab)';
-                                case 'wind': return 'linear-gradient(135deg, #63e6be, #087f5b)';
-                                case 'thunder': return 'linear-gradient(135deg, #ffd43b, #f08c00)';
-                                case 'poison': return 'linear-gradient(135deg, #9c36b5, #4a0e4e)';
-                                default: return 'transparent';
-                              }
-                            })(),
-                            boxShadow: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c
-                              ? "0 0 20px #fff, inset 0 0 10px rgba(255,255,255,0.5)"
-                              : (cell.special ? "0 0 15px #fff, 0 0 5px #ffd700" : "0 4px 0 rgba(0,0,0,0.4), inset 0 2px 2px rgba(255,255,255,0.3)"),
-                            transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.1) translateZ(20px)" : "scale(1)",
-                            position: "relative"
-                          }}>
-                            {cell.special === 'row_clear' && <div style={{ position: 'absolute', width: '100%', height: 2, background: '#fff', boxShadow: '0 0 10px #fff' }} />}
-                            {cell.special === 'col_clear' && <div style={{ position: 'absolute', width: 2, height: '100%', background: '#fff', boxShadow: '0 0 10px #fff' }} />}
-                            {cell.special === 'area_clear' && <div style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '2px solid #fff', animation: 'pulse 1s infinite' }} />}
-                            {cell.special === 'cross_clear' && <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: '80%', height: '80%', border: '3px double #fff' }} /></div>}
+                      {/* Corner Decorations */}
+                      <div style={{ position: "absolute", top: -2, left: -2, width: 20, height: 20, borderTop: "3px solid #ffd700", borderLeft: "3px solid #ffd700", borderRadius: "4px 0 0 0" }} />
+                      <div style={{ position: "absolute", top: -2, right: -2, width: 20, height: 20, borderTop: "3px solid #ffd700", borderRight: "3px solid #ffd700", borderRadius: "0 4px 0 0" }} />
+                      <div style={{ position: "absolute", bottom: -2, left: -2, width: 20, height: 20, borderBottom: "3px solid #ffd700", borderLeft: "3px solid #ffd700", borderRadius: "0 0 0 4px" }} />
+                      <div style={{ position: "absolute", bottom: -2, right: -2, width: 20, height: 20, borderBottom: "3px solid #ffd700", borderRight: "3px solid #ffd700", borderRadius: "0 0 4px 0" }} />
 
-                            {(() => {
-                              switch (cell.type) {
-                                case 'fire': return '🔥';
-                                case 'water': return '💧';
-                                case 'wind': return '🌪️';
-                                case 'thunder': return '⚡';
-                                case 'poison': return '☣️';
-                                default: return '';
-                              }
-                            })()}
+                      <div style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(9, 1fr)",
+                        gridTemplateRows: "repeat(9, 1fr)",
+                        gap: "1px", // 아주 좁은 간격으로 정밀함 강조
+                        perspective: "1000px",
+                        touchAction: "none",
+                        position: "relative"
+                      }}>
+                        {puzzleGrid.map((row, r) => row.map((cell, c) => (
+                          <div
+                            key={cell.id}
+                            onClick={() => handlePuzzleCellClick(r, c)}
+                            onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
+                            onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
+                            style={{
+                              width: "100%",
+                              aspectRatio: "1/1",
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              borderRadius: 4,
+                              background: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "rgba(255,255,255,0.1)" : "transparent",
+                              transition: "all 0.2s",
+                              position: "relative",
+                              opacity: cell.type === null ? 0 : 1,
+                              transform: cell.type === null ? "scale(0)" : "scale(1)"
+                            }}
+                          >
+                            <div style={{
+                              width: "98%",
+                              height: "98%",
+                              background: (() => {
+                                switch (cell.type) {
+                                  case 'fire': return 'linear-gradient(135deg, #cc0000, #7b0000)'; // 홍옥 (빨강)
+                                  case 'water': return 'linear-gradient(135deg, #0055ff, #002d5e)'; // 청옥 (파랑)
+                                  case 'wind': return 'linear-gradient(135deg, #00a86b, #004b36)'; // 비취 (초록)
+                                  case 'thunder': return 'linear-gradient(135deg, #ffbf00, #b8860b)'; // 황금 (노랑)
+                                  case 'poison': return 'linear-gradient(135deg, #9932cc, #4b0082)'; // 자수정 (보라)
+                                  default: return 'transparent';
+                                }
+                              })(),
+                              borderRadius: "12px", // 부드러운 네모 형태
+                              border: cell.special ? "2px solid #ffd700" : "1px solid rgba(255,255,255,0.1)",
+                              boxShadow: (() => {
+                                const isSelected = puzzleSelected?.[0] === r && puzzleSelected?.[1] === c;
+                                if (isSelected) return "0 0 25px #ffd700, inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.5)";
+                                return "inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 4px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.6)";
+                              })(),
+                              transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.1) translateY(-5px)" : "scale(1)",
+                              transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                              position: "relative",
+                              overflow: "hidden",
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              cursor: "pointer"
+                            }}>
+                              <div style={{ position: "absolute", inset: 0, opacity: 0.1, background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), transparent)", pointerEvents: "none" }} />
+                              {/* 영약/영물 아이콘 (v3 이미지) - 튀어나와 보이도록 광택 및 그림자 강화 */}
+                              <div style={{
+                                width: "75%",
+                                height: "75%",
+                                backgroundImage: `url(/images/puzzle_${cell.type}_v3.png)`,
+                                backgroundSize: "contain",
+                                backgroundPosition: "center",
+                                backgroundRepeat: "no-repeat",
+                                filter: "brightness(1.4) drop-shadow(0 5px 10px rgba(0,0,0,0.7))", // 아이콘을 밝게 하고 깊은 그림자 추가
+                                zIndex: 1,
+                                transform: "translateY(-3px)" // 살짝 위로 띄워 입체감 강조
+                              }} />
+
+                              {/* 가독성을 위한 한문 오버레이 */}
+                              <div style={{
+                                position: "absolute",
+                                bottom: 3,
+                                right: 5,
+                                fontSize: 10,
+                                fontWeight: "900",
+                                color: "#fff",
+                                textShadow: "0 0 3px #000, 0 0 2px #000",
+                                zIndex: 2,
+                                pointerEvents: "none",
+                                opacity: 0.9
+                              }}>
+                                {cell.type === 'fire' ? '火' : cell.type === 'water' ? '水' : cell.type === 'wind' ? '風' : cell.type === 'thunder' ? '雷' : cell.type === 'poison' ? '독' : ''}
+                              </div>
+                              {cell.special === 'row_clear' && <div style={{ position: 'absolute', inset: 0, borderTop: '4px solid #fff', borderBottom: '4px solid #fff', opacity: 0.8, filter: 'drop-shadow(0 0 8px #fff)', animation: 'pulse 0.5s infinite' }} />}
+                              {cell.special === 'col_clear' && <div style={{ position: 'absolute', inset: 0, borderLeft: '4px solid #fff', borderRight: '4px solid #fff', opacity: 0.8, filter: 'drop-shadow(0 0 8px #fff)', animation: 'pulse 0.5s infinite' }} />}
+                              {cell.special === 'area_clear' && <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '4px double #fff', animation: 'rotate 2s linear infinite', boxShadow: '0 0 15px #fff' }} />}
+                              {cell.special === 'cross_clear' && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%)', animation: 'pulse 0.3s infinite' }} />}
+                            </div>
                           </div>
-                        </div>
-                      )))}
-                      {/* Explosion Effects */}
-                      {puzzleEffects.map(eff => (
-                        <div
-                          key={eff.id}
-                          style={{
-                            position: "absolute",
-                            left: `${(eff.c * (100 / 9)) + (100 / 18)}%`,
-                            width: 40,
-                            height: 40,
-                            background: eff.color,
-                            borderRadius: "50%",
-                            transform: "translate(-50%, -50%)",
-                            pointerEvents: "none",
-                            animation: "puzzleBurst 0.6s ease-out forwards",
-                            zIndex: 10,
-                            filter: "blur(2px) brightness(1.5)"
-                          }}
-                        />
-                      ))}
+                        )))}
+                        {/* Explosion Effects */}
+                        {puzzleEffects.map(eff => (
+                          <div
+                            key={eff.id}
+                            style={{
+                              position: "absolute",
+                              left: `${(eff.c * (100 / 9)) + (100 / 18)}%`,
+                              top: `${(eff.r * (100 / 9)) + (100 / 18)}%`,
+                              width: 60,
+                              height: 60,
+                              background: "radial-gradient(circle, #fff, transparent 70%)",
+                              boxShadow: `0 0 20px ${eff.color}`,
+                              borderRadius: "50%",
+                              transform: "translate(-50%, -50%)",
+                              pointerEvents: "none",
+                              animation: "puzzleBurst 0.6s ease-out forwards",
+                              zIndex: 10,
+                            }}
+                          />
+                        ))}
+
+                      </div>
                     </div>
                   </div>
                   {puzzleIsProcessing && (
@@ -2475,8 +2548,8 @@ export default function InnPanel({
         }
         @keyframes puzzleBurst {
           0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; }
-          50% { transform: translate(-50%, -50%) scale(2.5); opacity: 0.6; filter: blur(5px); }
-          100% { transform: translate(-50%, -50%) scale(4); opacity: 0; filter: blur(10px); }
+          50% { transform: translate(-50%, -50%) scale(2.5); opacity: 0.6; }
+          100% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
         }
       `}</style>
       {/* TIER LIST MODAL */}
@@ -2593,7 +2666,7 @@ const statValue: React.CSSProperties = {
 
 const gameStage: React.CSSProperties = {
   position: "relative",
-  height: "600px",
+  height: "680px", // 게임 박스 확장
   background: "rgba(0,0,0,0.3)",
   borderRadius: "20px",
   border: "1px solid rgba(255,255,255,0.05)",
@@ -2634,7 +2707,7 @@ const activeGameArea: React.CSSProperties = {
   flex: 1,
   display: "flex",
   flexDirection: "column",
-  padding: "15px",
+  padding: "5px", // 패딩 축소로 공간 확보
 };
 
 const scoreBarContainer: React.CSSProperties = {
