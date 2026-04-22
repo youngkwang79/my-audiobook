@@ -160,7 +160,7 @@ function getDuelTier(rating: number) {
 
   function generateEnemy(level: number) {
     const rivalIdx = (level - 1) % MASTER_RIVALS.length;
-    const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: "이름 없는 고수", hpMult: 1, atkMult: 1 };
+    const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: `이름 없는 고수 (Lv.${level})`, hpMult: 1, atkMult: 1 };
     const isBoss = (level % 10 === 0);
 
     const refPlayer = getTargetPlayerStats(level + 1);

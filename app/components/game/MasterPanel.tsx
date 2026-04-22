@@ -177,6 +177,22 @@ const BOX_ANIM_CSS = `
     position: relative;
     z-index: 1;
   }
+  @keyframes explosionScale {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; filter: blur(0px) brightness(2); }
+    50% { transform: translate(-50%, -50%) scale(5); opacity: 0.8; filter: blur(20px) brightness(1.5); }
+    100% { transform: translate(-50%, -50%) scale(10); opacity: 0; filter: blur(50px) brightness(1); }
+  }
+  @keyframes dustDrift {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    20% { opacity: 0.4; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(2); opacity: 0; }
+  }
+  @keyframes countdownPop {
+    0% { transform: translate(-50%, -50%) scale(3); opacity: 0; filter: blur(10px); }
+    20% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: blur(0px); }
+    80% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; filter: blur(5px); }
+  }
 `;
 
 export default function MasterPanel() {
@@ -196,6 +212,27 @@ export default function MasterPanel() {
   const [activeOilText, setActiveOilText] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const oilEffectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(0);
+
+  const triggerMasterDuelSequence = () => {
+    setShowCountdown(true);
+    setCountdownValue(3);
+    
+    const interval = setInterval(() => {
+      setCountdownValue(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setShowCountdown(false);
+            startMasterDuel();
+          }, 800);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -231,7 +268,7 @@ export default function MasterPanel() {
     lastHitTimeRef.current = nowTime;
 
     if (!masterDuel.isPlaying) return;
-    
+
     // 연마유 효과 트리거
     const oilRes = useGameStore.getState().triggerOilEffects();
     const hitCount = oilRes.hitCount;
@@ -239,37 +276,37 @@ export default function MasterPanel() {
     const isFormless = oilRes.buffsTriggered.includes("oil_formless");
     const isDemon = oilRes.buffsTriggered.includes("oil_demon");
     const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
-    
+
     const totalCritRate = useGameStore.getState().getTotalCritRate();
     const isCrit = Math.random() < (totalCritRate / 100);
     const baseAtk = useGameStore.getState().getTotalAttack();
     const critDmg = useGameStore.getState().getTotalCritDmg();
-    
+
     // 뇌전유 배율
     const thunderMult = isThunder ? 5 : 1;
-    
+
     let baseDmg = Math.max(1, Math.floor(baseAtk * (isCrit ? (critDmg / 100) : 1) * thunderMult - (masterDuel.rivalDef || 0)));
 
     // 다중 타격 시각화
     for (let i = 0; i < hitCount; i++) {
       let finalDisplayDmg = baseDmg;
-      let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i+1}연격` : undefined);
-      
+      let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i + 1}연격` : undefined);
+
       // 천마유 발동 시 배율 적용
       if (isDemon) {
         finalDisplayDmg *= 10;
       }
-      
+
       // 무상유 추가 대미지 시각화 (첫 타격에만 합산 표시)
       if (i === 0 && isFormless) {
-         finalDisplayDmg += Math.floor(masterDuel.rivalHp * 0.10);
-         label = label ? `[무상] ${label}` : "[무상] 10%삭감!";
+        finalDisplayDmg += Math.floor(masterDuel.rivalHp * 0.10);
+        label = label ? `[무상] ${label}` : "[무상] 10%삭감!";
       }
 
       // 버프 발동 시 라벨 추가 (첫 타격)
       if (i === 0 && oilRes.buffsTriggered.length > 0) {
-        const buffNames: Record<string, string> = { 
-          oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍", 
+        const buffNames: Record<string, string> = {
+          oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍",
           oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
           oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
           oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
@@ -279,14 +316,14 @@ export default function MasterPanel() {
         const triggeredKey = oilRes.buffsTriggered.includes("oil_demon") ? "oil_demon" : oilRes.buffsTriggered[0];
         const triggeredName = buffNames[triggeredKey];
         if (triggeredName) {
-           if (triggeredKey !== "oil_formless" && triggeredKey !== "oil_thunder" && triggeredKey !== "oil_demon") {
-              label = `[${triggeredName}] ${label || ""}`;
-           }
-           
-           // 화면 중앙 이펙트 트리거 (4초)
-           if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
-           setActiveOilText(triggeredName + "!");
-           oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
+          if (triggeredKey !== "oil_formless" && triggeredKey !== "oil_thunder" && triggeredKey !== "oil_demon") {
+            label = `[${triggeredName}] ${label || ""}`;
+          }
+
+          // 화면 중앙 이펙트 트리거 (4초)
+          if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
+          setActiveOilText(triggeredName + "!");
+          oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
         }
       }
 
@@ -295,7 +332,7 @@ export default function MasterPanel() {
         spawnDamage(finalDisplayDmg, isCrit || isThunder, "rival", undefined, isDemon, isTriple); // label 제거 (중복)
       }, i * 100);
     }
-    
+
     tapMasterDuel(0, false, oilRes);
   };
 
@@ -325,7 +362,7 @@ export default function MasterPanel() {
         store.updateBuffs(cappedDt);
       }
     }
-    
+
     lastTickRef.current = time;
     requestRef.current = requestAnimationFrame(animate);
   };
@@ -356,7 +393,7 @@ export default function MasterPanel() {
       setTimeout(() => setIsPlayerHit(false), 300);
     } else if (masterDuel.lastEffect === "DODGE") {
       // 회피 시 0 데미지 텍스트 또는 특수 텍스트 표시 가능 (현재는 DamageText 컴포넌트 제약상 생략하거나 0으로 표시)
-      spawnDamage(0, false, "player"); 
+      spawnDamage(0, false, "player");
     }
   }, [masterDuel.damageTakenAccumulator, masterDuel.lastEffect]);
 
@@ -420,10 +457,10 @@ export default function MasterPanel() {
       color: "#eee",
       boxSizing: "border-box",
       overflowY: "auto",
-      padding: "45px 10px 40px", // Increased top for iPhone, bottom for Android
+      padding: "1px 10px 40px", // Reduced top padding to move content up
     }} className="hide-scrollbar">
       <style>{BOX_ANIM_CSS}</style>
-      
+
       {/* 연마유 발동 화면 중앙 이펙트 */}
       {activeOilText && (
         <div style={{
@@ -457,53 +494,74 @@ export default function MasterPanel() {
               style={{
                 background: "rgba(255,215,0,0.1)", color: "#ffd700", border: "1px solid rgba(255,215,0,0.3)",
                 borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: "950",
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 4
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                position: "relative", overflow: "hidden"
               }}
             >
-              <span>Lv.{masterDuel.selectedLevel}</span>
-              <span style={{ fontSize: 8, opacity: 0.7 }}>▼</span>
+              <span style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                <span>Lv.{masterDuel.selectedLevel}</span>
+                <span style={{ fontSize: 8, opacity: 0.7 }}>▼</span>
+              </span>
+              {/* Shine Effect Overlay */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
+                animation: "shimmer 2.5s infinite linear", 
+                pointerEvents: "none",
+                zIndex: 1
+              }} />
             </button>
             <span style={{ fontSize: 12, fontWeight: 950, color: "#fff", textShadow: "0 0 10px rgba(255,77,77,0.3)" }}>{masterDuel.rivalName}</span>
           </div>
           <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    fontSize: 9,
-    color: "#888",
-    background: "rgba(255,255,255,0.05)",
-    padding: "4px 8px",
-    borderRadius: 6,
-  }}
->
-  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-    <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
-    <div style={{ display: "flex", gap: 6 }}>
-      <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
-      <span style={{ fontSize: 9, color: "#00f2ff" }}>✨ {game.wisdom || 0}</span>
-    </div>
-  </div>
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      setShowShop(true);
-    }}
-    style={{
-      border: "1px solid rgba(255,215,0,0.28)",
-      background: "linear-gradient(180deg, rgba(255,215,0,0.18), rgba(255,215,0,0.08))",
-      color: "#ffd76a",
-      borderRadius: 8,
-      padding: "5px 10px",
-      fontSize: 10,
-      fontWeight: 900,
-      cursor: "pointer",
-      whiteSpace: "nowrap",
-    }}
-  >
-    패왕 토벌 상점
-  </button>
-</div>
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 9,
+              color: "#888",
+              background: "rgba(255,255,255,0.05)",
+              padding: "4px 8px",
+              borderRadius: 6,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
+                <span style={{ fontSize: 9, color: "#00f2ff" }}>✨ {game.wisdom || 0}</span>
+              </div>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowShop(true);
+              }}
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                border: "1px solid rgba(255,215,0,0.28)",
+                background: "linear-gradient(180deg, rgba(255,215,0,0.18), rgba(255,215,0,0.08))",
+                color: "#ffd76a",
+                borderRadius: 8,
+                padding: "5px 10px",
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ position: "relative", zIndex: 2 }}>패왕 토벌 상점</span>
+              {/* Shine Effect Overlay */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
+                animation: "shimmer 2s infinite linear", 
+                pointerEvents: "none",
+                zIndex: 1
+              }} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -511,19 +569,35 @@ export default function MasterPanel() {
       {!masterDuel.isPlaying && (
         <div className="master-lobby" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{
-            height: 280, display: "flex", alignItems: "center", justifyContent: "center",
+            height: 330, display: "flex", alignItems: "center", justifyContent: "center",
             background: "linear-gradient(135deg, #1a0a0a 0%, #000 100%)",
-            border: "1px solid #331111", borderRadius: 16, margin: "10px 0",
-            position: "relative", overflow: "hidden"
+            border: "1px solid #331111", borderRadius: 16, margin: "0 0 10px",
+            position: "relative", overflow: "hidden",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.5), inset 0 0 40px rgba(255,0,0,0.05)"
           }}>
             <div style={{
-              position: "absolute", inset: 0, 
+              position: "absolute", inset: 0,
               backgroundImage: "url('/bg-master-vibrant.png')", backgroundSize: "cover", opacity: 0.2
             }} />
-            <div style={{
-              fontSize: 40, fontWeight: 950, color: "#ff4444", textShadow: "0 0 20px #000",
-              fontStyle: "italic", zIndex: 2
-            }}>VS</div>
+            <img src={(() => {
+              const lv = masterDuel.selectedLevel;
+              if (lv <= 10) return "/images/villain_tier1.png";
+              if (lv <= 25) return "/images/villain_tier2.png";
+              if (lv <= 40) return "/images/villain_tier3.png";
+              if (lv <= 55) return "/images/villain_drunken_master.png";
+              if (lv <= 70) return "/images/villain_tiger.png";
+              if (lv <= 85) return "/images/villain_poison.png";
+              return "/images/villain_blood.png";
+            })()} 
+            style={{ 
+              height: "220%", 
+              width: "auto", 
+              objectFit: "contain",
+              objectPosition: "center 111%",
+              zIndex: 2,
+              filter: "drop-shadow(0 10px 30px rgba(0,0,0,0.8))",
+              animation: "bossFlutter 5s ease-in-out infinite"
+            }} />
           </div>
         </div>
       )}
@@ -537,7 +611,7 @@ export default function MasterPanel() {
           {/* Status Effects Overlays */}
           {masterDuel.isBerserk && (
             <div style={{
-              position: "absolute", inset: 0, 
+              position: "absolute", inset: 0,
               animation: "screenBerserkFlash 0.6s infinite",
               pointerEvents: "none", zIndex: 15,
               border: "4px solid rgba(255,0,0,0.5)"
@@ -545,7 +619,7 @@ export default function MasterPanel() {
           )}
           {masterDuel.lastEffect === "BLEED" && (
             <div style={{
-              position: "absolute", inset: 0, 
+              position: "absolute", inset: 0,
               animation: "bleedPulse 1s infinite",
               pointerEvents: "none", zIndex: 16
             }} />
@@ -583,15 +657,15 @@ export default function MasterPanel() {
                 if (lv <= 70) return "/images/villain_tiger.png";
                 if (lv <= 85) return "/images/villain_poison.png";
                 return "/images/villain_blood.png";
-              })()} 
-              style={{ 
-                height: "85vh", // Very large
-                width: "120%", 
-                objectFit: "contain", 
-                objectPosition: "top",
-                filter: masterDuel.isBerserk ? "brightness(1.5) sepia(0.3) hue-rotate(-30deg)" : "none",
-                animation: "bossFlutter 5s ease-in-out infinite, character3DPanBoss 10s ease-in-out infinite alternate"
-              }} />
+              })()}
+                style={{
+                  height: "85vh", // Very large
+                  width: "120%",
+                  objectFit: "contain",
+                  objectPosition: "top",
+                  filter: masterDuel.isBerserk ? "brightness(1.5) sepia(0.3) hue-rotate(-30deg)" : "none",
+                  animation: "bossFlutter 5s ease-in-out infinite, character3DPanBoss 10s ease-in-out infinite alternate"
+                }} />
             </div>
 
             {/* Rival HP Bar Overlay */}
@@ -609,20 +683,20 @@ export default function MasterPanel() {
 
             {/* Player Side */}
             <div style={{ position: "absolute", left: "10%", bottom: "15%", zIndex: 50 }}>
-              <img 
-                src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"} 
-                style={{ 
-                  height: 180, 
+              <img
+                src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
+                style={{
+                  height: 180,
                   animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
-                  filter: isPlayerHit 
-                    ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))" 
+                  filter: isPlayerHit
+                    ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))"
                     : (game.movementBuff ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" : "none")
-                }} 
+                }}
               />
               {masterDuel.lastEffect === "DODGE" && (
                 <div style={{ position: "absolute", top: -30, left: "50%", transform: "translateX(-50%)", color: "#00f2ff", fontSize: 32, fontWeight: 950, textShadow: "0 0 10px #00f2ff" }}>회피!</div>
               )}
-              
+
               {/* Player HP/MP Bars in Combat */}
               <div style={{ position: "absolute", bottom: 190, left: "50%", transform: "translateX(-50%)", width: 130 }}>
                 <div style={{ height: 12, background: "#221111", borderRadius: 6, border: "1px solid #442222", overflow: "hidden", marginBottom: 4 }}>
@@ -696,10 +770,10 @@ export default function MasterPanel() {
       {/* 4. 정보 박스 영역 */}
       {/* 4. 정보 박스 영역 */}
       {!masterDuel.isPlaying && (
-        <div style={{ 
-          display: "flex", 
-          gap: 10, 
-          overflowX: "auto", 
+        <div style={{
+          display: "flex",
+          gap: 10,
+          overflowX: "auto",
           padding: "5px 2px 10px",
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch"
@@ -800,7 +874,7 @@ export default function MasterPanel() {
         {!masterDuel.isPlaying && (
           <div style={{ width: "95%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
             {/* 도전 조건 현황판 */}
-            <div style={{ 
+            <div style={{
               background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "6px 8px",
               display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, overflowX: "auto"
             }} className="hide-scrollbar">
@@ -811,7 +885,7 @@ export default function MasterPanel() {
                 const cur = game.upgradeLevels[stat.key as keyof typeof game.upgradeLevels] || 0;
                 const isOk = cur >= masterDuel.selectedLevel;
                 return (
-                  <div key={stat.key} style={{ 
+                  <div key={stat.key} style={{
                     whiteSpace: "nowrap",
                     display: "flex",
                     alignItems: "center",
@@ -826,25 +900,25 @@ export default function MasterPanel() {
             </div>
 
             <button
-              onClick={(e) => { 
-                e.stopPropagation(); 
+              onClick={(e) => {
+                e.stopPropagation();
                 if (isCurrentLevelLocked) {
                   alert(`모든 항목이 Lv.${masterDuel.selectedLevel} 이상이어야 도전 가능합니다.`);
                   return;
                 }
-                if (!isOnCooldown) startMasterDuel(); 
+                if (!isOnCooldown) triggerMasterDuelSequence();
               }}
               disabled={isOnCooldown || isCurrentLevelLocked}
               style={{
                 width: "100%", padding: "14px", borderRadius: 14,
                 background: (isOnCooldown || isCurrentLevelLocked)
-                  ? "rgba(50, 50, 50, 0.8)" 
+                  ? "rgba(50, 50, 50, 0.8)"
                   : "linear-gradient(135deg, #990000 0%, #ff0000 100%)",
-                border: (isOnCooldown || isCurrentLevelLocked) ? "2px solid #444" : "2px solid #ff4444", 
-                color: (isOnCooldown || isCurrentLevelLocked) ? "#888" : "#fff", 
+                border: (isOnCooldown || isCurrentLevelLocked) ? "2px solid #444" : "2px solid #ff4444",
+                color: (isOnCooldown || isCurrentLevelLocked) ? "#888" : "#fff",
                 fontSize: 18, fontWeight: 950,
                 boxShadow: (isOnCooldown || isCurrentLevelLocked) ? "none" : "0 0 20px rgba(255,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)",
-                cursor: (isOnCooldown || isCurrentLevelLocked) ? "default" : "pointer", 
+                cursor: (isOnCooldown || isCurrentLevelLocked) ? "default" : "pointer",
                 transition: "0.2s"
               }}
             >
@@ -864,6 +938,55 @@ export default function MasterPanel() {
         )}
       </div>
 
+
+      {/* 5. 큼지막한 전투 진입 연출 레이어 */}
+      {showCountdown && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 20000,
+          background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
+          overflow: "hidden", pointerEvents: "none"
+        }}>
+          {/* Explosion Effect */}
+          {countdownValue === 3 && (
+            <div style={{
+              position: "absolute", top: "50%", left: "50%", width: 100, height: 100,
+              background: "radial-gradient(circle, #fff, #ffd700, #ff4400, transparent)",
+              borderRadius: "50%", animation: "explosionScale 1s forwards", zIndex: 20002
+            }} />
+          )}
+
+          {/* Dust/Fog Particles */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={i} style={{
+              position: "absolute", top: "50%", left: "50%",
+              width: 10 + Math.random() * 40, height: 10 + Math.random() * 40,
+              background: "rgba(200,200,200,0.3)", borderRadius: "50%",
+              filter: "blur(10px)",
+              animation: `dustDrift ${1 + Math.random() * 2}s infinite`,
+              "--tx": `${(Math.random() - 0.5) * 800}px`,
+              "--ty": `${(Math.random() - 0.5) * 800}px`
+            } as any} />
+          ))}
+
+          {/* Big Countdown Text */}
+          <div key={countdownValue} style={{
+            fontSize: 180, fontWeight: 950, color: "#fff",
+            textShadow: "0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(255,0,0,0.5)",
+            animation: "countdownPop 1s forwards", zIndex: 20005,
+            fontStyle: "italic"
+          }}>
+            {countdownValue > 0 ? countdownValue : "⚔️"}
+          </div>
+
+          {/* Screen Flash on Explosion */}
+          {countdownValue === 3 && (
+            <div style={{
+              position: "absolute", inset: 0, background: "#fff",
+              animation: "itemAppear 0.3s reverse forwards", zIndex: 20010
+            }} />
+          )}
+        </div>
+      )}
 
       {/* 패왕 토벌 상점 모달 */}
       {showShop && (
@@ -981,7 +1104,7 @@ export default function MasterPanel() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 950, color: item.color || "#fff" }}>{item.title}</div>
                         {item.hasDetails && (
-                          <div 
+                          <div
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowExpInfo(true);
@@ -1305,8 +1428,8 @@ export default function MasterPanel() {
                     <div>
                       <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>강화 기반 도전 조건</div>
                       <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
-                        {masterDuel.selectedLevel}단계 악적을 처단하려면<br/>
-                        <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>모든 강화 항목이 {masterDuel.selectedLevel}레벨 이상</span>이어야 합니다.<br/>
+                        {masterDuel.selectedLevel}단계 악적을 처단하려면<br />
+                        <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>모든 강화 항목이 {masterDuel.selectedLevel}레벨 이상</span>이어야 합니다.<br />
                         균형 잡힌 성장이 승리의 열쇠입니다.
                       </div>
                     </div>
@@ -1316,7 +1439,7 @@ export default function MasterPanel() {
                     <div>
                       <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>제한 시간 및 광폭화</div>
                       <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
-                        전투 시간은 총 40초입니다.<br/>
+                        전투 시간은 총 40초입니다.<br />
                         전투 시작 30초 후(남은 시간 10초), 악적이 <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>광폭화</span>하여 공격력과 속도가 비약적으로 상승합니다.
                       </div>
                     </div>
@@ -1347,9 +1470,9 @@ export default function MasterPanel() {
       </AnimatePresence>
 
 
-            {/* Premium Result Popup */}
+      {/* Premium Result Popup */}
       {masterDuel.lastWinReward && (
-        <div 
+        <div
           onClick={() => setSelectedMasterLevel(masterDuel.selectedLevel)} // Dummy click to clear
           style={{
             position: "fixed",
@@ -1363,7 +1486,7 @@ export default function MasterPanel() {
             padding: 20
           }}
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%",
@@ -1393,13 +1516,13 @@ export default function MasterPanel() {
                 <div style={{ width: "100%", background: "rgba(255,215,0,0.05)", borderRadius: "18px", padding: "14px", border: "1px solid rgba(255,215,0,0.2)" }}>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>획득 전리품</div>
                   <div style={{ fontSize: 32, marginBottom: 6 }}>
-                    {masterDuel.lastWinReward.includes("목걸이") ? "📿" : 
-                     (masterDuel.lastWinReward.includes("반지") ? "💍" : 
-                      (masterDuel.lastWinReward.includes("팔찌") ? "📿" : 
-                       (masterDuel.lastWinReward.includes("[획득]") ? "🧪" : "💎")))}
+                    {masterDuel.lastWinReward.includes("목걸이") ? "📿" :
+                      (masterDuel.lastWinReward.includes("반지") ? "💍" :
+                        (masterDuel.lastWinReward.includes("팔찌") ? "📿" :
+                          (masterDuel.lastWinReward.includes("[획득]") ? "🧪" : "💎")))}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 950, color: "#fff" }}>
-                    {masterDuel.lastWinReward.includes("[획득]") 
+                    {masterDuel.lastWinReward.includes("[획득]")
                       ? masterDuel.lastWinReward.split("[획득]")[1].trim()
                       : (masterDuel.lastWinReward.includes("[처단 완료]") ? "[처단 완료]" : masterDuel.lastWinReward.split("\n")[0])}
                   </div>
@@ -1435,7 +1558,7 @@ export default function MasterPanel() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => useGameStore.setState(s => ({ game: { ...s.game, masterDuel: { ...s.game.masterDuel, lastWinReward: undefined } } }))}
               style={{
                 width: "100%",
@@ -1458,7 +1581,7 @@ export default function MasterPanel() {
       )}
       {/* Box Opening Overlay */}
       {boxOpenStep === 1 && (
-        <div 
+        <div
           onClick={handleOpenBox}
           style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -1471,7 +1594,7 @@ export default function MasterPanel() {
           <div style={{ fontSize: 120, animation: "boxTilt 1s infinite ease-in-out", filter: "drop-shadow(0 0 30px rgba(255,215,0,0.3))" }}>
             🎁
           </div>
-          <div style={{ 
+          <div style={{
             marginTop: 40, fontSize: 24, fontWeight: 950, color: "#ffd700",
             animation: "goldFlash 1.5s infinite", letterSpacing: 2
           }}>
@@ -1483,7 +1606,7 @@ export default function MasterPanel() {
 
       {/* Box Result Overlay */}
       {boxOpenStep === 2 && openedItem && (
-        <div 
+        <div
           style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
             background: "rgba(0,0,0,0.98)", zIndex: 10001,
@@ -1496,8 +1619,8 @@ export default function MasterPanel() {
             <div style={{ fontSize: 14, color: "#ffd700", fontWeight: 950, marginBottom: 8 }}>축하합니다!</div>
             <div style={{ fontSize: 24, color: "#fff", fontWeight: 950, marginBottom: 20 }}>전설의 비보 획득</div>
 
-            <div style={{ 
-              background: "rgba(255,255,255,0.05)", borderRadius: 24, padding: 24, 
+            <div style={{
+              background: "rgba(255,255,255,0.05)", borderRadius: 24, padding: 24,
               border: "2px solid #ffd700", boxShadow: "0 0 30px rgba(255,215,0,0.2)"
             }}>
               <div style={{ fontSize: 64, marginBottom: 16 }}>{openedItem.icon}</div>
@@ -1508,11 +1631,11 @@ export default function MasterPanel() {
                 <div style={{ fontSize: 13, color: "#fff", opacity: 0.8 }}>공격력 +{openedItem.attackBonus}</div>
                 <div style={{ fontSize: 13, color: "#fff", opacity: 0.8 }}>내공 +{openedItem.mpBonus}</div>
                 {openedItem.hpBonus > 0 && <div style={{ fontSize: 13, color: "#fff", opacity: 0.8 }}>생명력 +{openedItem.hpBonus}</div>}
-                
+
                 {openedItem.randomOptions?.map((opt: any, idx: number) => (
                   <div key={idx} style={{ fontSize: 12, color: "#a2ff00" }}>• {opt.label}</div>
                 ))}
-                
+
                 {openedItem.setName && (
                   <div style={{ marginTop: 8, fontSize: 12, color: "#ff8c00", fontWeight: 900 }}>
                     세트: {openedItem.setName}
@@ -1521,7 +1644,7 @@ export default function MasterPanel() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => setBoxOpenStep(0)}
               style={{
                 marginTop: 30, width: "100%", padding: "16px", borderRadius: 16,
@@ -1537,7 +1660,7 @@ export default function MasterPanel() {
 
       {/* Level Selection Modal */}
       {showLevelModal && (
-        <div 
+        <div
           onClick={() => setShowLevelModal(false)}
           style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -1546,7 +1669,7 @@ export default function MasterPanel() {
             backdropFilter: "blur(4px)", padding: 20
           }}
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%", maxWidth: 400, background: "#1a1a1c", borderRadius: 24,
@@ -1559,7 +1682,7 @@ export default function MasterPanel() {
                   <div style={{ fontSize: 18, fontWeight: 950, color: "#ffd700", marginBottom: 4 }}>패왕 토벌 레벨</div>
                   <div style={{ fontSize: 11, color: "#888" }}>도전할 레벨을 선택하세요</div>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowLevelModal(false)}
                   style={{ background: "rgba(255,255,255,0.05)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16 }}
                 >✕</button>
