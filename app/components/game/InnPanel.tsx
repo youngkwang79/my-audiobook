@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1701,7 +1701,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
       {(missionAvailable || isPlaying) ? (
         <div style={{
           ...gameStage,
-          height: currentMiniGame === "yabawi" ? "610px" : (currentMiniGame === "puzzle" ? "720px" : "640px"),
+          height: currentMiniGame === "yabawi" ? "610px" : (currentMiniGame === "puzzle" ? "560px" : "560px"),
           position: "relative",
           overflow: currentMiniGame === "yabawi" ? "visible" : "hidden",
           animation: "none"
@@ -1738,33 +1738,29 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               border: "1px solid rgba(255,215,0,0.3)",
               boxShadow: "inset 0 0 50px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.8)"
             }}>
-              <div style={{
-                position: "absolute", top: "10%", fontSize: "80px", opacity: 0.15,
-                filter: "grayscale(1) brightness(2)", pointerEvents: "none"
-              }}>
-                {MINI_GAMES.find((m: any) => m.key === tutorialTarget)?.icon}
-              </div>
+
 
               <div style={{
-                width: "60px", height: "60px", borderRadius: "50%", background: "rgba(255,215,0,0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px",
-                border: "2px solid #ffd700", marginBottom: "20px", boxShadow: "0 0 20px rgba(255,215,0,0.2)"
+                width: "50px", height: "50px", borderRadius: "50%", background: "rgba(255,215,0,0.1)",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px",
+                border: "2px solid #ffd700", marginBottom: "5px", boxShadow: "0 0 15px rgba(255,215,0,0.2)"
               }}>
                 {MINI_GAMES.find((m: any) => m.key === tutorialTarget)?.icon}
               </div>
 
               <h2 style={{
-                fontSize: "28px", fontWeight: 900, color: "#ffd700", marginBottom: "20px",
+                fontSize: "20px", fontWeight: 900, color: "#ffd700", marginBottom: "8px",
                 textShadow: "0 0 10px rgba(255,215,0,0.3)", letterSpacing: "1px"
               }}>
                 {TUTORIAL_INFO[tutorialTarget].title}
               </h2>
 
               <div style={{
-                width: "100%", maxWidth: "320px", background: "rgba(255,255,255,0.03)",
-                padding: "24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)",
-                marginBottom: "30px", fontSize: "14px", lineHeight: "1.7", color: "#ccc",
-                textAlign: "left", display: "flex", flexDirection: "column", gap: "16px"
+                width: "100%", maxWidth: "340px", background: "rgba(255,255,255,0.03)",
+                padding: "16px 24px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)",
+                marginTop: "30px",
+                marginBottom: "20px", fontSize: "14px", lineHeight: "1.6", color: "#ccc",
+                textAlign: "left", display: "flex", flexDirection: "column", gap: "12px"
               }}>
                 <div>
                   <div style={{ color: "#ffd700", fontWeight: 800, fontSize: "12px", marginBottom: "4px", opacity: 0.8 }}>[게임 방법]</div>
@@ -1785,13 +1781,14 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 style={{
                   ...primaryButton,
                   width: "100%", maxWidth: "240px", padding: "11px", fontSize: "18px",
+                  marginTop: "10px",
                   boxShadow: "0 10px 25px rgba(255,215,0,0.3)"
                 }}
               >
                 무뢰배 처단 시작
               </button>
 
-              <p style={{ marginTop: "60px", fontSize: "12px", color: "#666", fontStyle: "italic" }}>
+              <p style={{ marginTop: "20px", fontSize: "12px", color: "#666", fontStyle: "italic" }}>
                 긴장하세요! 실패 시 금지령이 내려질 수 있습니다.
               </p>
             </div>
@@ -2739,7 +2736,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
 
 const containerStyle: React.CSSProperties = {
   position: "relative",
-  minHeight: "600px",
+  minHeight: "580px",
   borderRadius: "24px",
   overflow: "hidden",
   border: "1px solid rgba(255,215,120,0.25)",
@@ -2770,7 +2767,7 @@ const statsGrid: React.CSSProperties = {
 const statBox: React.CSSProperties = {
   background: "rgba(255,255,255,0.05)",
   borderRadius: "16px",
-  padding: "10px",
+  padding: "8px",
   border: "1px solid rgba(255,255,255,0.1)",
 };
 
@@ -2789,7 +2786,7 @@ const statValue: React.CSSProperties = {
 
 const gameStage: React.CSSProperties = {
   position: "relative",
-  height: "680px", // 게임 박스 확장
+  height: "560px", // 게임 박스 크기 최적화 (3차)
   background: "rgba(0,0,0,0.3)",
   borderRadius: "20px",
   border: "1px solid rgba(255,255,255,0.05)",
