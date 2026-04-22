@@ -39,12 +39,12 @@ export default function UpgradePanel() {
     const defaultData = STAT_UPGRADE_CONFIG[id];
     let displayName = defaultData.name;
     let displayDesc = "";
-    
+
     // Rename basic stats for clarity
     if (id === 'atk') displayName = "공격력";
     if (id === 'def') displayName = "방어력";
     if (id === 'hpRec') displayName = "생명력";
-    
+
     if (id === 'eva' && faction?.specialTraining) {
       displayName = faction.specialTraining.name;
       const type = faction.specialTraining.type;
@@ -73,7 +73,7 @@ export default function UpgradePanel() {
         { id: "offlineLimit", desc: "명상의 최대 시간을 늘려\n 오래 수련할 수 있게 합니다." },
       ] as any[]).find(d => d.id === id)?.desc) || "";
     }
-    
+
     return {
       id,
       ...defaultData,
@@ -93,10 +93,10 @@ export default function UpgradePanel() {
 
   const getStatIcon = (id: string) => {
     if (id === 'eva' && faction?.specialTraining) {
-       if (faction.specialTraining.type === 'armor') return "🛡️";
-       if (faction.specialTraining.type === 'vitality') return "🧘";
-       if (faction.specialTraining.type === 'aura') return "🔥";
-       return "🏃";
+      if (faction.specialTraining.type === 'armor') return "🛡️";
+      if (faction.specialTraining.type === 'vitality') return "🧘";
+      if (faction.specialTraining.type === 'aura') return "🔥";
+      return "🏃";
     }
     const icons: Record<string, string> = {
       atk: "⚔️", def: "🛡️", hpRec: "❤️", mpRec: "💎",
@@ -116,24 +116,24 @@ export default function UpgradePanel() {
     <section style={containerStyle}>
       {/* Description Overlay (Restored) */}
       {activeDesc && (
-        <div 
-          onClick={() => setActiveDesc(null)} 
-          style={{ 
-            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', 
-            zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, 
+        <div
+          onClick={() => setActiveDesc(null)}
+          style={{
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)',
+            zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20,
             animation: 'fadeIn 0.2s ease', backdropFilter: 'blur(5px)'
           }}
         >
-          <div style={{ 
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', 
-            border: '2px solid #ffd700', borderRadius: 24, padding: 30, 
-            textAlign: 'center', maxWidth: 320, pointerEvents: 'auto', 
+          <div style={{
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            border: '2px solid #ffd700', borderRadius: 24, padding: 30,
+            textAlign: 'center', maxWidth: 320, pointerEvents: 'auto',
             boxShadow: '0 0 50px rgba(255,215,0,0.3)',
             animation: 'masterPopupEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
           }}>
-             <div style={{ fontSize: 24, fontWeight: 950, color: '#ffd700', marginBottom: 15 }}>{activeDesc.name}</div>
-                           <div style={{ fontSize: 15, color: '#eee', lineHeight: 1.7, marginBottom: 25, whiteSpace: 'pre-line' }}>{activeDesc.text}</div>
-             <div style={{ fontSize: 12, color: '#ffd700', opacity: 0.6, fontWeight: 700 }}>[ 화면을 터치하여 닫기 ]</div>
+            <div style={{ fontSize: 24, fontWeight: 950, color: '#ffd700', marginBottom: 15 }}>{activeDesc.name}</div>
+            <div style={{ fontSize: 15, color: '#eee', lineHeight: 1.7, marginBottom: 25, whiteSpace: 'pre-line' }}>{activeDesc.text}</div>
+            <div style={{ fontSize: 12, color: '#ffd700', opacity: 0.6, fontWeight: 700 }}>[ 화면을 터치하여 닫기 ]</div>
           </div>
         </div>
       )}
@@ -141,49 +141,49 @@ export default function UpgradePanel() {
       {/* 1. Header: Quick Stats & Currencies */}
       <div style={headerStyle}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{ 
-            padding: "4px 10px", borderRadius: 10, 
+          <div style={{
+            padding: "4px 10px", borderRadius: 10,
             background: "rgba(255, 215, 0, 0.08)", border: "1.2px solid rgba(255, 215, 0, 0.3)",
             display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
           }}>
-             <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 11 }}>금화</span> 
-             <span style={{ fontWeight: 950, color: "#ffd700", fontSize: 13 }}>{formatCompactNumber(currentCoins)}</span>
+            <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 11 }}>금화</span>
+            <span style={{ fontWeight: 950, color: "#ffd700", fontSize: 13 }}>{formatCompactNumber(currentCoins)}</span>
           </div>
-          <div style={{ 
-            padding: "4px 10px", borderRadius: 10, 
+          <div style={{
+            padding: "4px 10px", borderRadius: 10,
             background: "rgba(0, 242, 255, 0.08)", border: "1.2px solid rgba(0, 242, 255, 0.3)",
             display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
           }}>
-             <span style={{ color: "#00f2ff", fontWeight: 900, fontSize: 11 }}>명성</span> 
-             <span style={{ fontWeight: 950, color: "#00f2ff", fontSize: 13 }}>{formatCompactNumber(currentRep)}</span>
+            <span style={{ color: "#00f2ff", fontWeight: 900, fontSize: 11 }}>명성</span>
+            <span style={{ fontWeight: 950, color: "#00f2ff", fontSize: 13 }}>{formatCompactNumber(currentRep)}</span>
           </div>
         </div>
       </div>
 
       {/* 2. Mini Stats Summary */}
       <div style={summaryBarStyle}>
-         <div style={summaryItem}>
-            <span style={{ opacity: 0.6 }}>공격</span>
-            <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{formatCompactNumber(getTotalAttack())}</span>
-         </div>
-         <div style={summaryItem}>
-            <span style={{ opacity: 0.6 }}>방어</span>
-            <span style={{ color: "#00f2ff", fontWeight: 900 }}>{formatCompactNumber(getTotalDefense())}</span>
-         </div>
-         <div style={summaryItem}>
-            <span style={{ opacity: 0.6 }}>생명</span>
-            <span style={{ color: "#4dff4d", fontWeight: 900 }}>{formatCompactNumber(getTotalHp())}</span>
-         </div>
-         <div style={summaryItem}>
-            <span style={{ opacity: 0.6 }}>회피</span>
-            <span style={{ color: "#ffd700", fontWeight: 900 }}>{Math.floor(getTotalEvasion())}%</span>
-         </div>
-         {game.statUpgrades.damageReduction > 0 && (
-           <div style={summaryItem}>
-              <span style={{ opacity: 0.6 }}>피감</span>
-              <span style={{ color: "#bde7ff", fontWeight: 900 }}>{game.statUpgrades.damageReduction}%</span>
-           </div>
-         )}
+        <div style={summaryItem}>
+          <span style={{ opacity: 0.6 }}>공격</span>
+          <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{formatCompactNumber(getTotalAttack())}</span>
+        </div>
+        <div style={summaryItem}>
+          <span style={{ opacity: 0.6 }}>방어</span>
+          <span style={{ color: "#00f2ff", fontWeight: 900 }}>{formatCompactNumber(getTotalDefense())}</span>
+        </div>
+        <div style={summaryItem}>
+          <span style={{ opacity: 0.6 }}>생명</span>
+          <span style={{ color: "#4dff4d", fontWeight: 900 }}>{formatCompactNumber(getTotalHp())}</span>
+        </div>
+        <div style={summaryItem}>
+          <span style={{ opacity: 0.6 }}>회피</span>
+          <span style={{ color: "#ffd700", fontWeight: 900 }}>{Math.floor(getTotalEvasion())}%</span>
+        </div>
+        {game.statUpgrades.damageReduction > 0 && (
+          <div style={summaryItem}>
+            <span style={{ opacity: 0.6 }}>피감</span>
+            <span style={{ color: "#bde7ff", fontWeight: 900 }}>{game.statUpgrades.damageReduction}%</span>
+          </div>
+        )}
       </div>
 
       {/* 3. Global Multiplier Selector */}
@@ -218,8 +218,7 @@ export default function UpgradePanel() {
               background: activeTab === tab.key ? `linear-gradient(to top, ${tab.color}15, transparent)` : "transparent"
             }}
           >
-            <span style={{ fontSize: 14, marginBottom: 4 }}></span>
-            <span style={{ fontSize: 20, fontWeight: 900 }}>{tab.name}</span>
+            <span style={{ fontSize: 22, fontWeight: 900 }}>{tab.name}</span>
           </button>
         ))}
       </div>
@@ -228,11 +227,11 @@ export default function UpgradePanel() {
       <div className="hide-scrollbar" style={listAreaStyle}>
         {currentUpgrades.map(upgrade => {
           const store = useGameStore.getState() as any;
-          
+
           const actualM = multiplier;
           const goldCost = store.getMultiUpgradeCost(upgrade.id, actualM, 'gold');
           const canAffordGold = currentCoins >= goldCost && goldCost > 0;
-          
+
           // Reputation logic if applicable
           const canUseRep = upgrade.resources.includes('reputation');
           const actualMRep = multiplier;
@@ -242,72 +241,72 @@ export default function UpgradePanel() {
           const statColor = getStatColor(upgrade.id);
 
           return (
-            <div 
-              key={upgrade.id} 
+            <div
+              key={upgrade.id}
               className="upgrade-card"
               style={cardStyle}
               onClick={() => setActiveDesc({ id: upgrade.id, name: upgrade.displayName, text: upgrade.desc })}
             >
-               {/* Animated Golden Border Glow (Lightning Effect) */}
-               <div className="card-glimmer"></div>
+              {/* Animated Golden Border Glow (Lightning Effect) */}
+              <div className="card-glimmer"></div>
 
-               <div style={{ display: "flex", gap: 15, alignItems: "center", position: 'relative', zIndex: 1 }}>
-                  <div style={{ ...iconBoxStyle, border: `1px solid ${statColor}44`, background: `${statColor}08` }}>
-                    <span style={{ fontSize: 22 }}>{getStatIcon(upgrade.id)}</span>
-                    <div style={{ ...levelBadgeStyle, background: statColor, fontSize: 9, padding: "1px 6px" }}>Lv.{upgrade.level}</div>
+              <div style={{ display: "flex", gap: 15, alignItems: "center", position: 'relative', zIndex: 1 }}>
+                <div style={{ ...iconBoxStyle, border: `1px solid ${statColor}44`, background: `${statColor}08` }}>
+                  <span style={{ fontSize: 22 }}>{getStatIcon(upgrade.id)}</span>
+                  <div style={{ ...levelBadgeStyle, background: statColor, fontSize: 9, padding: "1px 6px" }}>Lv.{upgrade.level}</div>
+                </div>
+                <div style={{
+                  flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2,
+                  padding: "6px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.06)", boxShadow: "inset 0 0 10px rgba(0,0,0,0.2)"
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 0.5 }}>{upgrade.displayName}</div>
+                  <div style={{ fontSize: 18, fontWeight: 950, color: statColor, textShadow: `0 0 10px ${statColor}33` }}>
+                    {formatStatValue(upgrade.id, upgrade.currentValue)}
                   </div>
-                  <div style={{ 
-                    flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, 
-                    padding: "6px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 14, 
-                    border: "1px solid rgba(255,255,255,0.06)", boxShadow: "inset 0 0 10px rgba(0,0,0,0.2)"
-                  }}>
-                     <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 0.5 }}>{upgrade.displayName}</div>
-                     <div style={{ fontSize: 18, fontWeight: 950, color: statColor, textShadow: `0 0 10px ${statColor}33` }}>
-                        {formatStatValue(upgrade.id, upgrade.currentValue)}
-                     </div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                     {/* Gold Upgrade (Gold Box) */}
-                     <button
-                        onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualM, 'gold'); }}
-                        disabled={!canAffordGold}
-                        style={{
-                          ...actionButtonStyle,
-                          padding: "4px", width: "130px", height: "50px",
-                          background: canAffordGold 
-                            ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)" 
-                            : "rgba(255,255,255,0.05)",
-                          color: canAffordGold ? "#000" : "rgba(255,255,255,0.2)",
-                          boxShadow: canAffordGold ? "0 4px 15px rgba(255,215,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)" : "none",
-                          border: canAffordGold ? "1px solid #ffd700" : "none"
-                        }}
-                     >
-                        
-                        <span style={{ fontWeight: 950,fontSize: 26 }}>{formatCompactNumber(goldCost)}</span>
-                     </button>
-                     
-                     {/* Reputation Upgrade (Blue Box) */}
-                     {canUseRep && (
-                       <button
-                         onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualMRep, 'reputation'); }}
-                         disabled={!canAffordRep}
-                         style={{
-                           ...actionButtonStyle,
-                           padding: "4px", width: "130px", height: "50px", 
-                           background: canAffordRep 
-                            ? "linear-gradient(135deg, #00f2ff 0%, #0077ff 100%)" 
-                            : "rgba(0, 242, 255, 0.05)",
-                           color: canAffordRep ? "#fff" : "rgba(0, 242, 255, 0.2)",
-                           boxShadow: canAffordRep ? "0 4px 15px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2)" : "none",
-                           border: canAffordRep ? "1px solid #00f2ff" : "none"
-                         }}
-                       >
-                         
-                         <span style={{ fontWeight: 950,fontSize :26 }}>{formatCompactNumber(repCost)}</span>
-                       </button>
-                     )}
-                  </div>
-               </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {/* Gold Upgrade (Gold Box) */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualM, 'gold'); }}
+                    disabled={!canAffordGold}
+                    style={{
+                      ...actionButtonStyle,
+                      padding: "4px", width: "130px", height: "50px",
+                      background: canAffordGold
+                        ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)"
+                        : "rgba(255,255,255,0.05)",
+                      color: canAffordGold ? "#000" : "rgba(255,255,255,0.2)",
+                      boxShadow: canAffordGold ? "0 4px 15px rgba(255,215,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)" : "none",
+                      border: canAffordGold ? "1px solid #ffd700" : "none"
+                    }}
+                  >
+
+                    <span style={{ fontWeight: 950, fontSize: 26 }}>{formatCompactNumber(goldCost)}</span>
+                  </button>
+
+                  {/* Reputation Upgrade (Blue Box) */}
+                  {canUseRep && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualMRep, 'reputation'); }}
+                      disabled={!canAffordRep}
+                      style={{
+                        ...actionButtonStyle,
+                        padding: "4px", width: "130px", height: "50px",
+                        background: canAffordRep
+                          ? "linear-gradient(135deg, #00f2ff 0%, #0077ff 100%)"
+                          : "rgba(0, 242, 255, 0.05)",
+                        color: canAffordRep ? "#fff" : "rgba(0, 242, 255, 0.2)",
+                        boxShadow: canAffordRep ? "0 4px 15px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2)" : "none",
+                        border: canAffordRep ? "1px solid #00f2ff" : "none"
+                      }}
+                    >
+
+                      <span style={{ fontWeight: 950, fontSize: 26 }}>{formatCompactNumber(repCost)}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}
@@ -362,14 +361,14 @@ export default function UpgradePanel() {
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
-  height: "100%", width: "100%", padding: "15px 15px",
+  height: "100%", width: "100%", padding: "12px 15px",
   background: "linear-gradient(165deg, rgba(20,20,30,0.8) 0%, rgba(10,10,15,0.9) 100%)",
   borderRadius: "32px", border: "1px solid rgba(255,215,0,0.1)",
   backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", boxSizing: "border-box"
 };
 
 const headerStyle: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24
+  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20
 };
 
 const currencyBadge: React.CSSProperties = {
@@ -378,7 +377,7 @@ const currencyBadge: React.CSSProperties = {
 };
 
 const summaryBarStyle: React.CSSProperties = {
-  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "12px", gap: 15, marginBottom: 15,
+  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "10px", gap: 12, marginBottom: 12,
   border: "1px solid rgba(255,255,255,0.05)"
 };
 
@@ -387,34 +386,34 @@ const summaryItem: React.CSSProperties = {
 };
 
 const multiplierGroupStyle: React.CSSProperties = {
-  display: "flex", gap: 8, marginBottom: 18
+  display: "flex", gap: 8, marginBottom: 14
 };
 
 const multiplierButtonStyle: React.CSSProperties = {
-  flex: 1, padding: "10px 0", borderRadius: "12px", border: "none", fontSize: 20, fontWeight: 900,
+  flex: 1, padding: "9px 0", borderRadius: "12px", border: "none", fontSize: 18, fontWeight: 900,
   cursor: "pointer", transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
 };
 
 const tabGroupStyle: React.CSSProperties = {
-  display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 20
+  display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 16
 };
 
 const tabButtonStyle: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "25px 0", 
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "22px 0", 
   background: "transparent", border: "none", cursor: "pointer", transition: "0.2s"
 };
 
 const listAreaStyle: React.CSSProperties = {
-  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14
+  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10
 };
 
 const cardStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.03)", borderRadius: "20px", padding: "15px", 
+  background: "rgba(255,255,255,0.03)", borderRadius: "20px", padding: "14px", 
   border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden"
 };
 
 const iconBoxStyle: React.CSSProperties = {
-  width: 64, height: 64, borderRadius: "18px", display: "flex", alignItems: "center", 
+  width: 58, height: 58, borderRadius: "16px", display: "flex", alignItems: "center", 
   justifyContent: "center", position: "relative"
 };
 
@@ -424,6 +423,6 @@ const levelBadgeStyle: React.CSSProperties = {
 };
 
 const actionButtonStyle: React.CSSProperties = {
-  width: 100, padding: "10px", borderRadius: "14px",  border: "none", cursor: "pointer",
-  display: "flex", flexDirection: "column", alignItems: "center", gap: 2, transition: "0.2s",  justifyContent: "center",
+  width: 100, padding: "10px", borderRadius: "14px", border: "none", cursor: "pointer",
+  display: "flex", flexDirection: "column", alignItems: "center", gap: 2, transition: "0.2s", justifyContent: "center",
 };

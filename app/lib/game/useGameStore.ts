@@ -1,6 +1,6 @@
 "use client";
 import { create } from "zustand";
-import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType } from "./types";
+import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource } from "./types";
 import { FACTIONS } from "./factions";
 import { defaultGameData, loadGame, saveGame } from "./storage";
 import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS } from "./items";
@@ -11,7 +11,8 @@ import {
   getRefineWisdomCost, 
   getRefineGoldCost, 
   canSynthesize,
-  MARTIAL_COMPENDIUM
+  MARTIAL_COMPENDIUM,
+  getRefineBonusMultiplier
 } from "./martialArtsSystem";
 import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
  
@@ -37,6 +38,38 @@ export const REALM_SETTINGS: Record<string, any> = {
   신화경: { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: "myth", label: "신화의 형상", hp: 120000, mp: 80000, goldMultiplier: 7000 },
   천인합일: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: "heaven", label: "천인합일의 경지", hp: 300000, mp: 200000, goldMultiplier: 20000 },
 };
+
+export function getInnStageConfig(stage: number) {
+  const getTarget = (s: number) => {
+    const scores = [
+      0, 3000, 7000, 12000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
+      58000, 67000, 77000, 88000, 100000, 113000, 127000, 142000, 158000, 200000
+    ];
+    if (s <= 20) return scores[s] || 0;
+    return 200000 + (s - 20) * 50000;
+  };
+
+  const targetScore = getTarget(stage);
+  const prevTarget = stage > 1 ? getTarget(stage - 1) : 0;
+  
+  const relativeTarget = targetScore - prevTarget;
+
+  return {
+    targetScore,
+    relativeTarget,
+    prevTarget,
+    durationSec: 30,
+    playerDrainIntervalSec: Math.max(1.0, 2.0 - (stage - 1) * 0.05),
+    playerDrainPerTick: 7 + Math.floor(stage * 2),
+    finisherThresholdRate: 0.05, // Match score >= 5% of target means finisher
+    finisherBleedDurationSec: 5,
+    stageDamageMult: 1 + (stage - 1) * 0.15,
+    counterCheckWindowSec: 10,
+    counterThresholdRate: 0.4, // If score < 40% of expected in 10s
+    counterDotDurationSec: 6,
+    counterCooldownSec: 15
+  };
+}
 
 export const REALM_ORDER = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
 
@@ -116,9 +149,9 @@ function getDuelTier(rating: number) {
    */
   function getTargetPlayerStats(level: number) {
     return {
-      atk: 10 + level * 250,
-      def: 50 + level * 250,
-      hp: 150 + level * 2500,
+      atk: 10 + level * 150,       // Reduced from 250 for better early curve
+      def: 50 + level * 150,       // Reduced from 250
+      hp: 150 + level * 1500,      // Reduced from 2500
       critRate: 0.1 + level * 0.1, // %
       critDmg: 150 + level,       // %
       eva: 0.1 + level * 0.1       // %
@@ -127,28 +160,25 @@ function getDuelTier(rating: number) {
 
   function generateEnemy(level: number) {
     const rivalIdx = (level - 1) % MASTER_RIVALS.length;
-    const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: "이름 없는 고수" };
-    const isBoss = (level % 10 === 0); // 10레벨마다 보스
+    const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: "이름 없는 고수", hpMult: 1, atkMult: 1 };
+    const isBoss = (level % 10 === 0);
 
-    // 악적 레벨 N은 유저 강화 N+1 레벨을 기준으로 설계
     const refPlayer = getTargetPlayerStats(level + 1);
-
-    // 1. 악적 방어력: 기준 유저 공격력의 20%
     const rivalDef = Math.floor(refPlayer.atk * 0.2);
-
-    // 2. 악적 생명력: 기준 유저가 35초(105회) 동안 입히는 누적 피해량
-    // [새 공식] damage = atk * (100 / (100 + def))
     const defMultiplier = 100 / (100 + rivalDef);
     const avgDmgPerHitRaw = refPlayer.atk * defMultiplier;
     const avgDmgPerHit = avgDmgPerHitRaw * (1 + (refPlayer.critRate / 100) * (refPlayer.critDmg / 100 - 1));
-    const rivalHp = Math.floor(avgDmgPerHit * DUEL_BALANCING.TOTAL_BASELINE_HITS);
+    
+    // Multipliers applied here
+    const hpMult = rivalTemplate.hpMult || 1.0;
+    const atkMult = rivalTemplate.atkMult || 1.0;
+    const bossMult = isBoss ? 2.5 : 1.0;
 
-    // 3. 악적 공격력: 35초 동안 기준 유저를 빈사 상태로 만드는 수준
+    const rivalHp = Math.floor(avgDmgPerHit * DUEL_BALANCING.TOTAL_BASELINE_HITS * hpMult * bossMult);
     const estimatedHitsTaken = 35 / 1.2;
-    // [새 공식 역산] rivalAtk * (100 / (100 + playerDef)) = playerHp / hits
     const playerDefMultiplier = 100 / (100 + refPlayer.def);
     const requiredDmgPerHit = refPlayer.hp / estimatedHitsTaken;
-    const rivalAtk = Math.floor(requiredDmgPerHit / playerDefMultiplier);
+    const rivalAtk = Math.floor((requiredDmgPerHit / playerDefMultiplier) * atkMult * (isBoss ? 1.5 : 1.0));
 
     return {
       name: isBoss ? `[보스] ${rivalTemplate.name}` : rivalTemplate.name,
@@ -257,6 +287,7 @@ interface GameState {
   checkOfflineRewards: () => void;
   claimOfflineRewards: () => void;
   getOptionSum: (stat: string) => number;
+  getOptionCount: (stat: string) => number;
   getStableAttack: () => number;
   getInnBonus: () => { name: string; atk: number; gold: number; exp: number; critDmg: number };
   triggerMovementBuff: () => void;
@@ -277,12 +308,23 @@ interface GameState {
   triggerYabawiEvent: () => void;
   useGamblingToken: () => boolean;
   giveGamblingToken: (amount: number) => void;
+  combatAnalysis: CombatAnalysis;
+  startCombatAnalysis: (duration?: number) => void;
+  stopCombatAnalysis: () => void;
+  logCombatDamage: (entry: Omit<CombatLogEntry, 'timestamp'>) => void;
+  updateCombatAnalysis: (dt: number) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
 
 export const useGameStore = create<GameState>((set, get) => ({
   game: { ...defaultGameData, ...loadGame(), name: loadGame().name ?? "무명협객" },
+  combatAnalysis: {
+    isActive: false,
+    timeLeft: 0,
+    log: [],
+    results: null
+  },
 
   setPlayerInfo: (info: any) => { set((s: any) => ({ game: { ...s.game, ...info, isInitialized: true } })); get().triggerSave(); },
   triggerYabawiEvent: () => {
@@ -340,10 +382,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     return eq.reduce((sum, item) => {
       const optVal = item.randomOptions?.filter(o => o.stat === stat).reduce((s, o) => s + o.value, 0) || 0;
-      // [수정] 강화 단계당 옵션 성능 0.3% 추가 증폭
+      // 강화 단계당 옵션 성능 0.3% 추가 증폭
       const enhancementBonus = 1 + (item.enhancement || 0) * 0.003;
       return sum + (optVal * enhancementBonus);
     }, 0);
+  },
+  getOptionCount: (stat: string) => {
+    const { game } = get();
+    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
+    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    return eq.filter(item => item.randomOptions?.some(o => o.stat === stat)).length;
   },
   getTotalAttack: () => {
     const { game } = get(); const faction = FACTIONS.find(f => f.name === game.faction);
@@ -354,9 +402,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const upgradeAtk = (game.upgradeLevels?.atk || 0) * 250;
     const mWeapon = game.ownedWeapons.find(w => w.id === (game.equippedGear?.mainWeapon || game.equippedWeaponId));
     const innBonus = get().getInnBonus();
-    const optionAtkPct = get().getOptionSum("atk_pct");
+    // 아이템 공격력% 보너스 (상한 200%)
+    const optionAtkPct = Math.min(200, get().getOptionSum("atk_pct"));
     const optionAtkFlat = get().getOptionSum("atk");
-    
+
     let moveAtkMult = 1;
     if (game.movementBuff && game.movementBuff.data.atk) {
       moveAtkMult = game.movementBuff.data.atk;
@@ -428,9 +477,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate") + skillBonus + setCrit;
     
-    // 연마유 영안 버프 (치명타 50% 상승)
+    // 옵션 중복 패널티 적용
+    const critOptionCount = get().getOptionCount("crit_rate");
+    if (critOptionCount > 1) {
+      finalCrit *= (1 - 0.05 * (critOptionCount - 1));
+    }
+
+    // 감쇠 시스템 적용 (critRate = critRate / (1 + critRate))
+    const rateDecimal = finalCrit / 100;
+    finalCrit = (rateDecimal / (1 + rateDecimal)) * 100;
+
+    // 최종 상한 적용 (35%)
+    finalCrit = Math.min(35, finalCrit);
+
+    // 연마유 영안 버프 (치명타 50% 상승 - 감쇠 및 상한 이후 합산)
     if (game.oilBuffs?.oil_eye > 0) {
-      finalCrit += 50;
+      finalCrit = Math.min(85, finalCrit + 50);
     }
 
     return finalCrit;
@@ -460,6 +522,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let finalCritDmg = (base + bonus + setBonus + auraBonus) * moveMult;
     
+    // 최종 상한 적용 (280%)
+    finalCritDmg = Math.min(280, finalCritDmg);
+
     // 연마유 파천 버프 (치명 피해 3배)
     if (game.oilBuffs?.oil_crit_3 > 0) {
       finalCritDmg *= 3;
@@ -497,14 +562,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) setDefMult *= (1 + syn[5].allStat);
     });
 
-    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.def || 0)/100) * moveMult * setDefMult;
-    
-    // 연마유 강철 버프 (방어력 3배 -> 로직 변경: 받는 피해 감소는 updateMasterDuel에서 처리)
-    // if (game.oilBuffs?.oil_def_3 > 0) { finalDef *= 3; }
-    
-
-    // Special Training: Armor Type (Def Bonus)
     const faction = FACTIONS.find(f => f.name === game.faction);
+    const optionDefPct = Math.min(180, get().getOptionSum("def_pct"));
+
+    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (faction?.bonusStats?.def || 0)/100) * moveMult * setDefMult * (1 + optionDefPct / 100);
+    
+    // Special Training: Armor Type (Def Bonus)
     if (faction?.specialTraining?.type === 'armor') {
       const specLevel = game.upgradeLevels?.eva || 0;
       finalDef *= (1 + (specLevel * 0.005)); // 0.5% per level
@@ -525,14 +588,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.hpRec || 0) * 2500 + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0)/100) * setHpMult;
     
-    // Special Training: Vitality Type (HP Bonus)
     const faction = FACTIONS.find(f => f.name === game.faction);
+    const optionHpPct = Math.min(220, get().getOptionSum("hp_pct"));
+
     if (faction?.specialTraining?.type === 'vitality') {
       const specLevel = game.upgradeLevels?.eva || 0;
       baseTotal *= (1 + (specLevel * 0.001)); // 0.1% per level
     }
 
-    return Math.floor(baseTotal * (1 + get().getOptionSum("hp_pct") / 100));
+    return Math.floor(baseTotal * (1 + optionHpPct / 100));
   },
   getTotalEvasion: () => {
     const { game } = get();
@@ -552,6 +616,19 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) eva += 5; // Moderate flat eva bonus for allStat
     });
 
+    // 옵션 중복 패널티 적용
+    const evaOptionCount = get().getOptionCount("eva");
+    if (evaOptionCount > 1) {
+      eva *= (1 - 0.05 * (evaOptionCount - 1));
+    }
+
+    // 감쇠 시스템 적용 (evasion = evasion / (1 + evasion))
+    const evaDecimal = eva / 100;
+    eva = (evaDecimal / (1 + evaDecimal)) * 100;
+
+    // 최종 상한 적용 (15%)
+    eva = Math.min(15, eva);
+
     let cap = 70;
     if (game.movementBuff && game.movementBuff.data.evaCap) cap = game.movementBuff.data.evaCap;
 
@@ -569,9 +646,25 @@ export const useGameStore = create<GameState>((set, get) => ({
     return luck;
   },  getTotalSpeed: () => {
     const { game } = get();
-    let baseSpeed = 100 + game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id)).reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
-    if (game.oilBuffs?.oil_speed_3 > 0) baseSpeed *= 2; // 스크린샷 기준 2배
-    return baseSpeed;
+    const equippedWeapons = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
+    const baseSpeed = 100 + equippedWeapons.reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    
+    // 아이템 공속% 보너스
+    let speedPct = get().getOptionSum("speed_pct");
+    const speedOptionCount = get().getOptionCount("speed_pct");
+    
+    // 중복 패널티 (1 - 0.04 * (count - 1))
+    if (speedOptionCount > 1) {
+      speedPct *= (1 - 0.04 * (speedOptionCount - 1));
+    }
+
+    // 최종 공속 증가 상한 (100%)
+    speedPct = Math.min(100, speedPct);
+
+    let finalSpeed = baseSpeed * (1 + speedPct / 100);
+    
+    if (game.oilBuffs?.oil_speed_3 > 0) finalSpeed *= 2; 
+    return finalSpeed;
   },
   getTotalMp: () => {
     const { game } = get();
@@ -585,8 +678,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) setMpMult *= (1 + syn[5].allStat);
     });
 
+    const optionMpPct = Math.min(200, get().getOptionSum("mp_pct"));
     let baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.mpRec || 0) * 1000 + get().getOptionSum("mp")) * setMpMult;
-    return Math.floor(baseTotal * (1 + get().getOptionSum("mp_pct") / 100));
+    return Math.floor(baseTotal * (1 + optionMpPct / 100));
   },
   getInnBonus: () => {
     const r = get().game.duel.rating || 0;
@@ -636,7 +730,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       
       let dHp = s.game.dummyHp - finalDamageToDummy;
 
-      if (Math.random() < 0.03) eGold += 2 * (REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1) * finalGoldB;
+      if (Math.random() < 0.03) eGold += 1 * (REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1) * finalGoldB;
 
       const intervals = [300, 400, 500, 600, 700, 800, 900, 1000];
       const currentIdx = s.game.innEventIndex || 0;
@@ -648,10 +742,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         // 다음 더미 체력 결정
         dHp = stats.hp;
         const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
-        const kG = (s.game.attackMultiplier > 1 ? 100 * rG : 50 * rG) * finalGoldB;
+        const kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
         eGold += kG;
-        lastR = isDodged ? "빗나감!" : null; 
-
+        // [수정] 중요 팝업(개방, 진입 등)이 다음 타격에 의해 즉시 사라지는 현상 방지
+        const isImportantMsg = typeof lastR === 'string' && (lastR.includes("개방") || lastR.includes("진입") || lastR.includes("발견") || lastR.includes("획득"));
+        if (isDodged) {
+          lastR = "빗나감!";
+        } else if (!isImportantMsg) {
+          lastR = null;
+        }
         // [수정됨] 무뢰배 출현 로직 (순환 주기: 300, 400, 500, 600, 700, 800, 900, 1000)
         let nTM = { ...s.game.timingMission };
 
@@ -660,13 +759,20 @@ export const useGameStore = create<GameState>((set, get) => ({
             const gameIdx = (s.game.innEventVersion || 0) % 4;
             const selectedGame = miniGames[gameIdx];
             
+            const RIVAL_NAMES = [
+              "흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", 
+              "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸",
+              "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"
+            ];
+            const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
+            
             pIE = true;
             iEV = (s.game.innEventVersion || 0) + 1;
             nTM = {
               ...nTM,
               available: true,
               selectedGameType: selectedGame as any,
-              rivalName: `객잔 무뢰배 (${iEV}차)`,
+              rivalName: `${randomRivalName} (${iEV}차)`,
               requiredHits: 1,
               isPractice: false,
               currentStage: 1,
@@ -726,34 +832,34 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (qT === 10) {
           qT = 30;
           cMT = "허수아비 누적 처치 30번\n[개방: 대장간]";
-          uET = "무아지경 진입!";
-          aM = 2; bTL = 7; aB = "무아지경";
+          uET = "무아지경(x10) 진입!";
+          aM = 10; bTL = 30; aB = "무아지경";
         } else if (qT === 30) {
           qT = 50;
           cMT = "허수아비 누적 처치 50번\n[개방: 강화]";
-          uET = "대장간 및 장비 개방!";
+          uET = "[대장간] 개방";
           uTabs = Array.from(new Set([...uTabs, "forge", "inventory"]));
         } else if (qT === 50) {
           qT = 100;
           cMT = "허수아비 누적 처치 100번\n[개방: 객잔]";
-          uET = "강화 개방!";
+          uET = "[강화] 개방";
           uTabs = Array.from(new Set([...uTabs, "upgrade"]));
         } else if (qT === 100) {
           qT = 150;
           cMT = "허수아비 누적 처치 150번\n[개방: 대결]";
-          uET = null;
+          uET = "[객잔] 개방";
           uTabs = Array.from(new Set([...uTabs, "inn"]));
           pIE = false; 
           // 객잔 개방 시 한 번 반환
         } else if (qT === 150) {
           qT = 200;
           cMT = "허수아비 누적 처치 200번\n[개방: 비급]";
-          uET = "대결 개방!";
+          uET = "[대결] 개방";
           uTabs = Array.from(new Set([...uTabs, "master"]));
         } else if (qT === 200) {
           qT = 300;
           cMT = "허수아비 누적 처치 300번\n[이벤트: 무뢰배]";
-          uET = "비급 개방!";
+          uET = "[비급] 개방";
           uTabs = Array.from(new Set([...uTabs, "library"]));
         } else if (qT >= 300) {
           // 300킬 이후부터는 순환형 무뢰배 이벤트 모드
@@ -761,6 +867,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
           uET = null; 
         }
+        if (uET) lastR = uET;
       }
 
       let nTM = s.game.timingMission;
@@ -1223,17 +1330,39 @@ export const useGameStore = create<GameState>((set, get) => ({
           setTimeout(() => get().triggerYabawiEvent(), 500); // 딜레이를 주어 상태 업데이트 후 실행
         }
 
+        const score = p.score || 0;
+        let tranceMultiplier = 1;
+        if (score >= 1600001) tranceMultiplier = 12;
+        else if (score >= 1300001) tranceMultiplier = 11;
+        else if (score >= 1000001) tranceMultiplier = 10;
+        else if (score >= 800001) tranceMultiplier = 9;
+        else if (score >= 590001) tranceMultiplier = 8;
+        else if (score >= 460001) tranceMultiplier = 7;
+        else if (score >= 310001) tranceMultiplier = 6;
+        else if (score >= 190001) tranceMultiplier = 5;
+        else if (score >= 100001) tranceMultiplier = 4;
+        else if (score >= 30001) tranceMultiplier = 3;
+        else if (score >= 10000) tranceMultiplier = 2;
+
+        const stoneGain = p.stones || (Math.floor(actualStage * 1.5) + 1);
+        const wisdomGain = p.wisdom || 0;
+
         set((s: any) => ({ 
           game: { 
             ...s.game, 
             coins: s.game.coins + r, 
-            reputation: (s.game.reputation || 0) + repGain,
+            reputation: Math.max(0, (s.game.reputation || 0) + repGain),
+            enhancementStones: (s.game.enhancementStones || 0) + stoneGain,
+            wisdom: (s.game.wisdom || 0) + wisdomGain,
             consumables: newConsumables,
-            activeBuff: "무아지경", 
-            lastInnScore: p.score || 0,
-            innHighScore: Math.max(game.innHighScore || 0, p.score || 0),
+            activeBuff: tranceMultiplier > 1 ? "무아지경" : s.game.activeBuff, 
+            attackMultiplier: tranceMultiplier > 1 ? tranceMultiplier : s.game.attackMultiplier,
+            buffTimeLeft: tranceMultiplier > 1 ? 15 : s.game.buffTimeLeft, // 무아지경 지속시간 15초
+            showInnVictoryEffect: true,
+            lastInnScore: score,
+            innHighScore: Math.max(game.innHighScore || 0, score),
             timingMission: { ...s.game.timingMission, available: false },
-            activeTab: "training", // 수련장 복귀 추가
+            activeTab: "training", 
             gamblingTokens: (s.game.gamblingTokens || 0) + tokenGained,
             duel: {
               ...s.game.duel,
@@ -1244,6 +1373,11 @@ export const useGameStore = create<GameState>((set, get) => ({
             }
           } 
         }));
+
+        // 3초 후 승리 이펙트 종료
+        setTimeout(() => {
+          set((s: any) => ({ game: { ...s.game, showInnVictoryEffect: false } }));
+        }, 3000);
       }
     } else {
       // 실패/후퇴 시 수련장으로 즉시 복귀
@@ -1260,6 +1394,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 모든 강화 항목 레벨이 N 이상일 때만 도전 가능 체크는 UI에서 수행하지만,
     // 여기서도 데이터 무결성을 위해 한 번 더 레벨 생성을 진행
     const e = generateEnemy(game.masterDuel.selectedLevel); 
+    const isZhuge = game.faction === "제갈세가";
+    const statMult = isZhuge ? 1.05 : 1.0;
+    
+    // 사마세가 보호막 초기화
+    const isSama = game.faction === "사마세가";
+    const initialShield = isSama ? get().getTotalMp() * 0.2 : 0;
+
     set((s: any) => ({ 
       game: { 
         ...s.game, 
@@ -1278,7 +1419,19 @@ export const useGameStore = create<GameState>((set, get) => ({
           lastEffect: null,
           damageTakenAccumulator: 0,
           isBerserk: false,
-          rivalDebuffs: {}
+          rivalDebuffs: {},
+          factionState: {
+            comboCount: 0,
+            counterReady: false,
+            critStack: 0,
+            slowStack: 0,
+            poisonStack: 0,
+            shield: initialShield,
+            nextCritBonus: 0,
+            evasionBuff: 0,
+            internalCDs: {},
+            statMult: statMult // 제갈세가 버프용
+          }
         } 
       } 
     })); 
@@ -1287,7 +1440,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!s.game.masterDuel.isPlaying) return s; 
     
     const masterDuel = s.game.masterDuel;
+    const faction = s.game.faction;
+    let fState = { ...(masterDuel.factionState || {}) };
     const regenAccumulator = s.game.regenAccumulator || 0;
+    
     // 스턴 타이머 처리
     let nextStunTimer = Math.max(0, (masterDuel.stunTimer || 0) - dt);
     let nextIsStunned = nextStunTimer > 0;
@@ -1308,39 +1464,35 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // 시간 초과 패배 처리
-    // 1초 단위 적 디버프 처리 (Bleed)
-    if (regenAccumulator >= 1.0) {
-       if (masterDuel.rivalDebuffs?.bleed) {
-          const bleedDmg = masterDuel.rivalMaxHp * 0.02; // 초당 2%
-          rivalHp = Math.max(0, rivalHp - bleedDmg);
-       }
-    }
-
-    // 1초 단위 디버프 타이머 감소
-    let nextRivalDebuffs = { ...(masterDuel.rivalDebuffs || {}) };
-    if (regenAccumulator >= 1.0) {
-       Object.keys(nextRivalDebuffs).forEach(k => {
-          if (nextRivalDebuffs[k] > 0) nextRivalDebuffs[k] = Math.max(0, nextRivalDebuffs[k] - 1.0);
-       });
-    }
-
     if (tLeft <= 0) { 
       return { 
         game: { 
           ...s.game, 
-          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null, rivalDebuffs: nextRivalDebuffs } 
+          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null } 
         } 
       }; 
     }
 
     let nextHp = s.game.hp; 
     let nextMp = s.game.mp;
-    
-    // 광폭화 상태 확인 (전투 시작 30초 후, 즉 남은 시간 10초 이하)
+    const maxHp = get().getTotalHp();
+    const hpRatio = nextHp / maxHp;
+
+    // 개방: 체력이 낮을수록 회피율 증가 (최대 4%)
+    let dynamicEvasion = get().getTotalEvasion();
+    if (faction === "개방") {
+      dynamicEvasion += (1 - hpRatio) * 4;
+    }
+    // 아미파: 피격 시 회피율 상승 (버프 타이머 처리)
+    if (fState.evasionBuffTimer > 0) {
+      fState.evasionBuffTimer -= dt;
+      dynamicEvasion += fState.evasionBuff || 0;
+      if (fState.evasionBuffTimer <= 0) fState.evasionBuff = 0;
+    }
+
+    // 광폭화 상태 확인
     const isBerserk = tLeft <= 10;
     const berserkMult = masterDuel.isBoss ? DUEL_BALANCING.BOSS_BERSERK : DUEL_BALANCING.NORMAL_BERSERK;
-    
-    // 광폭화 시 공격속도 증가 반영
     const spdFactor = isBerserk ? berserkMult.spd : 1.0;
     let atkTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt * spdFactor); 
     let chargeT = (masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt * spdFactor);
@@ -1348,109 +1500,91 @@ export const useGameStore = create<GameState>((set, get) => ({
     let dmgAccum = 0;
     let effect = masterDuel.lastEffect;
 
-    // 6초마다 강격(Special Attack)
-    if (chargeT >= 6.0 && !isTargetPaused) {
-      chargeT = 0;
-      // 광폭화 시 공격력 증가 반영
-      const atkMult = isBerserk ? berserkMult.atk : 1.0;
-      const rawAtk = masterDuel.rivalAtk * (isBerserk ? 5 : 3.5) * atkMult;
-      const defense = get().getTotalDefense();
-      
-      const defenseMultiplier = 100 / (100 + defense);
-      let finalDmg = Math.floor(rawAtk * defenseMultiplier);
-      
-      // 최소 데미지 보정 (공격력의 5%)
-      finalDmg = Math.max(finalDmg, Math.floor(rawAtk * 0.05));
-      const finalDmgRaw = finalDmg;
-
-      // 강철유: 모든 피해 50% 감소
-      if (s.game.oilBuffs?.oil_def_3 > 0) {
-        finalDmg = Math.floor(finalDmg * 0.5);
+    // 사천당가 도트딜 및 디버프 타이머 처리 (1초 주기)
+    if (regenAccumulator >= 1.0) {
+      // 사천당가: 중독 도트딜
+      if (faction === "사천당가" && fState.poisonStack > 0) {
+        const poisonDmg = get().getTotalAttack() * 0.1 * fState.poisonStack;
+        rivalHp = Math.max(0, rivalHp - poisonDmg);
       }
-
-      // 금강유: 무적
-      if (s.game.oilBuffs?.oil_vajra > 0) {
-        finalDmg = 0;
-        effect = "PARRY"; // 무적 이펙트 대용
+      // 일반 출혈 디버프
+      if (masterDuel.rivalDebuffs?.bleed) {
+        rivalHp = Math.max(0, rivalHp - masterDuel.rivalMaxHp * 0.02);
       }
-
-      // 영안유: 반드시 회피
-      if (s.game.oilBuffs?.oil_eye > 0) {
-        finalDmg = 0;
-        effect = "DODGE";
-      }
-
-      // 반탄유: 받은 피해 200% 반사
-      if (s.game.oilBuffs?.oil_reflect > 0 && finalDmgRaw > 0) {
-        rivalHp = Math.max(0, rivalHp - finalDmgRaw * 2.0);
-      }
-
-      // 사마세가 마영보(압기보): 내력 방어막
-      if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
-        const shieldRate = s.game.movementBuff.data.manaShield;
-        const mpDmg = Math.floor(finalDmg * shieldRate);
-        const actualMpDmg = Math.min(nextMp, mpDmg);
-        nextMp = Math.max(0, nextMp - actualMpDmg);
-        finalDmg -= actualMpDmg;
-      }
-      
-      // 반사 로직
-      if (s.game.movementBuff && s.game.movementBuff.data.reflect) {
-         rivalHp = Math.max(0, rivalHp - finalDmg * (s.game.movementBuff.data.reflect / 100));
-      }
-
-      nextHp = Math.max(0, nextHp - finalDmg);
-      dmgAccum = finalDmg + Math.random() * 0.01;
-      effect = "CRITICAL";
-      if (Math.random() < 0.3) effect = "BLEED";
     }
-    // 1.2초마다 기본 공격
-    else if (atkTimer >= 1.2 && !isTargetPaused) { 
-      atkTimer = 0; 
-      
-      const evasionRate = get().getTotalEvasion();
-      if (Math.random() < evasionRate / 100) {
+
+    // 공격 로직 (강격 또는 기본 공격)
+    const isSpecial = chargeT >= 6.0;
+    const isBasic = !isSpecial && atkTimer >= 1.2;
+
+    if ((isSpecial || isBasic) && !isTargetPaused) {
+      if (isSpecial) chargeT = 0; else atkTimer = 0;
+
+      // 1. 회피 판정
+      if (Math.random() < dynamicEvasion / 100) {
         dmgAccum = 0;
         effect = "DODGE";
         get().triggerMovementBuff();
-      } else {
-        // [새 공식] damage = atk * (100 / (100 + def))
-        const variance = 0.95 + Math.random() * 0.1;
-        const atkMult = isBerserk ? 1.5 : 1.0; // 광폭화 공격력 1.5배
-        const rawAtk = masterDuel.rivalAtk * atkMult * variance;
-        const playerDefense = get().getTotalDefense();
         
+        // 무당파: 회피 성공 시 즉시 반격 및 다음 공격 강화
+        if (faction === "무당파") {
+          fState.counterReady = true;
+          setTimeout(() => get().tapMasterDuel(0), 50); // 약간의 딜레이 후 반격
+        }
+        // 청성파: 회피 후 치명타율 급증
+        if (faction === "청성파") {
+          fState.nextCritBonus = 20;
+        }
+      } else {
+        // 2. 데미지 계산
+        const atkMult = isBerserk ? (isSpecial ? 5 : 1.5) : (isSpecial ? 3.5 : 1.0);
+        const rawAtk = masterDuel.rivalAtk * atkMult * (0.95 + Math.random() * 0.1);
+        const playerDefense = get().getTotalDefense();
         const defenseMultiplier = 100 / (100 + playerDefense);
         let finalDmg = Math.floor(rawAtk * defenseMultiplier);
-        
-        // 최소 데미지 보정 (공격력의 5%)
         finalDmg = Math.max(finalDmg, Math.floor(rawAtk * 0.05));
 
-        // 사마세가 마영보(압기보): 내력 방어막
+        // 3. 문파 방어 보정
+        // 소림: 받는 피해 20% 감소
+        if (faction === "소림") finalDmg *= 0.8;
+        
+        // 4. 아이템 버프 보정
+        if (s.game.oilBuffs?.oil_def_3 > 0) finalDmg *= 0.5;
+        if (s.game.oilBuffs?.oil_vajra > 0) finalDmg = 0;
+        if (s.game.oilBuffs?.oil_eye > 0) finalDmg = 0;
+
+        // 5. 보호막 및 내력 방어막 처리
+        // 사마세가: MP 기반 보호막 우선 소모
+        if (fState.shield > 0) {
+          const absorb = Math.min(fState.shield, finalDmg);
+          fState.shield -= absorb;
+          finalDmg -= absorb;
+        }
+        // 공통: 내력 방어막 (보법 등)
         if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
-          const shieldRate = s.game.movementBuff.data.manaShield;
-          const mpDmg = Math.floor(finalDmg * shieldRate);
-          const actualMpDmg = Math.min(nextMp, mpDmg);
-          nextMp = Math.max(0, nextMp - actualMpDmg);
-          finalDmg -= actualMpDmg;
+          const mpDmg = Math.min(nextMp, finalDmg * s.game.movementBuff.data.manaShield);
+          nextMp -= mpDmg;
+          finalDmg -= mpDmg;
         }
 
-        // 반사 로직
-        if (s.game.movementBuff && s.game.movementBuff.data.reflect) {
-           rivalHp = Math.max(0, rivalHp - finalDmg * (s.game.movementBuff.data.reflect / 100));
+        // 6. 피해 적용 및 반사
+        nextHp = Math.max(0, nextHp - finalDmg);
+        dmgAccum = finalDmg;
+        effect = isSpecial ? "CRITICAL" : (Math.random() < 0.1 ? "BLEED" : null);
+
+        if (s.game.oilBuffs?.oil_reflect > 0 && finalDmg > 0) {
+          rivalHp = Math.max(0, rivalHp - finalDmg * 2.0);
+        }
+        if (s.game.movementBuff && s.game.movementBuff.data.reflect && finalDmg > 0) {
+          rivalHp = Math.max(0, rivalHp - finalDmg * (s.game.movementBuff.data.reflect / 100));
         }
 
-        nextHp = Math.max(0, nextHp - finalDmg); 
-        dmgAccum = finalDmg + Math.random() * 0.01;
-        effect = null;
+        // 아미파: 피격 시 회피율 상승
+        if (faction === "아미파") {
+          fState.evasionBuff = 20;
+          fState.evasionBuffTimer = 3.0;
+        }
       }
-    } else {
-      if (atkTimer > 0.5 && effect === "DODGE") effect = null;
-    }
-
-    if (masterDuel.lastEffect === "BLEED") {
-      const bleedDmg = (get().getTotalHp() * 0.02) * dt;
-      nextHp = Math.max(0, nextHp - bleedDmg);
     }
 
     const isPlayerDead = nextHp <= 0;
@@ -1462,8 +1596,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         mp: Math.max(0, nextMp),
         masterDuel: { 
           ...masterDuel, 
-          playerHp: Math.max(0, nextHp), // 메인 HP와 싱크
-          playerMp: Math.max(0, nextMp), // 메인 MP와 싱크
+          playerHp: Math.max(0, nextHp),
+          playerMp: Math.max(0, nextMp),
           timeLeft: tLeft, 
           isPlaying: !isPlayerDead, 
           rivalHp: rivalHp,
@@ -1475,7 +1609,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           isBerserk,
           isStunned: nextIsStunned,
           stunTimer: nextStunTimer,
-          skillEffect: nextSkillEffect
+          skillEffect: nextSkillEffect,
+          factionState: fState
         } 
       } 
     }; 
@@ -1487,169 +1622,192 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       if (!s.game.masterDuel.isPlaying) return s;
 
-      const bDmg = bonusDmg || 0;
-      const isW = isWeakness || false;
+      const masterDuel = s.game.masterDuel;
+      const faction = s.game.faction;
+      let fState = { ...(masterDuel.factionState || {}) };
+      const now = Date.now();
       
-      let moveAtkMult = 1;
+      const statMult = fState.statMult || 1.0;
+      let playerAtk = get().getTotalAttack() * statMult;
+      let playerCritRate = get().getTotalCritRate();
+      let playerCritDmg = get().getTotalCritDmg() / 100;
+      
+      let rivalDef = masterDuel.rivalDef;
+      let rivalHp = masterDuel.rivalHp;
+      let playerHp = s.game.hp;
+      let playerMp = s.game.mp;
+
+      let damageMultiplier = 1.0;
+      let bonusFlatDamage = (bonusDmg || 0);
+
       if (s.game.movementBuff && s.game.movementBuff.data.weakness) {
-         moveAtkMult = s.game.movementBuff.data.weakness;
-      }
-      
-      let hitCount = 1;
-      if (s.game.movementBuff && s.game.movementBuff.data.aspd) {
-         hitCount = Math.floor(s.game.movementBuff.data.aspd);
+        damageMultiplier *= s.game.movementBuff.data.weakness;
       }
 
-      const rivalDef = s.game.masterDuel.rivalDef || 0;
-      const baseAtk = get().getTotalAttack() * moveAtkMult;
-      
-      // 1. 회피 판정
-      // (현재는 유저 공격이 100% 명중하는 구조이거나, 보스 회피 로직이 없는 상태 - 유저 요청 공식 반영)
-      // 보스에게 회피 스탯이 있다면 여기에 적용 (현재는 0으로 간주)
-      
-      // 2. 데미지 계산 (방어력 감쇠)
-      const defenseMultiplier = 100 / (100 + rivalDef);
-      let damage = baseAtk * defenseMultiplier;
-
-      // 3. 치명타 판정
-      const totalCritRate = get().getTotalCritRate();
-      const totalCritDmg = get().getTotalCritDmg();
-      const isCrit = Math.random() < totalCritRate / 100;
-      if (isCrit) {
-        damage *= (totalCritDmg / 100);
+      if (faction === "남궁세가") {
+        rivalDef = 0;
+        if (masterDuel.isBoss) damageMultiplier *= 1.3;
+      }
+      if (faction === "일월신교") {
+        rivalDef *= 0.5;
+      }
+      if (faction === "소림") {
+        bonusFlatDamage += get().getTotalHp() * 0.01;
+      }
+      if (faction === "화산파") {
+        fState.comboCount = (fState.comboCount || 0) + 1;
+        if (fState.comboCount >= 4) {
+          damageMultiplier *= 2.0;
+          fState.comboCount = 0;
+        }
+      }
+      if (faction === "무당파" && fState.counterReady) {
+        damageMultiplier *= 1.5;
+        fState.counterReady = false;
+      }
+      if (faction === "청성파") {
+        playerCritRate += (fState.nextCritBonus || 0);
+        fState.nextCritBonus = 0;
+      }
+      if (faction === "사마세가") {
+        const mpRatio = (playerMp / (get().getTotalMp() || 1)) * 100;
+        damageMultiplier *= (1 + Math.floor(mpRatio / 10) * 0.02);
+      }
+      if (faction === "천마신교") {
+        const hpRatio = playerHp / (get().getTotalHp() || 1);
+        if (hpRatio <= 0.3) damageMultiplier *= 2.0;
+        if (isWeakness && hpRatio <= 0.3) damageMultiplier *= 2.5; 
+      }
+      if (faction === "하북팽가" && isWeakness) {
+        damageMultiplier *= 1.4;
+      }
+      const isRivalDebuffed = Object.keys(masterDuel.rivalDebuffs || {}).some(k => masterDuel.rivalDebuffs[k] > 0);
+      if (faction === "제갈세가" && isRivalDebuffed) {
+        damageMultiplier *= 1.2;
+      }
+      if (faction === "사천당가" && (fState.poisonStack || 0) > 0) {
+        damageMultiplier *= 1.5;
       }
 
-      // 최소 데미지 보정 (공격력의 5%)
-      damage = Math.max(damage, baseAtk * 0.05);
+      const evasionRate = rivalHp <= 0 ? 0 : (masterDuel.rivalEvasion || 5);
+      if (Math.random() < evasionRate / 100) {
+        return {
+          game: {
+            ...s.game,
+            masterDuel: { ...masterDuel, lastEffect: "DODGE", damageTakenAccumulator: 0, factionState: fState }
+          }
+        };
+      }
 
-      // 연마유 효과 통합 트리거 (인자로 받지 않은 경우만 새로 굴림)
+      const defenseMultiplier = 100 / (100 + Math.max(0, rivalDef));
+      let baseDamage = Math.floor(playerAtk * defenseMultiplier);
+
+      if (faction === "점창파") {
+        playerCritRate += (fState.critStack || 0);
+      }
+      let isCrit = false;
+      if (Math.random() < playerCritRate / 100) {
+        isCrit = true;
+        baseDamage *= playerCritDmg;
+      }
+
+      let totalDamage = baseDamage;
+      let effect = isCrit ? "CRITICAL" : null;
+
+      if (faction === "화산파" && isCrit) {
+        totalDamage += baseDamage * 0.8;
+      }
+      if (faction === "개방" && Math.random() < 0.15) {
+        totalDamage += totalDamage * 0.5;
+      }
+      if (faction === "청성파" && Math.random() < 0.05) {
+        const lastProc = fState.internalCDs?.cheongseong || 0;
+        if (now - lastProc > 5000) {
+          totalDamage *= 10;
+          fState.internalCDs = { ...fState.internalCDs, cheongseong: now };
+          effect = "STUN";
+        }
+      }
+      if (faction === "점창파") {
+        fState.critStack = Math.min(10, (fState.critStack || 0) + 2);
+        if (Math.random() < 0.3) totalDamage += baseDamage * 0.5;
+      }
+      if (faction === "공동파" && Math.random() < 0.15) {
+        masterDuel.isStunned = true;
+        masterDuel.stunTimer = 1.0;
+      }
+      if (faction === "곤륜파") {
+        fState.slowStack = (fState.slowStack || 0) + 1;
+        if (fState.slowStack >= 5) {
+          masterDuel.isStunned = true;
+          masterDuel.stunTimer = 1.0;
+          fState.slowStack = 0;
+          effect = "STUN";
+        }
+      }
+      if (faction === "사천당가") {
+        fState.poisonStack = (fState.poisonStack || 0) + 1;
+      }
+
+      totalDamage += bonusFlatDamage;
+      totalDamage *= damageMultiplier;
+      totalDamage = Math.max(totalDamage, playerAtk * 0.05);
+      
       const finalOilRes = oilRes || get().triggerOilEffects();
-      
-      let finalHitCount = hitCount * finalOilRes.hitCount;
-      let OHKMultiplier = 1; 
-      
-      if (finalOilRes.buffsTriggered.includes("oil_thunder")) OHKMultiplier += 5;
-      if (finalOilRes.buffsTriggered.includes("oil_demon")) OHKMultiplier += 10;
-
-      let finalEffect: any = isCrit ? "CRITICAL" : null;
-      if (finalOilRes.buffsTriggered.includes("oil_thunder")) finalEffect = "STUN";
-
-      // 적 방어력 감소 (만독유) - 공식 적용 전/후 유연하게 처리
-      // 만독유 적용 시 rivalDef를 50%로 깎아서 다시 계산하는 방식이 가장 정확
-      let currentRivalDef = rivalDef;
-      if (s.game.masterDuel.rivalDebuffs?.armor_break) {
-        currentRivalDef *= 0.5;
-        // 디버프 반영된 데미지 재계산
-        const debuffDefMult = 100 / (100 + currentRivalDef);
-        damage = baseAtk * debuffDefMult;
-        if (isCrit) damage *= (totalCritDmg / 100);
-        damage = Math.max(damage, baseAtk * 0.05);
-      }
-
-      let totalDmg = (damage * OHKMultiplier * finalHitCount) + bDmg * (isW ? 2 : 1);
-
-      // 무상유: 적 현재 체력 10% 즉시 삭감
-      if (finalOilRes.buffsTriggered.includes("oil_formless")) {
-         const currentRivalHp = s.game.masterDuel.rivalHp;
-         totalDmg += currentRivalHp * 0.10;
-      }
-      
-      // 버프/상태이상 업데이트 로직 통합
+      const nextMD = { ...masterDuel };
       const nextBuffs = { ...(s.game.oilBuffs || {}) };
-      const nextMD = { ...s.game.masterDuel };
+
+      if (finalOilRes.buffsTriggered.includes("oil_demon")) totalDamage *= 10;
+      if (finalOilRes.buffsTriggered.includes("oil_thunder")) {
+        nextMD.isStunned = true;
+        nextMD.stunTimer = (nextMD.stunTimer || 0) + 2.0;
+      }
+      if (finalOilRes.buffsTriggered.includes("oil_formless")) {
+        totalDamage += rivalHp * 0.1;
+      }
       
       finalOilRes.buffsTriggered.forEach((k: string) => {
-        if (k === "oil_thunder") {
-          nextMD.isStunned = true;
-          nextMD.stunTimer = (nextMD.stunTimer || 0) + 2.0;
-        } else if (k === "oil_poison") {
-          const debuffs = { ...(nextMD.rivalDebuffs || {}) };
-          debuffs.armor_break = 10;
-          nextMD.rivalDebuffs = debuffs;
-        } else if (k === "oil_bleed") {
-          const debuffs = { ...(nextMD.rivalDebuffs || {}) };
-          debuffs.bleed = 10;
-          nextMD.rivalDebuffs = debuffs;
-        } else if (k === "oil_vajra") {
-          nextBuffs[k] = 5;
-        } else if (k === "oil_atk_3" || k === "oil_crit_3") {
-          nextBuffs[k] = 5;
-        } else if (k === "oil_clarity") {
-          // 청명유 즉시 회복 (체력/내력 20%)
-          s.game.hp = Math.min(get().getTotalHp(), s.game.hp + get().getTotalHp() * 0.2);
-          s.game.mp = Math.min(get().getTotalMp(), s.game.mp + get().getTotalMp() * 0.2);
+        if (k === "oil_vajra" || k === "oil_atk_3" || k === "oil_crit_3") nextBuffs[k] = 5;
+        else if (k === "oil_vampire" || k === "oil_formless" || k === "oil_demon" || k === "oil_clarity") {
           nextBuffs[k] = 1;
-        } else if (k === "oil_vampire" || k === "oil_formless" || k === "oil_demon") {
-          nextBuffs[k] = 1; // Instant effects
-        } else {
-          nextBuffs[k] = 10; // Others like 무영, 강철, 반탄, 질풍, 기연
-        }
+          if (k === "oil_clarity") {
+             playerHp = Math.min(get().getTotalHp(), playerHp + get().getTotalHp() * 0.2);
+             playerMp = Math.min(get().getTotalMp(), playerMp + get().getTotalMp() * 0.2);
+          }
+        } else nextBuffs[k] = 10;
       });
 
-      // 흡성유: 대미지의 50% 흡혈
+      if (faction === "일월신교") {
+        playerHp = Math.min(get().getTotalHp(), playerHp + totalDamage * 0.1);
+        playerMp = Math.min(get().getTotalMp(), playerMp + totalDamage * 0.05);
+      }
       if (finalOilRes.buffsTriggered.includes("oil_vampire")) {
-         const vampHeal = totalDmg * 0.5;
-         s.game.hp = Math.min(get().getTotalHp(), s.game.hp + vampHeal);
+        playerHp = Math.min(get().getTotalHp(), playerHp + totalDamage * 0.5);
       }
 
-      const currentRivalHp = s.game.masterDuel.rivalHp;
-      const nHp = Math.max(0, currentRivalHp - totalDmg);
-      const nGauge = Math.min(100, (s.game.masterDuel.ultimateGauge || 0) + (isW ? 15 : 5));
+      const nHp = Math.max(0, rivalHp - totalDamage);
+      const nGauge = Math.min(100, (masterDuel.ultimateGauge || 0) + (isWeakness ? 15 : 5));
 
-      // 아미파 성광보: 타격 시 생명력 회복
-      let healAmt = 0;
-      if (s.game.movementBuff && s.game.movementBuff.data.healPerTouch) {
-        healAmt = get().getTotalHp() * (s.game.movementBuff.data.healPerTouch / 100);
-      }
-
-      // 청성파 유광보: 폭발적 일격 후 배율 소멸
-      let nextHitMult = s.game.nextHitMultiplier || 1;
-      if (nextHitMult > 1) {
-        nextHitMult = 1; // 1회 소모
-      }
-
-      if (nHp <= 0) { 
-        const level = s.game.masterDuel.selectedLevel;
-        const realmList = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
-        const rIdx = Math.max(0, realmList.indexOf(s.game.realm));
-        const levelFactor = 0.5 + (rIdx * 0.1) + (s.game.star * 0.05);
-        const goldB = 1 + (s.game.upgradeLevels.autoGain || 0) * 0.05;
-        
-         // [밸런싱] 보상 조정 (심득/징표: Lv.1에서 5개 시작, 레벨당 +0.7씩 증가)
-        const goldGain = Math.floor(900 * Math.pow(level, 1.2) * goldB * levelFactor);
-        const expB = 1 + (s.game.upgradeLevels.autoGain || 0) * 0.1;
-        const expGain = Math.floor(90 * Math.pow(level, 1.1) * expB * levelFactor);
-
-        // [개선] 보상 획득 로직 강화
+      if (nHp <= 0) {
+        const level = masterDuel.selectedLevel;
+        const goldGain = Math.floor(900 * Math.pow(level, 1.2) * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.05));
+        const expGain = Math.floor(90 * Math.pow(level, 1.1) * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.1));
         const rewardBase = 5 + (level - 1) * 0.7;
         const bossTokenGain = Math.floor(rewardBase); 
         const wisdomGain = Math.floor(rewardBase); 
-        
-        // 연마유 확률: [극한 희귀화] Lv.1에서 1%대 시작, 최대 10%로 제한
         const oilChance = Math.random() < Math.min(0.10, 0.01 + (level * 0.0025)); 
-        const oilKeys = [
-          "oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", 
-          "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire",
-          "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"
-        ];
+        const oilKeys = ["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"];
         const oilId = oilChance ? oilKeys[Math.floor(Math.random() * oilKeys.length)] : null;
         
-        const oilNameMap: Record<string, string> = {
-          oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", 
-          oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", 
-          oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", 
-          oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유"
-        };
-        const oilName = oilId ? oilNameMap[oilId] : "";
+        const oilNameMap: Record<string, string> = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
 
         let msg = `[처단 완료]\n금화 +${goldGain.toLocaleString()}\n명성 +${goldGain.toLocaleString()}\n징표 ${bossTokenGain.toLocaleString()}\n심득 +${wisdomGain.toLocaleString()}\n수련 정진 +${expGain.toLocaleString()}`;
-        if (oilId) msg += `\n[획득] ${oilName}`;
+        if (oilId) msg += `\n[획득] ${oilNameMap[oilId] || oilId}`;
 
         const nextConsumables = { ...s.game.consumables };
         if (oilId) nextConsumables[oilId] = (nextConsumables[oilId] || 0) + 1;
-
         const nextLevel = level + 1;
-        const nextMaxLevel = Math.max(s.game.masterDuel.currentLevel, nextLevel);
+        const nextMaxLevel = Math.max(masterDuel.currentLevel, nextLevel);
         const nextEnemy = generateEnemy(nextLevel);
 
         return { 
@@ -1660,41 +1818,23 @@ export const useGameStore = create<GameState>((set, get) => ({
             bossTokens: (s.game.bossTokens || 0) + bossTokenGain,
             wisdom: (s.game.wisdom || 0) + wisdomGain,
             touches: (s.game.touches || 0) + expGain,
-            hp: Math.min(get().getTotalHp(), s.game.hp + healAmt), // 아미파 회복 적용
-            nextHitMultiplier: nextHitMult, // 청성파 배율 소모 적용
+            hp: playerHp, mp: playerMp,
             consumables: nextConsumables,
             oilBuffs: nextBuffs,
             masterDuel: { 
-              ...nextMD, 
-              isPlaying: false, 
-              currentLevel: nextMaxLevel, // 최대 도달 레벨 갱신
-              selectedLevel: nextLevel, 
-              rivalHp: nextEnemy.hp, 
-              rivalMaxHp: nextEnemy.hp, 
-              rivalAtk: nextEnemy.atk, 
-              rivalName: nextEnemy.name,
-              lastWinReward: msg,
-              damageTakenAccumulator: 0,
-              lastEffect: null,
-              ultimateGauge: 0,
-              lastDefeatTimes: {
-                ...(nextMD.lastDefeatTimes || {}),
-                [level]: Date.now()
-              }
+              ...nextMD, isPlaying: false, currentLevel: nextMaxLevel, selectedLevel: nextLevel, rivalHp: nextEnemy.hp, rivalMaxHp: nextEnemy.hp, rivalAtk: nextEnemy.atk, rivalName: nextEnemy.name, lastWinReward: msg, damageTakenAccumulator: 0, lastEffect: null, ultimateGauge: 0, factionState: { ...fState, comboCount: 0, shield: 0, slowStack: 0, poisonStack: 0 }, lastDefeatTimes: { ...(nextMD.lastDefeatTimes || {}), [level]: now }
             } 
           } 
         }; 
       }
+
       return { 
         game: { 
           ...s.game, 
-          hp: Math.min(get().getTotalHp(), s.game.hp + healAmt), // 아미파 회복 적용
-          nextHitMultiplier: nextHitMult, // 청성파 배율 소모 적용
+          hp: playerHp, mp: playerMp,
           oilBuffs: nextBuffs,
           masterDuel: { 
-            ...nextMD, 
-            rivalHp: nHp, 
-            ultimateGauge: nGauge 
+            ...nextMD, rivalHp: nHp, lastEffect: effect, damageTakenAccumulator: totalDamage, ultimateGauge: nGauge, factionState: fState
           } 
         } 
       };
@@ -2266,18 +2406,54 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 공격 무공인 경우 대미지 적용 및 연마유 효과 트리거
     if (game.masterDuel.isPlaying) {
       const oilRes = get().triggerOilEffects();
-      const baseAtk = get().getTotalAttack();
-      const multiplier = sk.multiplier || 3;
+      const faction = game.faction;
+      const masterDuel = game.masterDuel;
+      const fState = { ...(masterDuel.factionState || {}) };
       
+      // 1. 기초 공격력 및 스탯 보정
+      const statMult = fState.statMult || 1.0;
+      let playerAtk = get().getTotalAttack() * statMult;
+      let playerCritRate = get().getTotalCritRate();
+      let playerCritDmg = get().getTotalCritDmg() / 100;
+
+      // 2. 무공 자체 배수 및 성급(Refinement) 보정
+      const learned = game.martialArtsSkills.find(ms => ms.skillId === (sk as any).id || ms.skillId === (sk as any).skillId);
+      const stars = learned?.stars || 0;
+      const refineMult = getRefineBonusMultiplier(stars);
+      const baseMultiplier = sk.multiplier || 3;
+      const totalMultiplier = baseMultiplier * refineMult;
+
+      // 3. 방어력 및 관통 보정
+      let rivalDef = masterDuel.rivalDef || 0;
+      if (faction === "남궁세가") rivalDef = 0; // 남궁세가: 무공 시 방어 무시
+      if (faction === "일월신교") rivalDef *= 0.5;
+      const defenseMultiplier = 100 / (100 + Math.max(0, rivalDef));
+      
+      let dmg = playerAtk * totalMultiplier * defenseMultiplier;
+
+      // 4. 치명타 판정
+      if (faction === "청성파") playerCritRate += (fState.nextCritBonus || 0);
+      let isCrit = Math.random() < playerCritRate / 100;
+      if (isCrit) dmg *= playerCritDmg;
+
+      // 5. 문파별 특수 보정
+      let damageMultiplier = 1.0;
+      if (faction === "천마신교") {
+        damageMultiplier *= 5.0; // 천마신교: 무공 발동 시 피해 5배
+        fState.nextCritBonus = 20; // 5초간 치명타율 +20% (간략화)
+      }
+      if (faction === "하북팽가") damageMultiplier *= 1.5; // 하북팽가: 무공 피해 증가
+
+      // 6. 연마유 특수 효과
       let ohkMult = 1;
       if (oilRes.buffsTriggered.includes("oil_thunder")) ohkMult += 5;
       if (oilRes.buffsTriggered.includes("oil_demon")) ohkMult += 10;
 
+      let totalDmg = dmg * damageMultiplier * ohkMult;
+      
       set((s: any) => {
         const nextBuffs = { ...(s.game.oilBuffs || {}) };
         const nextMD = { ...s.game.masterDuel };
-        
-        let totalDmg = baseAtk * multiplier * ohkMult;
         
         // 연마유 버프 적용 (스킬에서도 동일하게 버프 발생)
         oilRes.buffsTriggered.forEach((k: string) => {
@@ -2307,18 +2483,246 @@ export const useGameStore = create<GameState>((set, get) => ({
            s.game.hp = Math.min(get().getTotalHp(), s.game.hp + totalDmg * 0.5);
         }
 
-        return { 
+        const nHp = Math.max(0, nextMD.rivalHp - totalDmg);
+        const result = { 
           game: { 
             ...s.game, 
             oilBuffs: nextBuffs,
             masterDuel: { 
               ...nextMD, 
-              rivalHp: Math.max(0, nextMD.rivalHp - totalDmg) 
+              rivalHp: nHp
             } 
           } 
         };
+        if (nHp <= 0) {
+           setTimeout(() => get().tapMasterDuel(0), 100);
+        }
+        return result;
       });
+      return { totalDmg, isCrit };
     }
+    return { totalDmg: 0, isCrit: false };
+  },
+  startInnCombat: (stage: number) => set((s: any) => {
+    const stageConfig = getInnStageConfig(stage);
+    return {
+      game: {
+        ...s.game,
+        timingMission: {
+          ...s.game.timingMission,
+          currentStage: stage,
+          combatState: {
+            playerHp: 100,
+            playerMaxHp: 100,
+            enemyHp: stageConfig.relativeTarget,
+            enemyMaxHp: stageConfig.relativeTarget,
+            isBleeding: false,
+            bleedRemainSec: 0,
+            bleedScorePerSec: 0,
+            isCounterDotActive: false,
+            counterDotRemainSec: 0,
+            counterDotPerSec: 0,
+            counterCooldownRemainSec: 0,
+            playerHitFlash: false,
+            enemyHitFlash: false,
+            lastMatchScore: 0,
+            phase: "playing",
+            dialogue: null
+          }
+        }
+      }
+    };
+  }),
+
+
+  applyInnPuzzleScore: (gainedScore: number) => {
+    const { game } = get();
+    const combat = game.timingMission.combatState;
+    if (!combat || combat.phase !== "playing") return;
+
+    const stageConfig = getInnStageConfig(game.timingMission.currentStage);
+    const threshold = Math.floor(stageConfig.targetScore * stageConfig.finisherThresholdRate);
+    const isFinisher = gainedScore >= threshold;
+
+    set((s: any) => {
+      const nextCombat = { ...s.game.timingMission.combatState! };
+      nextCombat.lastMatchScore = gainedScore;
+      nextCombat.enemyHitFlash = true;
+
+      if (isFinisher) {
+        const bleedPerSec = Math.max(1, Math.floor(gainedScore / 80));
+        nextCombat.isBleeding = true;
+        nextCombat.bleedRemainSec = stageConfig.finisherBleedDurationSec;
+        nextCombat.bleedScorePerSec = Math.max(nextCombat.bleedScorePerSec || 0, bleedPerSec);
+        nextCombat.phase = "finisher";
+        nextCombat.dialogue = {
+          actor: "player",
+          text: "받아라. 오늘이 네 마지막 밤이다.",
+          duration: 1800
+        };
+      }
+
+      return {
+        game: {
+          ...s.game,
+          timingMission: {
+            ...s.game.timingMission,
+            combatState: nextCombat
+          }
+        }
+      };
+    });
+
+    // Reset flashes and phase after delay
+    setTimeout(() => {
+      set((s: any) => {
+        const c = s.game.timingMission.combatState;
+        if (!c) return s;
+        return {
+          game: {
+            ...s.game,
+            timingMission: {
+              ...s.game.timingMission,
+              combatState: { ...c, enemyHitFlash: false, phase: c.phase === "finisher" ? "playing" : c.phase, dialogue: c.phase === "finisher" ? null : c.dialogue }
+            }
+          }
+        };
+      });
+    }, 800);
+  },
+
+  updateInnCombat: (dt: number, currentScore: number) => {
+    const { game } = get();
+    const combat = game.timingMission.combatState;
+    if (!combat || (combat.phase !== "playing" && combat.phase !== "counter" && combat.phase !== "finisher")) return;
+
+    const stage = game.timingMission.currentStage;
+    const stageConfig = getInnStageConfig(stage);
+
+    set((s: any) => {
+      const nextCombat = { ...s.game.timingMission.combatState! };
+      
+      // 1. Enemy HP calculation (Relative to current stage)
+      nextCombat.enemyHp = Math.max(0, stageConfig.relativeTarget - (currentScore - stageConfig.prevTarget));
+
+      // 2. Player HP Drain (every 2s)
+      s.innDrainAccumulator = (s.innDrainAccumulator || 0) + dt;
+      if (s.innDrainAccumulator >= stageConfig.playerDrainIntervalSec) {
+        s.innDrainAccumulator -= stageConfig.playerDrainIntervalSec;
+        nextCombat.playerHp = Math.max(0, nextCombat.playerHp - stageConfig.playerDrainPerTick);
+        nextCombat.playerHitFlash = true;
+        setTimeout(() => set((ss: any) => {
+          const cc = ss.game.timingMission.combatState;
+          if (!cc) return ss;
+          return { game: { ...ss.game, timingMission: { ...ss.game.timingMission, combatState: { ...cc, playerHitFlash: false } } } };
+        }), 150);
+      }
+
+      // 3. Bleed logic (1s tick)
+      if (nextCombat.isBleeding) {
+        s.innBleedAccumulator = (s.innBleedAccumulator || 0) + dt;
+        if (s.innBleedAccumulator >= 1.0) {
+          s.innBleedAccumulator -= 1.0;
+          nextCombat.bleedRemainSec -= 1;
+          if (nextCombat.bleedRemainSec <= 0) {
+            nextCombat.isBleeding = false;
+            nextCombat.bleedScorePerSec = 0;
+          }
+        }
+      }
+
+      // 4. Counter logic
+      if (nextCombat.isCounterDotActive) {
+        s.innCounterAccumulator = (s.innCounterAccumulator || 0) + dt;
+        if (s.innCounterAccumulator >= 1.0) {
+          s.innCounterAccumulator -= 1.0;
+          nextCombat.playerHp = Math.max(0, nextCombat.playerHp - 3);
+          nextCombat.counterDotRemainSec -= 1;
+          if (nextCombat.counterDotRemainSec <= 0) {
+            nextCombat.isCounterDotActive = false;
+            nextCombat.counterDotPerSec = 0;
+          }
+        }
+      }
+
+      // 5. Counter Cooldown
+      if (nextCombat.counterCooldownRemainSec > 0) {
+        nextCombat.counterCooldownRemainSec -= dt;
+      }
+
+      return {
+        game: {
+          ...s.game,
+          timingMission: {
+            ...s.game.timingMission,
+            combatState: nextCombat
+          }
+        }
+      };
+    });
+  },
+
+  handleInnSecondTick: (scoreGainedThisSecond: number) => {
+    const { game } = get();
+    const combat = game.timingMission.combatState;
+    if (!combat || combat.phase !== "playing") return;
+
+    const stageConfig = getInnStageConfig(game.timingMission.currentStage);
+
+    set((s: any) => {
+      const nextCombat = { ...s.game.timingMission.combatState! };
+      const log = [...(nextCombat.recentScoreLog || [])];
+      log.push(scoreGainedThisSecond);
+      if (log.length > stageConfig.counterCheckWindowSec) log.shift();
+      nextCombat.recentScoreLog = log;
+
+      // Check for counter
+      const recentTotal = log.reduce((a, b) => a + b, 0);
+      const expected10s = (stageConfig.targetScore / stageConfig.durationSec) * stageConfig.counterCheckWindowSec;
+      
+      if (log.length >= stageConfig.counterCheckWindowSec && 
+          nextCombat.counterCooldownRemainSec <= 0 && 
+          !nextCombat.isCounterDotActive &&
+          recentTotal < expected10s * stageConfig.counterThresholdRate) {
+        
+        // Trigger counter
+        nextCombat.phase = "counter";
+        nextCombat.isCounterDotActive = true;
+        nextCombat.counterDotRemainSec = stageConfig.counterDotDurationSec;
+        nextCombat.counterDotPerSec = Math.max(1, Math.floor(expected10s / 50));
+        nextCombat.counterCooldownRemainSec = stageConfig.counterCooldownSec;
+        nextCombat.dialogue = {
+          actor: "enemy",
+          text: "하찮은 수로는 날 꺾지 못한다!",
+          duration: 1800
+        };
+        setTimeout(() => {
+          set((ss: any) => {
+            const cc = ss.game.timingMission.combatState;
+            if (!cc) return ss;
+            return {
+              game: {
+                ...ss.game,
+                timingMission: {
+                  ...ss.game.timingMission,
+                  combatState: { ...cc, phase: "playing", dialogue: null }
+                }
+              }
+            };
+          });
+        }, 1800);
+      }
+
+      return {
+        game: {
+          ...s.game,
+          timingMission: {
+            ...s.game.timingMission,
+            combatState: nextCombat
+          }
+        }
+      };
+    });
   },
   syncToCloud: async () => { try { await fetch("/api/game/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(get().game) }); } catch (e) { } },
   syncFromCloud: async () => { try { const res = await fetch("/api/game/sync"); if (res.ok) { const d = await res.json(); if (d?.realm) { set((s: any) => ({ game: { ...s.game, ...d } })); saveGame(get().game); } } } catch (e) { } },
@@ -2329,5 +2733,94 @@ export const useGameStore = create<GameState>((set, get) => ({
       localStorage.removeItem("murimbook-game-save-v10");
       window.location.reload(); 
     } 
-  }
+  },
+
+  startCombatAnalysis: (duration = 10) => {
+    set((s: any) => ({
+      combatAnalysis: {
+        isActive: true,
+        timeLeft: duration,
+        log: [],
+        results: null,
+        startTime: Date.now()
+      }
+    }));
+  },
+  stopCombatAnalysis: () => {
+    const { combatAnalysis } = get();
+    if (!combatAnalysis.isActive) return;
+
+    const log = combatAnalysis.log;
+    const totalDamage = log.reduce((acc, entry) => acc + entry.damage, 0);
+    const lastHit = log[log.length - 1]?.timestamp || Date.now();
+    const durationMs = lastHit - (combatAnalysis as any).startTime;
+    const effectiveDuration = Math.max(1, durationMs / 1000);
+    const dps = totalDamage / effectiveDuration;
+
+    const breakdown: Record<string, any> = {};
+    const skillDetails: Record<string, number> = {};
+    let critCount = 0;
+
+    log.forEach(entry => {
+      if (!breakdown[entry.source]) {
+        breakdown[entry.source] = { total: 0, dps: 0, percent: 0, count: 0 };
+      }
+      breakdown[entry.source].total += entry.damage;
+      breakdown[entry.source].count += 1;
+      if (entry.isCritical) critCount++;
+      if (entry.skillName) {
+        skillDetails[entry.skillName] = (skillDetails[entry.skillName] || 0) + entry.damage;
+      }
+    });
+
+    Object.keys(breakdown).forEach(source => {
+      breakdown[source].dps = breakdown[source].total / effectiveDuration;
+      breakdown[source].percent = totalDamage > 0 ? (breakdown[source].total / totalDamage) * 100 : 0;
+    });
+
+    set((s: any) => ({
+      combatAnalysis: {
+        ...s.combatAnalysis,
+        isActive: false,
+        results: {
+          totalDamage,
+          dps,
+          breakdown,
+          critCount,
+          hitCount: log.length,
+          skillDetails,
+          startTime: (s.combatAnalysis as any).startTime,
+          endTime: Date.now()
+        }
+      }
+    }));
+  },
+  logCombatDamage: (entry: Omit<CombatLogEntry, 'timestamp'>) => {
+    const { combatAnalysis } = get();
+    if (!combatAnalysis.isActive) return;
+
+    set((s: any) => ({
+      combatAnalysis: {
+        ...s.combatAnalysis,
+        log: [...s.combatAnalysis.log, { ...entry, timestamp: Date.now() }]
+      }
+    }));
+  },
+  updateCombatAnalysis: (dt: number) => {
+    const { combatAnalysis } = get();
+    if (!combatAnalysis.isActive) return;
+
+    const nextTime = Math.max(0, combatAnalysis.timeLeft - dt);
+    if (nextTime <= 0) {
+      get().stopCombatAnalysis();
+    } else {
+      set((s: any) => ({
+        combatAnalysis: {
+          ...s.combatAnalysis,
+          timeLeft: nextTime
+        }
+      }));
+    }
+  },
 }));
+

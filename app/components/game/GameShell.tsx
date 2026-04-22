@@ -29,6 +29,15 @@ export default function GameShell() {
     }
   }, [game.unlockEffectText]);
 
+  useEffect(() => {
+    if (game.yabawiEvent?.active) {
+      const timer = setTimeout(() => {
+        useGameStore.setState((s: any) => ({ game: { ...s.game, yabawiEvent: null } }));
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [game.yabawiEvent?.active]);
+
   const activeTab = game.activeTab || "training";
   const setActiveTab = (tab: string) => useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: tab } }));
   const [mounted, setMounted] = useState(false);
@@ -101,7 +110,7 @@ export default function GameShell() {
         flexDirection: "column",
         position: "relative",
         overflow: "hidden",
-        touchAction: "none",
+        touchAction: "manipulation",
       }}
     >
       <AutoTrainingManager />

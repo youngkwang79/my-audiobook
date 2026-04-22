@@ -180,10 +180,28 @@ export type CoinItem = {
 
 export type EquippedGear = Record<EquipSlot, WeaponId | null>;
 
-export type HeroProfile = {
-  name: string;
-  age: number;
-  height: number;
+export type InnCombatState = {
+  playerHp: number;
+  playerMaxHp: number;
+  enemyHp: number;
+  enemyMaxHp: number;
+  isBleeding: boolean;
+  bleedRemainSec: number;
+  bleedScorePerSec: number;
+  isCounterDotActive: boolean;
+  counterDotRemainSec: number;
+  counterDotPerSec: number;
+  counterCooldownRemainSec: number;
+  playerHitFlash: boolean;
+  enemyHitFlash: boolean;
+  lastMatchScore: number;
+  recentScoreLog: number[];
+  phase: "ready" | "playing" | "finisher" | "counter" | "victory" | "defeat";
+  dialogue?: {
+    actor: "player" | "enemy";
+    text: string;
+    duration: number;
+  } | null;
 };
 
 export type TimingMissionState = {
@@ -205,6 +223,7 @@ export type TimingMissionState = {
   highScores: Record<string, number>;
   lastScores: Record<string, number>;
   isPractice?: boolean;
+  combatState?: InnCombatState;
 };
 
 export type DuelState = {
@@ -247,6 +266,19 @@ export type MasterDuelState = {
   rivalDebuffs?: Record<string, number>;      // debuffKey -> remainTime
   playerSpecialStatus?: Record<string, number>; // invincibility, reflect, etc.
   skillEffect?: { name: string; description: string; timeLeft: number } | null;
+  factionState?: {
+    comboCount: number;
+    counterReady: boolean;
+    critStack: number;
+    slowStack: number;
+    poisonStack: number;
+    shield: number;
+    nextCritBonus: number;
+    evasionBuff: number;
+    evasionBuffTimer?: number;
+    internalCDs: Record<string, number>;
+    statMult?: number;
+  };
 };
 
 export type MovementBuffStatus = {
@@ -255,6 +287,12 @@ export type MovementBuffStatus = {
   timeLeft: number;
   stars: number;
   data: Record<string, number>; // Buff multipliers, etc.
+};
+
+export type HeroProfile = {
+  name: string;
+  age: number;
+  height: number;
 };
 
 export type GameSaveData = {
@@ -367,6 +405,7 @@ export type GameSaveData = {
     offlineLimit: number; // New: Increases offline cap (hours)
   };
   activeTab: TabType;
+  showInnVictoryEffect: boolean;
   isAudioMuted: boolean;
   innBuffEndTime: number; // New: Enhancement buff from Inn
   oilBuffs: Record<string, number>; // New: Polishing oil active buffs (key -> timeLeft)
@@ -384,4 +423,30 @@ export type GameSaveData = {
   gamblingTokens: number;
   yabawiEvent: { active: boolean; expiresAt: number } | null;
   pendingYabawiPlay?: boolean;
+};
+
+export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';
+
+export type CombatLogEntry = {
+  timestamp: number;
+  source: CombatLogSource;
+  skillName?: string;
+  damage: number;
+  isCritical: boolean;
+};
+
+export type CombatAnalysis = {
+  isActive: boolean;
+  timeLeft: number;
+  log: CombatLogEntry[];
+  results: {
+    totalDamage: number;
+    dps: number;
+    breakdown: Record<string, { total: number; dps: number; percent: number; count: number }>;
+    critCount: number;
+    hitCount: number;
+    skillDetails: Record<string, number>;
+    startTime: number;
+    endTime: number;
+  } | null;
 };

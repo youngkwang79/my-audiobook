@@ -240,7 +240,7 @@ export function buildMartialCompendium(): CompendiumSkill[] {
         element,
         grade,
         order: index,
-        multiplier: skill.multiplier || 1,
+        multiplier: skill.multiplier || (1.5 + index * 0.8), // 경지에 따른 기본 배수 자동 할당 (1.5 ~ 9.5배)
         description: buildDescription(faction.name, skill.name, category, element, grade),
       });
     });

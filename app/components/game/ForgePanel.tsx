@@ -156,7 +156,7 @@ export default function ForgePanel(props: Props) {
         padding: "12px 10px",
         position: "relative",
         overflow: "hidden",
-        touchAction: "none",
+        touchAction: "pan-y",
         height: "100%",
         display: "flex",
         flexDirection: "column",

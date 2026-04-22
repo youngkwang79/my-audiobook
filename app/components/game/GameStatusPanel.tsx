@@ -6,7 +6,7 @@ import CharacterModal from "./CharacterModal";
 
 export default function GameStatusPanel({ game }: { game: any }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { getTotalAttack, triggerSave } = useGameStore();
+  const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis } = useGameStore() as any;
 
   // 데이터 유실 방지를 위한 초기화 및 매핑
   const safeGame: any = {
@@ -231,6 +231,29 @@ export default function GameStatusPanel({ game }: { game: any }) {
               }}
             >
               {!safeGame.isAudioMuted ? "🎵" : "🔇"}
+            </button>
+            <button
+              onClick={() => {
+                if (combatAnalysis.isActive) stopCombatAnalysis();
+                else startCombatAnalysis(10);
+              }}
+              title="전투 분석 시작 (10초)"
+              style={{
+                width: "26px",
+                height: "26px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "14px",
+                background: combatAnalysis.isActive ? "#ef4444" : "linear-gradient(180deg, #55aaff, #3b82f6)",
+                border: "none",
+                borderRadius: "8px",
+                color: "#fff",
+                cursor: "pointer",
+                marginLeft: "2px",
+              }}
+            >
+              ⚔️
             </button>
           </div>
 

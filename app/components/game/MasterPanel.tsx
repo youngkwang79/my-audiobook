@@ -184,7 +184,7 @@ export default function MasterPanel() {
 
       // 약간의 시차를 두고 팝업 (연격 느낌)
       setTimeout(() => {
-        spawnDamage(finalDisplayDmg, isCrit || isThunder, "rival", label, isDemon, isTriple);
+        spawnDamage(finalDisplayDmg, isCrit || isThunder, "rival", undefined, isDemon, isTriple); // label 제거 (중복)
       }, i * 100);
     }
     
@@ -193,36 +193,24 @@ export default function MasterPanel() {
 
   const executeSkill = (skill: any) => {
     if (!masterDuel.isPlaying || !skill) return;
-
-    // Calculate skill damage
-    const totalCritRate = useGameStore.getState().getTotalCritRate();
-    const isCrit = Math.random() < (totalCritRate / 100);
-    const baseAtk = useGameStore.getState().getTotalAttack();
-    const critDmg = useGameStore.getState().getTotalCritDmg();
-
-    // Most skills have a multiplier, use it!
-    const multiplier = skill.multiplier || 1.5;
-    const displayDmg = Math.max(10, Math.floor(baseAtk * multiplier * (isCrit ? (critDmg / 100) : 1) - (masterDuel.rivalDef || 0)));
-
-    spawnDamage(displayDmg, isCrit, "rival");
-    useSkill(skill.name);
+    const result: any = useSkill(skill.name);
+    if (result && result.totalDmg > 0) {
+      spawnDamage(result.totalDmg, result.isCrit, "rival");
+    }
   };
 
-  const animateRef = useRef<(time: number) => void>(() => {});
-  
-  animateRef.current = (time: number) => {
+  const animate = (time: number) => {
     const store = useGameStore.getState();
     const isPlaying = store.game.masterDuel.isPlaying;
 
     if (!isPlaying) {
       lastTickRef.current = 0;
-      requestRef.current = requestAnimationFrame(animateRef.current);
+      requestRef.current = requestAnimationFrame(animate);
       return;
     }
 
     if (lastTickRef.current !== 0) {
       const dt = (time - lastTickRef.current) / 1000;
-      // dt가 유효한 숫자인지 확인 (NaN 방지)
       if (!isNaN(dt) && dt > 0) {
         const cappedDt = Math.min(dt, 0.1);
         store.updateMasterDuel(cappedDt);
@@ -231,7 +219,7 @@ export default function MasterPanel() {
     }
     
     lastTickRef.current = time;
-    requestRef.current = requestAnimationFrame(animateRef.current);
+    requestRef.current = requestAnimationFrame(animate);
   };
 
   useEffect(() => {
@@ -265,7 +253,7 @@ export default function MasterPanel() {
   }, [masterDuel.damageTakenAccumulator, masterDuel.lastEffect]);
 
   useEffect(() => {
-    requestRef.current = requestAnimationFrame(animateRef.current);
+    requestRef.current = requestAnimationFrame(animate);
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
@@ -381,7 +369,13 @@ export default function MasterPanel() {
     borderRadius: 6,
   }}
 >
-  <span>추천력: {formatCompactNumber(recommendedCP)}</span>
+  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
+    <div style={{ display: "flex", gap: 6 }}>
+      <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
+      <span style={{ fontSize: 9, color: "#00f2ff" }}>✨ {game.wisdom || 0}</span>
+    </div>
+  </div>
   <button
     onClick={(e) => {
       e.stopPropagation();
@@ -1266,114 +1260,112 @@ export default function MasterPanel() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              className="gold-shimmer-container"
               style={{
                 width: "100%",
                 maxWidth: 380,
                 maxHeight: "85vh",
-                borderRadius: 24,
-                overflow: "hidden",
-                border: "1px solid rgba(255,215,0,0.3)",
-                background: "linear-gradient(180deg, #1a1a1a 0%, #050505 100%)",
-                boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
                 display: "flex",
                 flexDirection: "column"
               }}
             >
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "20px",
-                borderBottom: "1px solid rgba(255,255,255,0.08)"
-              }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>📜</span>
-                    <span style={{ fontSize: 18, fontWeight: 950, color: "#ffd700" }}>처단 보상 안내</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>대결 승리 시 획득 가능한 보상 목록</div>
-                </div>
-                <button
-                  onClick={() => setShowReward(false)}
-                  style={{
-                    width: 32, height: 32, borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
-                    background: "rgba(255,255,255,0.05)", color: "#fff", cursor: "pointer", fontSize: 16
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div style={{ padding: "20px", overflowY: "auto", flex: 1 }} className="hide-scrollbar">
-                {/* Blood Token Section */}
+              <div className="gold-shimmer-content" style={{ display: "flex", flexDirection: "column" }}>
                 <div style={{
-                  padding: "16px",
-                  borderRadius: 18,
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  marginBottom: 24
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "20px",
+                  borderBottom: "1px solid rgba(255,255,255,0.08)"
                 }}>
-                  <div style={{ display: "flex", gap: 14 }}>
-                    <div style={{ fontSize: 32 }}>🩸</div>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 900, color: "#ff6b6b" }}>혈투의 징표</div>
-                      <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>모든 레벨 승리 시 100% 확률로 획득</div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>📜</span>
+                      <span className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950 }}>처단 보상 안내</span>
                     </div>
+                    <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>대결 승리 시 획득 가능한 보상 목록</div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#777", marginTop: 12, lineHeight: 1.5 }}>
-                    • 획득한 징표는 <span style={{ color: "#ffd700", fontWeight: 700 }}>패왕 토벌 상점</span>에서 현철 강화석(3:1), 영약, 강화석, 신기 장비 등으로 교환할 수 있습니다.
-                  </div>
+                  <button
+                    onClick={() => setShowReward(false)}
+                    style={{
+                      width: 32, height: 32, borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)", color: "#fff", cursor: "pointer", fontSize: 16
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                {/* Oil Section */}
-                <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>🧪</span>
-                  <span style={{ fontSize: 14, fontWeight: 900, color: "#a2ff00" }}>연마제 (기름) 도감</span>
-                  <span style={{ fontSize: 10, color: "#555" }}>확률적 드랍</span>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { name: "광폭유", prob: "2%", effect: "공격력 3배 (5초)", color: "#ff4d4d" },
-                    { name: "파천유", prob: "2%", effect: "치댐 3배 (5초)", color: "#ff4d4d" },
-                    { name: "뇌전유", prob: "5%", effect: "500% 대미지 + 기절", color: "#ff4d4d" },
-                    { name: "만독유", prob: "5%", effect: "적 방어력 50% 감소 (10초)", color: "#ff4d4d" },
-                    { name: "혈염유", prob: "5%", effect: "출혈 (최대 HP 10% 지속피해)", color: "#ff4d4d" },
-                    { name: "무영유", prob: "5%", effect: "회피율 3배 (10초)", color: "#4d94ff" },
-                    { name: "강철유", prob: "7%", effect: "모든 피해 50% 감소 (10초)", color: "#4d94ff" },
-                    { name: "반탄유", prob: "7%", effect: "받은 피해 200% 반사 (10초)", color: "#4d94ff" },
-                    { name: "금강유", prob: "5%", effect: "5초간 무적 상태", color: "#4d94ff" },
-                    { name: "흡성유", prob: "5%", effect: "대미지 50% 흡혈", color: "#4d94ff" },
-                    { name: "질풍유", prob: "5%", effect: "공속 2배 (10초)", color: "#ffd700" },
-                    { name: "기연유", prob: "5%", effect: "전리품 등급 상승 확률 증가", color: "#ffd700" },
-                    { name: "청명유", prob: "8%", effect: "상이상 즉시 해제", color: "#ffd700" },
-                    { name: "영안유", prob: "15%", effect: "적의 공격 반드시 회피", color: "#ffd700" },
-                    { name: "천마유", prob: "5%", effect: "공격 시 일격필살(1000%) 발동", color: "#ff4d4d" },
-                    { name: "삼연유", prob: "5%", effect: "3배 연타 공격 발동", color: "#ff4d4d" },
-                    { name: "무상유", prob: "3%", effect: "적 현재 체력 10% 즉시 삭감", color: "#ff4d4d" },
-                  ].map((oil, idx) => (
-                    <div key={idx} style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 14px",
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.05)",
-                      borderRadius: 12,
-                      fontSize: 12
-                    }}>
-                      <div style={{ fontWeight: 900, color: oil.color, width: 60 }}>{oil.name}</div>
-                      <div style={{ flex: 1, color: "#eee", display: "flex", justifyContent: "space-between", gap: 10 }}>
-                        <span style={{ color: "#888", whiteSpace: "nowrap" }}>{oil.prob} 확률로</span>
-                        <span style={{ textAlign: "right", whiteSpace: "nowrap" }}>{oil.effect}</span>
+                <div style={{ padding: "20px", overflowY: "auto", flex: 1 }} className="hide-scrollbar">
+                  {/* Blood Token Section */}
+                  <div style={{
+                    padding: "16px",
+                    borderRadius: 18,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    marginBottom: 24
+                  }}>
+                    <div style={{ display: "flex", gap: 14 }}>
+                      <div style={{ fontSize: 32 }}>🩸</div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 900, color: "#ff6b6b" }}>혈투의 징표</div>
+                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>모든 레벨 승리 시 100% 확률로 획득</div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div style={{ fontSize: 11, color: "#777", marginTop: 12, lineHeight: 1.5 }}>
+                      • 획득한 징표는 <span style={{ color: "#ffd700", fontWeight: 700 }}>패왕 토벌 상점</span>에서 현철 강화석(3:1), 영약, 강화석, 신기 장비 등으로 교환할 수 있습니다.
+                    </div>
+                  </div>
 
-                <div style={{ marginTop: 24, padding: "12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ fontSize: 10, color: "#666", textAlign: "center" }}>
-                    * 기름은 장비당 하나만 바를 수 있으며, 성공 시 기존 옵션을 덮어씁니다.
+                  {/* Oil Section */}
+                  <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>🧪</span>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: "#a2ff00" }}>연마제 (기름) 도감</span>
+                    <span style={{ fontSize: 10, color: "#555" }}>확률적 드랍</span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[
+                      { name: "광폭유", prob: "2%", effect: "공격력 3배 (5초)", color: "#ff4d4d" },
+                      { name: "파천유", prob: "2%", effect: "치댐 3배 (5초)", color: "#ff4d4d" },
+                      { name: "뇌전유", prob: "5%", effect: "500% 대미지 + 기절", color: "#ff4d4d" },
+                      { name: "만독유", prob: "5%", effect: "적 방어력 50% 감소 (10초)", color: "#ff4d4d" },
+                      { name: "혈염유", prob: "5%", effect: "출혈 (최대 HP 10% 지속피해)", color: "#ff4d4d" },
+                      { name: "무영유", prob: "5%", effect: "회피율 3배 (10초)", color: "#4d94ff" },
+                      { name: "강철유", prob: "7%", effect: "모든 피해 50% 감소 (10초)", color: "#4d94ff" },
+                      { name: "반탄유", prob: "7%", effect: "받은 피해 200% 반사 (10초)", color: "#4d94ff" },
+                      { name: "금강유", prob: "5%", effect: "5초간 무적 상태", color: "#4d94ff" },
+                      { name: "흡성유", prob: "5%", effect: "대미지 50% 흡혈", color: "#4d94ff" },
+                      { name: "질풍유", prob: "5%", effect: "공속 2배 (10초)", color: "#ffd700" },
+                      { name: "기연유", prob: "5%", effect: "전리품 등급 상승 확률 증가", color: "#ffd700" },
+                      { name: "청명유", prob: "8%", effect: "상이상 즉시 해제", color: "#ffd700" },
+                      { name: "영안유", prob: "15%", effect: "적의 공격 반드시 회피", color: "#ffd700" },
+                      { name: "천마유", prob: "5%", effect: "공격 시 일격필살(1000%) 발동", color: "#ff4d4d" },
+                      { name: "삼연유", prob: "5%", effect: "3배 연타 공격 발동", color: "#ff4d4d" },
+                      { name: "무상유", prob: "3%", effect: "적 현재 체력 10% 즉시 삭감", color: "#ff4d4d" },
+                    ].map((oil, idx) => (
+                      <div key={idx} style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        borderRadius: 12,
+                        fontSize: 12
+                      }}>
+                        <div style={{ fontWeight: 900, color: oil.color, width: 60 }}>{oil.name}</div>
+                        <div style={{ flex: 1, color: "#eee", display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <span style={{ color: "#888", whiteSpace: "nowrap" }}>{oil.prob} 확률로</span>
+                          <span style={{ textAlign: "right", whiteSpace: "nowrap" }}>{oil.effect}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: 24, padding: "12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ fontSize: 10, color: "#666", textAlign: "center" }}>
+                      * 기름은 장비당 하나만 바를 수 있으며, 성공 시 기존 옵션을 덮어씁니다.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1396,53 +1388,57 @@ export default function MasterPanel() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              className="gold-shimmer-container"
               style={{
-                width: "100%", maxWidth: 340, background: "#111", border: "1px solid #ff4444", borderRadius: 24,
-                padding: 24, boxShadow: "0 0 30px rgba(255,0,0,0.2)"
+                width: "100%", maxWidth: 340,
+                display: "flex",
+                flexDirection: "column"
               }}
             >
-              <div style={{ fontSize: 18, fontWeight: 950, color: "#ff4444", marginBottom: 20, textAlign: "center" }}>☠️ 처단 규칙 안내</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <div style={{ fontSize: 24 }}>📜</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>강화 기반 도전 조건</div>
-                    <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
-                      {masterDuel.selectedLevel}단계 악적을 처단하려면<br/>
-                      <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>모든 강화 항목이 {masterDuel.selectedLevel}레벨 이상</span>이어야 합니다.<br/>
-                      균형 잡힌 성장이 승리의 열쇠입니다.
+              <div className="gold-shimmer-content" style={{ padding: 24, display: "flex", flexDirection: "column" }}>
+                <div className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950, marginBottom: 20, textAlign: "center" }}>☠️ 처단 규칙 안내</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ fontSize: 24 }}>📜</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>강화 기반 도전 조건</div>
+                      <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
+                        {masterDuel.selectedLevel}단계 악적을 처단하려면<br/>
+                        <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>모든 강화 항목이 {masterDuel.selectedLevel}레벨 이상</span>이어야 합니다.<br/>
+                        균형 잡힌 성장이 승리의 열쇠입니다.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ fontSize: 24 }}>⏱</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>제한 시간 및 광폭화</div>
+                      <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
+                        전투 시간은 총 40초입니다.<br/>
+                        전투 시작 30초 후(남은 시간 10초), 악적이 <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>광폭화</span>하여 공격력과 속도가 비약적으로 상승합니다.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ fontSize: 24 }}>⚠</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>치명적인 상태이상</div>
+                      <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
+                        악적은 기절, 출혈, 방어력 감소 등 강력한 무공을 사용합니다. 연마유나 신법을 활용해 대응하세요.
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <div style={{ fontSize: 24 }}>⏱</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>제한 시간 및 광폭화</div>
-                    <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
-                      전투 시간은 총 40초입니다.<br/>
-                      전투 시작 30초 후(남은 시간 10초), 악적이 <span style={{ color: "#ff4d4d", fontWeight: "bold" }}>광폭화</span>하여 공격력과 속도가 비약적으로 상승합니다.
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <div style={{ fontSize: 24 }}>⚠</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: "bold", color: "#eee", marginBottom: 4 }}>치명적인 상태이상</div>
-                    <div style={{ fontSize: 11, color: "#aaa", lineHeight: "1.5" }}>
-                      악적은 기절, 출혈, 방어력 감소 등 강력한 무공을 사용합니다. 연마유나 신법을 활용해 대응하세요.
-                    </div>
-                  </div>
-                </div>
+                <button
+                  onClick={() => setShowRules(false)}
+                  style={{
+                    marginTop: 24, width: "100%", height: 48, background: "#222", border: "1px solid #444",
+                    color: "#fff", borderRadius: 12, fontWeight: "bold", cursor: "pointer"
+                  }}
+                >
+                  닫기
+                </button>
               </div>
-              <button
-                onClick={() => setShowRules(false)}
-                style={{
-                  marginTop: 24, width: "100%", height: 48, background: "#222", border: "1px solid #444",
-                  color: "#fff", borderRadius: 12, fontWeight: "bold", cursor: "pointer"
-                }}
-              >
-                닫기
-              </button>
             </motion.div>
           </div>
         )}

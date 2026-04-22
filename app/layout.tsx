@@ -4,9 +4,8 @@ import "./globals.css";
 
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import AuthSessionGuard from "@/app/components/AuthSessionGuard";
-import VisitorStats from "@/app/components/VisitorStats";
-import LayoutFooter from "@/app/components/LayoutFooter";
 import BackgroundAudio from "@/app/components/BackgroundAudio";
+import LayoutWrapper from "@/app/components/LayoutWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,9 +51,9 @@ export default function RootLayout({
         <AuthProvider>
           <AuthSessionGuard />
           <BackgroundAudio />
-          {children}
-          <VisitorStats />
-          <LayoutFooter />
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
         </AuthProvider>
       </body>
     </html>

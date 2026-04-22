@@ -1160,13 +1160,14 @@ export const MASTER_RIVALS = [
 ];
 
 export const RANDOM_OPTION_POOL = [
-  { stat: "atk_pct", label: "공격력", suffix: "%", range: [5, 15] },
-  { stat: "crit_rate", label: "치명타율", suffix: "%", range: [3, 8] },
-  { stat: "crit_dmg", label: "치명타 피해", suffix: "%", range: [15, 40] },
-  { stat: "eva", label: "회피율", suffix: "%", range: [3, 10] },
-  { stat: "hp_pct", label: "생명력", suffix: "%", range: [10, 25] },
-  { stat: "mp_pct", label: "내공", suffix: "%", range: [10, 25] },
-  { stat: "exp_pct", label: "수련 효율", suffix: "%", range: [20, 50] },
+  { stat: "atk_pct", label: "공격력", suffix: "%", range: [3, 10], weight: 28 },
+  { stat: "def_pct", label: "방어력", suffix: "%", range: [3, 10], weight: 25 },
+  { stat: "hp_pct", label: "생명력", suffix: "%", range: [5, 15], weight: 25 },
+  { stat: "mp_pct", label: "내공", suffix: "%", range: [5, 15], weight: 20 },
+  { stat: "crit_rate", label: "치명타율", suffix: "%", range: [2, 8], weight: 18 },
+  { stat: "crit_dmg", label: "치명타 피해", suffix: "%", range: [10, 33], weight: 22 },
+  { stat: "eva", label: "회피율", suffix: "%", range: [1, 5], weight: 15 },
+  { stat: "speed_pct", label: "공격속도", suffix: "%", range: [3, 12], weight: 17 },
 ];
 
 export const SYNERGY_SETS: Record<string, { label: string, description: string }> = {
@@ -1211,10 +1212,23 @@ export function rollTierAndOptions(item: any, level: number, luck: number = 0, r
 
   const options: RandomOption[] = [];
   const pool = [...RANDOM_OPTION_POOL];
+  
   for (let i = 0; i < optionCount; i++) {
     if (pool.length === 0) break;
-    const idx = Math.floor(Math.random() * pool.length);
-    const opt = pool.splice(idx, 1)[0];
+    
+    // 가중치 기반 랜덤 선택
+    const totalWeight = pool.reduce((s, o) => s + (o.weight || 0), 0);
+    let rand = Math.random() * totalWeight;
+    let selectedIdx = 0;
+    for (let j = 0; j < pool.length; j++) {
+      rand -= (pool[j].weight || 0);
+      if (rand <= 0) {
+        selectedIdx = j;
+        break;
+      }
+    }
+    
+    const opt = pool.splice(selectedIdx, 1)[0];
     
     // 기연이 높을수록 랜덤 옵션 수치도 소폭 높게 나올 확률
     const minVal = opt.range[0];

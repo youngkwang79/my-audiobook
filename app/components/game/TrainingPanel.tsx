@@ -1,41 +1,42 @@
 "use client";
-  import { useState, useEffect, useRef } from "react";
-  import { useGameStore, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
-  import { FACTIONS } from "@/app/lib/game/factions";
-  import DamageText from "./elements/DamageText";
-  import GameStatusPanel from "./GameStatusPanel";
+import { useState, useEffect, useRef } from "react";
+import { useGameStore, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
+import { FACTIONS } from "@/app/lib/game/factions";
+import { MARTIAL_COMPENDIUM, getRefineBonusMultiplier } from "@/app/lib/game/martialArtsSystem";
+import DamageText from "./elements/DamageText";
+import GameStatusPanel from "./GameStatusPanel";
 
 
-  export default function TrainingPanel() {
-    const { game, addExp, addCoins, breakthrough, getTotalCombatPower } = useGameStore();
+export default function TrainingPanel() {
+  const { game, addExp, addCoins, breakthrough, getTotalCombatPower } = useGameStore();
 
-    const [damages, setDamages] = useState<
-      { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean; isRainbow?: boolean; isCyan?: boolean }[]
-    >([]);
-    const [isShaking, setIsShaking] = useState(false);
-    const [characterAction, setCharacterAction] = useState("idle");
-    const [attackIdx, setAttackIdx] = useState(1);
-    const [missionSlide, setMissionSlide] = useState(0); // 0: 현재 임무, 1: 누적 처치 정보
-    const [showMissionPopup, setShowMissionPopup] = useState(false);
-    const [showBreakthroughPopup, setShowBreakthroughPopup] = useState(false);
-    const [trainingStatFloat, setTrainingStatFloat] = useState<{
-  hp: number;
-  mp: number;
-} | null>(null);
-const [showBreakthroughSuccessEffect, setShowBreakthroughSuccessEffect] = useState(false);
-const [breakthroughSuccessRealm, setBreakthroughSuccessRealm] = useState<string | null>(null);
-const [showPrompt, setShowPrompt] = useState(true);
-const [lastTouchTime, setLastTouchTime] = useState(Date.now());
-const [hitEffects, setHitEffects] = useState<{ id: number; x: number; y: number, type: 'slash' | 'blue-slash' | 'flash' }[]>([]);
+  const [damages, setDamages] = useState<
+    { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean; isRainbow?: boolean; isCyan?: boolean }[]
+  >([]);
+  const [isShaking, setIsShaking] = useState(false);
+  const [characterAction, setCharacterAction] = useState("idle");
+  const [attackIdx, setAttackIdx] = useState(1);
+  const [missionSlide, setMissionSlide] = useState(0); // 0: 현재 임무, 1: 누적 처치 정보
+  const [showMissionPopup, setShowMissionPopup] = useState(false);
+  const [showBreakthroughPopup, setShowBreakthroughPopup] = useState(false);
+  const [trainingStatFloat, setTrainingStatFloat] = useState<{
+    hp: number;
+    mp: number;
+  } | null>(null);
+  const [showBreakthroughSuccessEffect, setShowBreakthroughSuccessEffect] = useState(false);
+  const [breakthroughSuccessRealm, setBreakthroughSuccessRealm] = useState<string | null>(null);
+  const [showPrompt, setShowPrompt] = useState(true);
+  const [lastTouchTime, setLastTouchTime] = useState(Date.now());
+  const [hitEffects, setHitEffects] = useState<{ id: number; x: number; y: number, type: 'slash' | 'blue-slash' | 'flash' }[]>([]);
   const [textStrikes, setTextStrikes] = useState<{ id: any; char: string; x: number; y: number; groupId: number }[]>([]);
   const [activeOilText, setActiveOilText] = useState<string | null>(null);
   const oilEffectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
-const dismissedRealmRef = useRef<string | null>(null);
-const dismissedStarRef = useRef<number | null>(null);
-const currentTouchGoalRef = useRef<number | null>(null);
-const lastHitTimeRef = useRef<number>(0);
+  const dismissedRealmRef = useRef<string | null>(null);
+  const dismissedStarRef = useRef<number | null>(null);
+  const currentTouchGoalRef = useRef<number | null>(null);
+  const lastHitTimeRef = useRef<number>(0);
 
   const realmKeys = Object.keys(REALM_SETTINGS);
   const currentRealmIndex = realmKeys.indexOf(game.realm);
@@ -44,468 +45,532 @@ const lastHitTimeRef = useRef<number>(0);
     currentRealmIndex >= 0 ? realmKeys[currentRealmIndex + 1] ?? null : null;
 
 
-    const currentRealmInfo =
-      currentRealmIndex >= 0 ? REALM_SETTINGS[game.realm] : REALM_SETTINGS["필부"];
-    const nextRealmInfo = nextRealmName ? REALM_SETTINGS[nextRealmName] : null;
+  const currentRealmInfo =
+    currentRealmIndex >= 0 ? REALM_SETTINGS[game.realm] : REALM_SETTINGS["필부"];
+  const nextRealmInfo = nextRealmName ? REALM_SETTINGS[nextRealmName] : null;
 
-    const currentMinTouches = currentRealmInfo?.minTouches ?? 0;
-    const nextMinTouches = nextRealmInfo?.minTouches ?? Infinity;
+  const currentMinTouches = currentRealmInfo?.minTouches ?? 0;
+  const nextMinTouches = nextRealmInfo?.minTouches ?? Infinity;
 
-    const canBreakthrough = (useGameStore.getState() as any).canBreakthrough();
-    const isBreakthroughReady = canBreakthrough && nextRealmName && 
-      (dismissedRealmRef.current !== game.realm || dismissedStarRef.current !== game.star);
+  const canBreakthrough = (useGameStore.getState() as any).canBreakthrough();
+  const isBreakthroughReady = canBreakthrough && nextRealmName &&
+    (dismissedRealmRef.current !== game.realm || dismissedStarRef.current !== game.star);
 
-    const isRealmBreakthrough = game.star === 10;
-    const upgradeTargetLabel = isRealmBreakthrough ? `${nextRealmName} 경지` : `${game.star + 1}성`;
+  const isRealmBreakthrough = game.star === 10;
+  const upgradeTargetLabel = isRealmBreakthrough ? `${nextRealmName} 경지` : `${game.star + 1}성`;
 
-    const getPopupContent = () => {
-      const raw = game.lastReward;
-      const msg = String(raw ?? "");
+  const getPopupContent = () => {
+    const raw = game.lastReward;
+    const msg = String(raw ?? "");
 
-      if (!msg.trim()) {
-        return {
-          title: "🎊 알림",
-          body: "수련의 성과를 인정받았습니다.",
-          reward: "확인되었습니다.",
-        };
-      }
-
-      if (msg.includes("비급") || msg.includes("장경각")) {
-        return {
-          title: "📚 문파 비급 개방",
-          body: "허수아비 200회 처치를 달성하여\n문파의 비급들이 보관된 장경각이 열렸습니다!",
-          reward: "이제 '비급' 탭에서 무공을 배울 수 있습니다.",
-        };
-      }
-
-      if (msg.includes("대장간")) {
-        return {
-          title: "🔓 대장간 & 장비 해금",
-          body: "허수아비 30회 처치를 달성하여\n장비를 구입하고 관리할 수 있는 대장간이 열렸습니다!",
-          reward: "이제 '대장간'과 '장비' 탭이 활성화되었습니다.",
-        };
-      }
-
-      if (msg.includes("객잔 무뢰배")) {
-        return {
-          title: "🏮 객잔 발견",
-          body: "강한 적들이 모여드는 객잔의 위치를 파악했습니다!",
-          reward: "이제 '객잔' 탭에서 무뢰배들과 대결할 수 있습니다.",
-        };
-      }
-
-      if (msg.includes("수련 성과") || (msg.includes("HP +") && msg.includes("MP +"))) {
-        return {
-          reward: msg.replace("💪 ", ""),
-        };
-      }
-
-      
-
-      if (msg.includes("PRE_MISSION")) {
-        return {
-          title: "🔔 임무 예고",
-          body: "곧 새로운 시련이 다가옵니다.",
-          reward: "목표 달성까지 얼마 남지 않았습니다!",
-        };
-      }
-
-      if (msg.includes("첫 처치 성공")) {
-        return {
-          title: "💥 첫 처치 성공!",
-          body: "허수아비를 처음으로 쓰러뜨렸습니다.",
-          reward: "곧 첫 번째 임무가 시작됩니다.",
-        };
-      }
-
-      if (msg.includes("새로운 임무 발생")) {
-        const missionLine = msg.split("\n")[1] || "허수아비를 처치하여 수련을 증명하라!";
-        return {
-          title: "📜 새로운 임무 발생",
-          body: missionLine,
-          reward: "임무를 완수하면 보상을 획득합니다.",
-        };
-      }
-
-      if (msg.includes("대장간") || msg.includes("장비창")) {
-        return {
-          title: "🔓 기능 해금",
-          body: msg,
-          reward: "강해질 수 있는 새로운 방법이 열렸습니다.",
-        };
-      }
-
-      if (msg.includes("임무 완료 임박")) {
-        return {
-          title: "⚠️ 임무 완료 임박",
-          body: msg,
-          reward: "조금만 더 수련하면 목표 달성입니다.",
-        };
-      }
-
-      if (msg.includes("미니게임 성공")) {
-        return {
-          title: "✅ 미니게임 성공",
-          body: "심신수련 미니게임을 성공적으로 마쳤습니다.",
-          reward: "보상: 금화 500냥 획득",
-        };
-      }
-
-      if (msg.includes("미니게임 실패")) {
-        return {
-          title: "❌ 미니게임 실패",
-          body: "이번 수련은 아쉽게 실패했습니다.",
-          reward: "다음 기회를 노려보세요.",
-        };
-      }
-
-      if (msg.includes("보상 획득")) {
-        return {
-          title: "🎁 보상 획득",
-          body: msg.replace("🎁 ", ""),
-          reward: "보상이 정상 지급되었습니다.",
-        };
-      }
-
-      if (msg.includes("BUFF") || msg.includes("무아지경")) {
-        return {
-          title: "🔥 무아지경 발동!",
-          body: "공격력이 폭발적으로 상승합니다!",
-          reward: `효과: 공격력 ${game.attackMultiplier}배 (7초)`,
-        };
-      }
-
+    if (!msg.trim()) {
       return {
         title: "🎊 알림",
-        body: msg || "수련의 성과를 인정받았습니다.",
+        body: "수련의 성과를 인정받았습니다.",
         reward: "확인되었습니다.",
       };
+    }
+
+    if (msg.includes("비급") || msg.includes("장경각")) {
+      return {
+        title: "📚 [개방] 문파 장경각",
+        body: msg,
+        reward: "이제 '비급' 탭에서 새로운 무공을 배울 수 있습니다.",
+      };
+    }
+
+    if (msg.includes("대결 개방") || msg.includes("악적 처단")) {
+      return {
+        title: "⚔️ [개방] 악적 처단(대결)",
+        body: msg,
+        reward: "이제 '대결' 탭에서 강력한 적들에게 도전하세요.",
+      };
+    }
+
+    if (msg.includes("수련 성과") || (msg.includes("HP +") && msg.includes("MP +"))) {
+      return {
+        reward: msg.replace("💪 ", ""),
+      };
+    }
+
+
+
+    if (msg.includes("PRE_MISSION")) {
+      return {
+        title: "🔔 임무 예고",
+        body: "곧 새로운 시련이 다가옵니다.",
+        reward: "목표 달성까지 얼마 남지 않았습니다!",
+      };
+    }
+
+    if (msg.includes("첫 처치 성공")) {
+      return {
+        title: "💥 첫 처치 성공!",
+        body: "허수아비를 처음으로 쓰러뜨렸습니다.",
+        reward: "곧 첫 번째 임무가 시작됩니다.",
+      };
+    }
+
+    if (msg.includes("새로운 임무 발생")) {
+      const missionLine = msg.split("\n")[1] || "허수아비를 처치하여 수련을 증명하라!";
+      return {
+        title: "📜 새로운 임무 발생",
+        body: missionLine,
+        reward: "임무를 완수하면 보상을 획득합니다.",
+      };
+    }
+
+    if (msg.includes("대장간") || msg.includes("장비창") || msg.includes("객잔")) {
+      return {
+        title: "🔓 기능 해금",
+        body: msg,
+        reward: "새로운 모험과 성장의 길이 열렸습니다.",
+      };
+    }
+
+    if (msg.includes("임무 완료 임박")) {
+      return {
+        title: "⚠️ 임무 완료 임박",
+        body: msg,
+        reward: "조금만 더 수련하면 목표 달성입니다.",
+      };
+    }
+
+    if (msg.includes("미니게임 성공")) {
+      return {
+        title: "✅ 미니게임 성공",
+        body: "심신수련 미니게임을 성공적으로 마쳤습니다.",
+        reward: "보상: 금화 500냥 획득",
+      };
+    }
+
+    if (msg.includes("미니게임 실패")) {
+      return {
+        title: "❌ 미니게임 실패",
+        body: "이번 수련은 아쉽게 실패했습니다.",
+        reward: "다음 기회를 노려보세요.",
+      };
+    }
+
+    if (msg.includes("보상 획득")) {
+      return {
+        title: "🎁 보상 획득",
+        body: msg.replace("🎁 ", ""),
+        reward: "보상이 정상 지급되었습니다.",
+      };
+    }
+
+    if (msg.includes("BUFF") || msg.includes("무아지경")) {
+      return {
+        title: "🔥 무아지경 발동!",
+        body: "공격력이 폭발적으로 상승합니다!",
+        reward: `효과: 공격력 ${game.attackMultiplier}배 (${Math.ceil(game.buffTimeLeft || 30)}초)`,
+      };
+    }
+
+    return {
+      title: "🎊 알림",
+      body: msg || "수련의 성과를 인정받았습니다.",
+      reward: "확인되었습니다.",
     };
+  };
 
-    const popupContent = getPopupContent();
-const isTrainingStatReward =
-  String(game.lastReward ?? "").includes("HP +") &&
-  String(game.lastReward ?? "").includes("MP +");
-
-
-    useEffect(() => {
-  if (!game.lastReward) return;
-
-  const msg = String(game.lastReward);
-
-  if (msg.includes("HP +") && msg.includes("MP +")) {
-    const hpMatch = msg.match(/HP \+(\d+)/);
-    const mpMatch = msg.match(/MP \+(\d+)/);
-
-    setTrainingStatFloat({
-      hp: hpMatch ? Number(hpMatch[1]) : 0,
-      mp: mpMatch ? Number(mpMatch[1]) : 0,
-    });
-
-    const floatTimer = setTimeout(() => {
-      setTrainingStatFloat(null);
-    }, 1600);
-
-    return () => clearTimeout(floatTimer);
-  }
-
-  // 무아지경 보상 팝업 제거
-  if (msg.includes("보상 획득") && msg.includes("무아지경")) return;
-
-  // 객잔 이동 전 뜨는 보상 팝업 완전히 제거
-  if (msg.includes("객잔 무뢰배 이벤트 발생")) return;
-
-  setShowMissionPopup(true);
-  const timer = setTimeout(() => setShowMissionPopup(false), 5000);
-  return () => clearTimeout(timer);
-}, [game.lastReward]);
-
-    useEffect(() => {
-      if (isBreakthroughReady && nextRealmName) {
-        setShowBreakthroughPopup(true);
-      }
-    }, [isBreakthroughReady, nextRealmName, game.realm, game.star]);
-
-    useEffect(() => {
-      dismissedRealmRef.current = null;
-    }, [game.realm]);
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setMissionSlide(s => (s + 1) % 2);
-      }, 3000);
-      return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        if (Date.now() - lastTouchTime > 3000) {
-          setShowPrompt(true);
-        }
-      }, 500);
-      return () => clearInterval(interval);
-    }, [lastTouchTime]);
-
-    // Regeneration is now handled globally in useGameStore via updateBuffs
+  const popupContent = getPopupContent();
+  const isTrainingStatReward =
+    String(game.lastReward ?? "").includes("HP +") &&
+    String(game.lastReward ?? "").includes("MP +");
 
 
-    const performHit = () => {
-      const now = Date.now();
-      if (now - lastHitTimeRef.current < 80) return; // 반응성 개선: 220ms -> 80ms (연타 속도 상향)
-      lastHitTimeRef.current = now;
-      
-      setLastTouchTime(now);
-      setShowPrompt(false);
-      if (showBreakthroughPopup) return;
+  useEffect(() => {
+    if (!game.lastReward) return;
 
-      const totalCritRate = useGameStore.getState().getTotalCritRate ? useGameStore.getState().getTotalCritRate() : 5;
-      const isCritical = Math.random() < totalCritRate / 100;
+    const msg = String(game.lastReward);
 
+    if (msg.includes("HP +") && msg.includes("MP +")) {
+      const hpMatch = msg.match(/HP \+(\d+)/);
+      const mpMatch = msg.match(/MP \+(\d+)/);
 
-      setAttackIdx(Math.floor(Math.random() * 5) + 1);
-      setCharacterAction("attack");
-      setIsShaking(true);
-
-      setTimeout(() => {
-        setCharacterAction("idle");
-        setIsShaking(false);
-      }, 150);
-
-      const totalAtk = useGameStore.getState().getTotalAttack();
-      const gameState = useGameStore.getState().game;
-
-      const dummyX = 65; // 허수아비가 오른쪽으로 배치됨에 따라 조정
-      const dummyY = 35; // 허수아비 머리 위쪽 (percentage)
-
-      let equipmentSkillProc = false;
-      let eqSkillDamage = 0;
-      let eqSkillName = "";
-
-      const equippedIds = Object.values(gameState.equippedGear ?? {}).filter(Boolean);
-      const equippedWeapons = gameState.ownedWeapons.filter(w => equippedIds.includes(w.id));
-      const skillWeapons = equippedWeapons.filter(w => w.equipmentSkill);
-      const skillRoll = Math.random();
-
-      let martialSkillProc = false;
-      let martialSkillDamage = 0;
-      let martialSkillName = "";
-
-      if (skillRoll < 0.1) {
-        if (skillWeapons.length > 0) {
-          equipmentSkillProc = true;
-          const bestEqSkill = skillWeapons.sort((a,b) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;
-          eqSkillName = bestEqSkill.name;
-          eqSkillDamage = totalAtk * bestEqSkill.multiplier;
-        } else if (gameState.learnedSkills.length > 0) {
-          const bestSkill = [...gameState.learnedSkills].sort((a,b) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
-          martialSkillProc = true;
-          martialSkillName = bestSkill.name;
-          martialSkillDamage = totalAtk * ((bestSkill as any).multiplier || 3);
-          // Training auto-proc does not consume inner power
-        }
-      }
-
-      const critDmgMult = useGameStore.getState().getTotalCritDmg ? useGameStore.getState().getTotalCritDmg() / 100 : 1.5;
-      const baseFinalDmg = isCritical ? Math.floor(totalAtk * critDmgMult) : totalAtk;
-
-      // 연마유 효과 통합 트리거
-      const oilRes = useGameStore.getState().triggerOilEffects();
-      useGameStore.getState().applyOilResults(oilRes); // 전역 버프 적용
-      
-      // [수정] 기본 hitCount는 1로 고정 (신법 등의 영향을 여기서 받지 않도록)
-      // 오직 삼연유일 때만 3으로 변경됨
-      const hitCount = oilRes.hitCount; 
-      const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
-      const isFormless = oilRes.buffsTriggered.includes("oil_formless");
-      const isDemon = oilRes.buffsTriggered.includes("oil_demon");
-      
-      // [수정] 삼연유 발동 시에만 클릭 3번 인정 (일반 공격은 1번)
-      const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
-      addExp(isTriple ? 3 : 1);
-      
-      let ohkMultiplier = isThunder ? 5 : 1; 
-      if (oilRes.buffsTriggered.includes("oil_demon")) ohkMultiplier = 10;
-
-      setDamages(prev => {
-        const next = [...prev];
-        
-        // 다중 타격 처리
-        const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
-        for (let i = 0; i < hitCount; i++) {
-          let finalDmg = baseFinalDmg * ohkMultiplier;
-          
-          // 무상유 추가 대미지 (적 현재 체력 10%)
-          if (i === 0 && isFormless) {
-            finalDmg += gameState.dummyHp * 0.10;
-          }
-
-          let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i+1}연격` : undefined);
-          
-          // 버프 발동 시 텍스트 추가
-          if (i === 0 && oilRes.buffsTriggered.length > 0) {
-            const buffNames: Record<string, string> = { 
-              oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍", 
-              oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
-              oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
-              oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
-              oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
-            };
-              const triggeredKey = oilRes.buffsTriggered[0];
-              const triggeredName = buffNames[triggeredKey];
-              if (triggeredName) {
-                  if (triggeredKey === "oil_formless") label = `[${triggeredName}] 10%삭감!`;
-                  else if (triggeredKey === "oil_demon") {
-                    // Do not add [천마] to label as requested, it will be rainbow instead
-                    label = label || undefined;
-                  }
-                  else label = `[${triggeredName}] ${label || ""}`;
-
-                 // 화면 중앙 이펙트 트리거 (4초)
-                 if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
-                 setActiveOilText(triggeredName + "!");
-                 oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
-              }
-          }
-
-          next.push({
-            id: Date.now() + Math.random() + i,
-            damage: finalDmg,
-            x: dummyX + (Math.random() * 16 - 8) + (i * 6),
-            y: dummyY + (Math.random() * 12 - 6) - (i * 3),
-            isCritical: isCritical || isThunder || isDemon,
-            skillText: label,
-            isRainbow: isDemon,
-            isCyan: isTriple
-          });
-        }
-
-        if (equipmentSkillProc) {
-          next.push({
-            id: Date.now() + Math.random() + 1,
-            damage: eqSkillDamage,
-            x: dummyX + (Math.random() * 20 - 10),
-            y: dummyY - 10 + (Math.random() * 10 - 5),
-            isCritical: true,
-            skillText: eqSkillName,
-            isSkillProc: true
-          });
-        }
-
-        if (martialSkillProc) {
-          next.push({
-            id: Date.now() + Math.random() + 2,
-            damage: martialSkillDamage,
-            x: dummyX + (Math.random() * 20 - 10),
-            y: dummyY - 18 + (Math.random() * 10 - 5),
-            isCritical: true,
-            skillText: martialSkillName,
-            isSkillProc: true
-          });
-
-          // 무공 이름 한 글자씩 나란히 가로로 타격 (매.화.초.식 따따따딱)
-          const chars = martialSkillName.split("");
-          const strikeGroupId = Date.now();
-          chars.forEach((char, i) => {
-            setTimeout(() => {
-              const strikeId = `${Date.now()}-${i}-${Math.random()}`;
-              const xOffset = (i - (chars.length - 1) / 2) * 9; 
-              const hitX = 75 + xOffset;
-              const hitY = 68 + (Math.random() * 4 - 2);
-              
-              setTextStrikes(ts => [...ts, { id: strikeId as any, char, x: hitX, y: hitY, groupId: strikeGroupId }]);
-            }, i * 200); // 0.2초 간격 (더욱 묵직하고 절도 있는 따 따 따 딱 느낌)
-          });
-
-          // 2초 뒤에 해당 그룹의 모든 글자를 한번에 제거
-          setTimeout(() => {
-            setTextStrikes(ts => ts.filter(t => t.groupId !== strikeGroupId));
-          }, 2000 + (chars.length * 200));
-        }
-        return next.slice(-20);
+      setTrainingStatFloat({
+        hp: hpMatch ? Number(hpMatch[1]) : 0,
+        mp: mpMatch ? Number(mpMatch[1]) : 0,
       });
 
-      // 자동 제거
-      setTimeout(() => {
-        setHitEffects(h => h.slice(1));
-      }, 500);
-    };
+      const floatTimer = setTimeout(() => {
+        setTrainingStatFloat(null);
+      }, 1600);
 
-    const handleHit = (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      performHit();
-    };
+      return () => clearTimeout(floatTimer);
+    }
 
-    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      // Handle only the first touch to prevent accidental double-counting with multi-finger
-      if (e.changedTouches.length > 0) performHit();
-    };
+    // 무아지경 보상 팝업 제거
+    if (msg.includes("보상 획득") && msg.includes("무아지경")) return;
+
+    // 객잔 이동 전 뜨는 보상 팝업 완전히 제거
+    if (msg.includes("객잔 무뢰배 이벤트 발생")) return;
+
+    setShowMissionPopup(true);
+    const timer = setTimeout(() => setShowMissionPopup(false), 5000);
+    return () => clearTimeout(timer);
+  }, [game.lastReward]);
+
+  useEffect(() => {
+    if (isBreakthroughReady && nextRealmName) {
+      setShowBreakthroughPopup(true);
+    }
+  }, [isBreakthroughReady, nextRealmName, game.realm, game.star]);
+
+  useEffect(() => {
+    dismissedRealmRef.current = null;
+  }, [game.realm]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMissionSlide(s => (s + 1) % 2);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Date.now() - lastTouchTime > 3000) {
+        setShowPrompt(true);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [lastTouchTime]);
+
+  const { combatAnalysis, startCombatAnalysis, stopCombatAnalysis, logCombatDamage } = useGameStore();
+
+  // Combat Analysis Tick
+  useEffect(() => {
+    let lastTime = Date.now();
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      if (combatAnalysis.isActive) {
+        useGameStore.getState().updateCombatAnalysis(dt);
+      }
+    }, 100);
+    return () => clearInterval(timer);
+  }, [combatAnalysis.isActive]);
+
+  // Regeneration is now handled globally in useGameStore via updateBuffs
+
+
+  const performHit = () => {
+    const now = Date.now();
+    if (now - lastHitTimeRef.current < 80) return; // 반응성 개선: 220ms -> 80ms (연타 속도 상향)
+    lastHitTimeRef.current = now;
+
+    setLastTouchTime(now);
+    setShowPrompt(false);
+    if (showBreakthroughPopup) return;
+
+    const totalCritRate = useGameStore.getState().getTotalCritRate ? useGameStore.getState().getTotalCritRate() : 5;
+    const isCritical = Math.random() < totalCritRate / 100;
+
+
+    setAttackIdx(Math.floor(Math.random() * 5) + 1);
+    setCharacterAction("attack");
+    setIsShaking(true);
+
+    setTimeout(() => {
+      setCharacterAction("idle");
+      setIsShaking(false);
+    }, 150);
+
+    const totalAtk = useGameStore.getState().getTotalAttack();
+    const gameState = useGameStore.getState().game;
+
+    const dummyX = 65; // 허수아비가 오른쪽으로 배치됨에 따라 조정
+    const dummyY = 35; // 허수아비 머리 위쪽 (percentage)
+
+    let equipmentSkillProc = false;
+    let eqSkillDamage = 0;
+    let eqSkillName = "";
+
+    const equippedIds = Object.values(gameState.equippedGear ?? {}).filter(Boolean);
+    const equippedWeapons = gameState.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    const skillWeapons = equippedWeapons.filter(w => w.equipmentSkill);
+    const skillRoll = Math.random();
+
+    let martialSkillProc = false;
+    let martialSkillDamage = 0;
+    let martialSkillName = "";
+
+    if (skillRoll < 0.1) {
+      if (skillWeapons.length > 0) {
+        equipmentSkillProc = true;
+        const bestEqSkill = skillWeapons.sort((a, b) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;
+        eqSkillName = bestEqSkill.name;
+        eqSkillDamage = totalAtk * bestEqSkill.multiplier;
+      } else if (gameState.learnedSkills.length > 0) {
+        const bestSkill = [...gameState.learnedSkills].sort((a, b) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
+        martialSkillProc = true;
+        martialSkillName = bestSkill.name;
+
+        // [수정] 무공 대미지 계산식 정교화 (성급 보너스 및 문파 보정 포함)
+        const skData = MARTIAL_COMPENDIUM.find(m => m.name === bestSkill.name && m.factionName === game.faction) || bestSkill;
+        const learned = game.martialArtsSkills.find(ms => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);
+        const stars = learned?.stars || 0;
+        const refineMult = getRefineBonusMultiplier(stars);
+        const baseMultiplier = (skData as any).multiplier || 1.5;
+
+        let damageMultiplier = 1.0;
+        if (game.faction === "천마신교") damageMultiplier = 5.0;
+        if (game.faction === "하북팽가") damageMultiplier = 1.5;
+
+        martialSkillDamage = totalAtk * baseMultiplier * refineMult * damageMultiplier;
+        // Training auto-proc does not consume inner power
+      }
+
+      // Log Skill Damage if proc'd
+      if (equipmentSkillProc || martialSkillProc) {
+        logCombatDamage({
+          source: 'skill_active',
+          skillName: equipmentSkillProc ? eqSkillName : martialSkillName,
+          damage: equipmentSkillProc ? eqSkillDamage : martialSkillDamage,
+          isCritical: false // Skills in training usually don't crit for now or handle crit inside
+        });
+      }
+    }
+
+    const critDmgMult = useGameStore.getState().getTotalCritDmg ? useGameStore.getState().getTotalCritDmg() / 100 : 1.5;
+    const baseFinalDmg = isCritical ? Math.floor(totalAtk * critDmgMult) : totalAtk;
+
+    // 연마유 효과 통합 트리거
+    const oilRes = useGameStore.getState().triggerOilEffects();
+    useGameStore.getState().applyOilResults(oilRes); // 전역 버프 적용
+
+    // [수정] 기본 hitCount는 1로 고정 (신법 등의 영향을 여기서 받지 않도록)
+    // 오직 삼연유일 때만 3으로 변경됨
+    const hitCount = oilRes.hitCount;
+    const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
+    const isFormless = oilRes.buffsTriggered.includes("oil_formless");
+    const isDemon = oilRes.buffsTriggered.includes("oil_demon");
+
+    // [수정] 삼연유 발동 시에만 클릭 3번 인정 (일반 공격은 1번)
+    const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
+    addExp(isTriple ? 3 : 1);
+
+    let ohkMultiplier = isThunder ? 5 : 1;
+    if (oilRes.buffsTriggered.includes("oil_demon")) ohkMultiplier = 10;
+
+    setDamages(prev => {
+      const next = [...prev];
+
+      // 다중 타격 처리
+      const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
+      for (let i = 0; i < hitCount; i++) {
+        let finalDmg = baseFinalDmg * ohkMultiplier;
+
+        // Log Base Damage (Normal Attack)
+        if (i === 0) {
+          logCombatDamage({
+            source: 'normal_attack',
+            damage: baseFinalDmg,
+            isCritical: isCritical
+          });
+          
+          // Log OHK Multiplier as Extra Hit if active
+          if (ohkMultiplier > 1) {
+            logCombatDamage({
+              source: 'extra_hit',
+              skillName: isThunder ? '뇌전일격' : '마신강림',
+              damage: baseFinalDmg * (ohkMultiplier - 1),
+              isCritical: false
+            });
+          }
+        } else {
+          // Additional hits from Triple Hit Oil
+          logCombatDamage({
+            source: 'extra_hit',
+            skillName: '삼연유 추가타',
+            damage: finalDmg,
+            isCritical: isCritical
+          });
+        }
+
+        // 무상유 추가 대미지 (적 현재 체력 10%)
+        if (i === 0 && isFormless) {
+          const formlessDmg = gameState.dummyHp * 0.10;
+          finalDmg += formlessDmg;
+          logCombatDamage({
+            source: 'extra_hit',
+            skillName: '무상유',
+            damage: formlessDmg,
+            isCritical: false
+          });
+        }
+
+        let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i + 1}연격` : undefined);
+
+        // 버프 발동 시 텍스트 추가
+        if (i === 0 && oilRes.buffsTriggered.length > 0) {
+          const buffNames: Record<string, string> = {
+            oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍",
+            oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
+            oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
+            oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
+            oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
+          };
+          const triggeredKey = oilRes.buffsTriggered[0];
+          const triggeredName = buffNames[triggeredKey];
+          if (triggeredName) {
+            if (triggeredKey === "oil_formless") label = `[${triggeredName}] 10%삭감!`;
+            else if (triggeredKey === "oil_demon") {
+              // Do not add [천마] to label as requested, it will be rainbow instead
+              label = label || undefined;
+            }
+            else label = `[${triggeredName}] ${label || ""}`;
+
+            // 화면 중앙 이펙트 트리거 (4초)
+            if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
+            setActiveOilText(triggeredName + "!");
+            oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
+          }
+        }
+
+        next.push({
+          id: Date.now() + Math.random() + i,
+          damage: finalDmg,
+          x: dummyX + (Math.random() * 16 - 8) + (i * 6),
+          y: dummyY + (Math.random() * 12 - 6) - (i * 3),
+          isCritical: isCritical || isThunder || isDemon,
+          skillText: undefined, // 데미지 위 텍스트 중복 제거
+          isRainbow: isDemon,
+          isCyan: isTriple
+        });
+      }
+
+      if (equipmentSkillProc) {
+        next.push({
+          id: Date.now() + Math.random() + 1,
+          damage: eqSkillDamage,
+          x: dummyX + (Math.random() * 20 - 10),
+          y: dummyY - 10 + (Math.random() * 10 - 5),
+          isCritical: true,
+          skillText: undefined, // 데미지 위 텍스트 중복 제거
+          isSkillProc: true
+        });
+      }
+
+      if (martialSkillProc) {
+        next.push({
+          id: Date.now() + Math.random() + 2,
+          damage: martialSkillDamage,
+          x: dummyX + (Math.random() * 20 - 10),
+          y: dummyY - 18 + (Math.random() * 10 - 5),
+          isCritical: true,
+          skillText: undefined, // 데미지 위 텍스트 중복 제거
+          isSkillProc: true
+        });
+
+        // 무공 이름 한 글자씩 나란히 가로로 타격 (매.화.초.식 따따따딱)
+        const chars = martialSkillName.split("");
+        const strikeGroupId = Date.now();
+        chars.forEach((char, i) => {
+          setTimeout(() => {
+            const strikeId = `${Date.now()}-${i}-${Math.random()}`;
+            const xOffset = (i - (chars.length - 1) / 2) * 9;
+            const hitX = 75 + xOffset;
+            const hitY = 68 + (Math.random() * 4 - 2);
+
+            setTextStrikes(ts => [...ts, { id: strikeId as any, char, x: hitX, y: hitY, groupId: strikeGroupId }]);
+          }, i * 200); // 0.2초 간격 (더욱 묵직하고 절도 있는 따 따 따 딱 느낌)
+        });
+
+        // 2초 뒤에 해당 그룹의 모든 글자를 한번에 제거
+        setTimeout(() => {
+          setTextStrikes(ts => ts.filter(t => t.groupId !== strikeGroupId));
+        }, 2000 + (chars.length * 200));
+      }
+      return next.slice(-20);
+    });
+
+    // 자동 제거
+    setTimeout(() => {
+      setHitEffects(h => h.slice(1));
+    }, 500);
+  };
+
+  const handleHit = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    performHit();
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    // Handle only the first touch to prevent accidental double-counting with multi-finger
+    if (e.changedTouches.length > 0) performHit();
+  };
 
 
 
-    const handleConfirmBreakthrough = () => {
-  const targetRealm = nextRealmName;
+  const handleConfirmBreakthrough = () => {
+    const targetRealm = nextRealmName;
 
     setShowBreakthroughPopup(false);
     dismissedRealmRef.current = game.realm;
     dismissedStarRef.current = game.star;
 
-  if (targetRealm) {
-    setBreakthroughSuccessRealm(targetRealm);
-  }
+    if (targetRealm) {
+      setBreakthroughSuccessRealm(targetRealm);
+    }
 
-  breakthrough();
+    breakthrough();
 
-  setShowBreakthroughSuccessEffect(true);
+    setShowBreakthroughSuccessEffect(true);
 
-  setTimeout(() => {
-    setShowBreakthroughSuccessEffect(false);
-    setBreakthroughSuccessRealm(null);
-  }, 1800);
-};
+    setTimeout(() => {
+      setShowBreakthroughSuccessEffect(false);
+      setBreakthroughSuccessRealm(null);
+    }, 1800);
+  };
 
 
-    const popupIsLibrary =
-      String(game.lastReward ?? "").includes("서각") ||
-      String(game.lastReward ?? "").includes("장경각");
+  const popupIsLibrary =
+    String(game.lastReward ?? "").includes("서각") ||
+    String(game.lastReward ?? "").includes("장경각");
 
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0px",
-          width: "100%",
-          position: "relative",
-          alignItems: "center"
-        }}
-      >
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0px",
+        width: "100%",
+        position: "relative",
+        alignItems: "center"
+      }}
+    >
 
-<GameStatusPanel game={game} />
+      <GameStatusPanel game={game} />
 
-        {/* 연마유 효과 중앙 팝업 */}
-        {activeOilText && (
-          <div style={{
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 10000,
-            fontSize: 30,
-            fontWeight: 950,
-            textAlign: "center",
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-            animation: "auroraRed 2s infinite, mysticScale 4s forwards"
-          }}>
-            {activeOilText}
-          </div>
-        )}
+      {/* 연마유 효과 중앙 팝업 */}
+      {activeOilText && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 10000,
+          fontSize: 30,
+          fontWeight: 950,
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          pointerEvents: "none",
+          animation: "auroraRed 2s infinite, mysticScale 4s forwards"
+        }}>
+          {activeOilText}
+        </div>
+      )}
 
-        {showMissionPopup &&
-  game.lastReward &&
-  !showBreakthroughPopup &&
-  !isTrainingStatReward && (
+      {showMissionPopup &&
+        game.lastReward &&
+        !showBreakthroughPopup &&
+        !isTrainingStatReward && (
           <div
             style={{
               position: "absolute",
@@ -519,9 +584,8 @@ const isTrainingStatReward =
               zIndex: 1000,
               textAlign: "center",
               animation: "fadeInOut 3s forwards",
-              boxShadow: `0 0 15px ${
-                popupIsLibrary ? "rgba(0, 240, 255, 0.4)" : "rgba(255, 215, 0, 0.4)"
-              }`,
+              boxShadow: `0 0 15px ${popupIsLibrary ? "rgba(0, 240, 255, 0.4)" : "rgba(255, 215, 0, 0.4)"
+                }`,
               minWidth: "280px",
               whiteSpace: "nowrap",
             }}
@@ -560,900 +624,899 @@ const isTrainingStatReward =
           </div>
         )}
 
-        {showBreakthroughPopup && nextRealmName && (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 2000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-        borderRadius: "24px",
-        overflow: "hidden",
-        background:
-          "radial-gradient(circle at center, rgba(255,255,255,0.10) 0%, rgba(0,0,0,0.38) 28%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.94) 100%)",
-        backdropFilter: "blur(6px)",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          width: "320px",
-          height: "320px",
-          borderRadius: "9999px",
-          background:
-            "conic-gradient(from 0deg, rgba(255,80,80,0.34), rgba(255,180,60,0.34), rgba(255,255,120,0.34), rgba(80,255,170,0.34), rgba(80,180,255,0.34), rgba(200,120,255,0.34), rgba(255,80,80,0.34))",
-          filter: "blur(22px)",
-          animation: "breakthroughAuraSpin 7s linear infinite, breakthroughAuraPulse 2.4s ease-in-out infinite",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          width: "440px",
-          height: "440px",
-          borderRadius: "9999px",
-          background:
-            "conic-gradient(from 180deg, rgba(255,120,120,0.18), rgba(255,220,120,0.18), rgba(120,255,200,0.18), rgba(120,180,255,0.18), rgba(220,140,255,0.18), rgba(255,120,120,0.18))",
-          filter: "blur(42px)",
-          animation: "breakthroughAuraSpinReverse 11s linear infinite, breakthroughAuraWave 3.8s ease-in-out infinite",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div className="breakthrough-spark spark-1">✦</div>
-      <div className="breakthrough-spark spark-2">✦</div>
-      <div className="breakthrough-spark spark-3">✦</div>
-      <div className="breakthrough-spark spark-4">✦</div>
-      <div className="breakthrough-spark spark-5">✦</div>
-      <div className="breakthrough-spark spark-6">✦</div>
-      <div className="breakthrough-spark spark-7">✦</div>
-      <div className="breakthrough-spark spark-8">✦</div>
-
-      <div
-        style={{
-          position: "absolute",
-          width: "180px",
-          height: "180px",
-          borderRadius: "9999px",
-          background: "radial-gradient(circle, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.10) 35%, rgba(255,255,255,0) 72%)",
-          filter: "blur(10px)",
-          animation: "breakthroughCoreFlash 1.8s ease-in-out infinite",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "370px",
-          background:
-            "linear-gradient(180deg, rgba(30,22,10,0.97) 0%, rgba(16,14,18,0.98) 100%)",
-          border: "1px solid rgba(255,225,140,0.95)",
-          borderRadius: "24px",
-          padding: "26px 18px 18px",
-          textAlign: "center",
-        }}
-      >
-        {/* 경지 이미지 추가 (중앙 배경) */}
-        <div style={{
-          position: "absolute",
-          top: "40%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "220px",
-          height: "220px",
-          opacity: 0.25,
-          zIndex: 0,
-          pointerEvents: "none"
-        }}>
-          <img 
-            src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/warrior.png"}
-            alt="Character"
-            style={{ width: "100%", height: "100%", objectFit: "contain", filter: "brightness(2) contrast(1.5) drop-shadow(0 0 20px #ffd700)" }}
-          />
-        </div>
-
-        <div
-          style={{
-            position: "absolute",
-            inset: "-2px",
-            borderRadius: "24px",
-            padding: "2px",
-            background:
-              "linear-gradient(135deg, rgba(255,120,120,0.8), rgba(255,220,120,0.95), rgba(120,255,200,0.8), rgba(120,170,255,0.8), rgba(220,120,255,0.82), rgba(255,120,120,0.8))",
-            WebkitMask:
-              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-            WebkitMaskComposite: "xor" as any,
-            maskComposite: "exclude",
-            opacity: 0.9,
-            pointerEvents: "none",
-            animation: "breakthroughBorderShine 4s linear infinite",
-          }}
-        />
-
+      {showBreakthroughPopup && nextRealmName && (
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "linear-gradient(115deg, rgba(255,255,255,0) 18%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0) 42%)",
-            transform: "translateX(-120%)",
-            animation: "breakthroughGloss 2.8s ease-in-out infinite",
-            pointerEvents: "none",
-          }}
-        />
-
-        <div
-  style={{
-    position: "relative",
-    color: "#fffdf2",
-    fontSize: "14px",
-    lineHeight: 1.8,
-    whiteSpace: "pre-wrap",
-    marginBottom: "18px",
-    textShadow: "0 0 10px rgba(255,255,255,0.10)",
-  }}
->
-  ✨ {game.realm} {game.star}성 수련 조건을 달성했습니다.✨
-  {"\n"}
-  {upgradeTargetLabel}(으)로 {isRealmBreakthrough ? "돌파" : "승급"}하시겠습니까?
-</div>
-              
-
-        
-        <div
-          style={{
-            position: "relative",
+            zIndex: 2000,
             display: "flex",
+            alignItems: "center",
             justifyContent: "center",
-          }}
-        >
-          <button
-            onClick={handleConfirmBreakthrough}
-            style={{
-              minWidth: "160px",
-              padding: "13px 18px",
-              borderRadius: "14px",
-              border: "1px solid rgba(255,230,150,0.95)",
-              background:
-                "linear-gradient(135deg, #fff6bf 0%, #ffe07a 28%, #ffb84d 52%, #d895ff 78%, #a7c8ff 100%)",
-              color: "#2b1d00",
-              fontWeight: 900,
-              fontSize: "16px",
-              cursor: "pointer",
-              boxShadow:
-                "0 0 14px rgba(255,220,120,0.48), 0 0 24px rgba(210,140,255,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
-              animation: "breakthroughConfirmPulse 1.3s ease-in-out infinite",
-            }}
-          >
-            확인
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 */}
-  {game.pendingInnEntry && (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 3000,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(10px)",
-        animation: "fadeIn 0.5s ease-out forwards",
-      }}
-    >
-      <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
-        <div style={{
-          fontSize: "42px",
-          fontWeight: 900,
-          color: "#ff3333",
-          textShadow: "0 0 20px #ff0000",
-          marginBottom: "20px",
-          animation: "pulse 1s infinite alternate"
-        }}>
-          🚨 무뢰배 난입! 🚨
-        </div>
-        
-        {/* 객잔 배경 & 무뢰배 이미지 */}
-        <div style={{ position: "relative", height: "300px", width: "100%", overflow: "hidden", marginBottom: "20px" }}>
-           <img 
-             src="/images/inn_bg.png" 
-             style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, filter: "brightness(0.5) contrast(1.2)" }} 
-             alt="Inn Background"
-           />
-           <img 
-             src="/images/inn_thug.png" 
-             style={{ 
-               position: "absolute", 
-               bottom: "10%", 
-               left: "50%", 
-               transform: "translateX(-50%)", 
-               height: "80%",
-               animation: "character3DPanDarkMild 3s infinite"
-             }} 
-             alt="Inn Thug"
-           />
-        </div>
-
-        <div style={{ color: "#fff", fontSize: "18px", fontWeight: "bold", padding: "0 20px" }}>
-          객잔에서 소란을 피우는 무뢰배들을 참교육하러 이동합니다...
-        </div>
-        
-        <div style={{ marginTop: "30px", width: "200px", height: "4px", background: "#333", borderRadius: "2px", margin: "30px auto" }}>
-           <div style={{ height: "100%", background: "#ff3333", borderRadius: "2px", animation: "loadingBar 1s linear forwards" }} />
-        </div>
-      </div>
-    </div>
-  )}
-
-  {showBreakthroughSuccessEffect && (
-  <div
-    style={{
-      position: "absolute",
-      inset: 0,
-      zIndex: 2600,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      pointerEvents: "none",
-      borderRadius: "24px",
-      background:
-        "radial-gradient(circle at center, rgba(255,255,255,0.98) 0%, rgba(255,245,200,0.92) 12%, rgba(255,220,120,0.68) 24%, rgba(255,190,80,0.18) 42%, rgba(255,255,255,0) 72%)",
-      animation: "breakthroughScreenFlash 1.8s ease-out forwards",
-    }}
-  >
-    <div
-      style={{
-        position: "absolute",
-        width: "220px",
-        height: "220px",
-        borderRadius: "9999px",
-        border: "3px solid rgba(255,255,255,0.95)",
-        boxShadow:
-          "0 0 30px rgba(255,255,255,0.95), 0 0 80px rgba(255,215,120,0.85), 0 0 160px rgba(255,180,80,0.55)",
-        animation: "breakthroughImpactRing 1.2s ease-out forwards",
-      }}
-    />
-
-    <div
-      style={{
-        position: "absolute",
-        width: "420px",
-        height: "420px",
-        borderRadius: "9999px",
-        background:
-          "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,225,140,0.65) 22%, rgba(255,180,80,0.22) 42%, rgba(255,255,255,0) 72%)",
-        filter: "blur(10px)",
-        animation: "breakthroughCoreBurst 1.3s ease-out forwards",
-      }}
-    />
-
-    <div className="breakthrough-burst-line burst-1" />
-    <div className="breakthrough-burst-line burst-2" />
-    <div className="breakthrough-burst-line burst-3" />
-    <div className="breakthrough-burst-line burst-4" />
-    <div className="breakthrough-burst-line burst-5" />
-    <div className="breakthrough-burst-line burst-6" />
-    <div className="breakthrough-burst-line burst-7" />
-    <div className="breakthrough-burst-line burst-8" />
-
-    <div
-      style={{
-        position: "relative",
-        zIndex: 3,
-        textAlign: "center",
-        animation: "breakthroughTextPop 1.5s ease-out forwards",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "84px",
-          fontWeight: 1000,
-          background: "linear-gradient(180deg, #FFFFFF 0%, #FFEAA7 30%, #FF9900 60%, #D32F2F 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          letterSpacing: "6px",
-          WebkitTextStroke: "1px rgba(255,255,255,0.4)",
-          textShadow:
-            "0px 1px 0px #972412, 0px 2px 0px #861f0e, 0px 3px 0px #761a0b, 0px 4px 0px #671508, 0px 5px 0px #581005, 0px 6px 0px #4a0b02, 0px 7px 0px #3d0600, 0px 12px 15px rgba(0,0,0,0.7), 0 0 30px rgba(255,215,0,0.8), 0 0 80px rgba(255,69,0,0.9)",
-          marginBottom: "15px",
-        }}
-      >
-        돌파!
-      </div>
-
-      <div
-        style={{
-          fontSize: "28px",
-          fontWeight: 900,
-          background: "linear-gradient(180deg, #FFFDF5 0%, #FFD700 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          WebkitTextStroke: "1px rgba(100,20,0,0.6)",
-          textShadow:
-            "0px 2px 0px #5A1400, 0px 3px 0px #3A0A00, 0px 6px 10px rgba(0,0,0,0.7), 0 0 25px rgba(255,215,120,0.9)",
-        }}
-      >
-        {breakthroughSuccessRealm
-          ? `${breakthroughSuccessRealm} 경지에 도달했습니다`
-          : "새 경지에 도달했습니다"}
-      </div>
-    </div>
-  </div>
-)}
-        <div
-          onMouseDown={handleHit}
-          onTouchStart={handleTouchStart}
-          style={{
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: "480px",
-            width: "100%",
-            borderRadius: "20px",
+            padding: "20px",
+            borderRadius: "24px",
             overflow: "hidden",
-            cursor: showBreakthroughPopup ? "default" : "pointer",
-            touchAction: "none",
-            boxSizing: "border-box",
-            userSelect: "none",
-            background: "#08060a",
-            boxShadow: "inset 0 0 40px rgba(0,0,0,0.8)",
-            border: "1px solid rgba(255,215,120,0.2)",
-            WebkitTapHighlightColor: "transparent",
-            perspective: "1200px",
-            marginBottom: "0px",
-          }}
-        >
-          {/* Combat Power (Left Corner) */}
-          <div style={{
-            position: "absolute", top: 6, left: 12, zIndex: 120,
-            fontSize: "10px", color: "rgba(255,215,0,0.9)", fontWeight: "bold",
-            background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: "6px",
-            border: "1px solid rgba(255,215,0,0.2)", backdropFilter: "blur(2px)",
-            pointerEvents: "none"
-          }}>
-            전투력: {formatCompactNumber(getTotalCombatPower())}
-          </div>
-          {/* 3D Panning Background */}
-          <div
-            style={{
-              position: "absolute",
-              inset: "-30px", // extend to allow panning without clipping
-              backgroundImage: "url('/background.jpg')",
-              backgroundSize: "140% 140%",
-              backgroundPosition: "center",
-              filter: "brightness(0.6)",
-              zIndex: 1,
-              animation: "panCamera 25s ease-in-out infinite",
-            }}
-          />
-          {/* Ground dark vignette for characters */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)",
-              zIndex: 2,
-            }}
-          />
-
-          {game.attackMultiplier > 1 && (
-            <div
-              style={{
-                position: "absolute",
-                top: "60px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 100,
-                pointerEvents: "none",
-                textAlign: "center",
-                animation: "buffImpact 0.5s ease-out",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "36px",
-                  fontWeight: "950",
-                  color: "#fff",
-                  fontStyle: "italic",
-                  textShadow: "0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 40px #ff0000",
-                  letterSpacing: "-1px",
-                  WebkitTextStroke: "1px #ffd700",
-                }}
-              >
-                무아지경 X{game.attackMultiplier}
-              </div>
-            </div>
-          )}
-
-          {game.movementBuff && (
-            <div
-              style={{
-                position: "absolute",
-                top: "100px", // Adjusted to not overlap Trance
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 101,
-                pointerEvents: "none",
-                textAlign: "center",
-                width: "100%",
-                animation: "buffImpact 0.5s ease-out",
-              }}
-            >
-              <div style={{ 
-                background: "linear-gradient(90deg, transparent, rgba(0,242,255,0.7), transparent)", 
-                padding: "4px 0", borderTop: "1px solid #00f2ff", borderBottom: "1px solid #00f2ff",
-                boxShadow: "0 0 15px rgba(0,242,255,0.3)"
-              }}>
-                <div style={{ fontSize: "16px", fontWeight: "950", color: "#fff", textShadow: "0 0 10px #00f2ff" }}>
-                  {game.movementBuff.name} 극의 발동!
-                </div>
-                <div style={{ fontSize: "14px", fontWeight: "900", color: "#00f2ff" }}>
-                  남은 시간: {game.movementBuff.timeLeft.toFixed(1)}s
-                </div>
-              </div>
-            </div>
-          )}
-
-          {game.unlockEffectText && (
-            <div
-              style={{
-                position: "absolute",
-                top: "100px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 101,
-                pointerEvents: "none",
-                textAlign: "center",
-                animation: "buffImpact 0.5s ease-out",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "36px",
-                  fontWeight: "950",
-                  color: "#fff",
-                  fontStyle: "italic",
-                  textShadow: "0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 40px #ff0000",
-                  letterSpacing: "-1px",
-                  WebkitTextStroke: "1px #ffd700",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {game.unlockEffectText}
-              </div>
-            </div>
-          )}
-
-          {(game.attackMultiplier > 1 || game.multiHitActive) && (
-            <div
-              style={{
-                position: "absolute",
-                top: "40%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: 200,
-                pointerEvents: "none",
-                textAlign: "center",
-                animation: "goldPulse 1s infinite",
-              }}
-            >
-              <div
-                style={{
-                  color: "#ffd700",
-                  fontWeight: "900",
-                  fontSize: "28px",
-                  textShadow: "0 0 10px #fff, 0 0 20px #ffd700",
-                }}
-              >
-                {Math.ceil(game.buffTimeLeft)}s
-              </div>
-            </div>
-          )}
-
-          <div
-            style={{
-              position: "absolute",
-              top: "8px", // Slightly higher
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "75%",
-              zIndex: 100,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center"
-            }}
-          >
-            <div
-              style={{
-                color: "#ffd700",
-                fontSize: "12px",
-                fontWeight: "900",
-                marginBottom: "4px",
-                textShadow: "1px 1px 3px #000, 0 0 10px rgba(255,215,0,0.6)",
-                textAlign: "center",
-              }}
-            >
-              {REALM_SETTINGS[game.realm]?.label || "허수아비"} (
-              {formatCompactNumber(game.dummyHp)} / {formatCompactNumber(game.maxDummyHp)})
-            </div>
-            <div
-              style={{
-                width: "100%",
-                height: "10px",
-                background: "rgba(0,0,0,0.7)",
-                borderRadius: "5px",
-                border: "1px solid rgba(255,215,0,0.5)",
-                overflow: "hidden",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.6)",
-              }}
-            >
-              <div
-                style={{
-                  width: `${game.maxDummyHp > 0 ? (game.dummyHp / game.maxDummyHp) * 100 : 0}%`,
-                  height: "100%",
-                  background: "linear-gradient(90deg, #ff3300, #ffaa00)",
-                  transition: "width 0.15s ease-out",
-                }}
-              />
-            </div>
-          </div>
-
-          {trainingStatFloat && (
-            <div
-              style={{
-                position: "absolute",
-                top: "80px",
-                left: "20px",
-                zIndex: 180,
-                pointerEvents: "none",
-                textAlign: "left",
-                animation: "trainingStatFloatSoft 1.6s ease-out forwards",
-              }}
-            >
-              <div
-                style={{
-                  color: "#7CFF7C",
-                  fontWeight: 800,
-                  fontSize: "10px",
-                  lineHeight: "1.25",
-                  textShadow: "0 0 6px rgba(0,255,120,0.85), 0 0 12px rgba(0,0,0,0.7)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                ↑ 생명력 +{trainingStatFloat.hp}
-              </div>
-              <div
-                style={{
-                  color: "#6EC8FF",
-                  fontWeight: 800,
-                  fontSize: "10px",
-                  lineHeight: "1.25",
-                  textShadow: "0 0 6px rgba(80,180,255,0.85), 0 0 12px rgba(0,0,0,0.7)",
-                  whiteSpace: "nowrap",
-                  paddingLeft: "8px",
-                }}
-              >
-                내공 +{trainingStatFloat.mp}
-              </div>
-            </div>
-          )}
-
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 150 }}>
-            {damages.map((dmg) => (
-              <DamageText key={dmg.id} {...dmg} />
-            ))}
-          </div>
-
-          {/* Hit Effects Layer */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 160 }}>
-            {hitEffects.map(eff => (
-              <div key={eff.id} style={{
-                position: "absolute",
-                left: `${eff.x}%`,
-                top: `${eff.y}%`,
-                transform: "translate(-50%, -50%)",
-                width: 150,
-                height: 150,
-                display: "grid",
-                placeItems: "center"
-              }}>
-                {eff.type === 'blue-slash' && (
-                  <div style={{ width: "100%", height: "4px", background: "cyan", transform: "rotate(45deg)", boxShadow: "0 0 20px cyan", animation: "slashAnim 0.3s ease-out forwards" }} />
-                )}
-                {eff.type === 'slash' && (
-                  <div style={{ width: "80%", height: "3px", background: "#fff", transform: "rotate(-30deg)", boxShadow: "0 0 15px #fff", animation: "slashAnim 0.25s ease-out forwards" }} />
-                )}
-                {eff.type === 'flash' && (
-                  <div style={{ width: 80, height: 80, borderRadius: "50%", background: "white", boxShadow: "0 0 40px #ffd700", animation: "flashAnim 0.4s ease-out forwards" }} />
-                )}
-              </div>
-            ))}
-            {textStrikes.map(st => (
-              <div key={st.id} style={{
-                position: "absolute",
-                left: `${st.x}%`,
-                top: `${st.y}%`,
-                transform: "translate(-50%, -50%)",
-                fontSize: "24px",
-                fontWeight: "1000",
-                fontFamily: "'Gungsuh', 'Batang', serif",
-                color: "#fff",
-                textShadow: "0 0 10px #fff, 0 0 20px #ff4500, 0 0 40px #ff0000, 0 0 60px #ffd700",
-                animation: "textStrikeAnim 1.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards",
-                pointerEvents: "none",
-                zIndex: 170,
-                WebkitTextStroke: "1px #ffd700",
-              }}>
-                {st.char}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ position: "relative", width: "100%", flex: 1, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {showPrompt && !game.pendingInnEntry && !game.timingMission.available && (
-              <div style={{
-                position: "absolute",
-                top: "45%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: 500,
-                color: "#ffd700",
-                fontSize: "32px",
-                fontWeight: "900",
-                textAlign: "center",
-                textShadow: "2px 2px 0px #000, 0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,69,0,0.6)",
-                pointerEvents: "none",
-                animation: "promptIntensePulse 1.5s ease-in-out infinite",
-                width: "100%",
-                letterSpacing: "-1px",
-              }}>
-                화면을 터치해 강해지세요
-              </div>
-            )}
-            {/* Dummy (Further back) */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: "65px",
-                right: "-10%",
-                width: "320px",
-                transition: "transform 0.05s ease-out",
-                transform: isShaking ? "rotate(10deg) scale(0.95) translateX(8px)" : "rotate(0deg)",
-                transformOrigin: "bottom center",
-                zIndex: 20,
-              }}
-            >
-              <img
-                src="/dummy.png"
-                alt="허수아비"
-                style={{
-                  width: "100%",
-                  filter: "drop-shadow(5px 20px 10px rgba(0,0,0,0.8))",
-                }}
-              />
-            </div>
-
-            {/* Warrior (Closer front) */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: characterAction === "attack" ? "15px" : "30px",
-                left: characterAction === "attack" ? "8%" : "5%",
-                width: characterAction === "attack" ? "150px" : "170px",
-                zIndex: 30,
-                transformOrigin: "bottom left",
-                animation: characterAction === "attack" ? "warriorStrike 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)" : "none",
-              }}
-            >
-              <img
-                src={(() => {
-                  const fInfo = FACTIONS.find(f => f.name === game.faction);
-                  if (characterAction === "attack") {
-                    return fInfo?.characterImages?.attack || "/warrior_attack.png";
-                  }
-                  return fInfo?.characterImages?.ready || "/warrior.png";
-                })()}
-                alt="수행자"
-                style={{
-                  width: "100%",
-                  filter: game.movementBuff 
-                    ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" 
-                    : (game.attackMultiplier > 1 ? "drop-shadow(0 0 15px #ff4500) brightness(1.2)" : "drop-shadow(10px 15px 12px rgba(0,0,0,0.9))"),
-                }}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              bottom: "10px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              color: "#aaa",
-              fontSize: "11px",
-              zIndex: 60,
-              textShadow: "1px 1px 2px #000",
-              background: "rgba(0,0,0,0.6)",
-              padding: "4px 10px",
-              borderRadius: "10px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {missionSlide === 0 ? `임무: ${game.dummyKills}/${game.questTarget}` : `무뢰배: ${game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills}/${game.totalDummyKills < 300 ? 300 : game.questTarget}`} | 총합: {game.totalDummyKills}
-          </div>
-        </div>
-
-        <div
-          style={{
-            width: "380px",
-            maxWidth: "95%",
-            background: "rgba(20, 20, 20, 0.95)",
-            border: "1px solid rgba(255, 215, 120, 0.25)",
-            borderRadius: "20px 20px 0 0",
-            padding: "15px",
-            textAlign: "center",
-            boxShadow: "inset 0 0 15px rgba(0,0,0,0.8)",
-            boxSizing: "border-box",
-            marginTop: "0px",
+            background:
+              "radial-gradient(circle at center, rgba(255,255,255,0.10) 0%, rgba(0,0,0,0.38) 28%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.94) 100%)",
+            backdropFilter: "blur(6px)",
           }}
         >
           <div
             style={{
-              color: "#aaa",
-              fontSize: "10px",
-              letterSpacing: "1px",
-              marginBottom: "3px",
+              position: "absolute",
+              width: "320px",
+              height: "320px",
+              borderRadius: "9999px",
+              background:
+                "conic-gradient(from 0deg, rgba(255,80,80,0.34), rgba(255,180,60,0.34), rgba(255,255,120,0.34), rgba(80,255,170,0.34), rgba(80,180,255,0.34), rgba(200,120,255,0.34), rgba(255,80,80,0.34))",
+              filter: "blur(22px)",
+              animation: "breakthroughAuraSpin 7s linear infinite, breakthroughAuraPulse 2.4s ease-in-out infinite",
+              pointerEvents: "none",
             }}
           />
+
           <div
             style={{
-              fontSize: "13px",
-              fontWeight: "900",
-              color: "#fff",
-              lineHeight: 1.4,
-              minHeight: "42px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              position: "absolute",
+              width: "440px",
+              height: "440px",
+              borderRadius: "9999px",
+              background:
+                "conic-gradient(from 180deg, rgba(255,120,120,0.18), rgba(255,220,120,0.18), rgba(120,255,200,0.18), rgba(120,180,255,0.18), rgba(220,140,255,0.18), rgba(255,120,120,0.18))",
+              filter: "blur(42px)",
+              animation: "breakthroughAuraSpinReverse 11s linear infinite, breakthroughAuraWave 3.8s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div className="breakthrough-spark spark-1">✦</div>
+          <div className="breakthrough-spark spark-2">✦</div>
+          <div className="breakthrough-spark spark-3">✦</div>
+          <div className="breakthrough-spark spark-4">✦</div>
+          <div className="breakthrough-spark spark-5">✦</div>
+          <div className="breakthrough-spark spark-6">✦</div>
+          <div className="breakthrough-spark spark-7">✦</div>
+          <div className="breakthrough-spark spark-8">✦</div>
+
+          <div
+            style={{
+              position: "absolute",
+              width: "180px",
+              height: "180px",
+              borderRadius: "9999px",
+              background: "radial-gradient(circle, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.10) 35%, rgba(255,255,255,0) 72%)",
+              filter: "blur(10px)",
+              animation: "breakthroughCoreFlash 1.8s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: "370px",
+              background:
+                "linear-gradient(180deg, rgba(30,22,10,0.97) 0%, rgba(16,14,18,0.98) 100%)",
+              border: "1px solid rgba(255,225,140,0.95)",
+              borderRadius: "24px",
+              padding: "26px 18px 18px",
               textAlign: "center",
             }}
           >
-            {missionSlide === 0 ? (
-              <span style={{ color: "#ffd700", animation: "goldShine 1.5s ease-in-out infinite", whiteSpace: "pre-wrap" }}>
-                {game.currentMissionTitle}
-              </span>
-            ) : (
-              <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
-                객잔 무뢰배 추격 (현재: {game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills} / {game.totalDummyKills < 300 ? 300 : game.questTarget})
-              </span>
-            )}
+            {/* 경지 이미지 추가 (중앙 배경) */}
+            <div style={{
+              position: "absolute",
+              top: "40%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "220px",
+              height: "220px",
+              opacity: 0.25,
+              zIndex: 0,
+              pointerEvents: "none"
+            }}>
+              <img
+                src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/warrior.png"}
+                alt="Character"
+                style={{ width: "100%", height: "100%", objectFit: "contain", filter: "brightness(2) contrast(1.5) drop-shadow(0 0 20px #ffd700)" }}
+              />
+            </div>
+
+            <div
+              style={{
+                position: "absolute",
+                inset: "-2px",
+                borderRadius: "24px",
+                padding: "2px",
+                background:
+                  "linear-gradient(135deg, rgba(255,120,120,0.8), rgba(255,220,120,0.95), rgba(120,255,200,0.8), rgba(120,170,255,0.8), rgba(220,120,255,0.82), rgba(255,120,120,0.8))",
+                WebkitMask:
+                  "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                WebkitMaskComposite: "xor" as any,
+                maskComposite: "exclude",
+                opacity: 0.9,
+                pointerEvents: "none",
+                animation: "breakthroughBorderShine 4s linear infinite",
+              }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(115deg, rgba(255,255,255,0) 18%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0) 42%)",
+                transform: "translateX(-120%)",
+                animation: "breakthroughGloss 2.8s ease-in-out infinite",
+                pointerEvents: "none",
+              }}
+            />
+
+            <div
+              style={{
+                position: "relative",
+                color: "#fffdf2",
+                fontSize: "14px",
+                lineHeight: 1.8,
+                whiteSpace: "pre-wrap",
+                marginBottom: "18px",
+                textShadow: "0 0 10px rgba(255,255,255,0.10)",
+              }}
+            >
+              ✨ {game.realm} {game.star}성 수련 조건을 달성했습니다.✨
+              {"\n"}
+              {upgradeTargetLabel}(으)로 {isRealmBreakthrough ? "돌파" : "승급"}하시겠습니까?
+            </div>
+
+
+
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={handleConfirmBreakthrough}
+                style={{
+                  minWidth: "160px",
+                  padding: "13px 18px",
+                  borderRadius: "14px",
+                  border: "1px solid rgba(255,230,150,0.95)",
+                  background:
+                    "linear-gradient(135deg, #fff6bf 0%, #ffe07a 28%, #ffb84d 52%, #d895ff 78%, #a7c8ff 100%)",
+                  color: "#2b1d00",
+                  fontWeight: 900,
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  boxShadow:
+                    "0 0 14px rgba(255,220,120,0.48), 0 0 24px rgba(210,140,255,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
+                  animation: "breakthroughConfirmPulse 1.3s ease-in-out infinite",
+                }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 */}
+      {game.pendingInnEntry && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 3000,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(10px)",
+            animation: "fadeIn 0.5s ease-out forwards",
+          }}
+        >
+          <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
+            <div style={{
+              fontSize: "42px",
+              fontWeight: 900,
+              color: "#ff3333",
+              textShadow: "0 0 20px #ff0000",
+              marginBottom: "20px"
+            }}>
+              🚨 무뢰배 난입! 🚨
+            </div>
+
+            {/* 객잔 배경 & 무뢰배 이미지 */}
+            <div style={{ position: "relative", height: "300px", width: "100%", overflow: "hidden", marginBottom: "20px" }}>
+              <img
+                src="/images/inn_bg.png"
+                style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, filter: "brightness(0.5) contrast(1.2)" }}
+                alt="Inn Background"
+              />
+              <img
+                src="/images/inn_thug.png"
+                style={{
+                  position: "absolute",
+                  bottom: "10%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  height: "80%",
+                  animation: "character3DPanDarkMild 3s infinite"
+                }}
+                alt="Inn Thug"
+              />
+            </div>
+
+            <div style={{ color: "#fff", fontSize: "18px", fontWeight: "bold", padding: "0 20px" }}>
+              객잔에서 소란을 피우는 무뢰배들을 참교육하러 이동합니다...
+            </div>
+
+            <div style={{ marginTop: "30px", width: "200px", height: "4px", background: "#333", borderRadius: "2px", margin: "30px auto" }}>
+              <div style={{ height: "100%", background: "#ff3333", borderRadius: "2px", animation: "loadingBar 1s linear forwards" }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBreakthroughSuccessEffect && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            pointerEvents: "none",
+            borderRadius: "24px",
+            background:
+              "radial-gradient(circle at center, rgba(255,255,255,0.98) 0%, rgba(255,245,200,0.92) 12%, rgba(255,220,120,0.68) 24%, rgba(255,190,80,0.18) 42%, rgba(255,255,255,0) 72%)",
+            animation: "breakthroughScreenFlash 1.8s ease-out forwards",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              width: "220px",
+              height: "220px",
+              borderRadius: "9999px",
+              border: "3px solid rgba(255,255,255,0.95)",
+              boxShadow:
+                "0 0 30px rgba(255,255,255,0.95), 0 0 80px rgba(255,215,120,0.85), 0 0 160px rgba(255,180,80,0.55)",
+              animation: "breakthroughImpactRing 1.2s ease-out forwards",
+            }}
+          />
+
+          <div
+            style={{
+              position: "absolute",
+              width: "420px",
+              height: "420px",
+              borderRadius: "9999px",
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,225,140,0.65) 22%, rgba(255,180,80,0.22) 42%, rgba(255,255,255,0) 72%)",
+              filter: "blur(10px)",
+              animation: "breakthroughCoreBurst 1.3s ease-out forwards",
+            }}
+          />
+
+          <div className="breakthrough-burst-line burst-1" />
+          <div className="breakthrough-burst-line burst-2" />
+          <div className="breakthrough-burst-line burst-3" />
+          <div className="breakthrough-burst-line burst-4" />
+          <div className="breakthrough-burst-line burst-5" />
+          <div className="breakthrough-burst-line burst-6" />
+          <div className="breakthrough-burst-line burst-7" />
+          <div className="breakthrough-burst-line burst-8" />
+
+          <div
+            style={{
+              position: "relative",
+              zIndex: 3,
+              textAlign: "center",
+              animation: "breakthroughTextPop 1.5s ease-out forwards",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "84px",
+                fontWeight: 1000,
+                background: "linear-gradient(180deg, #FFFFFF 0%, #FFEAA7 30%, #FF9900 60%, #D32F2F 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                letterSpacing: "6px",
+                WebkitTextStroke: "1px rgba(255,255,255,0.4)",
+                textShadow:
+                  "0px 1px 0px #972412, 0px 2px 0px #861f0e, 0px 3px 0px #761a0b, 0px 4px 0px #671508, 0px 5px 0px #581005, 0px 6px 0px #4a0b02, 0px 7px 0px #3d0600, 0px 12px 15px rgba(0,0,0,0.7), 0 0 30px rgba(255,215,0,0.8), 0 0 80px rgba(255,69,0,0.9)",
+                marginBottom: "15px",
+              }}
+            >
+              돌파!
+            </div>
+
+            <div
+              style={{
+                fontSize: "28px",
+                fontWeight: 900,
+                background: "linear-gradient(180deg, #FFFDF5 0%, #FFD700 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                WebkitTextStroke: "1px rgba(100,20,0,0.6)",
+                textShadow:
+                  "0px 2px 0px #5A1400, 0px 3px 0px #3A0A00, 0px 6px 10px rgba(0,0,0,0.7), 0 0 25px rgba(255,215,120,0.9)",
+              }}
+            >
+              {breakthroughSuccessRealm
+                ? `${breakthroughSuccessRealm} 경지에 도달했습니다`
+                : "새 경지에 도달했습니다"}
+            </div>
+          </div>
+        </div>
+      )}
+      <div
+        onMouseDown={handleHit}
+        onTouchStart={handleTouchStart}
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "440px",
+          width: "100%",
+          borderRadius: "20px",
+          overflow: "hidden",
+          cursor: showBreakthroughPopup ? "default" : "pointer",
+          touchAction: "none",
+          boxSizing: "border-box",
+          userSelect: "none",
+          background: "#08060a",
+          boxShadow: "inset 0 0 40px rgba(0,0,0,0.8)",
+          border: "1px solid rgba(255,215,120,0.2)",
+          WebkitTapHighlightColor: "transparent",
+          perspective: "1200px",
+          marginBottom: "0px",
+        }}
+      >
+        {/* Combat Power (Left Corner) */}
+        <div style={{
+          position: "absolute", top: 6, left: 12, zIndex: 120,
+          fontSize: "10px", color: "rgba(255,215,0,0.9)", fontWeight: "bold",
+          background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: "6px",
+          border: "1px solid rgba(255,215,0,0.2)", backdropFilter: "blur(2px)",
+          pointerEvents: "none"
+        }}>
+          전투력: {formatCompactNumber(getTotalCombatPower())}
+        </div>
+        {/* 3D Panning Background */}
+        <div
+          style={{
+            position: "absolute",
+            inset: "-30px", // extend to allow panning without clipping
+            backgroundImage: "url('/background.jpg')",
+            backgroundSize: "140% 140%",
+            backgroundPosition: "center",
+            filter: "brightness(0.6)",
+            zIndex: 1,
+            animation: "panCamera 25s ease-in-out infinite",
+          }}
+        />
+        {/* Ground dark vignette for characters */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)",
+            zIndex: 2,
+          }}
+        />
+
+        {game.attackMultiplier > 1 && (
+          <div
+            style={{
+              position: "absolute",
+              top: "60px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 100,
+              pointerEvents: "none",
+              textAlign: "center",
+              animation: "buffImpact 0.5s ease-out",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "36px",
+                fontWeight: "950",
+                color: "#fff",
+                fontStyle: "italic",
+                textShadow: "0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 40px #ff0000",
+                letterSpacing: "-1px",
+                WebkitTextStroke: "1px #ffd700",
+              }}
+            >
+              무아지경 X{game.attackMultiplier}
+            </div>
+          </div>
+        )}
+
+        {game.movementBuff && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100px", // Adjusted to not overlap Trance
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 101,
+              pointerEvents: "none",
+              textAlign: "center",
+              width: "100%",
+              animation: "buffImpact 0.5s ease-out",
+            }}
+          >
+            <div style={{
+              background: "linear-gradient(90deg, transparent, rgba(0,242,255,0.7), transparent)",
+              padding: "4px 0", borderTop: "1px solid #00f2ff", borderBottom: "1px solid #00f2ff",
+              boxShadow: "0 0 15px rgba(0,242,255,0.3)"
+            }}>
+              <div style={{ fontSize: "16px", fontWeight: "950", color: "#fff", textShadow: "0 0 10px #00f2ff" }}>
+                {game.movementBuff.name} 극의 발동!
+              </div>
+              <div style={{ fontSize: "14px", fontWeight: "900", color: "#00f2ff" }}>
+                남은 시간: {game.movementBuff.timeLeft.toFixed(1)}s
+              </div>
+            </div>
+          </div>
+        )}
+
+        {game.unlockEffectText && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 101,
+              pointerEvents: "none",
+              textAlign: "center",
+              animation: "buffImpact 0.5s ease-out",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "36px",
+                fontWeight: "950",
+                color: "#fff",
+                fontStyle: "italic",
+                textShadow: "0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 40px #ff0000",
+                letterSpacing: "-1px",
+                WebkitTextStroke: "1px #ffd700",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {game.unlockEffectText}
+            </div>
+          </div>
+        )}
+
+        {(game.attackMultiplier > 1 || game.multiHitActive) && (
+          <div
+            style={{
+              position: "absolute",
+              top: "40%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 200,
+              pointerEvents: "none",
+              textAlign: "center",
+              animation: "goldPulse 1s infinite",
+            }}
+          >
+            <div
+              style={{
+                color: "#ffd700",
+                fontWeight: "900",
+                fontSize: "28px",
+                textShadow: "0 0 10px #fff, 0 0 20px #ffd700",
+              }}
+            >
+              {Math.ceil(game.buffTimeLeft)}s
+            </div>
+          </div>
+        )}
+
+        <div
+          style={{
+            position: "absolute",
+            top: "8px", // Slightly higher
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "75%",
+            zIndex: 100,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}
+        >
+          <div
+            style={{
+              color: "#ffd700",
+              fontSize: "12px",
+              fontWeight: "900",
+              marginBottom: "4px",
+              textShadow: "1px 1px 3px #000, 0 0 10px rgba(255,215,0,0.6)",
+              textAlign: "center",
+            }}
+          >
+            {REALM_SETTINGS[game.realm]?.label || "허수아비"} (
+            {formatCompactNumber(game.dummyHp)} / {formatCompactNumber(game.maxDummyHp)})
           </div>
           <div
             style={{
               width: "100%",
-              height: "6px",
-              background: "#222",
-              borderRadius: "3px",
-              marginTop: "10px",
+              height: "10px",
+              background: "rgba(0,0,0,0.7)",
+              borderRadius: "5px",
+              border: "1px solid rgba(255,215,0,0.5)",
               overflow: "hidden",
-              border: "1px solid #333",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.6)",
             }}
           >
             <div
               style={{
-                width: `${Math.min(100, (missionSlide === 0 ? (game.dummyKills / game.questTarget) : (game.totalDummyKills < 300 ? (game.totalDummyKills / 300) : (game.dummyKills / game.questTarget))) * 100)}%`,
+                width: `${game.maxDummyHp > 0 ? (game.dummyHp / game.maxDummyHp) * 100 : 0}%`,
                 height: "100%",
-                background: "linear-gradient(90deg, #f9d423, #ffdb01)",
-                boxShadow: "0 0 10px #ffd700",
-                transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+                background: "linear-gradient(90deg, #ff3300, #ffaa00)",
+                transition: "width 0.15s ease-out",
               }}
             />
           </div>
         </div>
 
-        
+        {trainingStatFloat && (
+          <div
+            style={{
+              position: "absolute",
+              top: "80px",
+              left: "20px",
+              zIndex: 180,
+              pointerEvents: "none",
+              textAlign: "left",
+              animation: "trainingStatFloatSoft 1.6s ease-out forwards",
+            }}
+          >
+            <div
+              style={{
+                color: "#7CFF7C",
+                fontWeight: 800,
+                fontSize: "10px",
+                lineHeight: "1.25",
+                textShadow: "0 0 6px rgba(0,255,120,0.85), 0 0 12px rgba(0,0,0,0.7)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ↑ 생명력 +{trainingStatFloat.hp}
+            </div>
+            <div
+              style={{
+                color: "#6EC8FF",
+                fontWeight: 800,
+                fontSize: "10px",
+                lineHeight: "1.25",
+                textShadow: "0 0 6px rgba(80,180,255,0.85), 0 0 12px rgba(0,0,0,0.7)",
+                whiteSpace: "nowrap",
+                paddingLeft: "8px",
+              }}
+            >
+              내공 +{trainingStatFloat.mp}
+            </div>
+          </div>
+        )}
 
-        <style jsx global>{`
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 150 }}>
+          {damages.map((dmg) => (
+            <DamageText key={dmg.id} {...dmg} />
+          ))}
+        </div>
+
+        {/* Hit Effects Layer */}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 160 }}>
+          {hitEffects.map(eff => (
+            <div key={eff.id} style={{
+              position: "absolute",
+              left: `${eff.x}%`,
+              top: `${eff.y}%`,
+              transform: "translate(-50%, -50%)",
+              width: 150,
+              height: 150,
+              display: "grid",
+              placeItems: "center"
+            }}>
+              {eff.type === 'blue-slash' && (
+                <div style={{ width: "100%", height: "4px", background: "cyan", transform: "rotate(45deg)", boxShadow: "0 0 20px cyan", animation: "slashAnim 0.3s ease-out forwards" }} />
+              )}
+              {eff.type === 'slash' && (
+                <div style={{ width: "80%", height: "3px", background: "#fff", transform: "rotate(-30deg)", boxShadow: "0 0 15px #fff", animation: "slashAnim 0.25s ease-out forwards" }} />
+              )}
+              {eff.type === 'flash' && (
+                <div style={{ width: 80, height: 80, borderRadius: "50%", background: "white", boxShadow: "0 0 40px #ffd700", animation: "flashAnim 0.4s ease-out forwards" }} />
+              )}
+            </div>
+          ))}
+          {textStrikes.map(st => (
+            <div key={st.id} style={{
+              position: "absolute",
+              left: `${st.x}%`,
+              top: `${st.y}%`,
+              transform: "translate(-50%, -50%)",
+              fontSize: "24px",
+              fontWeight: "1000",
+              fontFamily: "'Gungsuh', 'Batang', serif",
+              color: "#fff",
+              textShadow: "0 0 10px #fff, 0 0 20px #ff4500, 0 0 40px #ff0000, 0 0 60px #ffd700",
+              animation: "textStrikeAnim 1.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards",
+              pointerEvents: "none",
+              zIndex: 170,
+              WebkitTextStroke: "1px #ffd700",
+            }}>
+              {st.char}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ position: "relative", width: "100%", flex: 1, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {showPrompt && !game.pendingInnEntry && !game.timingMission.available && (
+            <div style={{
+              position: "absolute",
+              top: "45%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 500,
+              color: "#ffd700",
+              fontSize: "32px",
+              fontWeight: "900",
+              textAlign: "center",
+              textShadow: "2px 2px 0px #000, 0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,69,0,0.6)",
+              pointerEvents: "none",
+              animation: "promptIntensePulse 1.5s ease-in-out infinite",
+              width: "100%",
+              letterSpacing: "-1px",
+            }}>
+              화면을 터치해 강해지세요
+            </div>
+          )}
+          {/* Dummy (Further back) */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "65px",
+              right: "-10%",
+              width: "320px",
+              transition: "transform 0.05s ease-out",
+              transform: isShaking ? "rotate(10deg) scale(0.95) translateX(8px)" : "rotate(0deg)",
+              transformOrigin: "bottom center",
+              zIndex: 20,
+            }}
+          >
+            <img
+              src="/dummy.png"
+              alt="허수아비"
+              style={{
+                width: "100%",
+                filter: "drop-shadow(5px 20px 10px rgba(0,0,0,0.8))",
+              }}
+            />
+          </div>
+
+          {/* Warrior (Closer front) */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: characterAction === "attack" ? "15px" : "30px",
+              left: characterAction === "attack" ? "8%" : "5%",
+              width: characterAction === "attack" ? "150px" : "170px",
+              zIndex: 30,
+              transformOrigin: "bottom left",
+              animation: characterAction === "attack" ? "warriorStrike 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)" : "none",
+            }}
+          >
+            <img
+              src={(() => {
+                const fInfo = FACTIONS.find(f => f.name === game.faction);
+                if (characterAction === "attack") {
+                  return fInfo?.characterImages?.attack || "/warrior_attack.png";
+                }
+                return fInfo?.characterImages?.ready || "/warrior.png";
+              })()}
+              alt="수행자"
+              style={{
+                width: "100%",
+                filter: game.movementBuff
+                  ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)"
+                  : (game.attackMultiplier > 1 ? "drop-shadow(0 0 15px #ff4500) brightness(1.2)" : "drop-shadow(10px 15px 12px rgba(0,0,0,0.9))"),
+              }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: "10px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            color: "#aaa",
+            fontSize: "11px",
+            zIndex: 60,
+            textShadow: "1px 1px 2px #000",
+            background: "rgba(0,0,0,0.6)",
+            padding: "4px 10px",
+            borderRadius: "10px",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {missionSlide === 0 ? `임무: ${game.dummyKills}/${game.questTarget}` : `무뢰배: ${game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills}/${game.totalDummyKills < 300 ? 300 : game.questTarget}`} | 총합: {game.totalDummyKills}
+        </div>
+      </div>
+
+      <div
+        style={{
+          width: "380px",
+          maxWidth: "95%",
+          background: "rgba(20, 20, 20, 0.95)",
+          border: "1px solid rgba(255, 215, 120, 0.25)",
+          borderRadius: "20px 20px 0 0",
+          padding: "10px 15px",
+          textAlign: "center",
+          boxShadow: "inset 0 0 15px rgba(0,0,0,0.8)",
+          boxSizing: "border-box",
+          marginTop: "0px",
+        }}
+      >
+        <div
+          style={{
+            color: "#aaa",
+            fontSize: "10px",
+            letterSpacing: "1px",
+            marginBottom: "3px",
+          }}
+        />
+        <div
+          style={{
+            fontSize: "13px",
+            fontWeight: "900",
+            color: "#fff",
+            lineHeight: 1.4,
+            minHeight: "42px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+        >
+          {missionSlide === 0 ? (
+            <span style={{ color: "#ffd700", animation: "goldShine 1.5s ease-in-out infinite", whiteSpace: "pre-wrap" }}>
+              {game.currentMissionTitle}
+            </span>
+          ) : (
+            <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
+              객잔 무뢰배 추격 (현재: {game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills} / {game.totalDummyKills < 300 ? 300 : game.questTarget})
+            </span>
+          )}
+        </div>
+        <div
+          style={{
+            width: "100%",
+            height: "6px",
+            background: "#222",
+            borderRadius: "3px",
+            marginTop: "10px",
+            overflow: "hidden",
+            border: "1px solid #333",
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.min(100, (missionSlide === 0 ? (game.dummyKills / game.questTarget) : (game.totalDummyKills < 300 ? (game.totalDummyKills / 300) : (game.dummyKills / game.questTarget))) * 100)}%`,
+              height: "100%",
+              background: "linear-gradient(90deg, #f9d423, #ffdb01)",
+              boxShadow: "0 0 10px #ffd700",
+              transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          />
+        </div>
+      </div>
+
+
+
+      {game.showInnVictoryEffect && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 99999,
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.3)",
+          backdropFilter: "blur(4px)",
+          animation: "fadeIn 0.3s forwards"
+        }}>
+          {/* 파팍 이펙트 레이어 */}
+          {[...Array(12)].map((_, i) => (
+            <div key={i} style={{
+              position: "absolute",
+              width: "40px",
+              height: "40px",
+              background: "radial-gradient(circle, #fff 0%, rgba(255,50,50,0.8) 50%, transparent 100%)",
+              borderRadius: "50%",
+              left: `${40 + Math.random() * 20}%`,
+              top: `${40 + Math.random() * 20}%`,
+              animation: `popPop 0.6s ${i * 0.1}s forwards`,
+              opacity: 0
+            }} />
+          ))}
+
+          <div style={{
+            fontSize: "64px",
+            fontWeight: 950,
+            color: "#ff3333",
+            textShadow: "0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #fff",
+            animation: "victoryFlash 2s ease-out forwards",
+            letterSpacing: "8px"
+          }}>
+            무뢰배 격퇴!
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
           @import url('https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&display=swap');
 
-        @keyframes breakthroughAuraSpin {
-    0% { transform: scale(0.95) rotate(0deg); opacity: 0.85; }
-    50% { transform: scale(1.06) rotate(180deg); opacity: 1; }
-    100% { transform: scale(0.95) rotate(360deg); opacity: 0.85; }
-  }
+          @keyframes victoryFlash {
+            0% { transform: scale(0.5); opacity: 0; filter: brightness(3) blur(20px); }
+            15% { transform: scale(1.3); opacity: 1; filter: brightness(1) blur(0); }
+            30% { transform: scale(1); opacity: 1; }
+            80% { transform: scale(1.1); opacity: 1; filter: brightness(1.2); }
+            100% { transform: scale(2); opacity: 0; filter: blur(30px); }
+          }
+          @keyframes popPop {
+            0% { transform: scale(0); opacity: 0; }
+            30% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+          }
+          @keyframes breakthroughAuraSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes breakthroughAuraSpinReverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+          @keyframes breakthroughAuraPulse { 0%, 100% { transform: scale(1); opacity: 0.34; } 50% { transform: scale(1.15); opacity: 0.55; } }
+          @keyframes breakthroughAuraWave { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); filter: blur(48px); } }
+          @keyframes breakthroughCoreFlash { 0%, 100% { transform: scale(1); opacity: 0.34; } 50% { transform: scale(1.4); opacity: 0.7; } }
+          @keyframes breakthroughBorderShine { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+          @keyframes breakthroughGloss { 0% { transform: translateX(-120%) skewX(-15deg); } 100% { transform: translateX(120%) skewX(-15deg); } }
+          @keyframes breakthroughConfirmPulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(255,220,120,0.48); } 50% { transform: scale(1.04); box-shadow: 0 0 24px rgba(255,220,120,0.7), 0 0 40px rgba(210,140,255,0.4); } }
+          
+          .breakthrough-spark {
+            position: absolute;
+            font-size: 20px;
+            pointer-events: none;
+            animation: breakthroughSparkle 2.5s ease-in-out infinite;
+          }
+          .spark-1 { top: calc(50% - 140px); left: calc(50% - 150px); color: #fff6bf; animation-delay: 0s; }
+          .spark-2 { top: calc(50% - 160px); left: calc(50% + 120px); color: #ffd7a0; animation-delay: 0.3s; }
+          .spark-3 { top: calc(50% + 130px); left: calc(50% - 160px); color: #e5ccff; animation-delay: 0.7s; }
+          .spark-4 { top: calc(50% + 150px); left: calc(50% + 140px); color: #c0ffda; animation-delay: 1.1s; }
+          .spark-5 { top: calc(50% - 180px); left: 50%; color: #fff; animation-delay: 0.5s; }
+          .spark-6 { top: calc(50% + 170px); left: 50%; color: #ffd700; animation-delay: 1.4s; }
+          .spark-7 { top: calc(50% - 100px); left: calc(50% - 180px); color: #ffb5b5; animation-delay: 0.9s; }
+          .spark-8 { top: calc(50% + 92px); left: calc(50% + 150px); color: #b8e1ff; animation-delay: 1.6s; }
 
-  @keyframes breakthroughAuraSpinReverse {
-    0% { transform: scale(1.02) rotate(360deg); opacity: 0.55; }
-    50% { transform: scale(0.96) rotate(180deg); opacity: 0.8; }
-    100% { transform: scale(1.02) rotate(0deg); opacity: 0.55; }
-  }
-
-  @keyframes breakthroughAuraPulse {
-    0% { opacity: 0.55; filter: blur(18px); }
-    50% { opacity: 1; filter: blur(26px); }
-    100% { opacity: 0.55; filter: blur(18px); }
-  }
-
-  @keyframes breakthroughAuraWave {
-    0% { transform: scale(0.92); }
-    50% { transform: scale(1.08); }
-    100% { transform: scale(0.92); }
-  }
-
-  @keyframes breakthroughCoreFlash {
-    0% { opacity: 0.35; transform: scale(0.85); }
-    50% { opacity: 0.95; transform: scale(1.15); }
-    100% { opacity: 0.35; transform: scale(0.85); }
-  }
-
-  @keyframes breakthroughPopupFloat {
-    0% { transform: translateY(0px) scale(1); }
-    50% { transform: translateY(-4px) scale(1.01); }
-    100% { transform: translateY(0px) scale(1); }
-  }
-
-  @keyframes breakthroughBorderShine {
-    0% { filter: hue-rotate(0deg) brightness(1); }
-    50% { filter: hue-rotate(40deg) brightness(1.15); }
-    100% { filter: hue-rotate(0deg) brightness(1); }
-  }
-
-  @keyframes breakthroughGloss {
-    0% { transform: translateX(-130%); opacity: 0; }
-    20% { opacity: 1; }
-    50% { transform: translateX(130%); opacity: 0.85; }
-    100% { transform: translateX(130%); opacity: 0; }
-  }
-
-  @keyframes breakthroughConfirmPulse {
-    0% { transform: scale(1); box-shadow: 0 0 14px rgba(255,220,120,0.48), 0 0 24px rgba(210,140,255,0.22), inset 0 1px 0 rgba(255,255,255,0.55); }
-    50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,230,150,0.7), 0 0 34px rgba(210,140,255,0.35), inset 0 1px 0 rgba(255,255,255,0.7); }
-    100% { transform: scale(1); box-shadow: 0 0 14px rgba(255,220,120,0.48), 0 0 24px rgba(210,140,255,0.22), inset 0 1px 0 rgba(255,255,255,0.55); }
-  }
-
-  .breakthrough-spark {
-    position: absolute;
-    z-index: 2001;
-    font-size: 22px;
-    font-weight: 900;
-    pointer-events: none;
-    text-shadow:
-      0 0 8px rgba(255,255,255,0.95),
-      0 0 16px rgba(255,220,120,0.85),
-      0 0 26px rgba(160,180,255,0.65);
-    animation: breakthroughSparkle 1.8s ease-in-out infinite;
-  }
-
-  .spark-1 { top: calc(50% - 170px); left: calc(50% - 120px); color: #fff4a8; animation-delay: 0s; }
-  .spark-2 { top: calc(50% - 155px); left: calc(50% + 110px); color: #ffd6ff; animation-delay: 0.25s; }
-  .spark-3 { top: calc(50% - 18px); left: calc(50% - 190px); color: #a8f7ff; animation-delay: 0.5s; }
-  .spark-4 { top: calc(50% + 18px); left: calc(50% + 180px); color: #fff4a8; animation-delay: 0.75s; }
-  .spark-5 { top: calc(50% + 145px); left: calc(50% - 95px); color: #c1ffd9; animation-delay: 1s; }
-  .spark-6 { top: calc(50% + 160px); left: calc(50% + 90px); color: #ffd0a8; animation-delay: 1.2s; }
-  .spark-7 { top: calc(50% - 100px); left: calc(50% - 155px); color: #d3c2ff; animation-delay: 1.4s; }
-  .spark-8 { top: calc(50% + 92px); left: calc(50% + 150px); color: #b8e1ff; animation-delay: 1.6s; }
-
-  @keyframes breakthroughSparkle {
-    0% { opacity: 0.15; transform: scale(0.6) rotate(0deg); }
-    50% { opacity: 1; transform: scale(1.2) rotate(18deg); }
-    100% { opacity: 0.15; transform: scale(0.6) rotate(0deg); }
-  }
+          @keyframes breakthroughSparkle {
+            0% { opacity: 0.15; transform: scale(0.6) rotate(0deg); }
+            50% { opacity: 1; transform: scale(1.2) rotate(18deg); }
+            100% { opacity: 0.15; transform: scale(0.6) rotate(0deg); }
+          }
           @keyframes buffImpact {
             0% { transform: translateX(-50%) scale(2); opacity: 0; filter: blur(10px); }
             100% { transform: translateX(-50%) scale(1); opacity: 1; filter: blur(0); }
@@ -1554,6 +1617,162 @@ const isTrainingStatReward =
             100% { transform: perspective(1000px) rotateY(-3deg) translateX(-53%) scale(1); filter: brightness(0.9); }
           }
         `}</style>
-      </div>
-    );
-  }
+
+        {/* Combat Analysis HUD Overlay */}
+        {combatAnalysis.isActive && (
+          <div style={{
+            position: "absolute",
+            top: "20px",
+            right: "20px",
+            width: "220px",
+            background: "rgba(0,0,0,0.85)",
+            border: "2px solid #ffd700",
+            borderRadius: "12px",
+            padding: "15px",
+            zIndex: 200,
+            color: "#fff",
+            fontFamily: "monospace",
+            boxShadow: "0 0 20px rgba(255,215,0,0.3)",
+            animation: "fadeIn 0.3s ease-out"
+          }}>
+            <div style={{ color: "#ffd700", fontWeight: "bold", textAlign: "center", marginBottom: "10px", borderBottom: "1px solid #444", paddingBottom: "5px" }}>
+              📊 전투 분석 중... ({combatAnalysis.timeLeft.toFixed(1)}s)
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "4px" }}>
+              <span>누적 피해:</span>
+              <span style={{ color: "#fff" }}>{combatAnalysis.log.reduce((s: number, e: any) => s + e.damage, 0).toLocaleString()}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "4px" }}>
+              <span>현재 DPS:</span>
+              <span style={{ color: "#fbbf24" }}>
+                {(combatAnalysis.log.reduce((s: number, e: any) => s + e.damage, 0) / Math.max(1, (10 - combatAnalysis.timeLeft))).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            </div>
+            <div style={{ fontSize: "11px", color: "#888", marginTop: "10px", textAlign: "center" }}>
+              분리 분석 데이터 수집 중...
+            </div>
+          </div>
+        )}
+
+
+
+        {/* Combat Analysis Results Modal */}
+        {combatAnalysis.results && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            animation: "fadeIn 0.3s ease-out"
+          }}>
+            <div style={{
+              width: "500px",
+              background: "#1a1a1a",
+              border: "3px solid #ffd700",
+              borderRadius: "16px",
+              padding: "25px",
+              color: "#fff",
+              position: "relative",
+              boxShadow: "0 0 40px rgba(255,215,0,0.2)"
+            }}>
+              <h2 style={{ color: "#ffd700", textAlign: "center", margin: "0 0 20px 0", fontSize: "24px", letterSpacing: "1px" }}>
+                전투 성능 분석 결과
+              </h2>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "25px" }}>
+                <div style={{ background: "#262626", padding: "15px", borderRadius: "10px", textAlign: "center" }}>
+                  <div style={{ color: "#888", fontSize: "14px" }}>총 누적 피해</div>
+                  <div style={{ fontSize: "22px", fontWeight: "bold", color: "#fff" }}>{combatAnalysis.results.totalDamage.toLocaleString()}</div>
+                </div>
+                <div style={{ background: "#262626", padding: "15px", borderRadius: "10px", textAlign: "center" }}>
+                  <div style={{ color: "#888", fontSize: "14px" }}>평균 DPS</div>
+                  <div style={{ fontSize: "22px", fontWeight: "bold", color: "#fbbf24" }}>{Math.floor(combatAnalysis.results.dps).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div style={{ maxHeight: "250px", overflowY: "auto", marginBottom: "20px", border: "1px solid #333", borderRadius: "8px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                  <thead>
+                    <tr style={{ background: "#333", textAlign: "left" }}>
+                      <th style={{ padding: "10px" }}>출처</th>
+                      <th style={{ padding: "10px" }}>피해량</th>
+                      <th style={{ padding: "10px" }}>비중</th>
+                      <th style={{ padding: "10px" }}>회수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(combatAnalysis.results.breakdown).map(([source, data]: [string, any]) => (
+                      <tr key={source} style={{ borderBottom: "1px solid #222" }}>
+                        <td style={{ padding: "10px", color: source === 'normal_attack' ? '#fff' : (source === 'skill_active' ? '#60a5fa' : '#fbbf24') }}>
+                          {source === 'normal_attack' ? '평타' : (source === 'skill_active' ? '스킬' : (source === 'clan_passive' ? '문파패시브' : '추가타/도트'))}
+                        </td>
+                        <td style={{ padding: "10px" }}>{data.total.toLocaleString()}</td>
+                        <td style={{ padding: "10px", color: "#888" }}>{data.percent.toFixed(1)}%</td>
+                        <td style={{ padding: "10px" }}>{data.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {Object.keys(combatAnalysis.results.skillDetails).length > 0 && (
+                <div style={{ marginBottom: "20px" }}>
+                  <div style={{ fontSize: "14px", color: "#ffd700", marginBottom: "5px" }}>상세 무공 기여</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {Object.entries(combatAnalysis.results.skillDetails).map(([name, dmg]: [string, any]) => (
+                      <div key={name} style={{ background: "#333", padding: "4px 10px", borderRadius: "20px", fontSize: "12px" }}>
+                        {name}: {dmg.toLocaleString()}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#666", fontSize: "12px", marginBottom: "20px" }}>
+                <span>치명타 횟수: {combatAnalysis.results.critCount}</span>
+                <span>총 타격 횟수: {combatAnalysis.results.hitCount}</span>
+              </div>
+
+              <button
+                onClick={() => startCombatAnalysis(10)}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  background: "linear-gradient(to bottom, #ffd700, #b8860b)",
+                  color: "#000",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "900",
+                  cursor: "pointer",
+                  marginBottom: "10px"
+                }}
+              >
+                다시 테스트하기
+              </button>
+              <button
+                onClick={() => useGameStore.setState({ combatAnalysis: { ...combatAnalysis, results: null } })}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  background: "#444",
+                  color: "#fff",
+                  border: "1px solid #666",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  cursor: "pointer"
+                }}
+              >
+                분석 종료 및 확인
+              </button>
+            </div>
+          </div>
+        )}
+    </div>
+  );
+}
