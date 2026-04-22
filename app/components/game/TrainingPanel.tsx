@@ -251,7 +251,7 @@ const isTrainingStatReward =
 
     const performHit = () => {
       const now = Date.now();
-      if (now - lastHitTimeRef.current < 220) return; // 중복 호출 방지 상향 (220ms) - 이중터치 방지강화
+      if (now - lastHitTimeRef.current < 80) return; // 반응성 개선: 220ms -> 80ms (연타 속도 상향)
       lastHitTimeRef.current = now;
       
       setLastTouchTime(now);
