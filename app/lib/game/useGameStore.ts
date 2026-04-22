@@ -99,23 +99,66 @@ function getDuelTier(rating: number) {
   return "무명소졸";
 }
  
- function generateEnemy(level: number) {
-    const rivalIdx = (level - 1) % MASTER_RIVALS.length;
-    const rival = MASTER_RIVALS[rivalIdx] || { name: "이름 없는 고수", hpMult: 1, atkMult: 1 };
-    
-    // [개선] HP/ATK 증가율을 완만하게 조정하고 레벨 역전 현상 해결
-    const baseHp = 2000 * Math.pow(1.3, level - 1);
-    const hp = Math.floor(baseHp * (1 + rivalIdx * 0.03)); 
-    
-    const baseAtk = 100 * Math.pow(1.2, level - 1);
-    const atk = Math.floor(baseAtk * (1 + rivalIdx * 0.02));
-    
+  // --- 악적 생성 및 밸런스 상수 ---
+  const DUEL_BALANCING = {
+    COMBAT_TIME: 40,        // 전체 전투 시간
+    BASELINE_TIME: 35,      // 밸런스 기준 시간 (유저에게 5초 여유)
+    USER_TAP_PER_SEC: 3,    // 초당 유저 공격 횟수 기준
+    TOTAL_BASELINE_HITS: 105, // 35초 * 3회 = 105회 타격 기준
+    BERSERK_TIME: 30,       // 광폭화 발동 시간 (시작 후 30초)
+    NORMAL_BERSERK: { atk: 1.35, spd: 1.5 },
+    BOSS_BERSERK: { atk: 1.5, spd: 1.75 }
+  };
+
+  /**
+   * 유저 강화 레벨별 목표 스탯 계산 (밸런스 기준점)
+   * @param level 강화 레벨
+   */
+  function getTargetPlayerStats(level: number) {
     return {
-      name: rival.name,
-      hp,
-      atk
+      atk: 10 + level * 250,
+      def: 50 + level * 250,
+      hp: 150 + level * 2500,
+      critRate: 0.1 + level * 0.1, // %
+      critDmg: 150 + level,       // %
+      eva: 0.1 + level * 0.1       // %
     };
- }
+  }
+
+  function generateEnemy(level: number) {
+    const rivalIdx = (level - 1) % MASTER_RIVALS.length;
+    const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: "이름 없는 고수" };
+    const isBoss = (level % 10 === 0); // 10레벨마다 보스
+
+    // 악적 레벨 N은 유저 강화 N+1 레벨을 기준으로 설계
+    const refPlayer = getTargetPlayerStats(level + 1);
+
+    // 1. 악적 방어력: 기준 유저 공격력의 20%
+    const rivalDef = Math.floor(refPlayer.atk * 0.2);
+
+    // 2. 악적 생명력: 기준 유저가 35초(105회) 동안 입히는 누적 피해량
+    // [새 공식] damage = atk * (100 / (100 + def))
+    const defMultiplier = 100 / (100 + rivalDef);
+    const avgDmgPerHitRaw = refPlayer.atk * defMultiplier;
+    const avgDmgPerHit = avgDmgPerHitRaw * (1 + (refPlayer.critRate / 100) * (refPlayer.critDmg / 100 - 1));
+    const rivalHp = Math.floor(avgDmgPerHit * DUEL_BALANCING.TOTAL_BASELINE_HITS);
+
+    // 3. 악적 공격력: 35초 동안 기준 유저를 빈사 상태로 만드는 수준
+    const estimatedHitsTaken = 35 / 1.2;
+    // [새 공식 역산] rivalAtk * (100 / (100 + playerDef)) = playerHp / hits
+    const playerDefMultiplier = 100 / (100 + refPlayer.def);
+    const requiredDmgPerHit = refPlayer.hp / estimatedHitsTaken;
+    const rivalAtk = Math.floor(requiredDmgPerHit / playerDefMultiplier);
+
+    return {
+      name: isBoss ? `[보스] ${rivalTemplate.name}` : rivalTemplate.name,
+      hp: rivalHp,
+      maxHp: rivalHp,
+      atk: rivalAtk,
+      def: rivalDef,
+      isBoss: isBoss
+    };
+  }
 
 function getDummyStats(realm: string, star: number) {
   const realms = Object.keys(REALM_SETTINGS);
@@ -1213,6 +1256,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   startMasterDuel: () => { 
     const { game } = get(); 
     if (get().getTotalHp() <= 0) return; 
+
+    // 모든 강화 항목 레벨이 N 이상일 때만 도전 가능 체크는 UI에서 수행하지만,
+    // 여기서도 데이터 무결성을 위해 한 번 더 레벨 생성을 진행
     const e = generateEnemy(game.masterDuel.selectedLevel); 
     set((s: any) => ({ 
       game: { 
@@ -1223,12 +1269,16 @@ export const useGameStore = create<GameState>((set, get) => ({
           rivalHp: e.hp, 
           rivalMaxHp: e.hp, 
           rivalAtk: e.atk, 
+          rivalDef: e.def,
+          rivalName: e.name,
+          isBoss: e.isBoss,
           timeLeft: 40, 
           rivalAttackTimer: 0, 
           chargeTimer: 0,
           lastEffect: null,
           damageTakenAccumulator: 0,
-          isBerserk: false 
+          isBerserk: false,
+          rivalDebuffs: {}
         } 
       } 
     })); 
@@ -1285,19 +1335,33 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let nextHp = s.game.hp; 
     let nextMp = s.game.mp;
-    let atkTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt); 
-    let chargeT = (masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt);
+    
+    // 광폭화 상태 확인 (전투 시작 30초 후, 즉 남은 시간 10초 이하)
+    const isBerserk = tLeft <= 10;
+    const berserkMult = masterDuel.isBoss ? DUEL_BALANCING.BOSS_BERSERK : DUEL_BALANCING.NORMAL_BERSERK;
+    
+    // 광폭화 시 공격속도 증가 반영
+    const spdFactor = isBerserk ? berserkMult.spd : 1.0;
+    let atkTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt * spdFactor); 
+    let chargeT = (masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt * spdFactor);
+    
     let dmgAccum = 0;
     let effect = masterDuel.lastEffect;
-    const isBerserk = tLeft <= 10;
 
     // 6초마다 강격(Special Attack)
     if (chargeT >= 6.0 && !isTargetPaused) {
       chargeT = 0;
-      const rawAtk = masterDuel.rivalAtk * (isBerserk ? 5 : 3.5);
+      // 광폭화 시 공격력 증가 반영
+      const atkMult = isBerserk ? berserkMult.atk : 1.0;
+      const rawAtk = masterDuel.rivalAtk * (isBerserk ? 5 : 3.5) * atkMult;
       const defense = get().getTotalDefense();
-      const finalDmgRaw = Math.max(20, Math.floor(rawAtk - defense));
-      let finalDmg = finalDmgRaw;
+      
+      const defenseMultiplier = 100 / (100 + defense);
+      let finalDmg = Math.floor(rawAtk * defenseMultiplier);
+      
+      // 최소 데미지 보정 (공격력의 5%)
+      finalDmg = Math.max(finalDmg, Math.floor(rawAtk * 0.05));
+      const finalDmgRaw = finalDmg;
 
       // 강철유: 모든 피해 50% 감소
       if (s.game.oilBuffs?.oil_def_3 > 0) {
@@ -1350,11 +1414,18 @@ export const useGameStore = create<GameState>((set, get) => ({
         effect = "DODGE";
         get().triggerMovementBuff();
       } else {
-        const variance = 0.9 + Math.random() * 0.2;
-        const rawAtk = masterDuel.rivalAtk * (isBerserk ? 2.5 : 1) * variance;
-        const defense = get().getTotalDefense();
-        let finalDmg = Math.max(1, Math.floor(rawAtk - defense));
+        // [새 공식] damage = atk * (100 / (100 + def))
+        const variance = 0.95 + Math.random() * 0.1;
+        const atkMult = isBerserk ? 1.5 : 1.0; // 광폭화 공격력 1.5배
+        const rawAtk = masterDuel.rivalAtk * atkMult * variance;
+        const playerDefense = get().getTotalDefense();
         
+        const defenseMultiplier = 100 / (100 + playerDefense);
+        let finalDmg = Math.floor(rawAtk * defenseMultiplier);
+        
+        // 최소 데미지 보정 (공격력의 5%)
+        finalDmg = Math.max(finalDmg, Math.floor(rawAtk * 0.05));
+
         // 사마세가 마영보(압기보): 내력 방어막
         if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
           const shieldRate = s.game.movementBuff.data.manaShield;
@@ -1429,33 +1500,53 @@ export const useGameStore = create<GameState>((set, get) => ({
          hitCount = Math.floor(s.game.movementBuff.data.aspd);
       }
 
+      const rivalDef = s.game.masterDuel.rivalDef || 0;
+      const baseAtk = get().getTotalAttack() * moveAtkMult;
+      
+      // 1. 회피 판정
+      // (현재는 유저 공격이 100% 명중하는 구조이거나, 보스 회피 로직이 없는 상태 - 유저 요청 공식 반영)
+      // 보스에게 회피 스탯이 있다면 여기에 적용 (현재는 0으로 간주)
+      
+      // 2. 데미지 계산 (방어력 감쇠)
+      const defenseMultiplier = 100 / (100 + rivalDef);
+      let damage = baseAtk * defenseMultiplier;
+
+      // 3. 치명타 판정
       const totalCritRate = get().getTotalCritRate();
       const totalCritDmg = get().getTotalCritDmg();
       const isCrit = Math.random() < totalCritRate / 100;
-      
-      // 방어력 적용
-      const rivalDef = s.game.masterDuel.rivalDef || 0;
-      const baseAtk = get().getTotalAttack() * (isCrit ? totalCritDmg / 100 : 1) * moveAtkMult;
-      
+      if (isCrit) {
+        damage *= (totalCritDmg / 100);
+      }
+
+      // 최소 데미지 보정 (공격력의 5%)
+      damage = Math.max(damage, baseAtk * 0.05);
+
       // 연마유 효과 통합 트리거 (인자로 받지 않은 경우만 새로 굴림)
       const finalOilRes = oilRes || get().triggerOilEffects();
       
       let finalHitCount = hitCount * finalOilRes.hitCount;
-      let OHKMultiplier = 1; // triggerOilEffects에서 ohk는 더이상 사용안함 (뇌전유로 대체)
+      let OHKMultiplier = 1; 
       
-      // 뇌전유 추가 대미지 (500%) / 천마유 추가 대미지 (1000%)
       if (finalOilRes.buffsTriggered.includes("oil_thunder")) OHKMultiplier += 5;
       if (finalOilRes.buffsTriggered.includes("oil_demon")) OHKMultiplier += 10;
 
       let finalEffect: any = isCrit ? "CRITICAL" : null;
       if (finalOilRes.buffsTriggered.includes("oil_thunder")) finalEffect = "STUN";
 
-      // 적 방어력 감소 (만독유)
+      // 적 방어력 감소 (만독유) - 공식 적용 전/후 유연하게 처리
+      // 만독유 적용 시 rivalDef를 50%로 깎아서 다시 계산하는 방식이 가장 정확
       let currentRivalDef = rivalDef;
-      if (s.game.masterDuel.rivalDebuffs?.armor_break) currentRivalDef *= 0.5;
+      if (s.game.masterDuel.rivalDebuffs?.armor_break) {
+        currentRivalDef *= 0.5;
+        // 디버프 반영된 데미지 재계산
+        const debuffDefMult = 100 / (100 + currentRivalDef);
+        damage = baseAtk * debuffDefMult;
+        if (isCrit) damage *= (totalCritDmg / 100);
+        damage = Math.max(damage, baseAtk * 0.05);
+      }
 
-      const baseDmg = Math.max(1, baseAtk * OHKMultiplier - currentRivalDef);
-      let totalDmg = (baseDmg * finalHitCount) + bDmg * (isW ? 2 : 1);
+      let totalDmg = (damage * OHKMultiplier * finalHitCount) + bDmg * (isW ? 2 : 1);
 
       // 무상유: 적 현재 체력 10% 즉시 삭감
       if (finalOilRes.buffsTriggered.includes("oil_formless")) {
