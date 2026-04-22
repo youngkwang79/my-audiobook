@@ -286,6 +286,7 @@ interface GameState {
   updateBuffs: (dt: number) => void;
   checkOfflineRewards: () => void;
   claimOfflineRewards: () => void;
+  clearLastReward: () => void;
   getOptionSum: (stat: string) => number;
   getOptionCount: (stat: string) => number;
   getStableAttack: () => number;
@@ -1297,6 +1298,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   claimOfflineRewards: () => set((s: any) => ({ game: { ...s.game, lastOfflineRewards: null } })),
+  clearLastReward: () => set((s: any) => ({ game: { ...s.game, lastReward: null } })),
   resolveTimingMission: (p: any) => {
     const { game } = get();
     if (p.success) {

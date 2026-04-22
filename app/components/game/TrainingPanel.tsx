@@ -8,7 +8,7 @@ import GameStatusPanel from "./GameStatusPanel";
 
 
 export default function TrainingPanel() {
-  const { game, addExp, addCoins, breakthrough, getTotalCombatPower } = useGameStore();
+  const { game, addExp, addCoins, breakthrough, getTotalCombatPower, clearLastReward } = useGameStore();
 
   const [damages, setDamages] = useState<
     { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean; isRainbow?: boolean; isCyan?: boolean }[]
@@ -199,16 +199,25 @@ export default function TrainingPanel() {
         setTrainingStatFloat(null);
       }, 1600);
 
+      clearLastReward();
       return () => clearTimeout(floatTimer);
     }
 
     // 무아지경 보상 팝업 제거
-    if (msg.includes("보상 획득") && msg.includes("무아지경")) return;
+    if (msg.includes("보상 획득") && msg.includes("무아지경")) {
+      clearLastReward();
+      return;
+    }
 
     // 객잔 이동 전 뜨는 보상 팝업 완전히 제거
-    if (msg.includes("객잔 무뢰배 이벤트 발생")) return;
+    if (msg.includes("객잔 무뢰배 이벤트 발생")) {
+      clearLastReward();
+      return;
+    }
 
     setShowMissionPopup(true);
+    clearLastReward();
+
     const timer = setTimeout(() => setShowMissionPopup(false), 5000);
     return () => clearTimeout(timer);
   }, [game.lastReward]);
