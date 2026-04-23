@@ -19,12 +19,17 @@ const defaultTowerState: any = {
   maxHp: 0,
   isInside: false,
   activeBuffs: [],
+  artifacts: [],
   lastReward: null,
   bestClearTimes: {},
   enemy: null,
   eventRoom: null,
   pendingBuffChoices: null,
+  pendingArtifactChoices: null,
   lastClearFloor: 0,
+  combo: 0,
+  lastTapTime: 0,
+  shieldTimer: 0,
 };
 
 export const defaultGameData: GameSaveData = {

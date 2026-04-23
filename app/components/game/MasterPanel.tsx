@@ -266,22 +266,7 @@ export default function MasterPanel() {
   const [countdownValue, setCountdownValue] = useState(0);
 
   const triggerMasterDuelSequence = () => {
-    setShowCountdown(true);
-    setCountdownValue(3);
-    
-    const interval = setInterval(() => {
-      setCountdownValue(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setShowCountdown(false);
-            startMasterDuel();
-          }, 1500); // Increased for realistic blood persistence
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    startMasterDuel();
   };
 
   useEffect(() => {
@@ -512,24 +497,7 @@ export default function MasterPanel() {
     }} className="hide-scrollbar">
       <style>{BOX_ANIM_CSS}</style>
 
-      {/* 연마유 발동 화면 중앙 이펙트 */}
-      {activeOilText && (
-        <div style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 10000,
-          fontSize: 30,
-          fontWeight: 950,
-          textAlign: "center",
-          whiteSpace: "nowrap",
-          pointerEvents: "none",
-          animation: "auroraRed 2s infinite, mysticScale 4s forwards"
-        }}>
-          {activeOilText}
-        </div>
-      )}
+      {/* 연마유 발동 텍스트 제거 (렉 유발 방지) */}
 
       {/* 1. 상단 정보 영역 - 콤팩트화 */}
       {!masterDuel.isPlaying && (
@@ -680,7 +648,7 @@ export default function MasterPanel() {
           <div style={{
             position: "absolute", inset: "-10%",
             backgroundImage: "url('/bg-master-vibrant.png')", backgroundSize: "cover",
-            opacity: 0.4, animation: "duelBgPan 60s linear infinite"
+            opacity: 0.4
           }} />
 
           {/* Rival HP Bar Overlay (Now relative to screen top) */}
@@ -995,95 +963,7 @@ export default function MasterPanel() {
       </div>
 
 
-      {/* 5. 큼지막한 전투 진입 연출 레이어 */}
-      {showCountdown && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 20000,
-          background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "flex-end", justifyContent: "flex-end", 
-          paddingRight: "30%", paddingBottom: "45%",
-          overflow: "hidden", pointerEvents: "none"
-        }}>
-          {/* 10x Intensity Dust/Fog/Soot Particles */}
-          {Array.from({ length: 200 }).map((_, i) => (
-            <div key={i} style={{
-              position: "absolute", 
-              bottom: "-10%", 
-              left: `${Math.random() * 120 - 10}%`,
-              width: 20 + Math.random() * 80, height: 20 + Math.random() * 80,
-              background: i % 3 === 0 ? "rgba(50, 50, 50, 0.4)" : (i % 3 === 1 ? "rgba(200, 200, 200, 0.2)" : "rgba(180, 0, 0, 0.15)"),
-              borderRadius: "50%",
-              filter: "blur(20px)",
-              animation: `${i % 2 === 0 ? "sootRise" : "bloodMistRise"} ${2 + Math.random() * 3}s infinite`,
-              animationDelay: `${Math.random() * 2}s`,
-              zIndex: 20001
-            }} />
-          ))}
-
-          {/* Big Countdown Text */}
-          <div key={countdownValue} style={{
-            fontSize: 180, fontWeight: 950, color: "#ffd700",
-            textShadow: "0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(0,0,0,0.8)",
-            animation: "countdownPop 1s forwards", zIndex: 20005,
-            fontStyle: "italic"
-          }}>
-            {countdownValue > 0 ? countdownValue : ""}
-          </div>
-
-          {/* Real Blood Splatter Effect at 0 */}
-          {countdownValue === 0 && (
-            <div style={{
-              position: "absolute", top: "50%", left: "50%", 
-              width: 500, height: 500, transform: "translate(-50%, -50%)",
-              zIndex: 20010, pointerEvents: "none"
-            }}>
-              {/* Lingering Stains */}
-              {[...Array(5)].map((_, i) => (
-                <div key={`stain-${i}`} style={{
-                  position: "absolute",
-                  top: `${40 + Math.random() * 20}%`,
-                  left: `${40 + Math.random() * 20}%`,
-                  width: 100 + Math.random() * 150, height: 80 + Math.random() * 100,
-                  background: "rgba(120, 0, 0, 0.4)",
-                  borderRadius: "50%",
-                  filter: "blur(30px)",
-                  transform: `rotate(${Math.random() * 360}deg)`,
-                  animation: "bloodStainFade 1.5s ease-out forwards"
-                }} />
-              ))}
-
-              {/* Dynamic Droplets (60 Particles) */}
-              {[...Array(60)].map((_, i) => {
-                const angle = (i / 60) * Math.PI * 2 + (Math.random() * 0.5);
-                const dist = 80 + Math.random() * 250;
-                const tx = Math.cos(angle) * dist;
-                const ty = Math.sin(angle) * dist;
-                return (
-                  <div key={i} style={{
-                    position: "absolute", top: "50%", left: "50%",
-                    width: 5 + Math.random() * 15, height: 5 + Math.random() * 15,
-                    background: i % 5 === 0 ? "#660000" : (i % 2 === 0 ? "#990000" : "#cc0000"),
-                    borderRadius: i % 3 === 0 ? "40% 60% 70% 30%" : "50%",
-                    filter: "blur(1px)",
-                    transform: "translate(-50%, -50%)",
-                    // @ts-ignore
-                    "--tx": `${tx}px`, "--ty": `${ty}px`,
-                    animation: `bloodDrop ${0.8 + Math.random() * 0.7}s ease-out forwards`
-                  }} />
-                );
-              })}
-              
-              {/* Central Splash */}
-              <div style={{
-                position: "absolute", inset: 0,
-                background: "radial-gradient(circle, rgba(120,0,0,0.5) 0%, transparent 60%)",
-                animation: "bloodSplatter 0.6s ease-out forwards"
-              }} />
-            </div>
-          )}
-
-
-        </div>
-      )}
+      {/* 카운트다운 및 입자 이펙트 제거 완료 */}
 
       {/* 패왕 토벌 상점 모달 */}
       {showShop && (

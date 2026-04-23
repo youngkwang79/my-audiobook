@@ -101,18 +101,18 @@ export default function GameShell() {
   };
 
   const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory"];
-  
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
-    
+
     // Disable swipe if a mini-game might be active (e.g. in Inn)
     // We can check if isPlaying is active in the store or just allow it if not in specific states
     // For now, let's allow it but be mindful.
-    
+
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchStartX.current - touchEndX;
     const threshold = 60;
@@ -168,23 +168,23 @@ export default function GameShell() {
         <>
 
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        {activeTab === "inventory" && (
-          <div style={{ marginBottom: 4 }}>
-            <GameStatusPanel game={game} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            {activeTab === "inventory" && (
+              <div style={{ marginBottom: 4 }}>
+                <GameStatusPanel game={game} />
+              </div>
+            )}
+            <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              {activeTab === "training" && <TrainingPanel />}
+              {activeTab === "inn" && <InnPanel />}
+              {activeTab === "master" && <MasterPanel />}
+              {activeTab === "library" && <LibraryPanel />}
+              {activeTab === "forge" && <ForgePanel />}
+              {activeTab === "inventory" && <InventoryPanel />}
+              {activeTab === "upgrade" && <UpgradePanel />}
+              {activeTab === "tower" && <TowerPanel />}
+            </div>
           </div>
-        )}
-        <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {activeTab === "training" && <TrainingPanel />}
-          {activeTab === "inn" && <InnPanel />}
-          {activeTab === "master" && <MasterPanel />}
-          {activeTab === "library" && <LibraryPanel />}
-          {activeTab === "forge" && <ForgePanel />}
-          {activeTab === "inventory" && <InventoryPanel />}
-          {activeTab === "upgrade" && <UpgradePanel />}
-          {activeTab === "tower" && <TowerPanel />}
-        </div>
-      </div>
         </>
       )}
 
@@ -474,16 +474,16 @@ export default function GameShell() {
             }}
           >
             {/* Layer 1: Background */}
-            <div 
-              style={{ 
-                position: "absolute", 
-                inset: 0, 
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
                 backgroundImage: "url('/yabawi_bg.png')",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 opacity: 0.6,
                 zIndex: 1
-              }} 
+              }}
             />
 
             {/* Layer 2: Character with Motion (Positioned at TOP) */}
@@ -491,14 +491,14 @@ export default function GameShell() {
               src="/images/yabawi_npc.png"
               alt="Mysterious Old Man"
               initial={{ scale: 1, y: 0 }}
-              animate={{ 
+              animate={{
                 scale: [1, 1.03, 1],
                 y: [0, 5, 0]
               }}
-              transition={{ 
-                duration: 5, 
-                repeat: Infinity, 
-                ease: "easeInOut" 
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: "easeInOut"
               }}
               style={{
                 position: "absolute",
@@ -514,22 +514,22 @@ export default function GameShell() {
             />
 
             {/* Content Layer (Shifted LOWER) */}
-            <div 
-              style={{ 
-                position: "relative", 
-                zIndex: 3, 
-                padding: "20px", 
+            <div
+              style={{
+                position: "relative",
+                zIndex: 3,
+                padding: "20px",
                 height: "420px",
                 background: "linear-gradient(to top, rgba(0,0,0,1) 40%, rgba(0,0,0,0.5) 70%, transparent 100%)",
-                display: "flex", 
-                flexDirection: "column", 
-                gap: 8, 
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
                 alignItems: "center",
                 justifyContent: "flex-end"
               }}
             >
               <div style={{ fontSize: 22, fontWeight: 950, color: "#ff4d4d", textShadow: "0 0 10px rgba(255,0,0,0.5), 0 2px 5px #000", marginBottom: -5 }}>은밀한 초대</div>
-              
+
               <p style={{ fontSize: 14, color: "#fff", lineHeight: 1.5, wordBreak: "keep-all", margin: "5px 0", textShadow: "0 2px 4px #000", textAlign: "center" }}>
                 객잔 구석에서 수상한 애꾸눈 노인이 은밀히 손짓합니다.<br />
                 <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 15 }}>"이보게 젊은이, 큰 돈 한번 만져볼 생각 없는가?"</span>
@@ -559,8 +559,8 @@ export default function GameShell() {
                   onClick={() => {
                     const store: any = useGameStore.getState();
                     if (store.useGamblingToken()) {
-                      useGameStore.setState((s: any) => ({ 
-                        game: { ...s.game, activeTab: "inn", pendingYabawiPlay: true } 
+                      useGameStore.setState((s: any) => ({
+                        game: { ...s.game, activeTab: "inn", pendingYabawiPlay: true }
                       }));
                     } else {
                       alert("투전판 명패가 부족합니다. (객잔 대련 승리 시 확률 획득)");
@@ -577,7 +577,7 @@ export default function GameShell() {
                   {game.gamblingTokens > 0 ? "수락 (명패 1개)" : "명패 부족"}
                 </button>
               </div>
-              
+
               <div style={{ fontSize: 11, color: "#888", marginTop: 2, fontStyle: "italic" }}>
                 * 시간이 지나면 기회는 사라집니다.
               </div>

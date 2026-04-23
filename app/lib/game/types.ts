@@ -289,6 +289,18 @@ export type TowerBuff = {
   penalty: Record<string, number>;
 };
 
+export type TowerArtifact = {
+  id: string;
+  name: string;
+  description: string;
+  tier: "COMMON" | "RARE" | "LEGENDARY";
+  effect: {
+    type: "COMBO_BOLT" | "LIFE_STEAL" | "SHIELD" | "CRIT_SLOW" | "MP_RESTORE" | "INSTANT_HP";
+    value: number;
+    chance?: number;
+  };
+};
+
 export type TowerState = {
   currentFloor: number;
   highestFloor: number;
@@ -296,8 +308,12 @@ export type TowerState = {
   maxHp: number;
   isInside: boolean;
   activeBuffs: TowerBuff[];
+  artifacts: TowerArtifact[];
   lastReward: string | null;
   startTime?: number;
+  combo: number;
+  lastTapTime: number;
+  shieldTimer: number;
   bestClearTimes: Record<number, number>; // floor -> ms
   enemy: {
     name: string;
@@ -305,9 +321,16 @@ export type TowerState = {
     maxHp: number;
     atk: number;
     traits: string[];
+    def: number;
+    eva: number;
+    critRes?: number;
+    reflect?: number;
+    lifeSteal?: number;
+    ignoreEva?: number;
   } | null;
-  eventRoom: "REST" | "BUFF" | "DANGER" | null;
+  eventRoom: "REST" | "BUFF" | "DANGER" | "MERCHANT" | null;
   pendingBuffChoices: TowerBuff[] | null;
+  pendingArtifactChoices: TowerArtifact[] | null;
   lastClearFloor: number;
 };
 

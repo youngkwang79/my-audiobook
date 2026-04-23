@@ -120,9 +120,9 @@ const Counter = ({ value, duration = 1500 }: { value: number, duration?: number 
 };
 
 function getGradeScore(grade: Grade) {
-  if (grade === "PERFECT") return 110;
-  if (grade === "GREAT") return 85;
-  if (grade === "GOOD") return 62;
+  if (grade === "PERFECT") return 150;
+  if (grade === "GREAT") return 100;
+  if (grade === "GOOD") return 70;
   return 0;
 }
 
@@ -212,7 +212,7 @@ export default function InnPanel({
 
   const getTargetScore = (s: number) => {
     const scores = [
-      0, 3000, 7000, 12000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
+      0, 1500, 5000, 10000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
       58000, 67000, 77000, 88000, 100000, 113000, 127000, 142000, 158000, 200000
     ];
     if (s <= 20) return scores[s];
@@ -241,7 +241,7 @@ export default function InnPanel({
   const [isFailPopup, setIsFailPopup] = useState(false);
   const [isSuccessPopup, setIsSuccessPopup] = useState(false);
   const [transitionCountdown, setTransitionCountdown] = useState(3);
-  const [victoryRewards, setVictoryRewards] = useState<{ gold: number, rep: number, stones: number, item: string | null, wisdom: number, repPenalty: number }>({ gold: 0, rep: 0, stones: 0, item: null, wisdom: 0, repPenalty: 0 });
+  const [victoryRewards, setVictoryRewards] = useState<{ gold: number, rep: number, stones: number, item: string | null, wisdom: number, repPenalty: number, isPerfect: boolean }>({ gold: 0, rep: 0, stones: 0, item: null, wisdom: 0, repPenalty: 0, isPerfect: true });
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [pulseTargets, setPulseTargets] = useState<{ id: number; x: number; y: number; progress: number }[]>([]);
   const [failReason, setFailReason] = useState("");
@@ -507,7 +507,7 @@ export default function InnPanel({
     resolveTimingMission({
       success: true,
       score: playerScoreRef.current,
-      grade: "PERFECT",
+      grade: victoryRewards.isPerfect ? "PERFECT" : "MISS",
       maxStage: currentStage,
       gold: victoryRewards.gold,
       rep: victoryRewards.rep - (victoryRewards.repPenalty || 0),
@@ -576,7 +576,7 @@ export default function InnPanel({
       let finalWisdom = wReward;
 
       if (!success) {
-        repPenalty = 500;
+        repPenalty = Math.min(500, (clearedStage + 1) * 50);
         finalGold = Math.floor(gReward * 0.5);
         finalRep = Math.floor(rReward * 0.5);
         finalStones = Math.floor(sReward * 0.5);
@@ -589,7 +589,8 @@ export default function InnPanel({
         stones: finalStones,
         item: randomItem,
         wisdom: finalWisdom,
-        repPenalty: repPenalty
+        repPenalty: repPenalty,
+        isPerfect: success
       });
       setIsSuccessPopup(true);
       setIsFailPopup(false);
@@ -793,23 +794,7 @@ export default function InnPanel({
   // 1. Breath (Rhythm) Logic
   const updateBreath = (dt: number) => {
     if (isTransitioning) return;
-    // 30s Timer
-    const nextTime = Math.max(0, breathTimeLeftRef.current - dt);
-    breathTimeLeftRef.current = nextTime;
-    setBreathTimeLeft(nextTime);
-
-    if (nextTime <= 0) {
-      const finalScore = playerScoreRef.current;
-      const targetScore = getTargetScore(currentStage);
-
-      if (finalScore >= targetScore) {
-        handleRoundSuccess("PERFECT", 200, `Stage ${currentStage} 성공!`);
-      } else {
-        finishMission(false, "MISS", finalScore, `충분한 기운을 모으지 못했습니다. (목표: ${targetScore}점 / 현재: ${finalScore}점)`);
-      }
-      return;
-    }
-
+    
     const realmList = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
     const rIdx = realmList.indexOf(game.realm);
 
@@ -865,8 +850,8 @@ export default function InnPanel({
     setBreathNotes(nextNotes);
 
     // Spawn rate by realm and stage
-    let baseRate = 0.012 + rIdx * 0.004;
-    if (currentStage === 1) baseRate = 0.01;
+    let baseRate = 0.015 + rIdx * 0.005;
+    if (currentStage === 1) baseRate = 0.025; // Increase stage 1 spawn rate
     const stageBonus = (currentStage - 1) * 0.005;
     const spawnRate = baseRate + stageBonus;
 
@@ -944,8 +929,8 @@ export default function InnPanel({
       setBreathNotes(nextNotes);
 
       // Score weightage based on grade
-      const scoreMap = { "PERFECT": 50, "GREAT": 35, "GOOD": 20, "MISS": 0 };
-      const baseScoreGain = scoreMap[grade] || 10;
+      const scoreMap = { "PERFECT": 70, "GREAT": 45, "GOOD": 25, "MISS": 0 };
+      const baseScoreGain = scoreMap[grade] || 15;
       const scoreGain = Math.floor(baseScoreGain * powerFactor);
       const newScore = playerScoreRef.current + scoreGain;
 
@@ -1834,6 +1819,13 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 <div style={scoreBarContainer}>
                   <div style={scoreLabels}>
                     <span>현재 점수: {playerScore.toLocaleString()}</span>
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>목표: {getTargetScore(currentStage).toLocaleString()}</span>
+                  </div>
+                  <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginTop: 4 }}>
+                    <motion.div 
+                      animate={{ width: `${Math.min(100, (playerScore / getTargetScore(currentStage)) * 100)}%` }} 
+                      style={{ height: "100%", background: "#ffd700", boxShadow: "0 0 10px #ffd700" }} 
+                    />
                   </div>
                 </div>
               )}
@@ -2556,9 +2548,15 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               animation: "popupEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
             }}
           >
-            <div style={{ fontSize: 50, filter: "drop-shadow(0 0 10px #ffd700)" }}>🏆</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#ffd700", marginTop: 15, textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>대련 승리!</div>
-            <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 20 }}>무뢰배들을 완벽하게 제압했습니다.</div>
+            <div style={{ fontSize: 50, filter: `drop-shadow(0 0 10px ${victoryRewards.isPerfect ? "#ffd700" : "#ff4d4d"})` }}>
+              {victoryRewards.isPerfect ? "🏆" : "⚠️"}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: victoryRewards.isPerfect ? "#ffd700" : "#ff4d4d", marginTop: 15, textShadow: "0 0 10px rgba(0,0,0,0.5)" }}>
+              {victoryRewards.isPerfect ? "대련 승리!" : "대련 종료"}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 20 }}>
+              {victoryRewards.isPerfect ? "무뢰배들을 완벽하게 제압했습니다." : "목표 기운을 모두 모으지 못했습니다."}
+            </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "25px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,0,0.2)" }}>

@@ -99,6 +99,77 @@ export const STAT_INCREMENTS: Record<string, number> = {
   offlineLimit: 0.5,
 };
 
+export const TOWER_BUFF_POOL = [
+  { id: "atk_up", name: "천마의 힘", description: "공격력 +20% / 방어력 -10%", bonus: { atk: 1.2 }, penalty: { def: 0.9 } },
+  { id: "eva_up", name: "허공답보", description: "회피율 +15% / 체력 -10%", bonus: { eva: 15 }, penalty: { hp: 0.9 } },
+  { id: "crit_up", name: "살수지각", description: "치명타 확률 +15% / 받는 피해 +10%", bonus: { critRate: 15 }, penalty: { dmgTaken: 1.1 } },
+  { id: "def_up", name: "금강불괴", description: "방어력 +25% / 공격력 -10%", bonus: { def: 1.25 }, penalty: { atk: 0.9 } },
+  { id: "vamp_up", name: "흡성대법", description: "흡혈 5% / 최대 체력 -15%", bonus: { vamp: 5 }, penalty: { maxHp: 0.85 } },
+];
+
+export const TOWER_ARTIFACT_POOL = [
+  { id: "art_thunder", name: "뇌전의 정수", tier: "RARE", description: "10콤보마다 적에게 공격력 5배의 낙뢰 피해", effect: { type: "COMBO_BOLT", value: 5, chance: 1 } },
+  { id: "art_vamp", name: "흡혈 귀면", tier: "COMMON", description: "공격 시 피해량의 3%를 생명력으로 흡수", effect: { type: "LIFE_STEAL", value: 3 } },
+  { id: "art_shield", name: "황금 갑주", tier: "RARE", description: "피격 시 10% 확률로 무적 보호막 생성 (3초)", effect: { type: "SHIELD", value: 3, chance: 10 } },
+  { id: "art_mp", name: "영천의 이슬", tier: "COMMON", description: "탭할 때마다 내공 2% 회복", effect: { type: "MP_RESTORE", value: 2 } },
+  { id: "art_inst_hp", name: "만년삼", tier: "LEGENDARY", description: "사망 위기 시 즉시 체력 100% 회복 (층당 1회)", effect: { type: "INSTANT_HP", value: 100 } },
+];
+
+export const TOWER_THEMES: Record<number, any> = {
+  1: { name: "석조의 시련", color: "#64748b", effect: "none", desc: "고요한 돌의 기운이 감도는 층입니다." },
+  21: { name: "혹한의 감옥", color: "#38bdf8", effect: "slow", desc: "뼈를 깎는 추위가 공격 속도를 늦춥니다." },
+  41: { name: "염화의 지옥", color: "#f87171", effect: "burn", desc: "타오르는 열기가 매초 체력을 깎습니다." },
+  61: { name: "독무의 미궁", color: "#a855f7", effect: "poison", desc: "독안개가 회복 효율을 방해합니다." },
+  81: { name: "무극의 심연", color: "#1e293b", effect: "void", desc: "모든 기운이 억제되는 극한의 공간입니다." },
+};
+
+export function getTowerTheme(floor: number) {
+  const keys = Object.keys(TOWER_THEMES).map(Number).sort((a, b) => b - a);
+  const key = keys.find(k => floor >= k) || 1;
+  return TOWER_THEMES[key];
+}
+
+export function generateTowerEnemy(floor: number) {
+  const theme = getTowerTheme(floor);
+  const isBoss = floor % 10 === 0;
+  const level = floor;
+  const baseStats = getTargetPlayerStats(level + 10); 
+  
+  let traits: string[] = [];
+  if (isBoss) traits.push("보스", "피해 상한");
+  if (theme.effect === "slow") traits.push("한기 (공속 저하)");
+  if (theme.effect === "burn") traits.push("화염 (지속 피해)");
+  if (theme.effect === "poison") traits.push("맹독 (치유 저하)");
+  if (theme.effect === "void") traits.push("공허 (능력 억제)");
+
+  let hpMult = isBoss ? 3.0 : 1.0;
+  let atkMult = isBoss ? 1.5 : 1.0;
+  let defMult = 1.0;
+  let eva = Math.min(40, floor * 0.5);
+  let critRes = Math.min(40, floor * 0.5);
+  let reflect = floor > 40 ? 15 : 0;
+  let lifeSteal = floor > 60 ? 10 : 0;
+  let ignoreEva = floor > 80 ? 30 : 0;
+
+  const hp = Math.floor(baseStats.hp * 5 * hpMult);
+  const atk = Math.floor(baseStats.atk * 0.5 * atkMult);
+  const def = Math.floor(baseStats.def * 0.3 * defMult);
+
+  return {
+    name: isBoss ? `[층 보스] ${floor}층 ${theme.name} 수호자` : `${floor}층 시험자`,
+    maxHp: hp,
+    hp: hp,
+    atk: atk,
+    def: def,
+    eva,
+    critRes,
+    reflect,
+    lifeSteal,
+    ignoreEva,
+    traits
+  };
+}
+
 export const STAT_UPGRADE_BASES: Record<string, { gold: number; rep: number }> = {
   atk: { gold: 1500, rep: 400 },
   def: { gold: 1500, rep: 400 },
@@ -190,83 +261,7 @@ function getDuelTier(rating: number) {
     };
   }
 
-  const TOWER_BUFF_POOL = [
-    { id: "atk_up", name: "천마의 힘", description: "공격력 +20% / 방어력 -10%", bonus: { atk: 1.2 }, penalty: { def: 0.9 } },
-    { id: "eva_up", name: "허공답보", description: "회피율 +15% / 체력 -10%", bonus: { eva: 15 }, penalty: { hp: 0.9 } },
-    { id: "crit_up", name: "살수지각", description: "치명타 확률 +15% / 받는 피해 +10%", bonus: { critRate: 15 }, penalty: { dmgTaken: 1.1 } },
-    { id: "def_up", name: "금강불괴", description: "방어력 +25% / 공격력 -10%", bonus: { def: 1.25 }, penalty: { atk: 0.9 } },
-    { id: "vamp_up", name: "흡성대법", description: "흡혈 5% / 최대 체력 -15%", bonus: { vamp: 5 }, penalty: { maxHp: 0.85 } },
-  ];
 
-  function generateTowerEnemy(floor: number) {
-    const isBoss = floor % 20 === 0 || floor === 100;
-    const level = floor;
-    const baseStats = getTargetPlayerStats(level + 10); 
-    
-    let traits: string[] = [];
-    let hpMult = 1.0;
-    let atkMult = 1.0;
-    let defMult = 1.0;
-    let eva = 0;
-    let critRes = 0;
-    let reflect = 0;
-    let lifeSteal = 0;
-    let ignoreEva = 0;
-
-    if (floor >= 21) {
-      traits.push("회피/치저");
-      eva = 20 + Math.min(10, (floor - 21) * 0.5);
-      critRes = 20 + Math.min(10, (floor - 21) * 0.5);
-    }
-    if (floor >= 41) {
-      traits.push("반격/회피무시");
-      ignoreEva = 30;
-      reflect = 20;
-      defMult *= 1.3;
-    }
-    if (floor >= 61) {
-      traits.push("흡혈/상태이상");
-      lifeSteal = 10;
-    }
-    if (floor >= 81) {
-      traits.push("복합 상성");
-      const r = Math.random();
-      if (r < 0.3) eva += 10;
-      if (r > 0.7) reflect += 10;
-    }
-
-    if (isBoss) {
-      hpMult *= 3.0;
-      atkMult *= 1.5;
-      if (floor === 20) traits.push("체력 특화");
-      if (floor === 40) { eva = 35; critRes = 40; }
-      if (floor === 60) { traits.push("피해 상한"); reflect = 30; }
-      if (floor >= 80) traits.push("광폭화");
-      if (floor === 100) {
-        traits = ["천극지존", "피해 상한", "회피 무시", "치명 저항"];
-        eva = 40; critRes = 50; ignoreEva = 50; reflect = 40;
-      }
-    }
-
-    const hp = Math.floor(baseStats.hp * 5 * hpMult);
-    const atk = Math.floor(baseStats.atk * 0.5 * atkMult);
-    const def = Math.floor(baseStats.def * 0.3 * defMult);
-
-    return {
-      name: isBoss ? `[층 보스] ${floor}층 수호자` : `${floor}층 시험자`,
-      maxHp: hp,
-      hp: hp,
-      atk: atk,
-      def: def,
-      traits,
-      eva,
-      critRes,
-      reflect,
-      lifeSteal,
-      ignoreEva,
-      isBoss
-    };
-  }
 
 function getDummyStats(realm: string, star: number) {
   const realms = Object.keys(REALM_SETTINGS);
@@ -396,7 +391,8 @@ interface GameState {
   updateTower: (dt: number) => void;
   tapTower: (bonusDmg?: number, isWeakness?: boolean) => void;
   selectTowerBuff: (buff: any) => void;
-  handleTowerEvent: (type: "REST" | "BUFF" | "DANGER") => void;
+  selectTowerArtifact: (art: any) => void;
+  handleTowerEvent: (type: "REST" | "BUFF" | "DANGER" | "MERCHANT") => void;
   leaveTower: () => void;
 }
 
@@ -2942,9 +2938,13 @@ export const useGameStore = create<GameState>((set, get) => ({
           hp: maxHp,
           maxHp: maxHp,
           activeBuffs: [],
+          artifacts: [],
+          combo: 0,
+          lastTapTime: 0,
           enemy: enemy,
           eventRoom: null,
           pendingBuffChoices: null,
+          pendingArtifactChoices: null,
           startTime: Date.now()
         }
       }
@@ -2971,17 +2971,23 @@ export const useGameStore = create<GameState>((set, get) => ({
   tapTower: (bonusDmg?: number, isWeakness?: boolean) => {
     const { game } = get();
     const tower = game.tower;
-    if (!tower.isInside || !tower.enemy || tower.eventRoom || tower.pendingBuffChoices) return;
+    if (!tower.isInside || !tower.enemy || tower.eventRoom || tower.pendingBuffChoices || tower.pendingArtifactChoices) return;
 
     set((s: any) => {
       const t = s.game.tower;
       const enemy = t.enemy!;
+      const now = Date.now();
+      
+      // 콤보 로직 (1.5초 이내 탭 시 콤보 유지)
+      let nextCombo = (now - t.lastTapTime < 1500) ? t.combo + 1 : 1;
       
       let atk = get().getTotalAttack();
       let critRate = get().getTotalCritRate();
       let critDmg = get().getTotalCritDmg() / 100;
       let vamp = 0;
+      let mpRecover = 0;
 
+      // 1. 버프 효과 적용
       t.activeBuffs.forEach((b: any) => {
         if (b.bonus.atk) atk *= b.bonus.atk;
         if (b.bonus.critRate) critRate += b.bonus.critRate;
@@ -2989,13 +2995,23 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (b.penalty.atk) atk *= b.penalty.atk;
       });
 
+      // 2. 유물 효과 적용 (Artifacts)
+      let extraDmg = 0;
+      t.artifacts.forEach((art: any) => {
+        if (art.effect.type === "LIFE_STEAL") vamp += art.effect.value;
+        if (art.effect.type === "MP_RESTORE") mpRecover += art.effect.value;
+        if (art.effect.type === "COMBO_BOLT" && nextCombo % 10 === 0) {
+          extraDmg += atk * art.effect.value;
+        }
+      });
+
       if (Math.random() < (enemy.eva - (enemy.ignoreEva || 0)) / 100) {
-        return { game: { ...s.game, tower: { ...t, lastReward: "빗나감!" } } };
+        return { game: { ...s.game, tower: { ...t, lastTapTime: now, combo: nextCombo, lastReward: "빗나감!" } } };
       }
 
       const defenseMultiplier = 100 / (100 + enemy.def);
       let isCrit = Math.random() < (critRate - (enemy.critRes || 0)) / 100;
-      let damage = Math.floor(atk * defenseMultiplier * (isCrit ? critDmg : 1)) + (bonusDmg || 0);
+      let damage = Math.floor(atk * defenseMultiplier * (isCrit ? critDmg : 1)) + (bonusDmg || 0) + extraDmg;
       
       if (enemy.traits.includes("피해 상한")) {
         damage = Math.min(damage, enemy.maxHp * 0.1);
@@ -3003,6 +3019,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       let rivalHp = Math.max(0, enemy.hp - damage);
       let playerHp = t.hp;
+      let nextMp = Math.min(get().getTotalMp(), s.game.mp + (get().getTotalMp() * (mpRecover / 100)));
 
       if (vamp > 0) playerHp = Math.min(t.maxHp, playerHp + damage * (vamp / 100));
 
@@ -3018,29 +3035,58 @@ export const useGameStore = create<GameState>((set, get) => ({
         
         let event: any = null;
         let pendingBuffs: any = null;
+        let pendingArtifacts: any = null;
 
-        if (nextFloor % 5 === 0) {
+        // 보상 분기: 10층마다 유물, 5층마다 버프, 그 외 랜덤 이벤트
+        if (floor % 10 === 0) {
+          const luck = get().getTotalLuck();
+          const getWeight = (art: any) => {
+            if (art.tier === "LEGENDARY") return 5 + luck * 0.2;
+            if (art.tier === "RARE") return 30 + luck * 0.5;
+            return 100; 
+          };
+          const pool = [...TOWER_ARTIFACT_POOL];
+          const selected: any[] = [];
+          for (let i = 0; i < 3 && pool.length > 0; i++) {
+            const totalWeight = pool.reduce((sum, art) => sum + getWeight(art), 0);
+            let r = Math.random() * totalWeight;
+            let currentSum = 0;
+            for (let j = 0; j < pool.length; j++) {
+              currentSum += getWeight(pool[j]);
+              if (r <= currentSum) {
+                selected.push(pool[j]);
+                pool.splice(j, 1);
+                break;
+              }
+            }
+          }
+          pendingArtifacts = selected;
+        } else if (floor % 5 === 0) {
            const pool = [...TOWER_BUFF_POOL].sort(() => 0.5 - Math.random());
            pendingBuffs = pool.slice(0, 3);
-        } else if (Math.random() < 0.2) {
-           const rooms: ("REST" | "BUFF" | "DANGER")[] = ["REST", "BUFF", "DANGER"];
+        } else if (Math.random() < 0.25) {
+           const rooms: ("REST" | "BUFF" | "DANGER" | "MERCHANT")[] = ["REST", "BUFF", "DANGER", "MERCHANT"];
            event = rooms[Math.floor(Math.random() * rooms.length)];
         }
 
-        const nextEnemy = event || pendingBuffs ? null : generateTowerEnemy(nextFloor);
+        const nextEnemy = event || pendingBuffs || pendingArtifacts ? null : generateTowerEnemy(nextFloor);
         
         return {
           game: {
             ...s.game,
+            mp: nextMp,
             coins: s.game.coins + goldReward,
             tower: {
               ...t,
               currentFloor: nextFloor,
               highestFloor,
               hp: playerHp,
+              combo: 0,
+              lastTapTime: 0,
               enemy: nextEnemy,
               eventRoom: event,
               pendingBuffChoices: pendingBuffs,
+              pendingArtifactChoices: pendingArtifacts,
               lastReward: `제 ${floor}층 돌파! 금화 +${goldReward.toLocaleString()}`,
               lastClearFloor: floor
             }
@@ -3051,9 +3097,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         game: {
           ...s.game,
+          mp: nextMp,
           tower: {
             ...t,
             hp: playerHp,
+            combo: nextCombo,
+            lastTapTime: now,
             enemy: { ...enemy, hp: rivalHp }
           }
         }
@@ -3063,14 +3112,28 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   updateTower: (dt: number) => {
     const { game } = get();
-    if (!game.tower.isInside || !game.tower.enemy || game.tower.eventRoom || game.tower.pendingBuffChoices) return;
+    if (!game.tower.isInside || !game.tower.enemy || game.tower.eventRoom || game.tower.pendingBuffChoices || game.tower.pendingArtifactChoices) return;
 
     set((s: any) => {
       const t = s.game.tower;
       const enemy = t.enemy!;
+      const theme = getTowerTheme(t.currentFloor);
+      
+      // 실드 타이머 처리
+      const nextShieldTimer = Math.max(0, (t.shieldTimer || 0) - dt);
+
+      // 환경 대미지/효과 적용 (dt마다 누적)
+      let envDmg = 0;
+      if (theme.effect === "burn" && nextShieldTimer <= 0) envDmg = t.maxHp * 0.005 * dt; 
       
       const attackTimer = (s.towerAttackTimer || 0) + dt;
-      if (attackTimer < 1.5) return { towerAttackTimer: attackTimer };
+      if (attackTimer < 1.5) {
+        if (envDmg > 0) {
+           const nHp = Math.max(1, t.hp - envDmg); // 환경 대미지로는 죽지 않음
+           return { towerAttackTimer: attackTimer, game: { ...s.game, tower: { ...t, hp: nHp } } };
+        }
+        return { towerAttackTimer: attackTimer };
+      }
 
       let dmg = enemy.atk;
       const def = get().getTotalDefense();
@@ -3082,11 +3145,43 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (b.penalty.dmgTaken) finalDmg *= b.penalty.dmgTaken;
       });
 
+      // 실드 활성화 중이면 대미지 무효
+      if (nextShieldTimer > 0) finalDmg = 0;
+
+      // 실드 유물(황금 갑주) 트리거 체크
+      let triggerShield = false;
+      const shieldArt = t.artifacts.find((a: any) => a.effect.type === "SHIELD");
+      if (shieldArt && nextShieldTimer <= 0 && finalDmg > 0) {
+        if (Math.random() < (shieldArt.effect.chance || 10) / 100) {
+          triggerShield = true;
+        }
+      }
+      
+      const shieldDuration = triggerShield ? (shieldArt.effect.value + (def / 10000)) : nextShieldTimer;
+
       if (enemy.lifeSteal > 0) {
         enemy.hp = Math.min(enemy.maxHp, enemy.hp + finalDmg * (enemy.lifeSteal / 100));
       }
 
-      const nextHp = Math.max(0, t.hp - finalDmg);
+      let nextHp = Math.max(0, t.hp - finalDmg - envDmg);
+      let reward = t.lastReward;
+      if (triggerShield) reward = "황금 갑주의 기운이 보호막을 형성했습니다!";
+      
+      // 부활 유물(만년삼) 체크
+      if (nextHp <= 0) {
+        const artifact = t.artifacts.find((a: any) => a.effect.type === "INSTANT_HP");
+        if (artifact) {
+          nextHp = t.maxHp;
+          // 한 번 쓰면 제거? 혹은 쿨다운? 여기서는 층당 1회이므로 일단 artifacts에서 해당 층에서만 쓸 수 있게 flag 처리하거나...
+          // 여기서는 간단하게 artifacts에서 제거하는 것으로 구현 (소모품성 유물)
+          const nextArtifacts = t.artifacts.filter((a: any) => a.id !== artifact.id);
+          return {
+            towerAttackTimer: 0,
+            game: { ...s.game, tower: { ...t, hp: nextHp, artifacts: nextArtifacts, lastReward: "만년삼의 기운으로 부활했습니다!" } }
+          };
+        }
+      }
+
       const isDead = nextHp <= 0;
 
       return {
@@ -3096,9 +3191,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           tower: {
             ...t,
             hp: nextHp,
+            shieldTimer: shieldDuration,
             isInside: !isDead,
             enemy: isDead ? null : enemy,
-            lastReward: isDead ? "도전 종료 (사망)" : t.lastReward
+            lastReward: isDead ? "도전 종료 (사망)" : reward
           }
         }
       };
@@ -3123,11 +3219,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  handleTowerEvent: (type: "REST" | "BUFF" | "DANGER") => {
+  handleTowerEvent: (type: "REST" | "BUFF" | "DANGER" | "MERCHANT") => {
     set((s: any) => {
       const t = s.game.tower;
       let nextHp = t.hp;
       let nextReward = t.lastReward;
+      let nextCoins = s.game.coins;
 
       if (type === "REST") {
         nextHp = Math.min(t.maxHp, nextHp + t.maxHp * 0.3);
@@ -3137,18 +3234,41 @@ export const useGameStore = create<GameState>((set, get) => ({
       } else if (type === "DANGER") {
         nextHp = Math.max(1, nextHp - t.maxHp * 0.2);
         nextReward = "위험한 함정에 빠졌지만 기연을 얻었습니다.";
+      } else if (type === "MERCHANT") {
+        // 비밀 상인 조우 시 보상 (체력 풀 회복 등)
+        nextHp = t.maxHp;
+        nextReward = "비밀 상인을 만나 비약을 마시고 체력을 모두 회복했습니다.";
       }
 
       const nextEnemy = generateTowerEnemy(t.currentFloor);
       return {
         game: {
           ...s.game,
+          coins: nextCoins,
           tower: {
             ...t,
             hp: nextHp,
             eventRoom: null,
             enemy: nextEnemy,
             lastReward: nextReward
+          }
+        }
+      };
+    });
+  },
+
+  selectTowerArtifact: (art: any) => {
+    set((s: any) => {
+      const t = s.game.tower;
+      const nextEnemy = generateTowerEnemy(t.currentFloor);
+      return {
+        game: {
+          ...s.game,
+          tower: {
+            ...t,
+            artifacts: [...t.artifacts, art],
+            pendingArtifactChoices: null,
+            enemy: nextEnemy
           }
         }
       };
