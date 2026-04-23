@@ -20,6 +20,32 @@ export default function UpgradePanel() {
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [multiplier, setMultiplier] = useState<number>(1);
   const [activeDesc, setActiveDesc] = useState<{ id: string; name: string; text: string } | null>(null);
+  const touchStartX = useMemo(() => ({ current: null as number | null }), []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    const threshold = 60;
+
+    if (Math.abs(diff) > threshold) {
+      e.stopPropagation(); // Prevent bubbling to GameShell
+      const tabs: TabType[] = ['basic', 'technique', 'mastery'];
+      const currentIndex = tabs.indexOf(activeTab);
+      if (diff > 0) {
+        // Swipe Left -> Next
+        setActiveTab(tabs[(currentIndex + 1) % tabs.length]);
+      } else {
+        // Swipe Right -> Prev
+        setActiveTab(tabs[(currentIndex - 1 + tabs.length) % tabs.length]);
+      }
+    }
+    touchStartX.current = null;
+  };
 
   if (!game) return null;
 
@@ -113,7 +139,11 @@ export default function UpgradePanel() {
   };
 
   return (
-    <section style={containerStyle}>
+    <section 
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={containerStyle}
+    >
       {/* Description Overlay (Restored) */}
       {activeDesc && (
         <div

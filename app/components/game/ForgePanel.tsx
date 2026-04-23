@@ -79,6 +79,41 @@ export default function ForgePanel(props: Props) {
   const [selectedEnhanceItem, setSelectedEnhanceItem] = useState<WeaponId | null>(null);
   const [enhanceResult, setEnhanceResult] = useState<{ success: boolean; message: string } | null>(null);
   const [purchaseEffect, setPurchaseEffect] = useState<{ name: string; icon: string } | null>(null);
+  const touchStartX = useMemo(() => ({ current: null as number | null }), []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    const threshold = 60;
+
+    if (Math.abs(diff) > threshold && activeTab === "craft") {
+      e.stopPropagation(); // Prevent bubbling to GameShell
+      const currentIndex = FORGE_REALM_LIST.indexOf(selectedRealm);
+      if (diff > 0) {
+        // Swipe Left -> Next Realm
+        let nextIndex = (currentIndex + 1) % FORGE_REALM_LIST.length;
+        // Skip locked realms
+        while (nextIndex !== currentIndex && !canAccessRealm(FORGE_REALM_LIST[nextIndex])) {
+          nextIndex = (nextIndex + 1) % FORGE_REALM_LIST.length;
+        }
+        setSelectedRealm(FORGE_REALM_LIST[nextIndex]);
+      } else {
+        // Swipe Right -> Prev Realm
+        let prevIndex = (currentIndex - 1 + FORGE_REALM_LIST.length) % FORGE_REALM_LIST.length;
+        // Skip locked realms
+        while (prevIndex !== currentIndex && !canAccessRealm(FORGE_REALM_LIST[prevIndex])) {
+          prevIndex = (prevIndex - 1 + FORGE_REALM_LIST.length) % FORGE_REALM_LIST.length;
+        }
+        setSelectedRealm(FORGE_REALM_LIST[prevIndex]);
+      }
+    }
+    touchStartX.current = null;
+  };
 
   const filteredItems = useMemo(() => {
     return FORGE_ITEMS.filter(item => item.realm === selectedRealm);
@@ -149,6 +184,8 @@ export default function ForgePanel(props: Props) {
 
   return (
     <section
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{
         border: "1px solid rgba(255,215,120,0.18)",
         borderRadius: 20,

@@ -1462,8 +1462,8 @@ export default function InnPanel({
     else if (currentStage <= 10) baseSpeedFactor = 11.7;
     else baseSpeedFactor = 7.2 + currentStage * 0.54;
 
-    // 가속도 상향 및 전체 속도 배율 상향 (1.8배 수준)
-    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 1.1)) * 1.5;
+    // 가속도 상향 및 전체 속도 배율 상향 (2배 수준 상향 적용)
+    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 1.1)) * 3.0;
     const moved = pulseTargetsRef.current.map(t => ({
       ...t,
       progress: t.progress + speedFactor * dt * 1.5

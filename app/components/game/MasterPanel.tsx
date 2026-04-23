@@ -42,6 +42,25 @@ const POTION_UI: Record<string, PotionData> = {
   oil_blessed: { name: "축복의 기름", emoji: "🧴", color: "#ffd700" },
 };
 
+const BACK_IMAGES: Record<string, string> = {
+  "화산파": "/images/char_hwasan_back.png",
+  "소림": "/images/char_shaolin_back.png",
+  "무당": "/images/char_wudang_back.png",
+  "개방": "/images/char_gaebang_back.png",
+  "청성파": "/images/char_cheongseong_back.png",
+  "점창파": "/images/char_jeomchang_back.png",
+  "공동파": "/images/char_gongdong_back.png",
+  "아미파": "/images/char_emei_back.png",
+  "곤륜파": "/images/char_kunlun_back.png",
+  "남궁세가": "/images/char_namgung_back.png",
+  "제갈세가": "/images/char_zhuge_back.png",
+  "사마세가": "/images/char_sama_back.png",
+  "하북팽가": "/images/char_paeng_back.png",
+  "사천당가": "/images/char_dang_back.png",
+  "일월신교": "/images/char_sunmoon_back.png",
+  "천마신교": "/images/char_heavenly_back.png",
+};
+
 const BOX_ANIM_CSS = `
   @keyframes boxTilt {
     0% { transform: rotate(0deg) scale(1); }
@@ -177,21 +196,52 @@ const BOX_ANIM_CSS = `
     position: relative;
     z-index: 1;
   }
-  @keyframes explosionScale {
-    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; filter: blur(0px) brightness(2); }
-    50% { transform: translate(-50%, -50%) scale(5); opacity: 0.8; filter: blur(20px) brightness(1.5); }
-    100% { transform: translate(-50%, -50%) scale(10); opacity: 0; filter: blur(50px) brightness(1); }
-  }
+
   @keyframes dustDrift {
     0% { transform: translate(0, 0) scale(1); opacity: 0; }
     20% { opacity: 0.4; }
     100% { transform: translate(var(--tx), var(--ty)) scale(2); opacity: 0; }
   }
+  @keyframes sootRise {
+    0% { transform: translateY(40px) scale(1); opacity: 0; }
+    50% { transform: translateY(-20px) scale(1.3); opacity: 0.4; }
+    100% { transform: translateY(-150px) scale(1.6); opacity: 0; }
+  }
+  @keyframes bloodMistRise {
+    0% { transform: translateY(40px) scale(1); opacity: 0; }
+    50% { transform: translateY(-30px) scale(1.2); opacity: 0.3; }
+    100% { transform: translateY(-120px) scale(1.5); opacity: 0; }
+  }
   @keyframes countdownPop {
-    0% { transform: translate(-50%, -50%) scale(3); opacity: 0; filter: blur(10px); }
-    20% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: blur(0px); }
+    0% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     80% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; filter: blur(5px); }
+    100% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  }
+  @keyframes bloodSplatter {
+    0% { transform: scale(0.5) rotate(0deg); opacity: 0; filter: blur(5px); }
+    20% { transform: scale(1.2) rotate(10deg); opacity: 0.8; filter: blur(2px); }
+    100% { transform: scale(1.4) rotate(20deg); opacity: 0; filter: blur(15px); }
+  }
+  @keyframes bloodDrop {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    30% { transform: translate(calc(-50% + var(--tx) * 0.8), calc(-50% + var(--ty) * 0.8)) scale(1.3); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty) + 50px)) scale(0.7); opacity: 0; }
+  }
+  @keyframes bloodStainFade {
+    0% { opacity: 0; transform: scale(0.8); }
+    15% { opacity: 0.5; transform: scale(1); }
+    85% { opacity: 0.3; }
+    100% { opacity: 0; transform: scale(1.1); }
+  }
+  @keyframes bloodSplatter {
+    0% { transform: scale(0.8) rotate(0deg); opacity: 0; filter: blur(5px); }
+    20% { transform: scale(1.2) rotate(15deg); opacity: 1; filter: blur(0); }
+    100% { transform: scale(1.5) rotate(30deg); opacity: 0; filter: blur(10px); }
+  }
+  @keyframes bloodDrop {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
   }
 `;
 
@@ -226,7 +276,7 @@ export default function MasterPanel() {
           setTimeout(() => {
             setShowCountdown(false);
             startMasterDuel();
-          }, 800);
+          }, 1500); // Increased for realistic blood persistence
           return 0;
         }
         return prev - 1;
@@ -358,8 +408,9 @@ export default function MasterPanel() {
       const dt = (time - lastTickRef.current) / 1000;
       if (!isNaN(dt) && dt > 0) {
         const cappedDt = Math.min(dt, 0.1);
+        // Explicitly calling the store's update functions
         store.updateMasterDuel(cappedDt);
-        store.updateBuffs(cappedDt);
+        if (store.updateBuffs) store.updateBuffs(cappedDt);
       }
     }
 
@@ -569,7 +620,7 @@ export default function MasterPanel() {
       {!masterDuel.isPlaying && (
         <div className="master-lobby" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{
-            height: 330, display: "flex", alignItems: "center", justifyContent: "center",
+            height: 370, display: "flex", alignItems: "center", justifyContent: "center",
             background: "linear-gradient(135deg, #1a0a0a 0%, #000 100%)",
             border: "1px solid #331111", borderRadius: 16, margin: "0 0 10px",
             position: "relative", overflow: "hidden",
@@ -593,7 +644,7 @@ export default function MasterPanel() {
               height: "220%", 
               width: "auto", 
               objectFit: "contain",
-              objectPosition: "center 111%",
+              objectPosition: "center 92%",
               zIndex: 2,
               filter: "drop-shadow(0 10px 30px rgba(0,0,0,0.8))",
               animation: "bossFlutter 5s ease-in-out infinite"
@@ -629,11 +680,24 @@ export default function MasterPanel() {
           <div style={{
             position: "absolute", inset: "-10%",
             backgroundImage: "url('/bg-master-vibrant.png')", backgroundSize: "cover",
-            opacity: 0.4, animation: "duelBgPan 20s linear infinite"
+            opacity: 0.4, animation: "duelBgPan 60s linear infinite"
           }} />
 
+          {/* Rival HP Bar Overlay (Now relative to screen top) */}
+          <div style={{
+            position: "absolute", top: "35px", left: "50%", transform: "translateX(-50%)",
+            width: "80%", maxWidth: 400, zIndex: 300
+          }}>
+            <div style={{ height: 24, background: "#1a0505", borderRadius: 2, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000" }}>
+              <div
+                style={{ width: `${hpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s", borderRadius: 0 }}
+                className={hpPercent < 30 ? "hp-low" : ""}
+              />
+            </div>
+          </div>
+
           {/* Timer - Top Center */}
-          <div style={{ position: "relative", zIndex: 20, paddingTop: 40, textAlign: "center" }}>
+          <div style={{ position: "relative", zIndex: 20, paddingTop: 60, textAlign: "center" }}>
             <div style={{ fontSize: 42, fontWeight: 950, color: "#ffd700", textShadow: "0 0 20px #000, 0 0 10px #ffd700" }}>
               {Math.ceil(masterDuel.timeLeft)}s
             </div>
@@ -642,9 +706,9 @@ export default function MasterPanel() {
 
           <div style={{ flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "flex-end", overflow: "hidden" }} onClick={handleTap}>
             {/* Rival Upper Body (Large & Intimidating) */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 5 }}>
+            <div style={{ position: "absolute", top: "2vh", left: "25%", right: "-25%", display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 5 }}>
               <div style={{
-                position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)",
+                position: "absolute", top: "25%", left: "50%", transform: "translateX(-50%)",
                 width: 300, height: 100, background: "radial-gradient(ellipse, rgba(255,0,0,0.6) 0%, transparent 80%)",
                 filter: "blur(20px)", animation: "glowBoss 2s infinite"
               }} />
@@ -659,8 +723,8 @@ export default function MasterPanel() {
                 return "/images/villain_blood.png";
               })()}
                 style={{
-                  height: "85vh", // Very large
-                  width: "120%",
+                  height: "60vh", // Enlarged for cinematic focus
+                  width: "90%",
                   objectFit: "contain",
                   objectPosition: "top",
                   filter: masterDuel.isBerserk ? "brightness(1.5) sepia(0.3) hue-rotate(-30deg)" : "none",
@@ -668,25 +732,16 @@ export default function MasterPanel() {
                 }} />
             </div>
 
-            {/* Rival HP Bar Overlay */}
-            <div style={{
-              position: "absolute", top: "25%", left: "50%", transform: "translateX(-50%)",
-              width: "80%", maxWidth: 400, zIndex: 30
-            }}>
-              <div style={{ height: 14, background: "#1a0505", borderRadius: 7, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000" }}>
-                <div
-                  style={{ width: `${hpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s" }}
-                  className={hpPercent < 30 ? "hp-low" : ""}
-                />
-              </div>
-            </div>
+            {/* Moved Rival HP Bar outside for absolute positioning from screen top */}
 
             {/* Player Side */}
-            <div style={{ position: "absolute", left: "10%", bottom: "15%", zIndex: 50 }}>
+            <div style={{ position: "absolute", left: "-15%", bottom: "-60%", zIndex: 50 }}>
               <img
-                src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
+                src={(game.faction && BACK_IMAGES[game.faction]) || FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
                 style={{
-                  height: 180,
+                  height: 850, // Massive focus
+                  width: "auto",
+                  objectFit: "contain",
                   animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
                   filter: isPlayerHit
                     ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))"
@@ -698,7 +753,7 @@ export default function MasterPanel() {
               )}
 
               {/* Player HP/MP Bars in Combat */}
-              <div style={{ position: "absolute", bottom: 190, left: "50%", transform: "translateX(-50%)", width: 130 }}>
+              <div style={{ position: "absolute", bottom: 580, left: "50%", transform: "translateX(-50%)", width: 130 }}>
                 <div style={{ height: 12, background: "#221111", borderRadius: 6, border: "1px solid #442222", overflow: "hidden", marginBottom: 4 }}>
                   <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)" }} />
                 </div>
@@ -708,54 +763,55 @@ export default function MasterPanel() {
               </div>
             </div>
 
-            {/* Skills & Potions (Combat HUD) */}
+            {/* Vertical Potions HUD (Left Side) */}
             <div style={{
-              position: "absolute", bottom: 20, left: 0, right: 0,
-              display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, zIndex: 100,
-              padding: "0 10px"
+              position: "absolute", left: 25, top: "62%", transform: "translateY(-50%)",
+              display: "flex", flexDirection: "column", gap: 8, zIndex: 110
             }}>
-              {/* Potions */}
-              <div style={{ display: "flex", gap: 6 }}>
-                {game.quickSlots.map((id, idx) => {
-                  const qty = id ? (game.consumables[id] || 0) : 0;
-                  const data = id ? POTION_UI[id] : null;
-                  return (
-                    <div key={idx} onClick={() => id && useConsumable(id)} style={{
-                      width: 55, height: 55, background: "rgba(0,0,0,0.8)", border: id ? "2px solid #ffd700" : "2px dashed #444", borderRadius: 12,
-                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative"
-                    }}>
-                      {data && (
-                        <>
-                          <div style={{ fontSize: 20 }}>{data.emoji}</div>
-                          <div style={{ position: "absolute", bottom: 2, right: 2, background: "#ffd700", color: "#000", fontSize: 10, padding: "0 4px", borderRadius: 4, fontWeight: 900 }}>{qty}</div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              {game.quickSlots.map((id, idx) => {
+                const qty = id ? (game.consumables[id] || 0) : 0;
+                const data = id ? POTION_UI[id] : null;
+                return (
+                  <div key={idx} onClick={(e) => { e.stopPropagation(); if (id) useConsumable(id); }} style={{
+                    width: 50, height: 50, background: "rgba(0,0,0,0.85)", border: id ? "2px solid #ffd700" : "1px dashed #444", borderRadius: 12,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative",
+                    boxShadow: id ? "0 0 10px rgba(255,215,0,0.2)" : "none"
+                  }}>
+                    {data && (
+                      <>
+                        <div style={{ fontSize: 18 }}>{data.emoji}</div>
+                        <div style={{ position: "absolute", bottom: -2, right: -2, background: "#ffd700", color: "#000", fontSize: 9, padding: "0 4px", borderRadius: 4, fontWeight: 950 }}>{qty}</div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
-              {/* Skills */}
-              <div style={{ display: "flex", gap: 6 }}>
-                {[0, 1, 2].map(idx => {
-                  const skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
-                  const cd = skill ? (game.skillCooldowns[skill.name] || 0) : 0;
-                  const canUse = skill && game.mp >= (skill.mpCost || 10) && cd <= 0;
-                  return (
-                    <div key={idx} onClick={(e) => { e.stopPropagation(); if (canUse && skill) executeSkill(skill); }} style={{
-                      width: 55, height: 55, background: canUse ? "linear-gradient(135deg, #4d3300, #2a1b00)" : "rgba(0,0,0,0.8)",
-                      border: skill ? "2px solid #ffd700" : "2px dashed #444", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative"
-                    }}>
-                      {skill ? (
-                        <>
-                          <div style={{ fontSize: 22 }}>{idx === 0 ? "🔥" : idx === 1 ? "⚡" : "✨"}</div>
-                          {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 900 }}>{Math.ceil(cd)}</div>}
-                        </>
-                      ) : <div style={{ color: "#444" }}>+</div>}
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Bottom Combat HUD (Skills Only) */}
+            <div style={{
+              position: "absolute", bottom: 25, left: "50%", transform: "translateX(-50%)",
+              display: "flex", gap: 10, zIndex: 100
+            }}>
+              {[0, 1, 2].map(idx => {
+                const skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
+                const cd = skill ? (game.skillCooldowns[skill.name] || 0) : 0;
+                const canUse = skill && game.mp >= (skill.mpCost || 10) && cd <= 0;
+                return (
+                  <div key={idx} onClick={(e) => { e.stopPropagation(); if (canUse && skill) executeSkill(skill); }} style={{
+                    width: 60, height: 60, background: canUse ? "linear-gradient(135deg, #4d3300, #2a1b00)" : "rgba(0,0,0,0.8)",
+                    border: skill ? "2px solid #ffd700" : "1px dashed #444", borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+                    boxShadow: canUse ? "0 0 15px rgba(255,215,0,0.3)" : "none"
+                  }}>
+                    {skill ? (
+                      <>
+                        <div style={{ fontSize: 24 }}>{idx === 0 ? "🔥" : idx === 1 ? "⚡" : "✨"}</div>
+                        {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 900, borderRadius: 13 }}>{Math.ceil(cd)}</div>}
+                      </>
+                    ) : <div style={{ color: "#444" }}>+</div>}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Damage Texts */}
@@ -943,48 +999,89 @@ export default function MasterPanel() {
       {showCountdown && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 20000,
-          background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "flex-end", justifyContent: "flex-end", 
+          paddingRight: "30%", paddingBottom: "45%",
           overflow: "hidden", pointerEvents: "none"
         }}>
-          {/* Explosion Effect */}
-          {countdownValue === 3 && (
-            <div style={{
-              position: "absolute", top: "50%", left: "50%", width: 100, height: 100,
-              background: "radial-gradient(circle, #fff, #ffd700, #ff4400, transparent)",
-              borderRadius: "50%", animation: "explosionScale 1s forwards", zIndex: 20002
-            }} />
-          )}
-
-          {/* Dust/Fog Particles */}
-          {Array.from({ length: 20 }).map((_, i) => (
+          {/* 10x Intensity Dust/Fog/Soot Particles */}
+          {Array.from({ length: 200 }).map((_, i) => (
             <div key={i} style={{
-              position: "absolute", top: "50%", left: "50%",
-              width: 10 + Math.random() * 40, height: 10 + Math.random() * 40,
-              background: "rgba(200,200,200,0.3)", borderRadius: "50%",
-              filter: "blur(10px)",
-              animation: `dustDrift ${1 + Math.random() * 2}s infinite`,
-              "--tx": `${(Math.random() - 0.5) * 800}px`,
-              "--ty": `${(Math.random() - 0.5) * 800}px`
-            } as any} />
+              position: "absolute", 
+              bottom: "-10%", 
+              left: `${Math.random() * 120 - 10}%`,
+              width: 20 + Math.random() * 80, height: 20 + Math.random() * 80,
+              background: i % 3 === 0 ? "rgba(50, 50, 50, 0.4)" : (i % 3 === 1 ? "rgba(200, 200, 200, 0.2)" : "rgba(180, 0, 0, 0.15)"),
+              borderRadius: "50%",
+              filter: "blur(20px)",
+              animation: `${i % 2 === 0 ? "sootRise" : "bloodMistRise"} ${2 + Math.random() * 3}s infinite`,
+              animationDelay: `${Math.random() * 2}s`,
+              zIndex: 20001
+            }} />
           ))}
 
           {/* Big Countdown Text */}
           <div key={countdownValue} style={{
-            fontSize: 180, fontWeight: 950, color: "#fff",
-            textShadow: "0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(255,0,0,0.5)",
+            fontSize: 180, fontWeight: 950, color: "#ffd700",
+            textShadow: "0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(0,0,0,0.8)",
             animation: "countdownPop 1s forwards", zIndex: 20005,
             fontStyle: "italic"
           }}>
-            {countdownValue > 0 ? countdownValue : "⚔️"}
+            {countdownValue > 0 ? countdownValue : ""}
           </div>
 
-          {/* Screen Flash on Explosion */}
-          {countdownValue === 3 && (
+          {/* Real Blood Splatter Effect at 0 */}
+          {countdownValue === 0 && (
             <div style={{
-              position: "absolute", inset: 0, background: "#fff",
-              animation: "itemAppear 0.3s reverse forwards", zIndex: 20010
-            }} />
+              position: "absolute", top: "50%", left: "50%", 
+              width: 500, height: 500, transform: "translate(-50%, -50%)",
+              zIndex: 20010, pointerEvents: "none"
+            }}>
+              {/* Lingering Stains */}
+              {[...Array(5)].map((_, i) => (
+                <div key={`stain-${i}`} style={{
+                  position: "absolute",
+                  top: `${40 + Math.random() * 20}%`,
+                  left: `${40 + Math.random() * 20}%`,
+                  width: 100 + Math.random() * 150, height: 80 + Math.random() * 100,
+                  background: "rgba(120, 0, 0, 0.4)",
+                  borderRadius: "50%",
+                  filter: "blur(30px)",
+                  transform: `rotate(${Math.random() * 360}deg)`,
+                  animation: "bloodStainFade 1.5s ease-out forwards"
+                }} />
+              ))}
+
+              {/* Dynamic Droplets (60 Particles) */}
+              {[...Array(60)].map((_, i) => {
+                const angle = (i / 60) * Math.PI * 2 + (Math.random() * 0.5);
+                const dist = 80 + Math.random() * 250;
+                const tx = Math.cos(angle) * dist;
+                const ty = Math.sin(angle) * dist;
+                return (
+                  <div key={i} style={{
+                    position: "absolute", top: "50%", left: "50%",
+                    width: 5 + Math.random() * 15, height: 5 + Math.random() * 15,
+                    background: i % 5 === 0 ? "#660000" : (i % 2 === 0 ? "#990000" : "#cc0000"),
+                    borderRadius: i % 3 === 0 ? "40% 60% 70% 30%" : "50%",
+                    filter: "blur(1px)",
+                    transform: "translate(-50%, -50%)",
+                    // @ts-ignore
+                    "--tx": `${tx}px`, "--ty": `${ty}px`,
+                    animation: `bloodDrop ${0.8 + Math.random() * 0.7}s ease-out forwards`
+                  }} />
+                );
+              })}
+              
+              {/* Central Splash */}
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "radial-gradient(circle, rgba(120,0,0,0.5) 0%, transparent 60%)",
+                animation: "bloodSplatter 0.6s ease-out forwards"
+              }} />
+            </div>
           )}
+
+
         </div>
       )}
 
