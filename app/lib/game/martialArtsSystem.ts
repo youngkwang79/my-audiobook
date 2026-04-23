@@ -167,11 +167,11 @@ function inferGrade(order: number, skillType: "martial" | "movement"): SkillGrad
     return "rare";
   }
 
-  if (order <= 1) return "common";
-  if (order <= 3) return "rare";
-  if (order <= 6) return "epic";
-  if (order <= 9) return "legendary";
-  return "mythic";
+  if (order <= 0) return "common";    // 필부
+  if (order <= 2) return "rare";      // 삼류, 이류
+  if (order <= 4) return "epic";      // 일류, 절정
+  if (order <= 7) return "legendary"; // 초절정 ~ 현경
+  return "mythic";                    // 생사경 이상
 }
 
 function buildDescription(

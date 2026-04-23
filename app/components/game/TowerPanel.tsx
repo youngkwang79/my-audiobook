@@ -53,12 +53,17 @@ export default function TowerPanel() {
     <div className="relative h-full w-full overflow-hidden flex flex-col">
       {/* Background with Tower Atmosphere */}
       <div className="absolute inset-0 bg-[#0f172a] overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/dark-stone.png')]" />
+        <div 
+          className="absolute top-0 left-0 w-full h-full opacity-40 bg-cover bg-center" 
+          style={{ backgroundImage: "url('/images/tower_bg.png')" }}
+        />
+        {/* Dark Vignette Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80" />
         {/* Dynamic Fog/Aura */}
         <motion.div 
-          animate={{ opacity: [0.1, 0.3, 0.1] }}
-          transition={{ duration: 5, repeat: Infinity }}
-          className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-red-900/30 to-transparent" 
+          animate={{ opacity: [0.1, 0.4, 0.1] }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-blue-900/20 to-transparent" 
         />
       </div>
 

@@ -1,4 +1,5 @@
 import type { CoinItem, EquippedGear, GameSaveData } from "./types";
+import { REALM_ORDER } from "./useGameStore";
 
 const defaultEquippedGear: EquippedGear = {
   mainWeapon: null,
