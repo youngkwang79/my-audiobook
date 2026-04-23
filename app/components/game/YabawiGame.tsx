@@ -148,7 +148,11 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-[#8a6d3b] shadow-[0_0_50px_rgba(0,0,0,1)] relative w-[95%] max-w-[420px] mx-auto overflow-hidden font-sans">
+    <div 
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+      className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-[#8a6d3b] shadow-[0_0_50px_rgba(0,0,0,1)] relative w-[95%] max-w-[420px] mx-auto overflow-hidden font-sans"
+    >
       
       <div 
         style={{
@@ -192,24 +196,35 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
         )}
       </div>
 
-      <div className="relative w-full h-[160px] flex justify-center items-end pb-4 perspective-[800px] mb-3">
-        <div className="absolute bottom-2 w-full h-16 bg-[#2c1810] rounded-[40%] blur-xl opacity-60 z-0" />
+      <div className="relative w-full h-[160px] flex justify-center items-end pb-4 perspective-[1000px] mb-3 overflow-hidden">
+        <div className="absolute bottom-2 w-full h-16 bg-[#2c1810] rounded-[40%] blur-xl opacity-40 z-0" />
         
-        <motion.div layout className="flex gap-6 relative z-10 w-full justify-center px-4">
+        <div className="relative z-10 w-full h-full flex justify-center items-end">
           {cups.map((cupId, index) => {
             const isPreviewing = gameState === "preview" && cupId === ballPosition;
             const isRevealing = (gameState === "revealing" || gameState === "victory") && index === selectedCup;
             const hasBall = cupId === ballPosition;
+            
+            // 좌표 기반 이동 (GPU 가속 활용)
+            // index 0: -80px, index 1: 0px, index 2: 80px
+            const targetX = (index - 1) * 90;
 
             return (
               <motion.div 
                 key={cupId} 
-                layout 
+                animate={{ 
+                  x: targetX,
+                  y: (isPreviewing || isRevealing) ? -60 : 0,
+                  rotateX: (isPreviewing || isRevealing) ? -10 : 0
+                }}
                 transition={{ 
-                  layout: { type: "spring", stiffness: 220, damping: 24 },
-                  y: { type: "spring", stiffness: 300, damping: 30 }
+                  type: "spring", 
+                  stiffness: 260, 
+                  damping: 25,
+                  mass: 0.8
                 }} 
-                className="relative w-16 h-22 cursor-pointer group" 
+                className="absolute bottom-4 w-16 h-22 cursor-pointer" 
+                style={{ willChange: "transform" }}
                 onClick={() => handleCupClick(index)}
               >
                 <AnimatePresence>
@@ -220,38 +235,32 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
                       exit={{ opacity: 0 }} 
                       className="absolute bottom-1 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full z-0" 
                       style={{ 
-                        background: "radial-gradient(circle at 35% 35%, #fff, #a8ff7e 20%, #20bf55)", 
-                        boxShadow: "0 0 15px #a8ff7e, inset -1px -1px 5px rgba(0,0,0,0.5)" 
+                        background: "radial-gradient(circle at 35% 35%, #fff, #20bf55)", 
+                        boxShadow: "0 0 10px #a8ff7e",
+                        willChange: "transform, opacity"
                       }} 
                     />
                   )}
                 </AnimatePresence>
 
-                <motion.div 
-                  animate={{ 
-                    y: (isPreviewing || isRevealing) ? -70 : 0, 
-                    rotateX: (isPreviewing || isRevealing) ? -15 : 0,
-                    rotateY: (isPreviewing || isRevealing) ? (index === 0 ? 10 : index === 2 ? -10 : 0) : 0
-                  }} 
-                  className="absolute inset-0 z-10"
-                >
+                <div className="relative w-full h-full">
                   <div 
                     style={{
                       width: "100%",
                       height: "100%",
-                      background: "linear-gradient(to right, #4a2c1a, #6d4127 20%, #8b5a3e 50%, #6d4127 80%, #4a2c1a)",
+                      background: "linear-gradient(to right, #4a2c1a, #8b5a3e, #4a2c1a)",
                       clipPath: "polygon(0% 0%, 100% 0%, 85% 100%, 15% 100%)",
-                      borderRadius: "0 0 10px 10px",
+                      borderRadius: "0 0 8px 8px",
                       borderTop: "2px solid #ffd700",
-                      boxShadow: "inset 0 8px 15px rgba(0,0,0,0.6), 0 10px 20px rgba(0,0,0,0.8)"
+                      boxShadow: "0 5px 10px rgba(0,0,0,0.5)"
                     }}
                   />
-                  <div className="absolute -top-1 left-0 w-full h-3 bg-gradient-to-b from-[#ffd700] to-[#b8860b] rounded-[100%] shadow-md z-20" />
-                </motion.div>
+                  <div className="absolute -top-1 left-0 w-full h-2.5 bg-[#ffd700] rounded-[100%] shadow-md z-20" />
+                </div>
               </motion.div>
             );
           })}
-        </motion.div>
+        </div>
       </div>
 
       {gameState === "victory" && (

@@ -374,7 +374,7 @@ interface GameState {
   triggerUltimate: () => void;
   buyBossShopItem: (itemType: string) => void;
   parryBossAttack: () => void;
-  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => void;
+  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => { totalDamage: number; isCrit: boolean; effect: any; };
   restoreMp: (amount: number) => void;
   getSetCounts: () => Record<string, number>;
   openPaewangBox: () => { success: boolean; item?: OwnedWeapon; message?: string };
@@ -1538,7 +1538,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const masterDuel = s.game.masterDuel;
     const faction = s.game.faction;
     let fState = { ...(masterDuel.factionState || {}) };
-    const regenAccumulator = s.game.regenAccumulator || 0;
     
     // 스턴 타이머 처리
     let nextStunTimer = Math.max(0, (masterDuel.stunTimer || 0) - dt);
@@ -1551,13 +1550,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     const tLeft = Math.max(0, masterDuel.timeLeft - dt); 
     
-    // 스킬 효과 타이머 처리
-    let nextSkillEffect = masterDuel.skillEffect;
-    if (nextSkillEffect) {
-      const nextTime = nextSkillEffect.timeLeft - dt;
-      if (nextTime <= 0) nextSkillEffect = null;
-      else nextSkillEffect = { ...nextSkillEffect, timeLeft: nextTime };
-    }
+    // 30초 광폭화 체크
+    const duelDuration = 40 - tLeft; 
+    const isBerserk = duelDuration >= 30;
+    const berserkAtkMult = isBerserk ? 1.5 : 1.0;
+    const berserkSpeedMult = isBerserk ? 1.3 : 1.0;
+    
+    const rivalAtk = masterDuel.rivalAtk * berserkAtkMult;
+    const rivalSpeed = 1.0 * berserkSpeedMult;
+    const attackInterval = 1 / rivalSpeed;
 
     // 시간 초과 패배 처리
     if (tLeft <= 0) { 
@@ -1571,115 +1572,40 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let nextHp = s.game.hp; 
     let nextMp = s.game.mp;
-    const maxHp = get().getTotalHp();
-    const hpRatio = nextHp / maxHp;
-
-    // 개방: 체력이 낮을수록 회피율 증가 (최대 4%)
-    let dynamicEvasion = get().getTotalEvasion();
-    if (faction === "개방") {
-      dynamicEvasion += (1 - hpRatio) * 4;
-    }
-    // 아미파: 피격 시 회피율 상승 (버프 타이머 처리)
-    if (fState.evasionBuffTimer > 0) {
-      fState.evasionBuffTimer -= dt;
-      dynamicEvasion += fState.evasionBuff || 0;
-      if (fState.evasionBuffTimer <= 0) fState.evasionBuff = 0;
-    }
-
-    // 광폭화 상태 확인
-    const isBerserk = tLeft <= 10;
-    const berserkMult = masterDuel.isBoss ? DUEL_BALANCING.BOSS_BERSERK : DUEL_BALANCING.NORMAL_BERSERK;
-    const spdFactor = isBerserk ? berserkMult.spd : 1.0;
-    let atkTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt * spdFactor); 
-    let chargeT = (masterDuel.chargeTimer || 0) + (isTargetPaused ? 0 : dt * spdFactor);
-    
     let dmgAccum = 0;
     let effect = masterDuel.lastEffect;
 
-    // 사천당가 도트딜 및 디버프 타이머 처리 (1초 주기)
-    if (regenAccumulator >= 1.0) {
-      // 사천당가: 중독 도트딜
-      if (faction === "사천당가" && fState.poisonStack > 0) {
-        const poisonDmg = get().getTotalAttack() * 0.1 * fState.poisonStack;
-        rivalHp = Math.max(0, rivalHp - poisonDmg);
-      }
-      // 일반 출혈 디버프
-      if (masterDuel.rivalDebuffs?.bleed) {
-        rivalHp = Math.max(0, rivalHp - masterDuel.rivalMaxHp * 0.02);
-      }
-    }
-
-    // 공격 로직 (강격 또는 기본 공격)
-    const isSpecial = chargeT >= 6.0;
-    const isBasic = !isSpecial && atkTimer >= 1.2;
-
-    if ((isSpecial || isBasic) && !isTargetPaused) {
-      if (isSpecial) chargeT = 0; else atkTimer = 0;
-
+    // 적 공격 타이머 처리
+    let nextRivalTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt * rivalSpeed);
+    
+    if (!isTargetPaused && nextRivalTimer >= 1.0) {
+      nextRivalTimer = 0;
+      
       // 1. 회피 판정
-      if (Math.random() < dynamicEvasion / 100) {
-        dmgAccum = 0;
+      const playerEva = get().getTotalEvasion() / 100;
+      if (Math.random() < playerEva) {
         effect = "DODGE";
-        get().triggerMovementBuff();
-        
-        // 무당파: 회피 성공 시 즉시 반격 및 다음 공격 강화
-        if (faction === "무당파") {
-          fState.counterReady = true;
-          setTimeout(() => get().tapMasterDuel(0), 50); // 약간의 딜레이 후 반격
-        }
-        // 청성파: 회피 후 치명타율 급증
-        if (faction === "청성파") {
-          fState.nextCritBonus = 20;
-        }
+        dmgAccum = 0;
       } else {
-        // 2. 데미지 계산
-        const atkMult = isBerserk ? (isSpecial ? 5 : 1.5) : (isSpecial ? 3.5 : 1.0);
-        const rawAtk = masterDuel.rivalAtk * atkMult * (0.95 + Math.random() * 0.1);
-        const playerDefense = get().getTotalDefense();
-        const defenseMultiplier = 100 / (100 + playerDefense);
-        let finalDmg = Math.floor(rawAtk * defenseMultiplier);
-        finalDmg = Math.max(finalDmg, Math.floor(rawAtk * 0.05));
+        // 2. 대미지 계산
+        const playerDef = get().getTotalDefense();
+        const defenseMultiplier = 100 / (100 + playerDef);
+        let damage = Math.floor(rivalAtk * defenseMultiplier);
 
-        // 3. 문파 방어 보정
-        // 소림: 받는 피해 20% 감소
-        if (faction === "소림") finalDmg *= 0.8;
+        // 3. 치명타 판정
+        if (Math.random() < 0.1) damage = Math.floor(damage * 1.5);
         
-        // 4. 아이템 버프 보정
-        if (s.game.oilBuffs?.oil_def_3 > 0) finalDmg *= 0.5;
-        if (s.game.oilBuffs?.oil_vajra > 0) finalDmg = 0;
-        if (s.game.oilBuffs?.oil_eye > 0) finalDmg = 0;
+        // 4. 최소 대미지 보정
+        damage = Math.max(damage, Math.floor(rivalAtk * 0.05));
 
-        // 5. 보호막 및 내력 방어막 처리
-        // 사마세가: MP 기반 보호막 우선 소모
+        // 보호막 및 피해 적용
         if (fState.shield > 0) {
-          const absorb = Math.min(fState.shield, finalDmg);
-          fState.shield -= absorb;
-          finalDmg -= absorb;
+          const shieldDmg = Math.min(fState.shield, damage);
+          fState.shield -= shieldDmg;
+          damage -= shieldDmg;
         }
-        // 공통: 내력 방어막 (보법 등)
-        if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
-          const mpDmg = Math.min(nextMp, finalDmg * s.game.movementBuff.data.manaShield);
-          nextMp -= mpDmg;
-          finalDmg -= mpDmg;
-        }
-
-        // 6. 피해 적용 및 반사
-        nextHp = Math.max(0, nextHp - finalDmg);
-        dmgAccum = finalDmg;
-        effect = isSpecial ? "CRITICAL" : (Math.random() < 0.1 ? "BLEED" : null);
-
-        if (s.game.oilBuffs?.oil_reflect > 0 && finalDmg > 0) {
-          rivalHp = Math.max(0, rivalHp - finalDmg * 2.0);
-        }
-        if (s.game.movementBuff && s.game.movementBuff.data.reflect && finalDmg > 0) {
-          rivalHp = Math.max(0, rivalHp - finalDmg * (s.game.movementBuff.data.reflect / 100));
-        }
-
-        // 아미파: 피격 시 회피율 상승
-        if (faction === "아미파") {
-          fState.evasionBuff = 20;
-          fState.evasionBuffTimer = 3.0;
-        }
+        nextHp = Math.max(0, nextHp - damage);
+        dmgAccum = damage;
       }
     }
 
@@ -1698,14 +1624,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           isPlaying: !isPlayerDead, 
           rivalHp: rivalHp,
           lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : masterDuel.lastWinReward,
-          rivalAttackTimer: atkTimer, 
-          chargeTimer: chargeT,
+          rivalAttackTimer: nextRivalTimer, 
           damageTakenAccumulator: dmgAccum,
           lastEffect: effect,
           isBerserk,
           isStunned: nextIsStunned,
           stunTimer: nextStunTimer,
-          skillEffect: nextSkillEffect,
           factionState: fState
         } 
       } 
@@ -1713,8 +1637,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => {
     const { game } = get(); 
-    if (!game.masterDuel.isPlaying || game.masterDuel.isStunned) return;
+    if (!game.masterDuel.isPlaying || game.masterDuel.isStunned) return { totalDamage: 0, isCrit: false, effect: null };
     
+    let result = { totalDamage: 0, isCrit: false, effect: null as any };
+
     set((s: any) => {
       if (!s.game.masterDuel.isPlaying) return s;
 
@@ -1740,90 +1666,42 @@ export const useGameStore = create<GameState>((set, get) => ({
         damageMultiplier *= s.game.movementBuff.data.weakness;
       }
 
-      if (faction === "남궁세가") {
-        rivalDef = 0;
-        if (masterDuel.isBoss) damageMultiplier *= 1.3;
-      }
-      if (faction === "일월신교") {
-        rivalDef *= 0.5;
-      }
-      if (faction === "소림") {
-        bonusFlatDamage += get().getTotalHp() * 0.01;
-      }
-      if (faction === "화산파") {
-        fState.comboCount = (fState.comboCount || 0) + 1;
-        if (fState.comboCount >= 4) {
-          damageMultiplier *= 2.0;
-          fState.comboCount = 0;
-        }
-      }
-      if (faction === "무당파" && fState.counterReady) {
-        damageMultiplier *= 1.5;
-        fState.counterReady = false;
-      }
-      if (faction === "청성파") {
-        playerCritRate += (fState.nextCritBonus || 0);
-        fState.nextCritBonus = 0;
-      }
-      if (faction === "사마세가") {
-        const mpRatio = (playerMp / (get().getTotalMp() || 1)) * 100;
-        damageMultiplier *= (1 + Math.floor(mpRatio / 10) * 0.02);
-      }
-      if (faction === "천마신교") {
-        const hpRatio = playerHp / (get().getTotalHp() || 1);
-        if (hpRatio <= 0.3) damageMultiplier *= 2.0;
-        if (isWeakness && hpRatio <= 0.3) damageMultiplier *= 2.5; 
-      }
-      if (faction === "하북팽가" && isWeakness) {
-        damageMultiplier *= 1.4;
-      }
-      const isRivalDebuffed = Object.keys(masterDuel.rivalDebuffs || {}).some(k => masterDuel.rivalDebuffs[k] > 0);
-      if (faction === "제갈세가" && isRivalDebuffed) {
-        damageMultiplier *= 1.2;
-      }
-      if (faction === "사천당가" && (fState.poisonStack || 0) > 0) {
-        damageMultiplier *= 1.5;
+      // 1. 회피 판정 (사용자 기획 ✅ 5)
+      const rivalEva = (masterDuel.isBoss ? 15 : 10) / 100; // 보스 15%, 일반 10%
+      if (Math.random() < rivalEva) {
+        result = { totalDamage: 0, isCrit: false, effect: "DODGE" as any };
+        return { game: { ...s.game, masterDuel: { ...masterDuel, lastEffect: "DODGE", damageTakenAccumulator: 0, factionState: fState } } };
       }
 
-      const evasionRate = rivalHp <= 0 ? 0 : (masterDuel.rivalEvasion || 5);
-      if (Math.random() < evasionRate / 100) {
-        return {
-          game: {
-            ...s.game,
-            masterDuel: { ...masterDuel, lastEffect: "DODGE", damageTakenAccumulator: 0, factionState: fState }
-          }
-        };
-      }
-
-      const defenseMultiplier = 100 / (100 + Math.max(0, rivalDef));
+      // 2. 기본 대미지 및 방어력 적용 (사용자 기획 ✅ 3)
+      const defenseMultiplier = 100 / (100 + rivalDef);
       let baseDamage = Math.floor(playerAtk * defenseMultiplier);
 
-      if (faction === "점창파") {
-        playerCritRate += (fState.critStack || 0);
-      }
+      // 3. 치명타 판정 (사용자 기획 ✅ 4)
       let isCrit = false;
-      if (Math.random() < playerCritRate / 100) {
+      const finalCritRate = faction === "점창파" ? playerCritRate + (fState.critStack || 0) : playerCritRate;
+      if (Math.random() < finalCritRate / 100) {
         isCrit = true;
-        baseDamage *= playerCritDmg;
+        baseDamage = Math.floor(baseDamage * playerCritDmg);
       }
 
       let totalDamage = baseDamage;
       let effect = isCrit ? "CRITICAL" : null;
 
-      if (faction === "화산파" && isCrit) {
-        totalDamage += baseDamage * 0.8;
-      }
-      if (faction === "개방" && Math.random() < 0.15) {
-        totalDamage += totalDamage * 0.5;
-      }
-      if (faction === "청성파" && Math.random() < 0.05) {
-        const lastProc = fState.internalCDs?.cheongseong || 0;
-        if (now - lastProc > 5000) {
-          totalDamage *= 10;
-          fState.internalCDs = { ...fState.internalCDs, cheongseong: now };
-          effect = "STUN";
+      // 4. 문파 특수 효과 적용 (사용자 기획 ✅ 8, 9)
+      if (faction === "화산파") {
+        fState.comboCount = (fState.comboCount || 0) + 1;
+        if (fState.comboCount >= 4) {
+          totalDamage *= 2.0;
+          fState.comboCount = 0;
         }
+        if (isCrit) totalDamage += baseDamage * 0.8;
       }
+      if (faction === "무당파" && fState.counterReady) {
+        totalDamage *= 1.5;
+        fState.counterReady = false;
+      }
+      if (faction === "사천당가") fState.poisonStack = (fState.poisonStack || 0) + 1;
       if (faction === "점창파") {
         fState.critStack = Math.min(10, (fState.critStack || 0) + 2);
         if (Math.random() < 0.3) totalDamage += baseDamage * 0.5;
@@ -1935,6 +1813,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         } 
       };
     });
+    get().triggerSave();
+    return result;
   },
 
   triggerUltimate: () => {
@@ -2925,7 +2805,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     const floor = 1;
     const enemy = generateTowerEnemy(floor);
-    const maxHp = get().getTotalHp();
+    const maxHp = 1650; // Tower Baseline MaxHP (equivalent to level 1 stats)
 
     set((s: any) => ({
       game: {
@@ -2981,9 +2861,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 콤보 로직 (1.5초 이내 탭 시 콤보 유지)
       let nextCombo = (now - t.lastTapTime < 1500) ? t.combo + 1 : 1;
       
-      let atk = get().getTotalAttack();
-      let critRate = get().getTotalCritRate();
-      let critDmg = get().getTotalCritDmg() / 100;
+      // 무한탑 능력치 정상화: 외부 강화 수치를 무시하고 기본값(Baseline) 사용
+      let atk = 160; 
+      let critRate = 10; 
+      let critDmg = 1.5; 
       let vamp = 0;
       let mpRecover = 0;
 

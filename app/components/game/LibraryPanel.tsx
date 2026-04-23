@@ -476,6 +476,17 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
           }}>
             {skill.realm}
           </span>
+          <span style={{ 
+            fontSize: "10px", 
+            color: skill.factionName === "강호공용" ? "#ffd700" : "#aaa", 
+            background: "rgba(0,0,0,0.3)", 
+            padding: "1px 5px", 
+            borderRadius: "3px",
+            border: `1px solid ${skill.factionName === "강호공용" ? "#ffd700" : "#444"}`,
+            fontWeight: "bold"
+          }}>
+            {skill.factionName === "강호공용" ? "강호" : "문파"}
+          </span>
           {skill.category === "movement" && (
             <span style={{ 
               fontSize: "10px", 

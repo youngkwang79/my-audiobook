@@ -2062,7 +2062,11 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                  <div 
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    style={{ display: 'flex', gap: '8px', marginTop: '5px' }}
+                  >
                     {Array.from({ length: getNumPoles(currentStage) }).map((_, idx) => (
                       <button
                         key={idx}
@@ -2244,8 +2248,13 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                           gridTemplateColumns: `repeat(${PUZZLE_COLS}, 1fr)`,
                           gridTemplateRows: `repeat(${PUZZLE_ROWS}, 1fr)`,
                           gap: "3px",
-                          touchAction: "none"
-                        }}>
+                          touchAction: "none",
+                          WebkitUserSelect: "none",
+                          userSelect: "none"
+                        }}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
+                      >
                           {puzzleGrid.map((row, r) => row.map((cell, c) => (
                             <motion.div
                               key={cell.id}

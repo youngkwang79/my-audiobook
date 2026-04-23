@@ -122,14 +122,10 @@ const BOX_ANIM_CSS = `
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
-  @keyframes bossFlutter {
-    0% { transform: translateY(0) scale(1) rotate(0deg); filter: brightness(1); }
-    50% { transform: translateY(-15px) scale(1.02) rotate(0.5deg); filter: brightness(1.1); }
-    100% { transform: translateY(0) scale(1) rotate(0deg); filter: brightness(1); }
-  }
-  @keyframes character3DPanBoss {
-    0% { transform: perspective(1000px) rotateY(-8deg) rotateX(2deg) translateX(-10px); }
-    100% { transform: perspective(1000px) rotateY(8deg) rotateX(-2deg) translateX(10px); }
+  @keyframes bossFloat {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
   }
   @keyframes playerHitShake {
     0% { transform: translate(0, 0); filter: brightness(1) sepia(0) hue-rotate(0deg); }
@@ -280,10 +276,15 @@ export default function MasterPanel() {
 
   const spawnDamage = (value: number, critical: boolean, target: "player" | "rival", skillText?: string, isRainbow?: boolean, isCyan?: boolean) => {
     const id = Date.now() + Math.random();
-    const x = target === "rival" ? 68 + Math.random() * 8 : 22 + Math.random() * 8;
-    const y = 38 + Math.random() * 8;
-    setDamages((prev) => [...prev, { id, damage: value, x, y, isCritical: critical, target, skillText, isRainbow, isCyan }]);
-    setTimeout(() => setDamages((prev) => prev.filter((d) => d.id !== id)), 800);
+    const x = target === "rival" ? 45 + Math.random() * 10 : 22 + Math.random() * 8;
+    const y = target === "rival" ? 18 + Math.random() * 5 : 38 + Math.random() * 8;
+    
+    setDamages((prev) => {
+      const next = [...prev, { id, damage: value, x, y, isCritical: critical, target, skillText, isRainbow, isCyan }];
+      if (next.length > 15) return next.slice(-15);
+      return next;
+    });
+    setTimeout(() => setDamages((prev) => prev.filter((d) => d.id !== id)), 600);
   };
 
   const handleOpenBox = () => {
@@ -306,39 +307,22 @@ export default function MasterPanel() {
 
     // 연마유 효과 트리거
     const oilRes = useGameStore.getState().triggerOilEffects();
-    const hitCount = oilRes.hitCount;
+    
+    // 엔진에서 실제 대미지 계산 수행 및 결과 획득
+    const duelResult = tapMasterDuel(0, false, oilRes);
+    if (!duelResult || duelResult.totalDamage === 0) return;
+
+    const { totalDamage, isCrit, effect } = duelResult;
     const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
-    const isFormless = oilRes.buffsTriggered.includes("oil_formless");
     const isDemon = oilRes.buffsTriggered.includes("oil_demon");
     const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
-
-    const totalCritRate = useGameStore.getState().getTotalCritRate();
-    const isCrit = Math.random() < (totalCritRate / 100);
-    const baseAtk = useGameStore.getState().getTotalAttack();
-    const critDmg = useGameStore.getState().getTotalCritDmg();
-
-    // 뇌전유 배율
-    const thunderMult = isThunder ? 5 : 1;
-
-    let baseDmg = Math.max(1, Math.floor(baseAtk * (isCrit ? (critDmg / 100) : 1) * thunderMult - (masterDuel.rivalDef || 0)));
+    const hitCount = oilRes.hitCount;
 
     // 다중 타격 시각화
     for (let i = 0; i < hitCount; i++) {
-      let finalDisplayDmg = baseDmg;
+      let displayDmg = Math.floor(totalDamage / hitCount);
       let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i + 1}연격` : undefined);
 
-      // 천마유 발동 시 배율 적용
-      if (isDemon) {
-        finalDisplayDmg *= 10;
-      }
-
-      // 무상유 추가 대미지 시각화 (첫 타격에만 합산 표시)
-      if (i === 0 && isFormless) {
-        finalDisplayDmg += Math.floor(masterDuel.rivalHp * 0.10);
-        label = label ? `[무상] ${label}` : "[무상] 10%삭감!";
-      }
-
-      // 버프 발동 시 라벨 추가 (첫 타격)
       if (i === 0 && oilRes.buffsTriggered.length > 0) {
         const buffNames: Record<string, string> = {
           oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍",
@@ -347,28 +331,19 @@ export default function MasterPanel() {
           oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
           oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
         };
-        // 천마유가 포함되어 있다면 천마유를 우선적으로 표시
         const triggeredKey = oilRes.buffsTriggered.includes("oil_demon") ? "oil_demon" : oilRes.buffsTriggered[0];
         const triggeredName = buffNames[triggeredKey];
         if (triggeredName) {
-          if (triggeredKey !== "oil_formless" && triggeredKey !== "oil_thunder" && triggeredKey !== "oil_demon") {
-            label = `[${triggeredName}] ${label || ""}`;
-          }
-
-          // 화면 중앙 이펙트 트리거 (4초)
           if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
           setActiveOilText(triggeredName + "!");
           oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
         }
       }
 
-      // 약간의 시차를 두고 팝업 (연격 느낌)
       setTimeout(() => {
-        spawnDamage(finalDisplayDmg, isCrit || isThunder, "rival", undefined, isDemon, isTriple); // label 제거 (중복)
+        spawnDamage(displayDmg, isCrit || isThunder, "rival", undefined, isDemon, isTriple);
       }, i * 100);
     }
-
-    tapMasterDuel(0, false, oilRes);
   };
 
   const executeSkill = (skill: any) => {
@@ -423,15 +398,18 @@ export default function MasterPanel() {
   const [isPlayerHit, setIsPlayerHit] = useState(false);
 
   useEffect(() => {
+    // 플레이어가 실제로 대미지를 입었을 때만 (적의 공격 턴)
     if (masterDuel.damageTakenAccumulator !== undefined && masterDuel.damageTakenAccumulator > 0) {
       spawnDamage(Math.floor(masterDuel.damageTakenAccumulator), masterDuel.lastEffect === "CRITICAL", "player");
       setIsPlayerHit(true);
       setTimeout(() => setIsPlayerHit(false), 300);
-    } else if (masterDuel.lastEffect === "DODGE") {
-      // 회피 시 0 데미지 텍스트 또는 특수 텍스트 표시 가능 (현재는 DamageText 컴포넌트 제약상 생략하거나 0으로 표시)
-      spawnDamage(0, false, "player");
+    } 
+    // 플레이어가 적의 공격을 회피했을 때 (이펙트가 'DODGE'이고, 대미지 축적기가 0인 경우 중 적의 턴일 때만)
+    else if (masterDuel.lastEffect === "DODGE" && masterDuel.damageTakenAccumulator === 0 && (masterDuel.rivalAttackTimer ?? 0) < 0.1) {
+       // 플레이어 회피는 updateMasterDuel 로직에서 처리되므로, 여기서는 적의 회피와 겹치지 않게 주의
+       // (보통 탭 클릭 시 발생하는 DODGE는 아래 handleTap에서 별도 처리하거나 rival로 가야 함)
     }
-  }, [masterDuel.damageTakenAccumulator, masterDuel.lastEffect]);
+  }, [masterDuel.damageTakenAccumulator]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(animate);
@@ -558,9 +536,8 @@ export default function MasterPanel() {
               }}
               style={{
                 position: "relative",
-                overflow: "hidden",
                 border: "1px solid rgba(255,215,0,0.28)",
-                background: "linear-gradient(180deg, rgba(255,215,0,0.18), rgba(255,215,0,0.08))",
+                background: "rgba(255,215,0,0.12)",
                 color: "#ffd76a",
                 borderRadius: 8,
                 padding: "5px 10px",
@@ -571,14 +548,6 @@ export default function MasterPanel() {
               }}
             >
               <span style={{ position: "relative", zIndex: 2 }}>패왕 토벌 상점</span>
-              {/* Shine Effect Overlay */}
-              <div style={{
-                position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
-                animation: "shimmer 2s infinite linear", 
-                pointerEvents: "none",
-                zIndex: 1
-              }} />
             </button>
           </div>
         </div>
@@ -674,11 +643,18 @@ export default function MasterPanel() {
 
           <div style={{ flex: 1, position: "relative", display: "flex", justifyContent: "center", alignItems: "flex-end", overflow: "hidden" }} onClick={handleTap}>
             {/* Rival Upper Body (Large & Intimidating) */}
-            <div style={{ position: "absolute", top: "2vh", left: "25%", right: "-25%", display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 5 }}>
+            <div 
+              style={{ 
+                position: "absolute", top: "2vh", left: "15%", right: "-15%", bottom: "20vh",
+                display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 110,
+                cursor: "pointer",
+                // border: "1px solid rgba(255,0,0,0.2)", // Debug: visible hitbox
+              }}
+            >
               <div style={{
                 position: "absolute", top: "25%", left: "50%", transform: "translateX(-50%)",
                 width: 300, height: 100, background: "radial-gradient(ellipse, rgba(255,0,0,0.6) 0%, transparent 80%)",
-                filter: "blur(20px)", animation: "glowBoss 2s infinite"
+                filter: "blur(20px)", animation: "glowBoss 2s infinite", pointerEvents: "none"
               }} />
               <img src={(() => {
                 const lv = masterDuel.selectedLevel;
@@ -691,19 +667,20 @@ export default function MasterPanel() {
                 return "/images/villain_blood.png";
               })()}
                 style={{
-                  height: "60vh", // Enlarged for cinematic focus
+                  height: "60vh",
                   width: "90%",
                   objectFit: "contain",
                   objectPosition: "top",
-                  filter: masterDuel.isBerserk ? "brightness(1.5) sepia(0.3) hue-rotate(-30deg)" : "none",
-                  animation: "bossFlutter 5s ease-in-out infinite, character3DPanBoss 10s ease-in-out infinite alternate"
+                  pointerEvents: "none",
+                  filter: masterDuel.isBerserk ? "brightness(1.5) contrast(1.2)" : "none",
+                  animation: "bossFloat 3s ease-in-out infinite"
                 }} />
             </div>
 
             {/* Moved Rival HP Bar outside for absolute positioning from screen top */}
 
             {/* Player Side */}
-            <div style={{ position: "absolute", left: "-15%", bottom: "-60%", zIndex: 50 }}>
+            <div style={{ position: "absolute", left: "-15%", bottom: "-60%", zIndex: 200 }}>
               <img
                 src={(game.faction && BACK_IMAGES[game.faction]) || FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
                 style={{
@@ -734,7 +711,7 @@ export default function MasterPanel() {
             {/* Vertical Potions HUD (Left Side) */}
             <div style={{
               position: "absolute", left: 25, top: "62%", transform: "translateY(-50%)",
-              display: "flex", flexDirection: "column", gap: 8, zIndex: 110
+              display: "flex", flexDirection: "column", gap: 8, zIndex: 500
             }}>
               {game.quickSlots.map((id, idx) => {
                 const qty = id ? (game.consumables[id] || 0) : 0;
@@ -759,7 +736,7 @@ export default function MasterPanel() {
             {/* Bottom Combat HUD (Skills Only) */}
             <div style={{
               position: "absolute", bottom: 25, left: "50%", transform: "translateX(-50%)",
-              display: "flex", gap: 10, zIndex: 100
+              display: "flex", gap: 10, zIndex: 500
             }}>
               {[0, 1, 2].map(idx => {
                 const skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
@@ -783,7 +760,7 @@ export default function MasterPanel() {
             </div>
 
             {/* Damage Texts */}
-            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 120 }}>
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 300 }}>
               {damages.map(d => <DamageText key={d.id} {...d} />)}
             </div>
           </div>

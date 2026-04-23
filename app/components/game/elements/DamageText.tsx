@@ -19,7 +19,7 @@ export default function DamageText({ damage, x, y, isCritical, skillText, isSkil
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const timeout = isSkillProc ? 1200 : 800;
+    const timeout = isSkillProc ? 1000 : 600;
     const timer = setTimeout(() => setVisible(false), timeout);
     return () => clearTimeout(timer);
   }, [isSkillProc]);
@@ -32,16 +32,14 @@ export default function DamageText({ damage, x, y, isCritical, skillText, isSkil
     background: "linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
-    textShadow: "0 0 5px rgba(255,255,255,0.5)",
-    fontSize: "32px",
-    filter: "drop-shadow(0 0 8px rgba(255,255,255,0.8))"
+    textShadow: "0 0 3px rgba(255,255,255,0.4)",
+    fontSize: "30px"
   } : {};
 
   const cyanStyle = isCyan ? {
     color: "#00f2ff",
-    textShadow: "0 0 10px #00f2ff, 0 0 20px #0077ff, 2px 2px 4px rgba(0,0,0,0.9)",
-    fontSize: "30px",
-    filter: "drop-shadow(0 0 5px #00f2ff)"
+    textShadow: "0 0 8px #00f2ff, 1px 1px 2px rgba(0,0,0,0.8)",
+    fontSize: "28px"
   } : {};
 
   return (
@@ -53,10 +51,11 @@ export default function DamageText({ damage, x, y, isCritical, skillText, isSkil
       fontWeight: "950",
       fontSize: isSkillProc ? "28px" : isCritical ? "24px" : "18px",
       pointerEvents: "none",
-      animation: "floatUp 0.8s ease-out forwards",
+      animation: "floatUp 0.6s ease-out forwards",
       zIndex: 100,
-      textShadow: isSkillProc ? "0 0 10px rgba(0,255,255,0.8), 2px 2px 4px rgba(0,0,0,0.9)" : "2px 2px 4px rgba(0,0,0,0.7)",
+      textShadow: isSkillProc ? "0 0 8px rgba(0,255,255,0.7), 1px 1px 2px rgba(0,0,0,0.8)" : "1px 1px 2px rgba(0,0,0,0.7)",
       userSelect: "none",
+      willChange: "transform, opacity",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",

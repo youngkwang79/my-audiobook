@@ -1,4 +1,5 @@
 import { FACTIONS } from "./factions";
+import { buildCommonCompendium } from "./commonSkills";
 
 /**
  * 기존 FACTIONS 데이터 위에 덧붙이는 서각 시스템용 타입/헬퍼
@@ -271,6 +272,9 @@ export function buildMartialCompendium(): CompendiumSkill[] {
     });
   });
 
+  // 강호 공용 무공 추가
+  result.push(...buildCommonCompendium());
+
   return result;
 }
 
@@ -310,7 +314,7 @@ export function getRefineGoldCost(stars: number) {
  */
 export function getSkillStudyPrice(skill: CompendiumSkill) {
   const basePrices: Record<SkillGrade, number> = {
-    common: 500000,      // 50만
+    common: 50000,       // 5만 (인하됨)
     rare: 5000000,       // 500만
     epic: 50000000,      // 5,000만
     legendary: 500000000, // 5억
@@ -405,7 +409,7 @@ export function buildFactionCompendiumView(
   const userRealmIndex = REALM_ORDER_KEYS.indexOf(userRealm as RealmKey);
   
   const skills = MARTIAL_COMPENDIUM
-    .filter((skill) => skill.factionName === factionName)
+    .filter((skill) => skill.factionName === factionName || skill.factionName === "강호공용")
     .map((skill) => {
       const learned = learnedSkills.find((item) => item.skillId === skill.id);
 
