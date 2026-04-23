@@ -102,46 +102,9 @@ export default function GameShell() {
 
   const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory"];
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-
-    // Disable swipe if a mini-game might be active (e.g. in Inn)
-    // We can check if isPlaying is active in the store or just allow it if not in specific states
-    // For now, let's allow it but be mindful.
-
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX.current - touchEndX;
-    const threshold = 60;
-
-    if (Math.abs(diff) > threshold) {
-      const currentIndex = mainTabs.indexOf(activeTab);
-      if (diff > 0) {
-        // Swipe Left -> Next Tab
-        const nextIndex = (currentIndex + 1) % mainTabs.length;
-        const nextTab = mainTabs[nextIndex];
-        if (game.unlockedTabs.includes(nextTab)) {
-          setActiveTab(nextTab);
-        }
-      } else {
-        // Swipe Right -> Prev Tab
-        const prevIndex = (currentIndex - 1 + mainTabs.length) % mainTabs.length;
-        const prevTab = mainTabs[prevIndex];
-        if (game.unlockedTabs.includes(prevTab)) {
-          setActiveTab(prevTab);
-        }
-      }
-    }
-    touchStartX.current = null;
-  };
 
   return (
     <div
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
       style={{
         maxWidth: 400,
         margin: "0 auto",

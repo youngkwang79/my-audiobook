@@ -394,6 +394,8 @@ interface GameState {
   selectTowerArtifact: (art: any) => void;
   handleTowerEvent: (type: "REST" | "BUFF" | "DANGER" | "MERCHANT") => void;
   leaveTower: () => void;
+  toggleEquipSkill: (skillName: string) => void;
+  triggerCombatTrap: (multiplier: number) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -995,12 +997,21 @@ export const useGameStore = create<GameState>((set, get) => ({
   learnSkill: (skill: any, price: number) => {
     set((s: any) => {
       const nextMartial = ensureLearnedSkill(s.game.martialArtsSkills || [], skill.id || skill.name);
+      const equipped = s.game.masterDuel.equippedSkillIds || [];
+      const nextEquipped = (equipped.length < 4 && !equipped.includes(skill.name)) 
+        ? [...equipped, skill.name] 
+        : equipped;
+
       return { 
         game: { 
           ...s.game, 
           coins: s.game.coins - price, 
           learnedSkills: [...s.game.learnedSkills, skill],
-          martialArtsSkills: nextMartial
+          martialArtsSkills: nextMartial,
+          masterDuel: {
+            ...s.game.masterDuel,
+            equippedSkillIds: nextEquipped
+          }
         } 
       };
     });
@@ -1048,15 +1059,26 @@ export const useGameStore = create<GameState>((set, get) => ({
       mpCost: 50
     };
     
-    set((s: any) => ({
-      game: {
-        ...s.game,
-        coins: s.game.coins - recipe.goldCost,
-        wisdom: s.game.wisdom - recipe.wisdomCost,
-        learnedSkills: [...s.game.learnedSkills, skillData],
-        martialArtsSkills: ensureLearnedSkill(s.game.martialArtsSkills || [], recipe.id)
-      }
-    }));
+    set((s: any) => {
+      const equipped = s.game.masterDuel.equippedSkillIds || [];
+      const nextEquipped = (equipped.length < 4 && !equipped.includes(recipe.resultName)) 
+        ? [...equipped, recipe.resultName] 
+        : equipped;
+
+      return {
+        game: {
+          ...s.game,
+          coins: s.game.coins - recipe.goldCost,
+          wisdom: s.game.wisdom - recipe.wisdomCost,
+          learnedSkills: [...s.game.learnedSkills, skillData],
+          martialArtsSkills: ensureLearnedSkill(s.game.martialArtsSkills || [], recipe.id),
+          masterDuel: {
+            ...s.game.masterDuel,
+            equippedSkillIds: nextEquipped
+          }
+        }
+      };
+    });
     get().triggerSave(true);
   },
   autoTrain: () => { const { game, addExp } = get(); if (game.pendingInnEntry || game.timingMission.available) return; addExp(1.0 + (game.upgradeLevels.autoGain || 0) * 0.01, true); },
@@ -1262,7 +1284,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       } 
     }; 
   }),
-  setQuickSlot: (idx: number, id: ConsumableId | null) => set((s: any) => { const next = [...s.game.quickSlots]; next[idx] = id; return { game: { ...s.game, quickSlots: next } }; }),
+  setQuickSlot: (index: number, id: ConsumableId | null) => {
+    set((s: any) => {
+      const next = [...s.game.quickSlots];
+      next[index] = id;
+      return { game: { ...s.game, quickSlots: next } };
+    });
+    get().triggerSave(true);
+  },
   buyPotion: (id: ConsumableId, q: number) => {
     set((s: any) => { 
       const realmIdx = REALM_ORDER.indexOf(s.game.realm);
@@ -1575,30 +1604,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     let dmgAccum = 0;
     let effect = masterDuel.lastEffect;
 
-    // 적 공격 타이머 처리
+    // 1. 적 공격 타이머 처리 (일반 공격)
     let nextRivalTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt * rivalSpeed);
     
     if (!isTargetPaused && nextRivalTimer >= 1.0) {
       nextRivalTimer = 0;
-      
-      // 1. 회피 판정
       const playerEva = get().getTotalEvasion() / 100;
       if (Math.random() < playerEva) {
         effect = "DODGE";
         dmgAccum = 0;
       } else {
-        // 2. 대미지 계산
         const playerDef = get().getTotalDefense();
         const defenseMultiplier = 100 / (100 + playerDef);
         let damage = Math.floor(rivalAtk * defenseMultiplier);
-
-        // 3. 치명타 판정
         if (Math.random() < 0.1) damage = Math.floor(damage * 1.5);
-        
-        // 4. 최소 대미지 보정
         damage = Math.max(damage, Math.floor(rivalAtk * 0.05));
-
-        // 보호막 및 피해 적용
         if (fState.shield > 0) {
           const shieldDmg = Math.min(fState.shield, damage);
           fState.shield -= shieldDmg;
@@ -1606,6 +1626,19 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
         nextHp = Math.max(0, nextHp - damage);
         dmgAccum = damage;
+      }
+    }
+
+    // 2. 적 강력한 공격 충전 타이머 (보스인 경우)
+    let nextChargeTimer = (masterDuel.chargeTimer || 0);
+    if (!isTargetPaused && masterDuel.isBoss) {
+      nextChargeTimer += dt;
+      if (nextChargeTimer >= 5.0) {
+        // 5초 도달 시 강력한 공격
+        const bossDmg = Math.floor(rivalAtk * 1.5);
+        nextHp = Math.max(0, nextHp - bossDmg);
+        dmgAccum = bossDmg;
+        nextChargeTimer = 0;
       }
     }
 
@@ -1625,19 +1658,21 @@ export const useGameStore = create<GameState>((set, get) => ({
           rivalHp: rivalHp,
           lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : masterDuel.lastWinReward,
           rivalAttackTimer: nextRivalTimer, 
+          chargeTimer: nextChargeTimer,
           damageTakenAccumulator: dmgAccum,
           lastEffect: effect,
           isBerserk,
           isStunned: nextIsStunned,
           stunTimer: nextStunTimer,
-          factionState: fState
+          factionState: fState,
+          ultimateGauge: masterDuel.ultimateGauge || 0
         } 
       } 
     }; 
   }),
   tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => {
     const { game } = get(); 
-    if (!game.masterDuel.isPlaying || game.masterDuel.isStunned) return { totalDamage: 0, isCrit: false, effect: null };
+    if (!game.masterDuel.isPlaying) return { totalDamage: 0, isCrit: false, effect: null };
     
     let result = { totalDamage: 0, isCrit: false, effect: null as any };
 
@@ -1760,7 +1795,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       const nHp = Math.max(0, rivalHp - totalDamage);
-      const nGauge = Math.min(100, (masterDuel.ultimateGauge || 0) + (isWeakness ? 15 : 5));
+      const nGauge = Math.min(100, (masterDuel.ultimateGauge || 0) + (isWeakness ? 5 : 2));
 
       if (nHp <= 0) {
         const level = masterDuel.selectedLevel;
@@ -1784,6 +1819,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const nextMaxLevel = Math.max(masterDuel.currentLevel, nextLevel);
         const nextEnemy = generateEnemy(nextLevel);
 
+        result = { totalDamage, isCrit, effect };
         return { 
           game: { 
             ...s.game, 
@@ -1802,13 +1838,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         }; 
       }
 
+      result = { totalDamage, isCrit, effect };
       return { 
         game: { 
           ...s.game, 
           hp: playerHp, mp: playerMp,
           oilBuffs: nextBuffs,
           masterDuel: { 
-            ...nextMD, rivalHp: nHp, lastEffect: effect, damageTakenAccumulator: totalDamage, ultimateGauge: nGauge, factionState: fState
+            ...nextMD, rivalHp: nHp, lastEffect: effect, damageTakenAccumulator: 0, ultimateGauge: nGauge, factionState: fState
           } 
         } 
       };
@@ -1839,6 +1876,41 @@ export const useGameStore = create<GameState>((set, get) => ({
     }));
     
     if (nHp <= 0) get().tapMasterDuel(0); // Trigger win logic
+  },
+  
+  triggerCombatTrap: (multiplier: number) => {
+    const { game } = get();
+    if (!game.masterDuel.isPlaying) return;
+    
+    const rivalAtk = game.masterDuel.rivalAtk || 100;
+    const playerDef = get().getTotalDefense();
+    const defenseMultiplier = 100 / (100 + playerDef);
+    
+    // 함정 대미지: 악적 공격력 * 배수 * 방어력 보정
+    const rawDmg = Math.floor(rivalAtk * multiplier * defenseMultiplier);
+    const finalDmg = Math.max(rawDmg, Math.floor(rivalAtk * 0.5));
+    
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        hp: Math.max(0, s.game.hp - finalDmg),
+        masterDuel: {
+          ...s.game.masterDuel,
+          damageTakenAccumulator: finalDmg,
+          lastEffect: "BLEED" // 시각적으로 붉게 반짝이도록 설정
+        }
+      }
+    }));
+    
+    // 승패 체크
+    if (get().game.hp <= 0) {
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          masterDuel: { ...s.game.masterDuel, isPlaying: false, lastWinReward: "함정에 빠져 치명상을 입었습니다 (패배)" }
+        }
+      }));
+    }
   },
 
   parryBossAttack: () => {
@@ -3155,5 +3227,24 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     });
   },
+  toggleEquipSkill: (skillName: string) => {
+    set((s: any) => {
+      const equipped = s.game.masterDuel.equippedSkillIds || [];
+      const isEquipped = equipped.includes(skillName);
+      let nextEquipped = [...equipped];
+      if (isEquipped) {
+        nextEquipped = nextEquipped.filter((name: string) => name !== skillName);
+      } else {
+        if (nextEquipped.length >= 4) return s;
+        nextEquipped.push(skillName);
+      }
+      return {
+        game: {
+          ...s.game,
+          masterDuel: { ...s.game.masterDuel, equippedSkillIds: nextEquipped }
+        }
+      };
+    });
+    get().triggerSave(true);
+  },
 }));
-

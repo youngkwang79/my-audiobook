@@ -279,6 +279,8 @@ export type MasterDuelState = {
     internalCDs: Record<string, number>;
     statMult?: number;
   };
+  equippedSkillIds: string[]; // 무공 이름 리스트 (최대 4개)
+  isBoss: boolean;
 };
 
 export type TowerBuff = {

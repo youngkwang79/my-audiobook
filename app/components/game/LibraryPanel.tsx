@@ -16,10 +16,10 @@ import {
 import { MARTIAL_SYNTHESIS_RECIPES } from "@/app/lib/game/martialArtsRecipes";
 import { getMovementBuff } from "@/app/lib/game/movementLogic";
 
-type LibraryTab = "compendium" | "refinement" | "synthesis";
+type LibraryTab = "compendium" | "refinement" | "synthesis" | "equip";
 
 export default function LibraryPanel() {
-  const { game, learnSkill, refineSkill, synthesizeSkill } = useGameStore();
+  const { game, learnSkill, refineSkill, synthesizeSkill, toggleEquipSkill } = useGameStore();
   const [activeTab, setActiveTab] = useState<LibraryTab>("compendium");
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
 
@@ -102,13 +102,14 @@ export default function LibraryPanel() {
           </div>
         </div>
 
-        <nav style={{ display: "flex", gap: "10px" }}>
-          {(["compendium", "refinement", "synthesis"] as const).map((tab) => (
+        <nav style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {(["compendium", "refinement", "synthesis", "equip"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               style={{
                 flex: 1,
+                minWidth: "80px",
                 padding: "8px",
                 background: activeTab === tab ? userFaction.theme.accent : "rgba(255,255,255,0.05)",
                 color: activeTab === tab ? "#000" : "#999",
@@ -120,7 +121,7 @@ export default function LibraryPanel() {
                 transition: "all 0.2s"
               }}
             >
-              {tab === "compendium" ? "도감 / 습득" : tab === "refinement" ? "무공 연마" : "비기 합일"}
+              {tab === "compendium" ? "도감 / 습득" : tab === "refinement" ? "무공 연마" : tab === "synthesis" ? "비기 합일" : "무공 장착"}
             </button>
           ))}
         </nav>
@@ -438,6 +439,98 @@ export default function LibraryPanel() {
                   </div>
                 );
               })}
+            </motion.div>
+          )}
+          {activeTab === "equip" && (
+            <motion.div
+              key="equip"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <div style={{ 
+                background: "rgba(0,0,0,0.3)", 
+                borderRadius: "12px", 
+                padding: "15px", 
+                border: "1px solid rgba(255,255,255,0.05)",
+                marginBottom: "20px"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                  <h3 style={{ fontSize: "16px", color: userFaction.theme.accent, margin: 0 }}>전투 무공 장착</h3>
+                  <div style={{ fontSize: "12px", color: "#888" }}>
+                    장착 슬롯: <span style={{ color: userFaction.theme.accent }}>{(game.masterDuel.equippedSkillIds || []).length} / 4</span>
+                  </div>
+                </div>
+                
+                <p style={{ fontSize: "12px", color: "#aaa", marginBottom: "15px", lineHeight: "1.4" }}>
+                  전투에서 사용할 무공을 최대 4개까지 선택할 수 있습니다.<br/>
+                  습득한 무공을 눌러 장착 또는 해제하세요.
+                </p>
+
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {compendiumView.skills.filter(s => s.unlocked).map((skill) => {
+                    const isEquipped = (game.masterDuel.equippedSkillIds || []).includes(skill.name);
+                    return (
+                      <div 
+                        key={skill.id}
+                        onClick={() => toggleEquipSkill(skill.name)}
+                        style={{
+                          background: isEquipped ? `${userFaction.theme.accent}15` : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${isEquipped ? userFaction.theme.accent : "rgba(255,255,255,0.1)"}`,
+                          borderRadius: "10px",
+                          padding: "12px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: "15px", fontWeight: "bold", color: isEquipped ? userFaction.theme.accent : "#fff" }}>
+                            {skill.name}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#888", marginTop: "4px", display: "flex", gap: "8px" }}>
+                            <span style={{ color: userFaction.theme.accent, fontWeight: "bold" }}>
+                              {skill.category === "movement" ? (
+                                (() => {
+                                  const buff = getMovementBuff(game.faction as any, skill.stars);
+                                  if (!buff) return "신법";
+                                  const keys = Object.keys(buff.multipliers);
+                                  const primary = keys[0];
+                                  const val = buff.multipliers[primary];
+                                  const labelMap: any = { atk: "공격", def: "방어", eva: "회피", aspd: "공속", nextHit: "위력" };
+                                  return `${labelMap[primary] || primary} x${val.toFixed(1)}`;
+                                })()
+                              ) : (
+                                `공격 x${(skill.multiplier * getRefineBonusMultiplier(skill.stars)).toFixed(1)}`
+                              )}
+                            </span>
+                            <span>| {skill.stars}성</span>
+                          </div>
+                        </div>
+                        <div style={{
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "50%",
+                          border: `2px solid ${isEquipped ? userFaction.theme.accent : "#444"}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: isEquipped ? userFaction.theme.accent : "transparent"
+                        }}>
+                          {isEquipped && <span style={{ color: "#000", fontSize: "12px", fontWeight: "bold" }}>✓</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {compendiumView.skills.filter(s => s.unlocked).length === 0 && (
+                    <div style={{ textAlign: "center", padding: "40px", color: "#666", fontSize: "14px" }}>
+                      습득한 무공이 없습니다.
+                    </div>
+                  )}
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

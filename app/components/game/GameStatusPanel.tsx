@@ -295,18 +295,16 @@ export default function GameStatusPanel({ game }: { game: any }) {
               }}
             >
               <span>생명력</span>
-              <span>
-                {Math.floor(safeGame.hp).toLocaleString()} / {Math.floor(totalHp).toLocaleString()}
-              </span>
             </div>
             <div
               style={{
                 width: "100%",
-                height: "6px",
-                borderRadius: "3px",
+                height: "12px",
+                borderRadius: "6px",
                 background: "rgba(255,255,255,0.05)",
                 overflow: "hidden",
                 border: "1px solid rgba(255,77,77,0.15)",
+                position: "relative"
               }}
             >
               <div
@@ -317,6 +315,9 @@ export default function GameStatusPanel({ game }: { game: any }) {
                   transition: "width 0.4s ease-out",
                 }}
               />
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#fff", fontWeight: "bold", textShadow: "1px 1px 1px #000" }}>
+                {Math.floor(safeGame.hp).toLocaleString()} / {Math.floor(totalHp).toLocaleString()}
+              </div>
             </div>
           </div>
 
@@ -332,18 +333,16 @@ export default function GameStatusPanel({ game }: { game: any }) {
               }}
             >
               <span>내공</span>
-              <span>
-                {Math.floor(safeGame.mp).toLocaleString()} / {Math.floor(totalMp).toLocaleString()}
-              </span>
             </div>
             <div
               style={{
                 width: "100%",
-                height: "4px",
-                borderRadius: "2px",
+                height: "12px",
+                borderRadius: "6px",
                 background: "rgba(255,255,255,0.05)",
                 overflow: "hidden",
                 border: "1px solid rgba(85,170,255,0.15)",
+                position: "relative"
               }}
             >
               <div
@@ -354,6 +353,9 @@ export default function GameStatusPanel({ game }: { game: any }) {
                   transition: "width 0.4s ease-out",
                 }}
               />
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#fff", fontWeight: "bold", textShadow: "1px 1px 1px #000" }}>
+                {Math.floor(safeGame.mp).toLocaleString()} / {Math.floor(totalMp).toLocaleString()}
+              </div>
             </div>
           </div>
         </div>

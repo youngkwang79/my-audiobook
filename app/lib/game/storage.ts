@@ -175,7 +175,9 @@ export const defaultGameData: GameSaveData = {
       nextCritBonus: 0,
       evasionBuff: 0,
       internalCDs: {},
-    }
+    },
+    equippedSkillIds: [],
+    isBoss: false,
   },
   pendingInnEntry: false,
   innEventVersion: 0,

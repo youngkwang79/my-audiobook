@@ -242,9 +242,10 @@ const BOX_ANIM_CSS = `
 `;
 
 export default function MasterPanel() {
-  const { game, startMasterDuel, updateMasterDuel, tapMasterDuel, setSelectedMasterLevel, useSkill, useConsumable, buyBossShopItem } = useGameStore();
+  const { game, startMasterDuel, updateMasterDuel, tapMasterDuel, setSelectedMasterLevel, useSkill, useConsumable, buyBossShopItem, getTotalHp, getTotalMp, parryBossAttack, triggerUltimate, triggerCombatTrap } = useGameStore();
   const { masterDuel } = game;
   const [damages, setDamages] = useState<any[]>([]);
+  const [combatTargets, setCombatTargets] = useState<any[]>([]);
   const lastTickRef = useRef<number>(0);
   const lastHitTimeRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
@@ -261,6 +262,52 @@ export default function MasterPanel() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(0);
 
+  useEffect(() => {
+    if (!masterDuel.isPlaying) {
+      setCombatTargets([]);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      // 60% 확률로 타겟 생성 (더 빈번하게)
+      if (Math.random() > 0.6) return;
+
+      const bodyParts = [
+        { label: "머리", top: "10%", left: "55%" },
+        { label: "가슴", top: "30%", left: "50%" },
+        { label: "복부", top: "50%", left: "55%" },
+        { label: "왼손", top: "40%", left: "20%" },
+        { label: "오른손", top: "40%", left: "80%" },
+      ];
+
+      const part = bodyParts[Math.floor(Math.random() * bodyParts.length)];
+      const type = Math.random() < 0.7 ? "WEAKNESS" : "TRAP";
+      const id = Date.now();
+
+      setCombatTargets(prev => [...prev, { ...part, type, id }]);
+
+      // 1.2초 후 자동 소멸 (더 빠르게 반응해야 함)
+      setTimeout(() => {
+        setCombatTargets(prev => prev.filter(t => t.id !== id));
+      }, 1200);
+    }, 800);
+
+    return () => clearInterval(interval);
+  }, [masterDuel.isPlaying]);
+
+  const onTargetClick = (target: any) => {
+    if (target.type === "WEAKNESS") {
+      // 약점 포착: 강력한 대미지 (공격력의 5배 수준)
+      const res = tapMasterDuel(game.masterDuel.rivalAtk * 0.5, true);
+      spawnDamage(res.totalDamage, true, "rival", "약점 포착!");
+    } else {
+      // 함정 클릭: 악적의 강력한 반격 (3~10배 대미지)
+      const mult = 3 + Math.random() * 7;
+      triggerCombatTrap(mult);
+    }
+    setCombatTargets(prev => prev.filter(t => t.id !== target.id));
+  };
+
   const triggerMasterDuelSequence = () => {
     startMasterDuel();
   };
@@ -276,8 +323,8 @@ export default function MasterPanel() {
 
   const spawnDamage = (value: number, critical: boolean, target: "player" | "rival", skillText?: string, isRainbow?: boolean, isCyan?: boolean) => {
     const id = Date.now() + Math.random();
-    const x = target === "rival" ? 45 + Math.random() * 10 : 22 + Math.random() * 8;
-    const y = target === "rival" ? 18 + Math.random() * 5 : 38 + Math.random() * 8;
+    const x = target === "rival" ? 60 + Math.random() * 20 : 20 + Math.random() * 20;
+    const y = target === "rival" ? 35 + Math.random() * 10 : 50 + Math.random() * 20;
     
     setDamages((prev) => {
       const next = [...prev, { id, damage: value, x, y, isCritical: critical, target, skillText, isRainbow, isCyan }];
@@ -300,7 +347,7 @@ export default function MasterPanel() {
 
   const handleTap = () => {
     const nowTime = Date.now();
-    if (nowTime - lastHitTimeRef.current < 150) return; // 중복 호출 방지 (150ms)
+    if (nowTime - lastHitTimeRef.current < 80) return; // 중복 호출 방지 (80ms)
     lastHitTimeRef.current = nowTime;
 
     if (!masterDuel.isPlaying) return;
@@ -625,11 +672,17 @@ export default function MasterPanel() {
             position: "absolute", top: "60px", left: "50%", transform: "translateX(-50%)",
             width: "80%", maxWidth: 400, zIndex: 300
           }}>
-            <div style={{ height: 26, background: "#1a0505", borderRadius: 2, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000" }}>
+            <div style={{ height: 26, background: "#1a0505", borderRadius: 2, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000", position: "relative" }}>
               <div
                 style={{ width: `${hpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s", borderRadius: 0 }}
                 className={hpPercent < 30 ? "hp-low" : ""}
               />
+              <div style={{
+                position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000"
+              }}>
+                {formatCompactNumber(masterDuel.rivalHp)} / {formatCompactNumber(masterDuel.rivalMaxHp)}
+              </div>
             </div>
           </div>
 
@@ -645,7 +698,7 @@ export default function MasterPanel() {
             {/* Rival Upper Body (Large & Intimidating) */}
             <div 
               style={{ 
-                position: "absolute", top: "2vh", left: "15%", right: "-15%", bottom: "20vh",
+                position: "absolute", top: "27vh", left: "25%", right: "-35%", bottom: "20vh",
                 display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 110,
                 cursor: "pointer",
                 // border: "1px solid rgba(255,0,0,0.2)", // Debug: visible hitbox
@@ -656,6 +709,37 @@ export default function MasterPanel() {
                 width: 300, height: 100, background: "radial-gradient(ellipse, rgba(255,0,0,0.6) 0%, transparent 80%)",
                 filter: "blur(20px)", animation: "glowBoss 2s infinite", pointerEvents: "none"
               }} />
+
+              {/* Combat Targets (Weakness/Trap) */}
+              {combatTargets.map(t => (
+                <motion.div
+                  key={t.id}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  onClick={(e) => { e.stopPropagation(); onTargetClick(t); }}
+                  style={{
+                    position: "absolute",
+                    top: t.top,
+                    left: t.left,
+                    transform: "translate(-50%, -50%)",
+                    width: 65, height: 65,
+                    borderRadius: "50%",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer",
+                    zIndex: 150,
+                    background: t.type === "WEAKNESS" 
+                      ? "radial-gradient(circle, rgba(0,242,255,0.8) 0%, rgba(0,242,255,0.2) 100%)"
+                      : "radial-gradient(circle, rgba(255,0,0,0.8) 0%, rgba(255,0,0,0.2) 100%)",
+                    border: t.type === "WEAKNESS" ? "3px solid #00f2ff" : "3px solid #ff0000",
+                    boxShadow: t.type === "WEAKNESS" ? "0 0 25px #00f2ff" : "0 0 25px #ff0000"
+                  }}
+                >
+                  <span style={{ fontSize: 28, filter: "drop-shadow(0 2px 4px #000)" }}>
+                    {t.type === "WEAKNESS" ? "🎯" : "💀"}
+                  </span>
+                </motion.div>
+              ))}
               <img src={(() => {
                 const lv = masterDuel.selectedLevel;
                 if (lv <= 10) return "/images/villain_tier1.png";
@@ -668,7 +752,7 @@ export default function MasterPanel() {
               })()}
                 style={{
                   height: "60vh",
-                  width: "90%",
+                  width: "80%",
                   objectFit: "contain",
                   objectPosition: "top",
                   pointerEvents: "none",
@@ -680,7 +764,7 @@ export default function MasterPanel() {
             {/* Moved Rival HP Bar outside for absolute positioning from screen top */}
 
             {/* Player Side */}
-            <div style={{ position: "absolute", left: "-15%", bottom: "-60%", zIndex: 200 }}>
+            <div style={{ position: "absolute", left: "-44%", bottom: "-33%", zIndex: 200 }}>
               <img
                 src={(game.faction && BACK_IMAGES[game.faction]) || FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
                 style={{
@@ -698,14 +782,73 @@ export default function MasterPanel() {
               )}
 
               {/* Player HP/MP Bars in Combat */}
-              <div style={{ position: "absolute", bottom: 580, left: "50%", transform: "translateX(-50%)", width: 130 }}>
-                <div style={{ height: 12, background: "#221111", borderRadius: 6, border: "1px solid #442222", overflow: "hidden", marginBottom: 4 }}>
-                  <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)" }} />
+              <div style={{ position: "absolute", bottom: 810, left: "37%", transform: "translateX(10%)", width: 160 }}>
+                <div style={{ height: 18, background: "#221111", borderRadius: 4, border: "1px solid #442222", overflow: "hidden", marginBottom: 6, position: "relative" }}>
+                  <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.3s" }} />
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000" }}>
+                    {formatCompactNumber(game.hp)} / {formatCompactNumber(getTotalHp())}
+                  </div>
                 </div>
-                <div style={{ height: 8, background: "#111122", borderRadius: 4, border: "1px solid #222244", overflow: "hidden" }}>
-                  <div style={{ width: `${playerMpPercent}%`, height: "100%", background: "#00f2ff" }} />
+                <div style={{ height: 14, background: "#111122", borderRadius: 3, border: "1px solid #222244", overflow: "hidden", position: "relative", marginBottom: 6 }}>
+                  <div style={{ width: `${playerMpPercent}%`, height: "100%", background: "#00f2ff", transition: "0.3s" }} />
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000" }}>
+                    {formatCompactNumber(game.mp)} / {formatCompactNumber(getTotalMp())}
+                  </div>
+                </div>
+                {/* Ultimate Gauge Bar */}
+                <div style={{ height: 10, background: "#1a1500", borderRadius: 2, border: "1px solid #443300", overflow: "hidden", position: "relative" }}>
+                  <div style={{ width: `${masterDuel.ultimateGauge || 0}%`, height: "100%", background: "linear-gradient(90deg, #ffd700, #ff8c00)", transition: "0.2s" }} />
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 900, color: "#fff", textShadow: "1px 1px 1px #000" }}>
+                    일격필살 {Math.floor(masterDuel.ultimateGauge || 0)}%
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* QTE / Special Actions Layer */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {/* 1. Parry (Defend) Button: Appears when boss is charging (4s ~ 5s) */}
+              {masterDuel.isBoss && (masterDuel.chargeTimer ?? 0) >= 4.0 && (
+                <motion.button
+                  initial={{ scale: 0, rotate: -20 }}
+                  animate={{ scale: [1, 1.2, 1], rotate: 0 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => { e.stopPropagation(); parryBossAttack(); }}
+                  style={{
+                    pointerEvents: "auto",
+                    width: 120, height: 120, borderRadius: "50%",
+                    background: "radial-gradient(circle, #ffd700 0%, #ff8c00 100%)",
+                    border: "5px solid #fff", boxShadow: "0 0 30px #ff8c00",
+                    color: "#000", fontSize: 24, fontWeight: 950, cursor: "pointer",
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
+                  }}
+                >
+                  <div style={{ fontSize: 32 }}>🛡️</div>
+                  <div>방어!</div>
+                </motion.button>
+              )}
+
+              {/* 2. Ultimate (Target) Button: Appears when gauge is 100% */}
+              {masterDuel.ultimateGauge >= 100 && (
+                <motion.button
+                  initial={{ scale: 0, y: 50 }}
+                  animate={{ scale: [1, 1.1, 1], y: 0 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => { e.stopPropagation(); triggerUltimate(); }}
+                  style={{
+                    pointerEvents: "auto",
+                    width: 140, height: 140, borderRadius: "50%",
+                    background: "radial-gradient(circle, #ff0000 0%, #660000 100%)",
+                    border: "6px solid #ffd700", boxShadow: "0 0 40px #ff0000, 0 0 20px #ffd700",
+                    color: "#fff", fontSize: 26, fontWeight: 950, cursor: "pointer",
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    textShadow: "0 2px 4px #000"
+                  }}
+                >
+                  <div style={{ fontSize: 40 }}>🎯</div>
+                  <div>일격필살</div>
+                </motion.button>
+              )}
             </div>
 
             {/* Vertical Potions HUD (Left Side) */}
@@ -736,22 +879,39 @@ export default function MasterPanel() {
             {/* Bottom Combat HUD (Skills Only) */}
             <div style={{
               position: "absolute", bottom: 25, left: "50%", transform: "translateX(-50%)",
-              display: "flex", gap: 10, zIndex: 500
+              display: "flex", gap: 8, zIndex: 500
             }}>
-              {[0, 1, 2].map(idx => {
-                const skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
+              {[0, 1, 2, 3].map(idx => {
+                const equippedIds = game.masterDuel.equippedSkillIds || [];
+                let skill = null;
+                
+                if (equippedIds.length > 0) {
+                  const sName = equippedIds[idx];
+                  if (sName) {
+                    skill = game.learnedSkills.find(s => s.name === sName);
+                  }
+                } else {
+                  // Fallback for old users: last 4 skills
+                  skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
+                }
+
                 const cd = skill ? (game.skillCooldowns[skill.name] || 0) : 0;
                 const canUse = skill && game.mp >= (skill.mpCost || 10) && cd <= 0;
+                const emojis = ["🔥", "⚡", "✨", "💥"];
+
                 return (
                   <div key={idx} onClick={(e) => { e.stopPropagation(); if (canUse && skill) executeSkill(skill); }} style={{
-                    width: 60, height: 60, background: canUse ? "linear-gradient(135deg, #4d3300, #2a1b00)" : "rgba(0,0,0,0.8)",
-                    border: skill ? "2px solid #ffd700" : "1px dashed #444", borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
-                    boxShadow: canUse ? "0 0 15px rgba(255,215,0,0.3)" : "none"
+                    width: 75, height: 58, background: canUse ? "linear-gradient(135deg, #4d3300, #2a1b00)" : "rgba(0,0,0,0.8)",
+                    border: skill ? "2px solid #ffd700" : "1px dashed #444", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+                    boxShadow: canUse ? "0 0 15px rgba(255,215,0,0.3)" : "none",
+                    padding: "4px", textAlign: "center"
                   }}>
                     {skill ? (
                       <>
-                        <div style={{ fontSize: 24 }}>{idx === 0 ? "🔥" : idx === 1 ? "⚡" : "✨"}</div>
-                        {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 900, borderRadius: 13 }}>{Math.ceil(cd)}</div>}
+                        <div style={{ fontSize: 11, fontWeight: 900, color: canUse ? "#fff" : "#666", lineHeight: 1.2, wordBreak: "keep-all" }}>
+                          {skill.name}
+                        </div>
+                        {cd > 0 && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 900, borderRadius: 10 }}>{Math.ceil(cd)}</div>}
                       </>
                     ) : <div style={{ color: "#444" }}>+</div>}
                   </div>
@@ -767,8 +927,6 @@ export default function MasterPanel() {
         </div>
       )}
 
-      {/* 4. 정보 박스 영역 */}
-      {/* 4. 정보 박스 영역 */}
       {/* 4. 정보 박스 영역 */}
       {!masterDuel.isPlaying && (
         <div style={{
@@ -938,9 +1096,6 @@ export default function MasterPanel() {
           </div>
         )}
       </div>
-
-
-      {/* 카운트다운 및 입자 이펙트 제거 완료 */}
 
       {/* 패왕 토벌 상점 모달 */}
       {showShop && (

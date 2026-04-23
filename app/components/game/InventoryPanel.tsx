@@ -183,12 +183,12 @@ export default function InventoryPanel(props: Props) {
         border: "1px solid rgba(255,215,120,0.16)",
         background: "rgba(10,12,20,0.9)",
         height: "100%",
-        padding: "12px",
+        padding: "10px", // Reduced from 12px
         touchAction: "none",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        gap: "10px"
+        gap: "6px" // Reduced from 10px
       }}
     >
       {!unlocked && (
@@ -217,42 +217,24 @@ export default function InventoryPanel(props: Props) {
       )}
 
         {/* 상단 헤더 및 전체 능력치 */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 10,
-            flexShrink: 0
-          }}
-        >
-          <div style={{ color: "#f5e6b3", fontSize: 18, fontWeight: 900 }}>장비</div>
-          <div style={{ 
-            display: "flex", alignItems: "center", gap: 6, 
-            padding: "4px 10px", borderRadius: 10, 
-            background: "rgba(0,180,255,0.1)", border: "1px solid rgba(0,180,255,0.2)" 
-          }}>
-            <span style={{ fontSize: 14 }}>💎</span>
-            <span style={{ fontSize: 12, color: "#00f0ff", fontWeight: 900 }}>
-              {formatCompactNumber(game.enhancementStones || 0)}
-            </span>
-          </div>
-        </div>
+        {/* 상단 공간 확보를 위해 제목 및 강화석 박스 제거 */}
+        <div style={{ marginBottom: 4 }} /> 
 
         {/* 메인 레이아웃: 좌측(부위별 슬롯) / 우측(해당 부위 장비 목록) */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "110px 1fr",
-              gap: 8,
+              gridTemplateColumns: "125px 1fr",
+              gap: 10,
               flex: 1,
-              overflowY: "auto",
-              paddingRight: 4
+              minHeight: 0, // CRITICAL: Allows flex child to shrink
+              overflowY: "hidden", // Parent of scrollable children
+              paddingRight: 2
             }}
             className="hide-scrollbar"
           >
           {/* 좌측 슬롯 네비게이션 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {slotMeta.map((meta) => {
               const equipped = resolveEquippedItem(meta.slot);
               const active = selectedSlot === meta.slot;
@@ -262,39 +244,36 @@ export default function InventoryPanel(props: Props) {
                   key={meta.slot}
                   onClick={() => setSelectedSlot(meta.slot)}
                   style={{
-                    borderRadius: 12,
+                    borderRadius: 8,
                     border: active
-                      ? "1px solid rgba(255,215,120,0.9)"
-                      : "1px solid rgba(255,255,255,0.1)",
+                      ? "1.2px solid #ffd778"
+                      : "1px solid rgba(255,255,255,0.06)",
                     background: active
-                      ? "linear-gradient(135deg, rgba(255,215,120,0.25) 0%, rgba(255,215,120,0.05) 100%)"
-                      : "rgba(255,255,255,0.03)",
-                    padding: "6px 6px",
+                      ? "linear-gradient(135deg, rgba(255,215,120,0.15) 0%, rgba(255,215,120,0.05) 100%)"
+                      : "rgba(255,255,255,0.01)",
+                    padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    justifyContent: "space-between",
                     cursor: "pointer",
-                    animation: equipped ? "goldGlow 2s infinite" : "none",
-                    boxShadow: active ? "0 4px 15px rgba(255,215,120,0.15)" : "none",
-                    transition: "all 0.2s ease",
-                    backdropFilter: "blur(5px)"
+                    transition: "all 0.1s ease",
                   }}
                 >
-                  <div style={{ fontSize: 18, filter: active ? "drop-shadow(0 0 4px rgba(255,215,120,0.5))" : "none" }}>
-                    {meta.icon}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                    <div style={{ fontSize: 15, color: active ? "#ffd778" : "#ccc", fontWeight: "bold", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ fontSize: 14, filter: active ? "drop-shadow(0 0 3px #ffd778)" : "none" }}>
+                      {meta.icon}
+                    </div>
+                    <div style={{ fontSize: 11, color: active ? "#ffd778" : "#777", fontWeight: "900" }}>
                       {meta.short}
-                      {equipped && (
-                        <span style={{ 
-                          fontSize: 9, background: "#ffd700", color: "#000", 
-                          padding: "1px 4px", borderRadius: "50%", 
-                          boxShadow: "0 0 8px rgba(255,215,0,0.6)"
-                        }}>E</span>
-                      )}
                     </div>
                   </div>
+                  {equipped && (
+                    <div style={{ 
+                      width: 12, height: 12, background: "#ffd700", color: "#000", 
+                      borderRadius: "50%", display: "grid", placeItems: "center",
+                      fontSize: 7, fontWeight: 950
+                    }}>E</div>
+                  )}
                 </button>
               );
             })}
@@ -303,11 +282,11 @@ export default function InventoryPanel(props: Props) {
           {/* 우측 인벤토리 그리드 */}
           <div
             style={{
-              borderRadius: 14,
+              borderRadius: 12,
               border: "1px solid rgba(255,255,255,0.08)",
               background: "rgba(255,255,255,0.03)",
-              padding: 8,
-              minHeight: 150,
+              padding: 6,
+              height: "100%",
               overflowY: "auto",
               touchAction: "pan-y"
             }}
@@ -366,69 +345,53 @@ export default function InventoryPanel(props: Props) {
                   const isEquipped = selectedEquippedId === item.id;
                   return (
                     <button
-                    key={item.id}
-                    onClick={() => {
-                      // Fallback for desktop
-                      if (swipeOffset < 10) setPopupItem(item);
-                    }}
-                    onTouchStart={(e) => onGearTouchStart(e, item.id)}
-                    onTouchMove={onGearTouchMove}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onGearTouchEnd(e, item);
-                    }}
-                    style={{
-                      position: "relative",
-                      borderRadius: 12,
-                      background: isEquipped ? "rgba(255,215,120,0.15)" : "rgba(255,255,255,0.06)",
-                      border: isEquipped ? "1px solid rgba(255,215,120,0.8)" : "1px solid rgba(255,255,255,0.1)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      animation: isEquipped ? "goldGlow 2s infinite" : "none",
-                      transform: swipeGearId === item.id ? `translateX(${swipeOffset}px)` : "none",
-                      transition: swipeGearId === item.id ? "none" : "transform 0.3s ease"
-                    }}
-                  >
-                    {swipeGearId === item.id && swipeOffset > 40 && (
-                        <div style={{ 
-                          position: "absolute", left: -90, color: "#ff4d4d", fontSize: 10, fontWeight: "bold",
-                          display: "flex", flexDirection: "column", alignItems: "flex-end"
-                        }}>
-                          <span>판매 →</span>
-                          <span style={{ fontSize: 8 }}>{ formatCompactNumber(item.name.includes("[패왕]") ? 40000000 : Math.floor(item.price * 0.25)) }냥</span>
-                        </div>
-                    )}
-                      <div style={{ fontSize: 22 }}>{item.icon ?? "📦"}</div>
-                      <div
-                        style={{
-                          flex: 1,
-                          textAlign: "left",
+                      key={item.id}
+                      onClick={() => {
+                        if (swipeOffset < 10) setPopupItem(item);
+                      }}
+                      onTouchStart={(e) => onGearTouchStart(e, item.id)}
+                      onTouchMove={onGearTouchMove}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        onGearTouchEnd(e, item);
+                      }}
+                      style={{
+                        position: "relative",
+                        borderRadius: 8,
+                        background: isEquipped ? "rgba(255,215,120,0.06)" : "rgba(255,255,255,0.02)",
+                        border: isEquipped ? "1px solid #ffd778" : "1px solid rgba(255,255,255,0.04)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "4px 10px",
+                        cursor: "pointer",
+                        animation: isEquipped ? "itemEquippedGlow 2s infinite" : "none",
+                        transform: swipeGearId === item.id ? `translateX(${swipeOffset}px)` : "none",
+                        transition: swipeGearId === item.id ? "none" : "transform 0.2s ease-out"
+                      }}
+                    >
+                      <div style={{ fontSize: 18, filter: isEquipped ? "drop-shadow(0 0 4px rgba(255,215,120,0.3))" : "none" }}>
+                        {item.icon ?? "📦"}
+                      </div>
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <div style={{
                           fontSize: 12,
-                          fontWeight: "bold",
+                          fontWeight: "900",
                           color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {item.name} {item.equipmentSkill && <span style={{ color: "#00f2ff", fontSize: 9, fontWeight: "bold" }}>[보검]</span>}
+                        }}>
+                          {item.name}
+                        </div>
+                        <div style={{ fontSize: 8, color: "#666", display: "flex", gap: 4 }}>
+                          <span>공격 +{item.attackBonus}</span>
+                          {item.equipmentSkill && <span style={{ color: "#00f2ff" }}>[보검]</span>}
+                        </div>
                       </div>
                       {isEquipped && (
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: "bold",
-                            color: "#ffd778",
-                            background: "rgba(255,215,120,0.2)",
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                          }}
-                        >
-                          E
-                        </div>
+                        <div style={{ 
+                          width: 15, height: 15, background: "#ffd700", color: "#000", 
+                          borderRadius: 3, display: "grid", placeItems: "center",
+                          fontSize: 9, fontWeight: 950
+                        }}>E</div>
                       )}
                     </button>
                   );
@@ -440,42 +403,43 @@ export default function InventoryPanel(props: Props) {
 
         {/* 퀵슬롯 설정 (회복제 장착) */}
         <div style={{ 
-          marginTop: 15, 
-          padding: "15px", 
-          borderTop: "1px solid rgba(255,215,120,0.2)",
-          borderRadius: "15px",
-          background: "radial-gradient(circle at center, rgba(255,215,0,0.1) 0%, transparent 85%)",
-          position: "relative",
-          overflow: "hidden"
+          marginTop: 6, 
+          padding: "8px", 
+          borderTop: "1px solid rgba(255,215,120,0.1)",
+          borderRadius: "10px",
+          background: "rgba(0,0,0,0.15)",
+          flexShrink: 0 // Prevent this area from growing
         }}>
-          <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", marginBottom: 10, display: "flex", alignItems: "center", gap: 6, textShadow: "0 0 8px rgba(255,215,0,0.5)" }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "#ffd700", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
             <span>🧪</span> 물약 장착 (대결 시 자동 사용)
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
             {[0, 1, 2, 3, 4].map(idx => {
               const consumableId = game.quickSlots[idx];
               return (
                 <button
                   key={idx}
                   data-slot-index={idx}
-                  onClick={() => setSelectingSlot(idx)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectingSlot(idx);
+                  }}
                   style={{
-                    height: 50, borderRadius: 12, 
-                    border: consumableId ? "2px solid #ffd700" : "2px dashed rgba(255,215,0,0.4)",
+                    height: 44, borderRadius: 10, 
+                    border: consumableId ? "1.5px solid #ffd700" : "1.5px dashed rgba(255,215,0,0.3)",
                     background: "rgba(255,255,255,0.03)", display: "grid", placeItems: "center",
-                    position: "relative", cursor: "pointer", padding: 0,
-                    animation: "goldGlow 2s infinite"
+                    position: "relative", cursor: "pointer", padding: 0
                   }}
                 >
                   {consumableId ? (
                     <>
-                      <div style={{ fontSize: 20 }}>{getPotionIcon(consumableId)}</div>
-                      <div style={{ position: "absolute", bottom: 2, right: 4, fontSize: 10, fontWeight: 900, color: "#fff" }}>
+                      <div style={{ fontSize: 18 }}>{getPotionIcon(consumableId)}</div>
+                      <div style={{ position: "absolute", bottom: 1, right: 3, fontSize: 9, fontWeight: 900, color: "#fff", background: "rgba(0,0,0,0.5)", padding: "0 2px", borderRadius: 3 }}>
                         {game.consumables[consumableId] || 0}
                       </div>
                     </>
                   ) : (
-                    <span style={{ fontSize: 20, color: "rgba(255,215,0,0.6)", textShadow: "0 0 10px rgba(255,215,0,0.4)" }}>+</span>
+                    <span style={{ fontSize: 16, color: "rgba(255,215,0,0.4)" }}>+</span>
                   )}
                 </button>
               );
