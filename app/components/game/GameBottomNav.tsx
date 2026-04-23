@@ -11,6 +11,7 @@ type Props = {
 const items: { key: TabType; label: string }[] = [
   { key: "training", label: "수련" },
   { key: "upgrade", label: "강화" },
+  { key: "tower", label: "무한탑" },
   { key: "inn", label: "객잔" },
   { key: "master", label: "대결" },
   { key: "library", label: "비급" },
@@ -30,8 +31,8 @@ export default function GameBottomNav({
         bottom: 0,
         zIndex: 40,
         display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: 4,
+        gridTemplateColumns: "repeat(8, 1fr)",
+        gap: 3,
         padding: "10px 4px calc(15px + env(safe-area-inset-bottom))",
         background: "linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,1))",
         borderTop: "1px solid rgba(255,255,255,0.05)",

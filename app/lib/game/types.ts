@@ -43,7 +43,7 @@ export type EquipSlot =
   | "ring"
   | "bracelet";
 
-export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade";
+export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade" | "tower";
 export type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse";
 
 export type ConsumableId =
@@ -281,6 +281,36 @@ export type MasterDuelState = {
   };
 };
 
+export type TowerBuff = {
+  id: string;
+  name: string;
+  description: string;
+  bonus: Record<string, number>;
+  penalty: Record<string, number>;
+};
+
+export type TowerState = {
+  currentFloor: number;
+  highestFloor: number;
+  hp: number;
+  maxHp: number;
+  isInside: boolean;
+  activeBuffs: TowerBuff[];
+  lastReward: string | null;
+  startTime?: number;
+  bestClearTimes: Record<number, number>; // floor -> ms
+  enemy: {
+    name: string;
+    hp: number;
+    maxHp: number;
+    atk: number;
+    traits: string[];
+  } | null;
+  eventRoom: "REST" | "BUFF" | "DANGER" | null;
+  pendingBuffChoices: TowerBuff[] | null;
+  lastClearFloor: number;
+};
+
 export type MovementBuffStatus = {
   skillId: string;
   name: string;
@@ -423,6 +453,7 @@ export type GameSaveData = {
   gamblingTokens: number;
   yabawiEvent: { active: boolean; expiresAt: number } | null;
   pendingYabawiPlay?: boolean;
+  tower: TowerState;
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

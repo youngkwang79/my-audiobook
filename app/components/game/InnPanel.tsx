@@ -671,6 +671,7 @@ export default function InnPanel({
       setResultText(`Stage ${currentStage} 돌파!!`);
 
       setIsPlaying(false);
+      isPlayingRef.current = false;
       setIsTransitioning(true);
       setTransitionCountdown(3);
 
@@ -791,6 +792,7 @@ export default function InnPanel({
 
   // 1. Breath (Rhythm) Logic
   const updateBreath = (dt: number) => {
+    if (isTransitioning) return;
     // 30s Timer
     const nextTime = Math.max(0, breathTimeLeftRef.current - dt);
     breathTimeLeftRef.current = nextTime;
@@ -844,7 +846,7 @@ export default function InnPanel({
       }
 
       if (newScore <= -300) {
-        finishMission(true, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
+        finishMission(false, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
         return;
       }
 
@@ -922,7 +924,7 @@ export default function InnPanel({
       }
 
       if (newScore <= -300) {
-        finishMission(true, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
+        finishMission(false, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
         const nextNotes = breathNotesRef.current.filter(n => n.id !== nearestNote.id);
         breathNotesRef.current = nextNotes;
         setBreathNotes(nextNotes);

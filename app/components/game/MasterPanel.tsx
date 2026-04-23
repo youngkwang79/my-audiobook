@@ -685,10 +685,10 @@ export default function MasterPanel() {
 
           {/* Rival HP Bar Overlay (Now relative to screen top) */}
           <div style={{
-            position: "absolute", top: "35px", left: "50%", transform: "translateX(-50%)",
+            position: "absolute", top: "60px", left: "50%", transform: "translateX(-50%)",
             width: "80%", maxWidth: 400, zIndex: 300
           }}>
-            <div style={{ height: 24, background: "#1a0505", borderRadius: 2, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000" }}>
+            <div style={{ height: 26, background: "#1a0505", borderRadius: 2, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000" }}>
               <div
                 style={{ width: `${hpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.2s", borderRadius: 0 }}
                 className={hpPercent < 30 ? "hp-low" : ""}
@@ -697,8 +697,8 @@ export default function MasterPanel() {
           </div>
 
           {/* Timer - Top Center */}
-          <div style={{ position: "relative", zIndex: 20, paddingTop: 60, textAlign: "center" }}>
-            <div style={{ fontSize: 42, fontWeight: 950, color: "#ffd700", textShadow: "0 0 20px #000, 0 0 10px #ffd700" }}>
+          <div style={{ position: "relative", zIndex: 20, paddingTop: 10, textAlign: "center" }}>
+            <div style={{ fontSize: 40, fontWeight: 950, color: "#ffd700", textShadow: "0 0 20px #000, 0 0 10px #ffd700" }}>
               {Math.ceil(masterDuel.timeLeft)}s
             </div>
             <div style={{ marginTop: 10, fontSize: 18, color: "#fff", fontWeight: 900, textShadow: "0 2px 4px #000" }}>{masterDuel.rivalName}</div>

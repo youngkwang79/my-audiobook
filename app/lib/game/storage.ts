@@ -11,6 +11,21 @@ const defaultEquippedGear: EquippedGear = {
   bracelet: null,
 };
 
+const defaultTowerState: any = {
+  currentFloor: 1,
+  highestFloor: 0,
+  hp: 0,
+  maxHp: 0,
+  isInside: false,
+  activeBuffs: [],
+  lastReward: null,
+  bestClearTimes: {},
+  enemy: null,
+  eventRoom: null,
+  pendingBuffChoices: null,
+  lastClearFloor: 0,
+};
+
 export const defaultGameData: GameSaveData = {
   name: "무명협객",
   age: 17,
@@ -211,6 +226,7 @@ export const defaultGameData: GameSaveData = {
   oilBuffs: {},
   gamblingTokens: 0,
   yabawiEvent: null,
+  tower: defaultTowerState,
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 
@@ -268,6 +284,9 @@ export function loadGame(): GameSaveData {
     if (kills >= 200 && !repairedTabs.includes("library")) repairedTabs.push("library");
     if (kills >= 300 && !repairedTabs.includes("inn")) repairedTabs.push("inn");
 
+    const realmIdx = REALM_ORDER.indexOf(v12Data.realm || "필부");
+    if (realmIdx >= 1 && !repairedTabs.includes("tower")) repairedTabs.push("tower");
+
     // Migration: derive upgradeLevels from statUpgrades if missing
     const levels = v12Data.upgradeLevels || {};
     const stats = v12Data.statUpgrades || {};
@@ -305,6 +324,7 @@ export function loadGame(): GameSaveData {
       wisdom: v12Data.wisdom ?? 0,
       martialArtsSkills: Array.isArray(v12Data.martialArtsSkills) ? v12Data.martialArtsSkills : [],
       oilBuffs: v12Data.oilBuffs || {},
+      tower: { ...defaultTowerState, ...(v12Data.tower || {}) },
     };
   } catch (error) {
     console.error("게임 저장 데이터 불러오기 실패:", error);
