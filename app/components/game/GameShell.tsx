@@ -114,35 +114,9 @@ export default function GameShell() {
   const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory", "giru", "gambling"];
 
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX.current - touchEndX;
-    const threshold = 60; // 최소 60px 이상 스와이프해야 인정
-
-    const currentIndex = mainTabs.indexOf(activeTab);
-    
-    if (diff > threshold) {
-      // 다음 탭 (왼쪽으로 스와이프)
-      const nextIndex = Math.min(mainTabs.length - 1, currentIndex + 1);
-      if (nextIndex !== currentIndex) setActiveTab(mainTabs[nextIndex]);
-    } else if (diff < -threshold) {
-      // 이전 탭 (오른쪽으로 스와이프)
-      const prevIndex = Math.max(0, currentIndex - 1);
-      if (prevIndex !== currentIndex) setActiveTab(mainTabs[prevIndex]);
-    }
-    
-    touchStartX.current = null;
-  };
 
   return (
     <div
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
       style={{
         maxWidth: 400,
         margin: "0 auto",
@@ -154,7 +128,6 @@ export default function GameShell() {
         flexDirection: "column",
         position: "relative",
         overflow: "hidden",
-        touchAction: "pan-y", // Allow vertical scroll, but we handle horizontal swipe
       }}
     >
      {/* Night System Bar - 전투 중이 아닐 때만 렌더링 */}

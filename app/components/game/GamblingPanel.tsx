@@ -161,20 +161,50 @@ export default function GamblingPanel() {
 
   return (
     <div
-      className="hide-scrollbar"
       style={{
-        display: "flex",
-        flexDirection: "column",
         height: "100%",
-        minHeight: "100%",
-        overflowY: "auto",
-        padding: "16px",
-        boxSizing: "border-box",
-        color: "#fff",
-        background:
-          "radial-gradient(circle at top, rgba(80,45,130,0.35), transparent 34%), linear-gradient(135deg, #121224 0%, #17122b 48%, #0b0b14 100%)",
+        position: "relative",
+        overflow: "hidden", // 부모는 숨김
+        display: "flex",
+        flexDirection: "column"
       }}
     >
+      {/* 스크롤 안내 화살표 (고정 위치) */}
+      {!selectedGame && (
+        <motion.div
+          animate={{ y: [0, 8, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: "absolute",
+            bottom: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 50,
+            fontSize: "24px",
+            color: "#ffd700",
+            pointerEvents: "none",
+            filter: "drop-shadow(0 0 8px rgba(255,215,0,0.5))"
+          }}
+        >
+          ▼
+        </motion.div>
+      )}
+
+      <div
+        className="hide-scrollbar"
+        style={{
+          position: "absolute", // 부모 컨테이너(relative)에 꽉 채움
+          inset: 0,
+          overflowY: "auto",
+          touchAction: "pan-y", // 수직 스크롤 허용
+          padding: "16px",
+          paddingBottom: "100px", // 더 넉넉한 하단 여백
+          boxSizing: "border-box",
+          color: "#fff",
+          background:
+            "radial-gradient(circle at top, rgba(80,45,130,0.35), transparent 34%), linear-gradient(135deg, #121224 0%, #17122b 48%, #0b0b14 100%)",
+        }}
+      >
       <div style={{ textAlign: "center", marginBottom: "18px" }}>
         <div
           style={{
@@ -435,6 +465,7 @@ export default function GamblingPanel() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

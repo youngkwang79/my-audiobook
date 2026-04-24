@@ -82,41 +82,6 @@ export default function ForgePanel(props: Props) {
   const [enhanceResult, setEnhanceResult] = useState<{ success: boolean; message: string } | null>(null);
   const [purchaseEffect, setPurchaseEffect] = useState<{ name: string; icon: string } | null>(null);
   const [selectedOilId, setSelectedOilId] = useState<ConsumableId | null>(null);
-  const touchStartX = useMemo(() => ({ current: null as number | null }), []);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX.current - touchEndX;
-    const threshold = 60;
-
-    if (Math.abs(diff) > threshold && activeTab === "craft") {
-      e.stopPropagation(); // Prevent bubbling to GameShell
-      const currentIndex = FORGE_REALM_LIST.indexOf(selectedRealm);
-      if (diff > 0) {
-        // Swipe Left -> Next Realm
-        let nextIndex = (currentIndex + 1) % FORGE_REALM_LIST.length;
-        // Skip locked realms
-        while (nextIndex !== currentIndex && !canAccessRealm(FORGE_REALM_LIST[nextIndex])) {
-          nextIndex = (nextIndex + 1) % FORGE_REALM_LIST.length;
-        }
-        setSelectedRealm(FORGE_REALM_LIST[nextIndex]);
-      } else {
-        // Swipe Right -> Prev Realm
-        let prevIndex = (currentIndex - 1 + FORGE_REALM_LIST.length) % FORGE_REALM_LIST.length;
-        // Skip locked realms
-        while (prevIndex !== currentIndex && !canAccessRealm(FORGE_REALM_LIST[prevIndex])) {
-          prevIndex = (prevIndex - 1 + FORGE_REALM_LIST.length) % FORGE_REALM_LIST.length;
-        }
-        setSelectedRealm(FORGE_REALM_LIST[prevIndex]);
-      }
-    }
-    touchStartX.current = null;
-  };
 
   const filteredItems = useMemo(() => {
     return FORGE_ITEMS.filter(item => item.realm === selectedRealm);
@@ -164,8 +129,10 @@ export default function ForgePanel(props: Props) {
 
     const curLv = item.enhancement || 0;
     const rIdx = realms.indexOf(item.realm || "필부");
-    const repScale = Math.pow(1.8, rIdx);
-    const stoneScale = Math.pow(1.25, rIdx);
+    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    
+    const repScale = Math.pow(1.8, rIdx) * (isPaewang ? 10 : 1);
+    const stoneScale = Math.pow(1.25, rIdx) * (isPaewang ? 5 : 1);
     
     const rSettings = REALM_SETTINGS[item.realm || "필부"] || REALM_SETTINGS["필부"];
     const rMult = rSettings.rewardMultiplier || 1;
@@ -264,8 +231,6 @@ export default function ForgePanel(props: Props) {
 
   return (
     <section
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
       style={{
         border: "1px solid rgba(255,215,120,0.18)",
         borderRadius: 20,
