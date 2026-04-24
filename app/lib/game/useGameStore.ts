@@ -407,7 +407,8 @@ interface GameState {
   triggerCombatTrap: (multiplier: number) => void;
   visitGiru: () => void;
   interactGiru: (npcId: string, actionId: string) => { success: boolean; message: string; event?: any };
-  
+  setLowPowerMode: (enabled: boolean) => void;
+  setAutoFps: (enabled: boolean) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -1109,7 +1110,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     get().triggerSave(true);
   },
-  autoTrain: () => { const { game, addExp } = get(); if (game.pendingInnEntry || game.timingMission.available) return; addExp(1.0 + (game.upgradeLevels.autoGain || 0) * 0.01, true); },
+  autoTrain: (mult = 1) => {
+    const { game, addExp } = get();
+    if (game.pendingInnEntry || game.timingMission.available) return;
+    const baseGain = 1.0 + (game.upgradeLevels.autoGain || 0) * 0.01;
+    addExp(baseGain * mult, true);
+  },
   takeDamage: (amount: number) => set((s: any) => {
     let nextHp = s.game.hp;
     let nextMp = s.game.mp;
@@ -3416,4 +3422,26 @@ stepTower: (lane: number) => {
     get().triggerSave(true);
     return { success: true, message: event.text, event };
   },
+
+  setLowPowerMode: (enabled: boolean) =>
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        options: {
+          ...(s.game.options || { autoFps: true }),
+          lowPowerMode: enabled,
+        },
+      },
+    })),
+
+  setAutoFps: (enabled: boolean) =>
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        options: {
+          ...(s.game.options || { lowPowerMode: false }),
+          autoFps: enabled,
+        },
+      },
+    })),
 }));

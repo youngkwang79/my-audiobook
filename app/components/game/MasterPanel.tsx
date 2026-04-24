@@ -246,9 +246,10 @@ export default function MasterPanel() {
   const { masterDuel } = game;
   const [damages, setDamages] = useState<any[]>([]);
   const [combatTargets, setCombatTargets] = useState<any[]>([]);
+  const requestRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
+  const lastUpdateRef = useRef<number>(0);
   const lastHitTimeRef = useRef<number>(0);
-  const requestRef = useRef<number>(0);
   const [now, setNow] = useState(() => Date.now());
   const [showShop, setShowShop] = useState(false);
   const [showReward, setShowReward] = useState(false);
@@ -261,6 +262,20 @@ export default function MasterPanel() {
   const oilEffectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(0);
+
+  const getTargetFPS = useCallback(() => {
+    const lowPower = game.options?.lowPowerMode;
+    const autoFps = game.options?.autoFps;
+
+    if (lowPower) return 10;
+    if (autoFps) {
+      const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
+      if (cores <= 4) return 15;
+      if (cores <= 6) return 20;
+      return 30;
+    }
+    return 30;
+  }, [game.options?.lowPowerMode, game.options?.autoFps]);
 
   useEffect(() => {
     if (!masterDuel.isPlaying) {
@@ -406,25 +421,32 @@ export default function MasterPanel() {
     const store = useGameStore.getState();
     const isPlaying = store.game.masterDuel.isPlaying;
 
-    if (!isPlaying) {
-      lastTickRef.current = 0;
+    if (document.hidden || !isPlaying) {
+      lastTickRef.current = time;
       requestRef.current = requestAnimationFrame(animate);
       return;
     }
 
-    if (lastTickRef.current !== 0) {
-      const dt = (time - lastTickRef.current) / 1000;
-      if (!isNaN(dt) && dt > 0) {
+    const FPS = getTargetFPS();
+    const FRAME_INTERVAL = 1000 / FPS;
+
+    if (time - lastUpdateRef.current >= FRAME_INTERVAL) {
+      if (lastTickRef.current !== 0) {
+        const dt = (time - lastTickRef.current) / 1000;
         const cappedDt = Math.min(dt, 0.1);
-        // Explicitly calling the store's update functions
-        store.updateMasterDuel(cappedDt);
-        if (store.updateBuffs) store.updateBuffs(cappedDt);
+
+        if (!isNaN(cappedDt) && cappedDt > 0) {
+          store.updateMasterDuel(cappedDt);
+          if (store.updateBuffs) store.updateBuffs(cappedDt);
+        }
       }
+
+      lastUpdateRef.current = time;
+      lastTickRef.current = time;
     }
 
-    lastTickRef.current = time;
     requestRef.current = requestAnimationFrame(animate);
-  }, []);
+  }, [getTargetFPS]);
 
   // Auto-close removed to allow manual confirmation
   const [isPlayerHit, setIsPlayerHit] = useState(false);
@@ -581,6 +603,34 @@ export default function MasterPanel() {
               <span style={{ position: "relative", zIndex: 2 }}>패왕 토벌 상점</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* 저전력 모드 / 자동 FPS 버튼 */}
+      {!masterDuel.isPlaying && (
+        <div style={{ display: "flex", gap: 8, padding: "0 10px" }}>
+          <button
+            onClick={() => useGameStore.getState().setLowPowerMode(!game.options?.lowPowerMode)}
+            style={{
+              flex: 1, padding: "6px", borderRadius: 10, fontSize: 10, fontWeight: 900,
+              background: game.options?.lowPowerMode ? "rgba(0,255,0,0.2)" : "rgba(255,255,255,0.05)",
+              color: game.options?.lowPowerMode ? "#00ff00" : "#888",
+              border: "1px solid " + (game.options?.lowPowerMode ? "#00ff00" : "rgba(255,255,255,0.1)")
+            }}
+          >
+            🔋 저전력 모드 {game.options?.lowPowerMode ? "ON" : "OFF"}
+          </button>
+          <button
+            onClick={() => useGameStore.getState().setAutoFps(!game.options?.autoFps)}
+            style={{
+              flex: 1, padding: "6px", borderRadius: 10, fontSize: 10, fontWeight: 900,
+              background: game.options?.autoFps ? "rgba(0,242,255,0.2)" : "rgba(255,255,255,0.05)",
+              color: game.options?.autoFps ? "#00f2ff" : "#888",
+              border: "1px solid " + (game.options?.autoFps ? "#00f2ff" : "rgba(255,255,255,0.1)")
+            }}
+          >
+            ⚡ 자동 FPS {game.options?.autoFps ? "ON" : "OFF"}
+          </button>
         </div>
       )}
 

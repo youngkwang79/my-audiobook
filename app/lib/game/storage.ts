@@ -243,6 +243,10 @@ export const defaultGameData: GameSaveData = {
   nightStreak: 0,
   npcFavors: { "연화": 0, "설매": 0, "초운": 0, "홍련": 0, "백노인": 0 },
   nightBuffs: [],
+  options: {
+    lowPowerMode: false,
+    autoFps: true,
+  },
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

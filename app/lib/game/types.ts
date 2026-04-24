@@ -492,6 +492,10 @@ export type GameSaveData = {
   nightStreak: number;
   npcFavors: Record<string, number>;
   nightBuffs: { id: string; name: string; effect: any; expiresAt: number }[];
+  options: {
+    lowPowerMode: boolean;
+    autoFps: boolean;
+  };
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

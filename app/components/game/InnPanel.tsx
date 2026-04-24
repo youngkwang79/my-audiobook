@@ -1589,13 +1589,14 @@ const fireCounterSlash = (damage: number) => {
   // 5. Pulse Logic
   const updatePulse = (dt: number) => {
     // [기운응축 속도 밸런싱] 완만한 곡선으로 수정
-    let baseSpeedFactor = 4.0;
-    if (currentStage <= 3) baseSpeedFactor = 4.0;
-    else if (currentStage <= 6) baseSpeedFactor = 6.0;
-    else if (currentStage <= 10) baseSpeedFactor = 8.5;
-    else baseSpeedFactor = 6.0 + currentStage * 0.3;
+    // [기운응축 속도 밸런싱] 더욱 완만한 곡선으로 수정
+    let baseSpeedFactor = 3.0;
+    if (currentStage <= 3) baseSpeedFactor = 3.0;
+    else if (currentStage <= 6) baseSpeedFactor = 4.5;
+    else if (currentStage <= 10) baseSpeedFactor = 6.5;
+    else baseSpeedFactor = 5.0 + currentStage * 0.2;
 
-    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.6)) * 2.5;
+    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.4)) * 2.2;
     const moved = pulseTargetsRef.current.map(t => ({
       ...t,
       progress: t.progress + speedFactor * dt * 1.2
@@ -1604,7 +1605,8 @@ const fireCounterSlash = (damage: number) => {
     setPulseTargets(moved);
 
     if (moved.some(t => t.progress > 100)) {
-      finishMission(false, "MISS", playerScoreRef.current, "기운이 너무 팽창했습니다!");
+      // 타이머/실패 제거 요청으로 인해 단순히 삭제 처리
+      pulseTargetsRef.current = pulseTargetsRef.current.filter(t => t.progress <= 100);
       return;
     }
 
@@ -2213,7 +2215,7 @@ left: `${n.x}%`,
                           initial={{ opacity: 0, scale: 0.5, filter: "blur(20px)" }}
                           animate={{ opacity: 1, scale: 1.8, filter: "blur(0px)" }}
                           exit={{ opacity: 0, scale: 2.5, filter: "blur(15px)" }}
-                          transition={{ duration: 0.45, ease: "easeOut" }}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
                           style={{
                             position: "absolute",
                             top: "45%",
