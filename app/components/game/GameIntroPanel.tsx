@@ -72,8 +72,8 @@ export default function GameIntroPanel({
   // 시작 가능 조건 확인
   const canStart =
     hero.name.trim() !== "" &&
-    String(hero.age).trim() !== "" &&
-    String(hero.height).trim() !== "" &&
+    hero.age > 0 &&
+    hero.height > 0 &&
     !!faction;
 
   const previewImage = currentFaction.characterImages?.ready || "/warrior.png";
@@ -104,24 +104,39 @@ export default function GameIntroPanel({
       <div style={{ display: "grid", gap: 12 }}>
         <input
           style={inputStyle}
-          placeholder="주인공 이름"
+          placeholder="무림을 제패할 이름을 정해주십시요"
           value={hero.name}
+          onFocus={(e) => {
+            if (hero.name === "무명협객") {
+              onChangeHero({ ...hero, name: "" });
+            }
+          }}
           onChange={(e) => onChangeHero({ ...hero, name: e.target.value })}
         />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <input
             style={inputStyle}
-            placeholder="나이"
+            placeholder="나이는?"
             type="number"
-            value={hero.age}
-            onChange={(e) => onChangeHero({ ...hero, age: Number(e.target.value) })}
+            value={hero.age || ""}
+            onFocus={(e) => {
+              if (hero.age === 17) {
+                onChangeHero({ ...hero, age: 0 });
+              }
+            }}
+            onChange={(e) => onChangeHero({ ...hero, age: e.target.value ? Number(e.target.value) : 0 })}
           />
           <input
             style={inputStyle}
-            placeholder="키 (cm)"
+            placeholder="신장은?"
             type="number"
-            value={hero.height}
-            onChange={(e) => onChangeHero({ ...hero, height: Number(e.target.value) })}
+            value={hero.height || ""}
+            onFocus={(e) => {
+              if (hero.height === 175) {
+                onChangeHero({ ...hero, height: 0 });
+              }
+            }}
+            onChange={(e) => onChangeHero({ ...hero, height: e.target.value ? Number(e.target.value) : 0 })}
           />
         </div>
       </div>

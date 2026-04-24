@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { FORGE_ITEMS, REALM_SET_OPTIONS, rollTierAndOptions, RANDOM_OPTION_POOL, getEnhancementMultiplier } from "@/app/lib/game/items";
 import { useGameStore, REALM_ORDER, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import type { WeaponId, ConsumableId, EquipSlot } from "@/app/lib/game/types";
@@ -65,7 +65,6 @@ function PotionItem({ p, game, buyPotion, unlocked, currentCoins }: any) {
   );
 }
 
-const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
 
 export default function ForgePanel(props: Props) {
   const { game, addWeapon, addCoins, buyPotion } = useGameStore();
@@ -82,17 +81,23 @@ export default function ForgePanel(props: Props) {
   const [enhanceResult, setEnhanceResult] = useState<{ success: boolean; message: string } | null>(null);
   const [purchaseEffect, setPurchaseEffect] = useState<{ name: string; icon: string } | null>(null);
   const [selectedOilId, setSelectedOilId] = useState<ConsumableId | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const filteredItems = useMemo(() => {
     return FORGE_ITEMS.filter(item => item.realm === selectedRealm);
   }, [selectedRealm]);
 
-  const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+  const forgeRealms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
   const canAccessRealm = (realm: string) => {
     if (realm === "회복제") return true;
     if (game.isForgeFullUnlocked) return true; // God Mode: All realms unlocked
-    const playerIdx = realms.indexOf(game.realm);
-    const targetIdx = realms.indexOf(realm);
+    const playerIdx = forgeRealms.indexOf(game.realm);
+    const targetIdx = forgeRealms.indexOf(realm);
     if (targetIdx === -1) return false;
     return targetIdx <= playerIdx + 1;
   };
@@ -102,7 +107,7 @@ export default function ForgePanel(props: Props) {
     if (!item) return;
     if (currentCoins < item.price) return;
 
-    const realmIdx = realms.indexOf(item.realm as any);
+    const realmIdx = forgeRealms.indexOf(item.realm as any);
     const rolledItem = rollTierAndOptions(
       { ...item, id: `${item.id}_${Date.now()}` },
       realmIdx !== -1 ? realmIdx : 1,
@@ -128,16 +133,16 @@ export default function ForgePanel(props: Props) {
     if (!item) return { selectedItem: null, statChanges: [], goldCost: 0, repCost: 0, stoneCost: 0, totalRate: 0 };
 
     const curLv = item.enhancement || 0;
-    const rIdx = realms.indexOf(item.realm || "필부");
+    const rIdx = forgeRealms.indexOf(item.realm || "필부");
     const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
-    
+
     const repScale = Math.pow(1.8, rIdx) * (isPaewang ? 10 : 1);
     const stoneScale = Math.pow(1.25, rIdx) * (isPaewang ? 5 : 1);
-    
+
     const rSettings = REALM_SETTINGS[item.realm || "필부"] || REALM_SETTINGS["필부"];
     const rMult = rSettings.rewardMultiplier || 1;
     const starFactor = 1 + (game.star - 1) * 0.1;
-    
+
     // 기본 강화 비용 (level 서브탭용)
     let gold = Math.floor(5000 * rMult * starFactor * Math.pow(1.5, curLv));
     let stone = Math.round(5 * Math.pow(1.35, curLv) * stoneScale);
@@ -164,7 +169,7 @@ export default function ForgePanel(props: Props) {
     };
     const baseRate = successRates[curLv] ?? 1;
     let rate = baseRate;
-    if (Date.now() < (game.innBuffEndTime || 0)) rate += 5;
+    if (now < (game.innBuffEndTime || 0)) rate += 5;
     if (useBlessedOil) rate += 5;
 
     const statKeys = ["attackBonus", "defenseBonus", "hpBonus", "mpBonus", "critBonus", "critDmgBonus", "speedBonus", "evadeBonus"] as const;
@@ -180,7 +185,7 @@ export default function ForgePanel(props: Props) {
         const isPct = percentageStats.includes(k);
         const bVal = (item as any)[k] * getEnhancementMultiplier(curLv);
         const aVal = (item as any)[k] * getEnhancementMultiplier(curLv + 1);
-        
+
         return {
           label: statLabels[k],
           before: isPct ? bVal.toFixed(1) : formatCompactNumber(Math.ceil(bVal)),
@@ -197,7 +202,7 @@ export default function ForgePanel(props: Props) {
       stoneCost: stone,
       totalRate: rate
     };
-  }, [game.ownedWeapons, selectedEnhanceItem, game.star, game.innBuffEndTime, useBlessedOil, enhanceSubTab]);
+  }, [game.ownedWeapons, selectedEnhanceItem, game.star, game.innBuffEndTime, useBlessedOil, enhanceSubTab, forgeRealms, now]);
 
   const handleEnhance = () => {
     if (!selectedEnhanceItem) return;
@@ -226,7 +231,7 @@ export default function ForgePanel(props: Props) {
     setTimeout(() => setEnhanceResult(null), 2000);
   };
 
-  const isInnBuffActive = Date.now() < (game.innBuffEndTime || 0);
+  const isInnBuffActive = now < (game.innBuffEndTime || 0);
   const oilCount = game.consumables["oil_blessed"] || 0;
 
   return (
@@ -258,7 +263,31 @@ export default function ForgePanel(props: Props) {
           </div>
         </div>
       )}
-
+{/* 2024-04-24 상단 통합 재화 바 (탭 아래로 이동) */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 12,
+          padding: "7px 10px",
+          borderRadius: 12,
+          background: "rgba(0,0,0,0.3)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          fontSize: 11,
+          fontWeight: 900,
+          whiteSpace: "nowrap",
+          marginBottom: 10,
+          flexShrink: 0
+        }}
+      >
+        <span>🪙 {formatCompactNumber(currentCoins)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span>🏆 {formatCompactNumber(game.reputation || 0)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span>💎 {formatCompactNumber(currentStones)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span>💡 {formatCompactNumber(game.wisdom || 0)}</span>
+      </div>
 
       {/* 헤더 탭 (고정) */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
@@ -288,29 +317,7 @@ export default function ForgePanel(props: Props) {
         </div>
       </div>
 
-      {/* 2024-04-24 상단 통합 재화 바 (탭 아래로 이동) */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 8,
-          padding: "7px 10px",
-          borderRadius: 12,
-          background: "rgba(0,0,0,0.3)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          fontSize: 11,
-          fontWeight: 900,
-          whiteSpace: "nowrap",
-          marginBottom: 10,
-          flexShrink: 0
-        }}
-      >
-        <span>🪙 {formatCompactNumber(currentCoins)}</span>
-        <span style={{ color: "#444" }}>|</span>
-        <span>🏆 {formatCompactNumber(game.points || 0)}</span>
-        <span style={{ color: "#444" }}>|</span>
-        <span>💎 {formatCompactNumber(currentStones)}</span>
-      </div>
+      
 
       {/* 메인 콘텐츠 (스크롤 영역) */}
       <div style={{ flex: 1, overflowY: "auto", position: "relative" }} className="hide-scrollbar">
@@ -524,13 +531,13 @@ export default function ForgePanel(props: Props) {
                           background: isSelected
                             ? "rgba(255,77,77,0.16)"
                             : item
-                            ? "rgba(255,255,255,0.05)"
-                            : "rgba(255,255,255,0.02)",
+                              ? "rgba(255,255,255,0.05)"
+                              : "rgba(255,255,255,0.02)",
                           border: isSelected
                             ? "2px solid #ff4d4d"
                             : item
-                            ? "1px solid rgba(255,255,255,0.1)"
-                            : "1px dashed rgba(255,255,255,0.06)",
+                              ? "1px solid rgba(255,255,255,0.1)"
+                              : "1px dashed rgba(255,255,255,0.06)",
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
@@ -671,61 +678,61 @@ export default function ForgePanel(props: Props) {
                 </>
               ) : enhanceSubTab === "reroll" ? (
                 <div style={{ textAlign: "center", padding: "10px 0" }}>
-                   <div style={{ fontSize: 13, fontWeight: 900, color: "#00f2ff", marginBottom: 8 }}>
-                      🎲 기연 재연마
-                   </div>
-                   <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8 }}>
-                      <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>[ 현재 부여된 옵션 ]</div>
-                      {selectedItem?.randomOptions?.length ? (
-                        selectedItem.randomOptions.map((o, idx) => (
-                          <div key={idx} style={{ fontSize: 11, color: "#fff", padding: "2px 0" }}>🔹 {o.label}</div>
-                        ))
-                      ) : (
-                        <div style={{ fontSize: 11, color: "#666" }}>부여된 옵션이 없습니다.</div>
-                      )}
-                   </div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#00f2ff", marginBottom: 8 }}>
+                    🎲 기연 재연마
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>[ 현재 부여된 옵션 ]</div>
+                    {selectedItem?.randomOptions?.length ? (
+                      selectedItem.randomOptions.map((o, idx) => (
+                        <div key={idx} style={{ fontSize: 11, color: "#fff", padding: "2px 0" }}>🔹 {o.label}</div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#666" }}>부여된 옵션이 없습니다.</div>
+                    )}
+                  </div>
                 </div>
               ) : enhanceSubTab === "soul" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "5px 0" }}>
-                   <div style={{ fontSize: 13, fontWeight: 900, color: "#8a2be2", textAlign: "center", marginBottom: 4 }}>
-                      👻 영혼 주입 {(selectedItem?.enhancement || 0) < 10 && <span style={{ fontSize: 9, color: "#ff4d4d" }}>(+10강 필요)</span>}
-                   </div>
-                   {[
-                        { id: "vampire", name: "흡성대법", desc: "공격 시 HP의 2% 회복", icon: "🧛" },
-                        { id: "haste", name: "신법가속", desc: "스킬 쿨타임 20% 감소", icon: "⚡" },
-                        { id: "destruct", name: "파멸의 일격", desc: "방어력 무시 피해 발생", icon: "🧨" }
-                      ].map(s => (
-                        <button key={s.id} onClick={() => handleInfuse(s.id)} disabled={(selectedItem?.enhancement || 0) < 10 || (game.points || 0) < repCost || currentStones < stoneCost}
-                          style={{ padding: "8px 10px", background: "rgba(138,43,226,0.05)", border: "1px solid rgba(138,43,226,0.3)", color: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: (selectedItem?.enhancement || 0) >= 10 ? "pointer" : "default", opacity: (selectedItem?.enhancement || 0) >= 10 ? 1 : 0.5 }}>
-                          <span style={{ fontSize: 20 }}>{s.icon}</span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 11, fontWeight: "bold", color: "#8a2be2" }}>{s.name}</div>
-                            <div style={{ fontSize: 9, color: "#aaa" }}>{s.desc}</div>
-                          </div>
-                        </button>
-                      ))}
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#8a2be2", textAlign: "center", marginBottom: 4 }}>
+                    👻 영혼 주입 {(selectedItem?.enhancement || 0) < 10 && <span style={{ fontSize: 9, color: "#ff4d4d" }}>(+10강 필요)</span>}
+                  </div>
+                  {[
+                    { id: "vampire", name: "흡성대법", desc: "공격 시 HP의 2% 회복", icon: "🧛" },
+                    { id: "haste", name: "신법가속", desc: "스킬 쿨타임 20% 감소", icon: "⚡" },
+                    { id: "destruct", name: "파멸의 일격", desc: "방어력 무시 피해 발생", icon: "🧨" }
+                  ].map(s => (
+                    <button key={s.id} onClick={() => handleInfuse(s.id)} disabled={(selectedItem?.enhancement || 0) < 10 || (game.reputation || 0) < repCost || currentStones < stoneCost}
+                      style={{ padding: "8px 10px", background: "rgba(138,43,226,0.05)", border: "1px solid rgba(138,43,226,0.3)", color: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: (selectedItem?.enhancement || 0) >= 10 ? "pointer" : "default", opacity: (selectedItem?.enhancement || 0) >= 10 ? 1 : 0.5 }}>
+                      <span style={{ fontSize: 20 }}>{s.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: "bold", color: "#8a2be2" }}>{s.name}</div>
+                        <div style={{ fontSize: 9, color: "#aaa" }}>{s.desc}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "5px 0" }}>
-                   <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", textAlign: "center", marginBottom: 4 }}>
-                      🧪 연마제 주입 (기름 바르기)
-                   </div>
-                   <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 5 }} className="hide-scrollbar">
-                      {(["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"] as ConsumableId[]).map(oid => {
-                        const count = game.consumables[oid] || 0;
-                        const isSelected = selectedOilId === oid;
-                        const names: any = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
-                        const icons: any = { oil_atk_3: "🔥", oil_crit_3: "⚡", oil_thunder: "🌩️", oil_poison: "🧪", oil_bleed: "🩸", oil_eva_3: "💨", oil_def_3: "🛡️", oil_reflect: "🪞", oil_vajra: "🔱", oil_vampire: "🧛", oil_speed_3: "🌀", oil_luck_3: "🍀", oil_clarity: "✨", oil_eye: "👁️", oil_demon: "👺", oil_triple_hit: "⚔️", oil_formless: "🔮" };
-                        return (
-                          <button key={oid} disabled={count <= 0}
-                            onClick={() => setSelectedOilId(oid)}
-                            style={{ padding: "8px 10px", background: isSelected ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.05)", border: isSelected ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.1)", borderRadius: 10, display: "flex", alignItems: "center", gap: 8, cursor: count > 0 ? "pointer" : "default", opacity: count > 0 ? 1 : 0.4 }}>
-                            <span style={{ fontSize: 16 }}>{icons[oid]}</span>
-                            <div style={{ flex: 1, textAlign: "left", fontSize: 11, color: isSelected ? "#ffd700" : "#fff", fontWeight: 900 }}>{names[oid]} <span style={{ color: "#aaa", fontSize: 9 }}>(보유: {count})</span></div>
-                          </button>
-                        );
-                      })}
-                   </div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", textAlign: "center", marginBottom: 4 }}>
+                    🧪 연마제 주입 (기름 바르기)
+                  </div>
+                  <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 5 }} className="hide-scrollbar">
+                    {(["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"] as ConsumableId[]).map(oid => {
+                      const count = game.consumables[oid] || 0;
+                      const isSelected = selectedOilId === oid;
+                      const names: any = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
+                      const icons: any = { oil_atk_3: "🔥", oil_crit_3: "⚡", oil_thunder: "🌩️", oil_poison: "🧪", oil_bleed: "🩸", oil_eva_3: "💨", oil_def_3: "🛡️", oil_reflect: "🪞", oil_vajra: "🔱", oil_vampire: "🧛", oil_speed_3: "🌀", oil_luck_3: "🍀", oil_clarity: "✨", oil_eye: "👁️", oil_demon: "👺", oil_triple_hit: "⚔️", oil_formless: "🔮" };
+                      return (
+                        <button key={oid} disabled={count <= 0}
+                          onClick={() => setSelectedOilId(oid)}
+                          style={{ padding: "8px 10px", background: isSelected ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.05)", border: isSelected ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.1)", borderRadius: 10, display: "flex", alignItems: "center", gap: 8, cursor: count > 0 ? "pointer" : "default", opacity: count > 0 ? 1 : 0.4 }}>
+                          <span style={{ fontSize: 16 }}>{icons[oid]}</span>
+                          <div style={{ flex: 1, textAlign: "left", fontSize: 11, color: isSelected ? "#ffd700" : "#fff", fontWeight: 900 }}>{names[oid]} <span style={{ color: "#aaa", fontSize: 9 }}>(보유: {count})</span></div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -782,20 +789,20 @@ export default function ForgePanel(props: Props) {
 
               {/* 비용 표시 (재추가) */}
               <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                 {enhanceSubTab === "level" && (
-                   <div className="forge-cost-box">
-                     <div className="forge-cost-label">필요금화</div>
-                     <div className="forge-cost-value" style={{ color: currentCoins >= goldCost ? "#fff" : "#ff4d4d" }}>{formatCompactNumber(goldCost)}</div>
-                   </div>
-                 )}
-                 <div className="forge-cost-box">
-                   <div className="forge-cost-label">필요명성</div>
-                   <div className="forge-cost-value" style={{ color: (game.points || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
-                 </div>
-                 <div className="forge-cost-box">
-                   <div className="forge-cost-label">필요강화석</div>
-                   <div className="forge-cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{formatCompactNumber(stoneCost)}</div>
-                 </div>
+                {enhanceSubTab === "level" && (
+                  <div className="forge-cost-box">
+                    <div className="forge-cost-label" style={{ fontSize: "12px" }}>🪙</div>
+                    <div className="forge-cost-value" style={{ color: currentCoins >= goldCost ? "#fff" : "#ff4d4d" }}>{formatCompactNumber(goldCost)}</div>
+                  </div>
+                )}
+                <div className="forge-cost-box">
+                  <div className="forge-cost-label" style={{ fontSize: "12px" }}>🏆</div>
+                  <div className="forge-cost-value" style={{ color: (game.reputation || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
+                </div>
+                <div className="forge-cost-box">
+                  <div className="forge-cost-label" style={{ fontSize: "12px" }}>💎</div>
+                  <div className="forge-cost-value" style={{ color: currentStones >= stoneCost ? "#00f0ff" : "#ff4d4d" }}>{formatCompactNumber(stoneCost)}</div>
+                </div>
               </div>
 
               <button
@@ -813,7 +820,7 @@ export default function ForgePanel(props: Props) {
                   (enhanceSubTab === "level" && (!selectedItem || currentCoins < goldCost)) ||
                   (enhanceSubTab === "reroll" && (!selectedItem || selectedItem.tier === "평범")) ||
                   (enhanceSubTab === "oil" && !selectedOilId) ||
-                  (game.points || 0) < repCost ||
+                  (game.reputation || 0) < repCost ||
                   currentStones < stoneCost ||
                   (enhanceSubTab === "level" && useBlessedOil && (game.consumables["oil_blessed"] || 0) <= 0) ||
                   (enhanceSubTab === "level" && useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0)

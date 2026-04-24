@@ -413,7 +413,7 @@ interface GameState {
 let debounceTimer: NodeJS.Timeout | null = null;
 
 export const useGameStore = create<GameState>((set, get) => ({
-  game: { ...defaultGameData, ...loadGame(), name: loadGame().name ?? "무명협객" },
+  game: { ...defaultGameData, ...loadGame() },
   combatAnalysis: {
     isActive: false,
     timeLeft: 0,
@@ -827,7 +827,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       const now = Date.now();
       let combo = s.game.lastAttackTime && (now - s.game.lastAttackTime < 1500) ? s.game.comboCount + 1 : 1;
       let tKills = s.game.totalDummyKills;
-      let points = s.game.points || 0;
       let rep = s.game.reputation || 0;
       let eGold = 0;
       let lastR = s.game.lastReward;
@@ -927,7 +926,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
 
-    points += eGold;
     rep += eGold;
 
       const currentMaxHp = stats.hp;
@@ -992,7 +990,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           coins: s.game.coins + eGold, 
           reputation: rep, 
           exp: s.game.exp + finalExp, 
-          points, 
           dummyHp: dHp, 
           maxDummyHp: currentMaxHp, 
           totalDummyKills: tKills, 
@@ -1441,7 +1438,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           lastOfflineRewards: { 
             gold: eGold, 
             exp: eExp, 
-            points: eGold,
             touches: eTouches,
             duration: Math.round(offSec / 36) / 100,
             efficiency,
@@ -2819,7 +2815,11 @@ syncToCloud: async () => {
 
     // throw 대신 return으로 조용히 종료
     if (!response.ok) {
-      console.error("서버 저장 실패: 응답이 정상이 아닙니다.");
+      if (response.status === 401) {
+        console.warn("클라우드 저장 실패: 로그인이 필요하거나 세션이 만료되었습니다.");
+      } else {
+        console.error(`서버 저장 실패: 응답 코드 ${response.status}`);
+      }
       return; 
     }
 

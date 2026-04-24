@@ -222,13 +222,16 @@ export default function CharacterModal({
               <span style={{ color: "#888", fontSize: "11px" }}>나이:</span> {safeGame.age}세
             </div>
             <div>
+              <span style={{ color: "#888", fontSize: "11px" }}>신장:</span> {safeGame.height}cm
+            </div>
+            <div>
               <span style={{ color: "#888", fontSize: "11px" }}>소속:</span> {safeGame.faction}
             </div>
             <div style={{ color: "#ffd778", fontWeight: "bold" }}>
               <span style={{ color: "#888", fontSize: "11px" }}>경지:</span> {safeGame.realm} ({safeGame.star}성)
             </div>
             <div style={{ color: "#ffcc00", fontWeight: "bold" }}>
-              <span style={{ color: "#888", fontSize: "11px" }}>명성:</span> {formatCompactNumber(game.points)}
+              <span style={{ color: "#888", fontSize: "11px" }}>명성:</span> {formatCompactNumber(game.reputation)}
             </div>
           </div>
         </div>

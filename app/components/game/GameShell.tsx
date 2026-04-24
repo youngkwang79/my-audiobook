@@ -48,9 +48,16 @@ export default function GameShell() {
   const [showFogWarp, setShowFogWarp] = useState(false);
   const handledWarpRef = useRef(0);
   const touchStartX = useRef<number | null>(null);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    // Avoid synchronous setState in effect warning
+    requestAnimationFrame(() => setMounted(true));
     // Trigger offline reward check on mount
     const store: any = useGameStore.getState();
     if (store.checkOfflineRewards) store.checkOfflineRewards();
@@ -449,7 +456,7 @@ export default function GameShell() {
 
       {game.lastOfflineRewards && <OfflineRewardPopup />}
 
-      {game.yabawiEvent?.active && Date.now() < game.yabawiEvent.expiresAt && (
+      {game.yabawiEvent?.active && now < game.yabawiEvent.expiresAt && (
         <div
           style={{
             position: "absolute",
@@ -537,7 +544,7 @@ export default function GameShell() {
 
               <p style={{ fontSize: 14, color: "#fff", lineHeight: 1.5, wordBreak: "keep-all", margin: "5px 0", textShadow: "0 2px 4px #000", textAlign: "center" }}>
                 객잔 구석에서 수상한 애꾸눈 노인이 은밀히 손짓합니다.<br />
-                <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 15 }}>"이보게 젊은이, 큰 돈 한번 만져볼 생각 없는가?"</span>
+                <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 15 }}>&quot;이보게 젊은이, 큰 돈 한번 만져볼 생각 없는가?&quot;</span>
               </p>
 
               <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(0,0,0,0.7)", borderRadius: 12, border: "1px solid rgba(255,215,0,0.2)" }}>

@@ -52,7 +52,7 @@ export default function GameStatusPanel({ game }: { game: any }) {
 
   const startTouches = safeGame.star === 1 ? currentRealmInfo.minTouches : getRequiredTouches(safeGame.realm, safeGame.star - 1);
   const targetTouches = getRequiredTouches(safeGame.realm, safeGame.star);
-  
+
   const progressPercent = isFinalRealm ? 100 : Math.max(0, Math.min(
     ((safeGame.touches - startTouches) / Math.max(1, targetTouches - startTouches)) * 100,
     100
@@ -177,35 +177,35 @@ export default function GameStatusPanel({ game }: { game: any }) {
               초기화
             </button>
             <button
-            onClick={() => {
-  const ok = window.confirm(
-    "정말 모든 재화를 1,000억으로 받으시겠습니까?\n취소하면 아무 일도 일어나지 않습니다."
-  );
+              onClick={() => {
+                const ok = window.confirm(
+                  "정말 모든 재화를 1,000억으로 받으시겠습니까?\n취소하면 아무 일도 일어나지 않습니다."
+                );
 
-  if (!ok) return;
+                if (!ok) return;
 
-  const hundredBillion = 100000000000;
+                const hundredBillion = 100000000000;
 
-  useGameStore.setState((s: any) => ({
-    game: {
-      ...s.game,
-      coins: hundredBillion,
-      reputation: hundredBillion,
-      points: hundredBillion,
-      enhancementStones: hundredBillion,
-      bossTokens: hundredBillion,
-      wisdom: hundredBillion,
-      isForgeFullUnlocked: true,
-      unlockedTabs: ["training", "upgrade", "inn", "master", "library", "forge", "inventory"]
-    }
-  }));
+                useGameStore.setState((s: any) => ({
+                  game: {
+                    ...s.game,
+                    coins: hundredBillion,
+                    reputation: hundredBillion,
+                    points: hundredBillion,
+                    enhancementStones: hundredBillion,
+                    bossTokens: hundredBillion,
+                    wisdom: hundredBillion,
+                    isForgeFullUnlocked: true,
+                    unlockedTabs: ["training", "upgrade", "inn", "master", "library", "forge", "inventory"]
+                  }
+                }));
 
-  triggerSave(true);
+                triggerSave(true);
 
-  alert(
-    "⚠️ 천하제일인의 기운이 느껴집니다!\n\n금화/명성/강화석/징표/심득 1,000억 확보!\n모든 탭 개방 및 대장간 전 경지 해금 완료!\n(데이터가 즉시 저장되었습니다)"
-  );
-}}
+                alert(
+                  "⚠️ 천하제일인의 기운이 느껴집니다!\n\n금화/명성/강화석/징표/심득 1,000억 확보!\n모든 탭 개방 및 대장간 전 경지 해금 완료!\n(데이터가 즉시 저장되었습니다)"
+                );
+              }}
             >
               G
             </button>
@@ -394,159 +394,88 @@ export default function GameStatusPanel({ game }: { game: any }) {
           </div>
         </div>
 
-        {/* 4. 자금, 수련, 명성 데이터 */}
+        {/* 4. 통합 재화 데이터 (한 줄 표기) */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "4px",
-            marginBottom: 4,
-          }}
-        >
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>포인트</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#00eeff", whiteSpace: "nowrap" }}>
-              {formatCompactNumber(safeGame.points)}
-            </div>
-          </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>명성</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffcc00", whiteSpace: "nowrap" }}>
-              {formatCompactNumber(safeGame.reputation)}
-            </div>
-          </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>자금</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd778", whiteSpace: "nowrap" }}>
-              {formatCompactNumber(safeGame.coins)}
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "4px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "rgba(255,255,255,0.03)",
+            padding: "6px 10px",
+            borderRadius: "10px",
+            border: "1px solid rgba(255,255,255,0.06)",
             marginBottom: 8,
+            fontSize: "11px",
+            fontWeight: 900,
+            gap: "8px",
           }}
         >
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>수련</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#55ffaa", whiteSpace: "nowrap" }}>
-              {formatCompactNumber(safeGame.touches)}
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#ffd778" }}>
+            <span>🪙</span>
+            <span>{formatCompactNumber(safeGame.coins)}</span>
           </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>강화석</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd700", whiteSpace: "nowrap" }}>
-              {formatCompactNumber(safeGame.enhancementStones || 0)}
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#ffcc00" }}>
+            <span>🏆</span>
+            <span>{formatCompactNumber(safeGame.reputation)}</span>
           </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>공격력</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ff4d4d", textShadow: "0 0 4px rgba(255,77,77,0.3)", whiteSpace: "nowrap" }}>
-              {formatCompactNumber(totalAttack)}
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#55ffaa" }}>
+            <span>✨</span>
+            <span>{formatCompactNumber(safeGame.touches)}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#ff4d4d" }}>
+            <span>⚔️</span>
+            <span>{formatCompactNumber(Math.floor(totalAttack))}</span>
           </div>
         </div>
 
         {/* 5. 활성화된 버프 (신법/물약 등) */}
         {(safeGame.movementBuff || safeGame.activeBuff) && (
           <div style={{ display: "flex", gap: "6px", marginTop: "2px", flexWrap: "wrap" }}>
-             {safeGame.movementBuff && (
-               <div
-                 style={{
-                   flex: 1,
-                   background: "linear-gradient(90deg, rgba(85,170,255,0.2), rgba(85,170,255,0.1))",
-                   border: "1px solid rgba(85,170,255,0.3)",
-                   borderRadius: "6px",
-                   padding: "3px 8px",
-                   display: "flex",
-                   justifyContent: "space-between",
-                   alignItems: "center",
-                   boxShadow: "0 0 10px rgba(85,170,255,0.1)",
-                   animation: "pulse 2s infinite"
-                 }}
-               >
-                 <div style={{ fontSize: "10px", color: "#8ccfff", fontWeight: "bold" }}>
-                   ⚡ {safeGame.movementBuff.name}
-                 </div>
-                 <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
-                   {safeGame.movementBuff.timeLeft.toFixed(1)}s
-                 </div>
-               </div>
-             )}
-             {safeGame.activeBuff && (
-               <div
-                 style={{
-                   flex: 1,
-                   background: "linear-gradient(90deg, rgba(255,215,120,0.2), rgba(255,215,120,0.1))",
-                   border: "1px solid rgba(255,215,120,0.3)",
-                   borderRadius: "6px",
-                   padding: "3px 8px",
-                   display: "flex",
-                   justifyContent: "space-between",
-                   alignItems: "center",
-                   animation: "pulse 2s infinite"
-                 }}
-               >
-                 <div style={{ fontSize: "10px", color: "#ffd778", fontWeight: "bold" }}>
-                   🔥 {safeGame.activeBuff}
-                 </div>
-                 <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
-                   {safeGame.buffTimeLeft.toFixed(1)}s
-                 </div>
-               </div>
-             )}
+            {safeGame.movementBuff && (
+              <div
+                style={{
+                  flex: 1,
+                  background: "linear-gradient(90deg, rgba(85,170,255,0.2), rgba(85,170,255,0.1))",
+                  border: "1px solid rgba(85,170,255,0.3)",
+                  borderRadius: "6px",
+                  padding: "3px 8px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  boxShadow: "0 0 10px rgba(85,170,255,0.1)",
+                  animation: "pulse 2s infinite"
+                }}
+              >
+                <div style={{ fontSize: "10px", color: "#8ccfff", fontWeight: "bold" }}>
+                  ⚡ {safeGame.movementBuff.name}
+                </div>
+                <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
+                  {safeGame.movementBuff.timeLeft.toFixed(1)}s
+                </div>
+              </div>
+            )}
+            {safeGame.activeBuff && (
+              <div
+                style={{
+                  flex: 1,
+                  background: "linear-gradient(90deg, rgba(255,215,120,0.2), rgba(255,215,120,0.1))",
+                  border: "1px solid rgba(255,215,120,0.3)",
+                  borderRadius: "6px",
+                  padding: "3px 8px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  animation: "pulse 2s infinite"
+                }}
+              >
+                <div style={{ fontSize: "10px", color: "#ffd778", fontWeight: "bold" }}>
+                  🔥 {safeGame.activeBuff}
+                </div>
+                <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
+                  {safeGame.buffTimeLeft.toFixed(1)}s
+                </div>
+              </div>
+            )}
           </div>
         )}
 

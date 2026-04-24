@@ -16,7 +16,7 @@ const TAB_CONFIG = [
 const MULTIPLIERS: number[] = [1, 10, 100, 1000];
 
 export default function UpgradePanel() {
-  const { game, getTotalAttack, getTotalDefense, getTotalHp, getTotalEvasion } = useGameStore() as any;
+  const { game, getTotalAttack, getTotalDefense, getTotalHp, getTotalEvasion, getTotalCritRate } = useGameStore() as any;
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [multiplier, setMultiplier] = useState<number>(1);
   const [activeDesc, setActiveDesc] = useState<{ id: string; name: string; text: string } | null>(null);
@@ -168,26 +168,30 @@ export default function UpgradePanel() {
         </div>
       )}
 
-      {/* 1. Header: Quick Stats & Currencies */}
-      <div style={headerStyle}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{
-            padding: "4px 10px", borderRadius: 10,
-            background: "rgba(255, 215, 0, 0.08)", border: "1.2px solid rgba(255, 215, 0, 0.3)",
-            display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
-          }}>
-            <span style={{ color: "#ffd700", fontWeight: 900, fontSize: 11 }}>금화</span>
-            <span style={{ fontWeight: 950, color: "#ffd700", fontSize: 13 }}>{formatCompactNumber(currentCoins)}</span>
-          </div>
-          <div style={{
-            padding: "4px 10px", borderRadius: 10,
-            background: "rgba(0, 242, 255, 0.08)", border: "1.2px solid rgba(0, 242, 255, 0.3)",
-            display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
-          }}>
-            <span style={{ color: "#00f2ff", fontWeight: 900, fontSize: 11 }}>명성</span>
-            <span style={{ fontWeight: 950, color: "#00f2ff", fontSize: 13 }}>{formatCompactNumber(currentRep)}</span>
-          </div>
-        </div>
+      {/* 1. Header: Quick Stats & Currencies (Matched to Forge UI) */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 12,
+          padding: "7px 10px",
+          borderRadius: 12,
+          background: "rgba(0,0,0,0.3)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          fontSize: 11,
+          fontWeight: 900,
+          whiteSpace: "nowrap",
+          marginBottom: 10,
+          flexShrink: 0
+        }}
+      >
+        <span>🪙 {formatCompactNumber(currentCoins)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span>🏆 {formatCompactNumber(currentRep)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span>💎 {formatCompactNumber(game.enhancementStones || 0)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span>💡 {formatCompactNumber(game.wisdom || 0)}</span>
       </div>
 
       {/* 2. Mini Stats Summary */}
@@ -207,6 +211,10 @@ export default function UpgradePanel() {
         <div style={summaryItem}>
           <span style={{ opacity: 0.6 }}>회피</span>
           <span style={{ color: "#ffd700", fontWeight: 900 }}>{Math.floor(getTotalEvasion())}%</span>
+        </div>
+        <div style={summaryItem}>
+          <span style={{ opacity: 0.6 }}>치명</span>
+          <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{Math.floor(getTotalCritRate())}%</span>
         </div>
         {game.statUpgrades.damageReduction > 0 && (
           <div style={summaryItem}>

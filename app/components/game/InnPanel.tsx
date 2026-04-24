@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, REALM_SETTINGS, getInnStageConfig } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
@@ -313,8 +313,8 @@ const [breathTimeLeft, setBreathTimeLeft] = useState(30.0);
 const [breathMissCount, setBreathMissCount] = useState(0);
 const breathMissCountRef = useRef(0);
 
-const [counterPlayerHp, setCounterPlayerHp] = useState(5);
-const counterPlayerHpRef = useRef(5);
+const [counterPlayerHp, setCounterPlayerHp] = useState(7);
+const counterPlayerHpRef = useRef(7);
 const [counterEnemyHp, setCounterEnemyHp] = useState(100);
 const counterEnemyHpRef = useRef(100);
 const [counterGauge, setCounterGauge] = useState(0);
@@ -348,6 +348,75 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
   const pulseTargetsRef = useRef<{ id: number; x: number; y: number; progress: number }[]>([]);
   const currentMiniGameRef = useRef<MiniGameType>("breath");
   const roundRef = useRef(1);
+
+  const initPuzzleGrid = useCallback(() => {
+    const rows = PUZZLE_ROWS;
+    const cols = PUZZLE_COLS;
+    const types = ["fire", "water", "wind", "thunder"];
+    const newGrid: any[][] = [];
+    for (let r = 0; r < rows; r++) {
+      const row: any[] = [];
+      for (let c = 0; c < cols; c++) {
+        let t;
+        do {
+          t = types[Math.floor(Math.random() * types.length)];
+        } while (
+          (r >= 2 && newGrid[r - 1][c]?.type === t && newGrid[r - 2][c]?.type === t) ||
+          (c >= 2 && row[c - 1]?.type === t && row[c - 2]?.type === t)
+        );
+        row.push({ id: Math.random(), type: t });
+      }
+      newGrid.push(row);
+    }
+    return newGrid;
+  }, []);
+
+  const resetGameState = useCallback((type: MiniGameType) => {
+    setCurrentMiniGame(type);
+    currentMiniGameRef.current = type;
+    setBreathNotes([]);
+    breathNotesRef.current = [];
+    setBreathTimeLeft(30.0);
+    breathTimeLeftRef.current = 30.0;
+
+    if (type === "breath") {
+      const cfg = getCounterAttackConfig(currentStage);
+      setCounterEnemyHp(cfg.enemyHp);
+      counterEnemyHpRef.current = cfg.enemyHp;
+      setCounterPlayerHp(7);
+      counterPlayerHpRef.current = 7;
+      setCounterGauge(0);
+      counterGaugeRef.current = 0;
+      setBreathMissCount(0);
+      breathMissCountRef.current = 0;
+    }
+
+    const initialPoles = Array.from({ length: 6 }, () => Math.round(Math.random()));
+    setPoles(initialPoles);
+    polesRef.current = initialPoles;
+    setDodgeHp(3);
+    dodgeHpRef.current = 3;
+    setCombo(0);
+    comboRef.current = 0;
+
+    const initialGrid = initPuzzleGrid();
+    setPuzzleGrid(initialGrid);
+    puzzleGridRef.current = initialGrid;
+    setPuzzleDantian(10);
+    puzzleDantianRef.current = 10;
+    setPuzzleSelected(null);
+    setPuzzleTimeLeft(30.0);
+    puzzleTimeLeftRef.current = 30.0;
+    setPuzzleCombo(0);
+    setPuzzleIsProcessing(false);
+    totalNotesSpawnedRef.current = 0;
+
+    setIsFailPopup(false);
+    setCurrentProgress(0);
+    currentProgressRef.current = 0;
+    setPulseTargets([]);
+    pulseTargetsRef.current = [];
+  }, [currentStage, initPuzzleGrid]);
   const successHitsRef = useRef(0);
   const currentProgressRef = useRef(0);
   const breathTimeLeftRef = useRef(30.0);
@@ -415,12 +484,15 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
 
   useEffect(() => {
     if (game.pendingYabawiPlay) {
-      resetGameState("yabawi");
-      setIsPlaying(true);
-      isPlayingRef.current = true;
-      useGameStore.setState((s: any) => ({ game: { ...s.game, pendingYabawiPlay: false } }));
+      // Use requestAnimationFrame to avoid synchronous setState warning
+      requestAnimationFrame(() => {
+        resetGameState("yabawi");
+        setIsPlaying(true);
+        isPlayingRef.current = true;
+        useGameStore.setState((s: any) => ({ game: { ...s.game, pendingYabawiPlay: false } }));
+      });
     }
-  }, [game.pendingYabawiPlay]);
+  }, [game.pendingYabawiPlay, resetGameState]);
 
   useEffect(() => {
     if (!game.nextRivalTime) return;
@@ -448,77 +520,7 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
     timerRef.current = null;
   };
 
-  const initPuzzleGrid = () => {
-    const rows = PUZZLE_ROWS;
-    const cols = PUZZLE_COLS;
-    const types = ["fire", "water", "wind", "thunder"];
-    const newGrid: any[][] = [];
-    for (let r = 0; r < rows; r++) {
-      const row: any[] = [];
-      for (let c = 0; c < cols; c++) {
-        let t;
-        do {
-          t = types[Math.floor(Math.random() * types.length)];
-        } while (
-          (r >= 2 && newGrid[r - 1][c]?.type === t && newGrid[r - 2][c]?.type === t) ||
-          (c >= 2 && row[c - 1]?.type === t && row[c - 2]?.type === t)
-        );
-        row.push({ id: Math.random(), type: t });
-      }
-      newGrid.push(row);
-    }
-    return newGrid;
-  };
 
-  const resetGameState = (type: MiniGameType) => {
-    setCurrentMiniGame(type);
-    currentMiniGameRef.current = type;
-    setBreathNotes([]);
-    breathNotesRef.current = [];
-    setBreathTimeLeft(30.0);
-    breathTimeLeftRef.current = 30.0;
-
-    if (type === "breath") {
-  const cfg = getCounterAttackConfig(currentStage);
-
-  setCounterEnemyHp(cfg.enemyHp);
-  counterEnemyHpRef.current = cfg.enemyHp;
-
-  setCounterPlayerHp(5);
-  counterPlayerHpRef.current = 5;
-
-  setCounterGauge(0);
-  counterGaugeRef.current = 0;
-}
-    // NOTE: Miss count is now cumulative across stages, reset in startMission instead
-    // Meihua Poles Reset
-    const initialPoles = Array.from({ length: 6 }, () => Math.round(Math.random()));
-    setPoles(initialPoles);
-    polesRef.current = initialPoles;
-    setDodgeHp(3);
-    dodgeHpRef.current = 3;
-    setCombo(0);
-    comboRef.current = 0;
-    // Naegong Puzzle Reset
-    const initialGrid = initPuzzleGrid();
-    setPuzzleGrid(initialGrid);
-    puzzleGridRef.current = initialGrid;
-    setPuzzleDantian(10); // Start with some stability
-    puzzleDantianRef.current = 10;
-    setPuzzleSelected(null);
-    setPuzzleTimeLeft(30.0);
-    puzzleTimeLeftRef.current = 30.0;
-    setPuzzleCombo(0);
-    setPuzzleIsProcessing(false);
-    totalNotesSpawnedRef.current = 0;
-
-    // NOTE: Score must NOT be reset here as it should accumulate across rounds
-    setIsFailPopup(false);
-    setCurrentProgress(0);
-    currentProgressRef.current = 0;
-    setPulseTargets([]);
-    pulseTargetsRef.current = [];
-  };
 
   const currentTotalAtk = getTotalAttack();
   // [위명 위압] 최다 위명 기록 50000점당 1% 공격력(점수 획득량) 보너스 적용
@@ -872,16 +874,21 @@ const updateBreath = (dt: number) => {
   breathNotesRef.current = remain;
   setBreathNotes(remain);
 
+  const damage = missed.reduce((acc, n) => acc + getAttackData(n.type).damage, 0);
+  const nextHp = Math.max(0, counterPlayerHpRef.current - damage);
+  counterPlayerHpRef.current = nextHp;
+  setCounterPlayerHp(nextHp);
+
   const newMiss = breathMissCountRef.current + missed.length;
   breathMissCountRef.current = newMiss;
   setBreathMissCount(newMiss);
 
   // 🔥 피격 연출
-  addFloatText(`피격 -${missed.length} (${newMiss}/5)`, "#ff4d4d");
+  addFloatText(`피격 -${damage} HP`, "#ff4d4d");
   triggerShake();
 
   // 🔥 게임오버 처리
-  if (newMiss >= 5) {
+  if (nextHp <= 0) {
     finishMission(
       false,
       "MISS",
@@ -1009,14 +1016,18 @@ const fireCounterSlash = (damage: number) => {
   const target = candidates[0];
 
   if (!target) {
+  const nextHp = Math.max(0, counterPlayerHpRef.current - 1);
+  counterPlayerHpRef.current = nextHp;
+  setCounterPlayerHp(nextHp);
+
   const nextMiss = breathMissCountRef.current + 1;
   breathMissCountRef.current = nextMiss;
   setBreathMissCount(nextMiss);
 
-  addFloatText(`허공 방어 -1 (${nextMiss}/5)`, "#ff4d4d");
+  addFloatText(`허공 방어 -1 HP`, "#ff4d4d");
   triggerShake();
 
-  if (nextMiss >= 5) {
+  if (nextHp <= 0) {
     finishMission(false, "MISS", playerScoreRef.current, "방어가 흐트러져 무뢰배에게 패배했습니다.");
   }
 
@@ -1129,7 +1140,7 @@ const fireCounterSlash = (damage: number) => {
   const handlePolesStep = (side: number) => {
     const now = Date.now();
     const key = "dodge";
-    if (now - (lastHitTimeRef.current[key] || 0) < 80) return; // 반응성 개선: 180ms -> 80ms (연타 속도 상향)
+    if (now - (lastHitTimeRef.current[key] || 0) < 40) return; // 반응성 극대화: 80ms -> 40ms (연타 속도 상향)
     lastHitTimeRef.current[key] = now;
 
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
@@ -1326,7 +1337,7 @@ const fireCounterSlash = (damage: number) => {
       for (let i = 0; i < rawGroups.length; i++) {
         if (usedRawIndices.has(i)) continue;
 
-        let currentGroupCoords = [...rawGroups[i].coords];
+        const currentGroupCoords = [...rawGroups[i].coords];
         const currentType = rawGroups[i].type;
         usedRawIndices.add(i);
 
@@ -1577,18 +1588,17 @@ const fireCounterSlash = (damage: number) => {
 
   // 5. Pulse Logic
   const updatePulse = (dt: number) => {
-    // [기운응축 속도 밸런싱] 1-3: 천천히(1단계 수준), 4-6: 약간 빠르게, 7-10: 조조금더 빠르게
-    let baseSpeedFactor = 5.0;
-    if (currentStage <= 3) baseSpeedFactor = 5.0;
-    else if (currentStage <= 6) baseSpeedFactor = 8.1;
-    else if (currentStage <= 10) baseSpeedFactor = 11.7;
-    else baseSpeedFactor = 7.2 + currentStage * 0.54;
+    // [기운응축 속도 밸런싱] 완만한 곡선으로 수정
+    let baseSpeedFactor = 4.0;
+    if (currentStage <= 3) baseSpeedFactor = 4.0;
+    else if (currentStage <= 6) baseSpeedFactor = 6.0;
+    else if (currentStage <= 10) baseSpeedFactor = 8.5;
+    else baseSpeedFactor = 6.0 + currentStage * 0.3;
 
-    // 가속도 상향 및 전체 속도 배율 상향 (2배 수준 상향 적용)
-    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 1.1)) * 3.0;
+    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.6)) * 2.5;
     const moved = pulseTargetsRef.current.map(t => ({
       ...t,
-      progress: t.progress + speedFactor * dt * 1.5
+      progress: t.progress + speedFactor * dt * 1.2
     }));
     pulseTargetsRef.current = moved;
     setPulseTargets(moved);
@@ -2043,17 +2053,17 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
     }}
   >
     <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>내 체력</div>
-    <div style={{ display: "flex", gap: 4 }}>
-      {Array.from({ length: 5 }).map((_, i) => (
+    <div style={{ display: "flex", gap: 3 }}>
+      {Array.from({ length: 7 }).map((_, i) => (
         <span
           key={i}
           style={{
-            fontSize: 14,
-            filter: i < 5 - breathMissCount ? "drop-shadow(0 0 5px #4dff4d)" : "none",
-            opacity: i < 5 - breathMissCount ? 1 : 0.28,
+            fontSize: 12,
+            filter: i < counterPlayerHp ? "drop-shadow(0 0 5px #4dff4d)" : "none",
+            opacity: i < counterPlayerHp ? 1 : 0.2,
           }}
         >
-          {i < 5 - breathMissCount ? "❤️" : "🖤"}
+          {i < counterPlayerHp ? "❤️" : "🖤"}
         </span>
       ))}
     </div>
@@ -2104,7 +2114,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
   </div>
 </div>
                  
-                  <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "pan-y" }}>
+                  <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
                    {/* 히트존: 공격이 이 선에 닿을 때 방어 */}
 
 
@@ -2195,6 +2205,48 @@ left: `${n.x}%`,
                         </div>
                       </div>
                     )}
+
+                    {/* 반격 팝업 연출 (중앙 글씨 확대 후 안개처럼 사라짐) */}
+                    <AnimatePresence>
+                      {counterSlashEffect && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.5, filter: "blur(20px)" }}
+                          animate={{ opacity: 1, scale: 1.8, filter: "blur(0px)" }}
+                          exit={{ opacity: 0, scale: 2.5, filter: "blur(15px)" }}
+                          transition={{ duration: 0.45, ease: "easeOut" }}
+                          style={{
+                            position: "absolute",
+                            top: "45%",
+                            left: "50%",
+                            transform: "translate(-50%, -50%)",
+                            zIndex: 100,
+                            pointerEvents: "none",
+                            textAlign: "center"
+                          }}
+                        >
+                          <div style={{
+                            fontSize: 48,
+                            fontWeight: 950,
+                            color: "#ffd700",
+                            textShadow: "0 0 30px rgba(255, 215, 0, 0.8), 0 0 10px #fff",
+                            letterSpacing: 4,
+                            fontStyle: "italic"
+                          }}>
+                            청운반격!
+                          </div>
+                          <div style={{
+                            fontSize: 14,
+                            color: "#fff",
+                            fontWeight: 800,
+                            marginTop: -10,
+                            opacity: 0.8,
+                            textShadow: "0 0 5px #000"
+                          }}>
+                            CHUN-GUN COUNTER
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                   <div style={gameTip}>왼쪽 노란 방어 박스를 누르면 해당 줄 공격을 막습니다!</div>
                 </div>
@@ -2487,18 +2539,20 @@ left: `${n.x}%`,
                       <div style={{ position: "absolute", left: 0, fontSize: 14, color: "#ffd700", fontWeight: 900, textShadow: "0 0 5px rgba(0,0,0,0.5)" }}>
                         {mission.combatState?.phase === 'finisher' ? '⚡ 필살기 발동!' : (mission.combatState?.phase === 'counter' ? '⚠️ 적의 반격!' : '기맥 정렬 중')}
                       </div>
-                      <div style={{
-                        fontSize: 22,
-                        fontWeight: 950,
-                        color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#ffd700",
-                        textShadow: "0 0 10px rgba(0,0,0,0.8)",
-                        background: "rgba(0,0,0,0.4)",
-                        padding: "2px 15px",
-                        borderRadius: "10px",
-                        border: "1px solid rgba(255,215,0,0.2)"
-                      }}>
-                        {puzzleTimeLeft.toFixed(1)}s
-                      </div>
+                      {currentMiniGame === "puzzle" && (
+                        <div style={{
+                          fontSize: 22,
+                          fontWeight: 950,
+                          color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#ffd700",
+                          textShadow: "0 0 10px rgba(0,0,0,0.8)",
+                          background: "rgba(0,0,0,0.4)",
+                          padding: "2px 15px",
+                          borderRadius: "10px",
+                          border: "1px solid rgba(255,215,0,0.2)"
+                        }}>
+                          {puzzleTimeLeft.toFixed(1)}s
+                        </div>
+                      )}
                     </div>
 
                     <div style={{
@@ -2528,7 +2582,7 @@ left: `${n.x}%`,
                           gridTemplateColumns: `repeat(${PUZZLE_COLS}, 1fr)`,
                           gridTemplateRows: `repeat(${PUZZLE_ROWS}, 1fr)`,
                           gap: "3px",
-                          touchAction: "pan-y",
+                          touchAction: "none",
                           WebkitUserSelect: "none",
                           userSelect: "none"
                         }}
@@ -2706,7 +2760,8 @@ left: `${n.x}%`,
                   style={{
                     position: "absolute", bottom: "160px", left: "35%", height: "220px",
                     objectFit: "contain", zIndex: 11, opacity: 1,
-                    filter: "drop-shadow(0 0 15px rgba(0,0,0,0.6))"
+                    filter: "drop-shadow(0 0 15px rgba(0,0,0,0.6))",
+                    pointerEvents: "none"
                   }}
                 />
 
@@ -2717,7 +2772,8 @@ left: `${n.x}%`,
                   style={{
                     position: "absolute", bottom: "290px", left: "59%", height: "300px",
                     objectFit: "contain", zIndex: 3, opacity: 0.9,
-                    filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))"
+                    filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))",
+                    pointerEvents: "none"
                   }}
                 />
 
@@ -2730,11 +2786,12 @@ left: `${n.x}%`,
                     objectFit: "contain", zIndex: 2, opacity: 1,
                     animation: "character3DPanDarkMild 6.5s ease-in-out infinite alternate", // 움직임 절반으로 감소, 노란빛 제거
                     animationDelay: "-2s",
-                    filter: "drop-shadow(0 0 15px rgba(0,0,0,0.7)) brightness(0.9) sepia(0.2)"
+                    filter: "drop-shadow(0 0 15px rgba(0,0,0,0.7)) brightness(0.9) sepia(0.2)",
+                    pointerEvents: "none"
                   }}
                 />
 
-                {/* [주인공] 사용자가 조정한 포지션 유지 */}
+                {/* [주인공] 최하단 배치 */}
                 <img
                   src={getPlayerImage()}
                   alt="My Character"
@@ -2742,7 +2799,8 @@ left: `${n.x}%`,
                     maxWidth: "100%", height: "600px", objectFit: "contain", zIndex: 4,
                     animation: "character3DPan 7s ease-in-out infinite",
                     marginTop: "150px", marginLeft: "-180px",
-                    filter: "drop-shadow(0 0 20px rgba(0,0,0,0.8)) brightness(1.1)"
+                    filter: "drop-shadow(0 0 20px rgba(0,0,0,0.8)) brightness(1.1)",
+                    pointerEvents: "none"
                   }}
                 />
 
@@ -3054,6 +3112,8 @@ const containerStyle: React.CSSProperties = {
   textAlign: "center",
   color: "#fff",
   fontFamily: "'Inter', sans-serif",
+  touchAction: "none",
+  overscrollBehavior: "contain",
 };
 
 const headerStyle: React.CSSProperties = {
@@ -3095,13 +3155,14 @@ const statValue: React.CSSProperties = {
 
 const gameStage: React.CSSProperties = {
   position: "relative",
-  height: "600px", // 게임 박스 하단 확장
+  height: "640px", // 게임 박스 하단 확장하여 퍼즐 잘림 방지
   background: "rgba(0,0,0,0.3)",
   borderRadius: "0px",
   border: "1px solid rgba(255,255,255,0.05)",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
+  touchAction: "none",
 };
 
 const lobbyOverlay: React.CSSProperties = {

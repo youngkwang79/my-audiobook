@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
@@ -249,7 +249,7 @@ export default function MasterPanel() {
   const lastTickRef = useRef<number>(0);
   const lastHitTimeRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [showShop, setShowShop] = useState(false);
   const [showReward, setShowReward] = useState(false);
   const [showExpInfo, setShowExpInfo] = useState(false);
@@ -264,7 +264,7 @@ export default function MasterPanel() {
 
   useEffect(() => {
     if (!masterDuel.isPlaying) {
-      setCombatTargets([]);
+      requestAnimationFrame(() => setCombatTargets([]));
       return;
     }
 
@@ -295,7 +295,20 @@ export default function MasterPanel() {
     return () => clearInterval(interval);
   }, [masterDuel.isPlaying]);
 
-  const onTargetClick = (target: any) => {
+  const spawnDamage = useCallback((value: number, critical: boolean, target: "player" | "rival", skillText?: string, isRainbow?: boolean, isCyan?: boolean) => {
+    const id = Date.now() + Math.random();
+    const x = target === "rival" ? 60 + Math.random() * 20 : 20 + Math.random() * 20;
+    const y = target === "rival" ? 35 + Math.random() * 10 : 50 + Math.random() * 20;
+    
+    setDamages((prev) => {
+      const next = [...prev, { id, damage: value, x, y, isCritical: critical, target, skillText, isRainbow, isCyan }];
+      if (next.length > 15) return next.slice(-15);
+      return next;
+    });
+    setTimeout(() => setDamages((prev) => prev.filter((d) => d.id !== id)), 600);
+  }, []);
+
+  const onTargetClick = useCallback((target: any) => {
     if (target.type === "WEAKNESS") {
       // 약점 포착: 강력한 대미지 (공격력의 5배 수준)
       const res = tapMasterDuel(game.masterDuel.rivalAtk * 0.5, true);
@@ -306,7 +319,8 @@ export default function MasterPanel() {
       triggerCombatTrap(mult);
     }
     setCombatTargets(prev => prev.filter(t => t.id !== target.id));
-  };
+  }, [game.masterDuel.rivalAtk, tapMasterDuel, spawnDamage, triggerCombatTrap]);
+
 
   const triggerMasterDuelSequence = () => {
     startMasterDuel();
@@ -321,18 +335,6 @@ export default function MasterPanel() {
 
   const isUnlocked = game.unlockedTabs.includes("master");
 
-  const spawnDamage = (value: number, critical: boolean, target: "player" | "rival", skillText?: string, isRainbow?: boolean, isCyan?: boolean) => {
-    const id = Date.now() + Math.random();
-    const x = target === "rival" ? 60 + Math.random() * 20 : 20 + Math.random() * 20;
-    const y = target === "rival" ? 35 + Math.random() * 10 : 50 + Math.random() * 20;
-    
-    setDamages((prev) => {
-      const next = [...prev, { id, damage: value, x, y, isCritical: critical, target, skillText, isRainbow, isCyan }];
-      if (next.length > 15) return next.slice(-15);
-      return next;
-    });
-    setTimeout(() => setDamages((prev) => prev.filter((d) => d.id !== id)), 600);
-  };
 
   const handleOpenBox = () => {
     const res = useGameStore.getState().openPaewangBox();
@@ -345,7 +347,7 @@ export default function MasterPanel() {
     }
   };
 
-  const handleTap = () => {
+  const handleTap = useCallback(() => {
     const nowTime = Date.now();
     if (nowTime - lastHitTimeRef.current < 80) return; // 중복 호출 방지 (80ms)
     lastHitTimeRef.current = nowTime;
@@ -359,7 +361,7 @@ export default function MasterPanel() {
     const duelResult = tapMasterDuel(0, false, oilRes);
     if (!duelResult || duelResult.totalDamage === 0) return;
 
-    const { totalDamage, isCrit, effect } = duelResult;
+    const { totalDamage, isCrit } = duelResult;
     const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
     const isDemon = oilRes.buffsTriggered.includes("oil_demon");
     const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
@@ -367,8 +369,7 @@ export default function MasterPanel() {
 
     // 다중 타격 시각화
     for (let i = 0; i < hitCount; i++) {
-      let displayDmg = Math.floor(totalDamage / hitCount);
-      let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i + 1}연격` : undefined);
+      const displayDmg = Math.floor(totalDamage / hitCount);
 
       if (i === 0 && oilRes.buffsTriggered.length > 0) {
         const buffNames: Record<string, string> = {
@@ -391,7 +392,7 @@ export default function MasterPanel() {
         spawnDamage(displayDmg, isCrit || isThunder, "rival", undefined, isDemon, isTriple);
       }, i * 100);
     }
-  };
+  }, [masterDuel.isPlaying, tapMasterDuel, spawnDamage]);
 
   const executeSkill = (skill: any) => {
     if (!masterDuel.isPlaying || !skill) return;
@@ -401,7 +402,7 @@ export default function MasterPanel() {
     }
   };
 
-  const animate = (time: number) => {
+  const animate = useCallback((time: number) => {
     const store = useGameStore.getState();
     const isPlaying = store.game.masterDuel.isPlaying;
 
@@ -423,7 +424,7 @@ export default function MasterPanel() {
 
     lastTickRef.current = time;
     requestRef.current = requestAnimationFrame(animate);
-  };
+  }, []);
 
   // Auto-close removed to allow manual confirmation
   const [isPlayerHit, setIsPlayerHit] = useState(false);
@@ -432,7 +433,7 @@ export default function MasterPanel() {
     // 플레이어가 실제로 대미지를 입었을 때만 (적의 공격 턴)
     if (masterDuel.damageTakenAccumulator !== undefined && masterDuel.damageTakenAccumulator > 0) {
       spawnDamage(Math.floor(masterDuel.damageTakenAccumulator), masterDuel.lastEffect === "CRITICAL", "player");
-      setIsPlayerHit(true);
+      requestAnimationFrame(() => setIsPlayerHit(true));
       setTimeout(() => setIsPlayerHit(false), 300);
     } 
     // 플레이어가 적의 공격을 회피했을 때 (이펙트가 'DODGE'이고, 대미지 축적기가 0인 경우 중 적의 턴일 때만)
@@ -557,7 +558,6 @@ export default function MasterPanel() {
               <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
               <div style={{ display: "flex", gap: 6 }}>
                 <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
-                <span style={{ fontSize: 9, color: "#00f2ff" }}>✨ {game.wisdom || 0}</span>
               </div>
             </div>
             <button

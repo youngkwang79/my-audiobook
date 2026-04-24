@@ -46,10 +46,6 @@ export default function OfflineRewardPopup() {
             <span style={{ fontSize: 16, fontWeight: 900, color: "#ffd700" }}>+{rewards.gold.toLocaleString()}냥</span>
           </div>
           <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, color: "#ccc" }}>💠 획득 명성</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: "#00f2ff" }}>+{rewards.points.toLocaleString()}</span>
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: 14, color: "#ccc" }}>✨ 수련 경험치</span>
             <span style={{ fontSize: 16, fontWeight: 900, color: "#a8ff7e" }}>+{rewards.exp.toLocaleString()}</span>
           </div>

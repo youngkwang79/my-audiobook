@@ -34,15 +34,15 @@ const defaultTowerState: any = {
 };
 
 export const defaultGameData: GameSaveData = {
-  name: "무명협객",
-  age: 17,
-  height: 175,
+  name: "",
+  age: 0,
+  height: 0,
   isInitialized: false,
 
   hero: {
-    name: "무명협객",
-    age: 17,
-    height: 175,
+    name: "",
+    age: 0,
+    height: 0,
   },
   hasStarted: false,
   upgradeLevels: {
