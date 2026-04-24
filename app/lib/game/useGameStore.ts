@@ -476,10 +476,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     return eq.reduce((sum, item) => {
-      const optVal = item.randomOptions?.filter(o => o.stat === stat).reduce((s, o) => s + o.value, 0) || 0;
-      // 강화 단계당 옵션 성능 0.3% 추가 증폭
-      const enhancementBonus = 1 + (item.enhancement || 0) * 0.003;
-      return sum + (optVal * enhancementBonus);
+      const options = item.randomOptions?.filter(o => o.stat === stat) || [];
+      const enhBonus = (item.enhancement || 0) * 0.1;
+      const optVal = options.reduce((s, o) => s + (o.value + enhBonus), 0);
+      return sum + optVal;
     }, 0);
   },
   getOptionCount: (stat: string) => {
@@ -2810,14 +2810,19 @@ syncToCloud: async () => {
       headers: { "Content-Type": "application/json" }, 
       body: JSON.stringify(get().game) 
     }); 
-    if (!response.ok) throw new Error("서버 저장 실패");
+
+    // throw 대신 return으로 조용히 종료
+    if (!response.ok) {
+      console.error("서버 저장 실패: 응답이 정상이 아닙니다.");
+      return; 
+    }
+
     console.log("클라우드 동기화 성공");
   } catch (e) { 
-    console.error("클라우드 동기화 에러:", e);
-    // 에러가 나도 로컬에는 저장되도록 triggerSave 호출
-    get().triggerSave(true);
+    console.error("네트워크 에러:", e);
+    get().triggerSave(true); // 실패 시 로컬에라도 저장
   } 
-},  
+},
 syncFromCloud: async () => { 
   try { 
     const res = await fetch("/api/game/sync"); 

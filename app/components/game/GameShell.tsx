@@ -157,32 +157,34 @@ export default function GameShell() {
         touchAction: "pan-y", // Allow vertical scroll, but we handle horizontal swipe
       }}
     >
-      {/* Night System Bar */}
-      <div style={{
-        padding: "8px 12px",
-        background: game.timeState === "night" ? "rgba(40, 20, 80, 0.9)" : 
-                   game.timeState === "dusk" ? "rgba(100, 50, 30, 0.9)" :
-                   game.timeState === "dawn" ? "rgba(120, 100, 50, 0.9)" : "rgba(30, 60, 40, 0.9)",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        fontSize: "12px",
-        fontWeight: "bold",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-        zIndex: 50,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ fontSize: "16px" }}>
-            {game.timeState === "day" ? "☀️" : game.timeState === "dusk" ? "🌇" : game.timeState === "night" ? "🌙" : "🌅"}
-          </span>
-          <span style={{ color: "#fff" }}>
-            {game.timeState === "day" ? "낮 (수련)" : game.timeState === "dusk" ? "황혼 (정리)" : game.timeState === "night" ? "밤 (기루/도박)" : "새벽 (정산)"}
-          </span>
-        </div>
-        <div style={{ color: "#aaa" }}>
-          남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(game.timeRemaining)}초</span>
-        </div>
-      </div>
+     {/* Night System Bar - 전투 중이 아닐 때만 렌더링 */}
+{!game.masterDuel.isPlaying && (
+  <div style={{
+    padding: "8px 12px",
+    background: game.timeState === "night" ? "rgba(40, 20, 80, 0.9)" : 
+               game.timeState === "dusk" ? "rgba(100, 50, 30, 0.9)" :
+               game.timeState === "dawn" ? "rgba(120, 100, 50, 0.9)" : "rgba(30, 60, 40, 0.9)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "12px",
+    fontWeight: "bold",
+    borderBottom: "1px solid rgba(255,255,255,0.1)",
+    zIndex: 50,
+  }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <span style={{ fontSize: "16px" }}>
+        {game.timeState === "day" ? "☀️" : game.timeState === "dusk" ? "🌇" : game.timeState === "night" ? "🌙" : "🌅"}
+      </span>
+      <span style={{ color: "#fff" }}>
+        {game.timeState === "day" ? "낮 (수련)" : game.timeState === "dusk" ? "황혼 (정리)" : game.timeState === "night" ? "밤 (기루/도박)" : "새벽 (정산)"}
+      </span>
+    </div>
+    <div style={{ color: "#aaa" }}>
+      남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(game.timeRemaining)}초</span>
+    </div>
+  </div>
+)}
 
       <AutoTrainingManager />
 
