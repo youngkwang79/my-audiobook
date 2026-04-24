@@ -3,17 +3,33 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { useGameStore } from "@/app/lib/game/useGameStore"; // [수정] 게임 스토어 가져오기
 
 export default function Header() {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
+  const { syncToCloud, triggerSave } = useGameStore(); // [수정] 동기화 함수 추출
 
   const handleLogout = async () => {
+    // 1. 로그아웃 전 즉시 서버에 현재 데이터 저장 (가장 중요)
+    try {
+      console.log("로그아웃 전 데이터 동기화 중...");
+      await syncToCloud(); //
+    } catch (e) {
+      console.error("로그아웃 전 동기화 실패:", e);
+    }
+
+    // 2. 실제 로그아웃 실행
     await signOut();
 
+    // 3. 로컬 스토리지 정리 (주의: 게임 데이터 관련 키가 있다면 삭제하지 않아야 재접속 시 유지됨)
     try {
+      // 기존에 있던 'points' 등을 지우면 로그아웃 시 로컬 데이터가 날아갑니다.
+      // 만약 로그아웃 후에도 기기에 데이터를 남기고 싶다면 아래 localStorage 관련 줄들을 주석 처리하세요.
       localStorage.removeItem("points");
       localStorage.removeItem("lastPlayed");
+      
+      // 만약 'murimbook-game-save-v12' 같은 게임 저장 키가 있다면 여기서 지우지 마세요.
     } catch (e) {
       console.error("localStorage cleanup error:", e);
     }

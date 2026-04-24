@@ -624,7 +624,7 @@ export default function MasterPanel() {
       {/* --- COMBAT VIEW (Full Screen Overlay) --- */}
       {masterDuel.isPlaying && (
         <div style={{
-          position: "fixed", inset: 0, zIndex: 5000, background: "#000",
+          position: "fixed", inset: 0, zIndex: 9999, background: "#000",
           display: "flex", flexDirection: "column", overflow: "hidden"
         }}>
           {/* Status Effects Overlays */}

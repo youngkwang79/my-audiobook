@@ -2,15 +2,23 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { useGameStore } from "@/app/lib/game/useGameStore"; // [수정] 게임 스토어 가져오기
 
 export default function LayoutFooter() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { syncToCloud } = useGameStore(); // [수정] 동기화 함수 추출
 
   const handleLogout = async () => {
     try {
+      // 1. 로그아웃 전 서버에 데이터 즉시 저장 (가장 중요)
+      console.log("데이터 동기화 중...");
+      await syncToCloud(); 
+
+      // 2. 실제 로그아웃 실행
       await signOut();
+      
       router.refresh();
       router.push("/");
     } catch (error) {

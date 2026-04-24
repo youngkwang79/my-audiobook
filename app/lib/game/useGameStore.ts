@@ -2803,9 +2803,37 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     });
   },
-  syncToCloud: async () => { try { await fetch("/api/game/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(get().game) }); } catch (e) { } },
-  syncFromCloud: async () => { try { const res = await fetch("/api/game/sync"); if (res.ok) { const d = await res.json(); if (d?.realm) { set((s: any) => ({ game: { ...s.game, ...d } })); saveGame(get().game); } } } catch (e) { } },
-  resetGame: () => { 
+syncToCloud: async () => { 
+  try { 
+    const response = await fetch("/api/game/sync", { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify(get().game) 
+    }); 
+    if (!response.ok) throw new Error("서버 저장 실패");
+    console.log("클라우드 동기화 성공");
+  } catch (e) { 
+    console.error("클라우드 동기화 에러:", e);
+    // 에러가 나도 로컬에는 저장되도록 triggerSave 호출
+    get().triggerSave(true);
+  } 
+},  
+syncFromCloud: async () => { 
+  try { 
+    const res = await fetch("/api/game/sync"); 
+    if (res.ok) { 
+      const cloudData = await res.json(); 
+      // 데이터가 존재하고 유효한 경우에만 로컬 데이터를 교체
+      if (cloudData && cloudData.realm) { 
+        set((s: any) => ({ game: { ...s.game, ...cloudData, isInitialized: true } })); 
+        // 클라우드 데이터를 로컬 스토리지에도 즉시 반영
+        saveGame(get().game); 
+      } 
+    } 
+  } catch (e) { 
+    console.error("데이터 불러오기 실패:", e);
+  } 
+},  resetGame: () => { 
     if (typeof window !== "undefined") { 
       localStorage.removeItem("murimbook-game-save-v12"); 
       localStorage.removeItem("murimbook-game-save-v11"); 

@@ -10,13 +10,21 @@ import GameIntroPanel from "@/app/components/game/GameIntroPanel";
 export default function MeGamePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { game } = useGameStore();
+  const { game, syncToCloud } = useGameStore(); // [시스템 삽입] syncToCloud 추가
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login?redirect=/me/game");
     }
   }, [loading, user, router]);
+
+  // [시스템 삽입] 컴포넌트 마운트 시 클라우드 데이터 동기화 시도 (로그인 직후 초기화 방지)
+  useEffect(() => {
+    const { syncFromCloud } = useGameStore.getState();
+    if (user) {
+      syncFromCloud();
+    }
+  }, [user]);
 
   const handleChangeHero = useCallback(
     (next: { name?: string; age?: number; height?: number }) => {
@@ -69,6 +77,8 @@ export default function MeGamePage() {
         },
       };
     });
+    // [시스템 삽입] 시작 시점에 한 번 저장
+    useGameStore.getState().syncToCloud();
   }, []);
 
   if (loading) {
