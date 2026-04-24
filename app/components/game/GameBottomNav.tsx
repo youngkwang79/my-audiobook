@@ -1,6 +1,7 @@
 "use client";
 
 import type { TabType } from "@/app/lib/game/types";
+import { useGameStore } from "@/app/lib/game/useGameStore"; // [시스템 삽입] 스토어 가져오기
 
 type Props = {
   activeTab: TabType;
@@ -26,6 +27,12 @@ export default function GameBottomNav({
   unlockedTabs,
   onChange,
 }: Props) {
+  // [시스템 삽입] 전투 진행 여부 확인
+  const isPlaying = useGameStore((state) => state.game.masterDuel.isPlaying);
+
+  // [시스템 삽입] 전투 중일 때는 하단 메뉴 전체를 렌더링하지 않음
+  if (isPlaying) return null;
+
   return (
     <div
       style={{
