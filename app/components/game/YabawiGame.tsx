@@ -56,6 +56,7 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
   const [cups, setCups] = useState([0, 1, 2]);
   const [ballPosition, setBallPosition] = useState(Math.floor(Math.random() * 3));
   const [gameState, setGameState] = useState<"idle" | "preview" | "shuffling" | "selecting" | "revealing" | "victory">("idle");
+  const [showConfirm, setShowConfirm] = useState(false);
   const [selectedCup, setSelectedCup] = useState<number | null>(null);
   const [shuffleCount, setShuffleCount] = useState(0);
   const [betAmount, setBetAmount] = useState<bigint>(1000n);
@@ -93,10 +94,14 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
   };
 
   const startChallenge = () => {
-    // If we have a session, we can start without additional bet (current stakedGold is already there)
     if (!session && (betAmount <= 0n || betAmount > bUserCoins)) return;
     if (session && betAmount > bUserCoins) return;
+    
+    setShowConfirm(true);
+  };
 
+  const confirmAndStart = () => {
+    setShowConfirm(false);
     const success = onStartGame(betAmount);
     if (!success) return;
 
@@ -205,8 +210,6 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
             const isRevealing = (gameState === "revealing" || gameState === "victory") && index === selectedCup;
             const hasBall = cupId === ballPosition;
             
-            // 좌표 기반 이동 (GPU 가속 활용)
-            // index 0: -80px, index 1: 0px, index 2: 80px
             const targetX = (index - 1) * 90;
 
             return (
@@ -231,12 +234,20 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
                   {((gameState === "preview" || gameState === "revealing" || gameState === "victory") && hasBall) && (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.2 }} 
-                      animate={{ opacity: 1, scale: 1 }} 
+                      animate={{ 
+                        opacity: 1, 
+                        scale: 1.5,
+                        boxShadow: ["0 0 20px #ffd700", "0 0 40px #ffd700", "0 0 20px #ffd700"]
+                      }} 
+                      transition={{
+                        scale: { duration: 0.3 },
+                        boxShadow: { repeat: Infinity, duration: 1.5 }
+                      }}
                       exit={{ opacity: 0 }} 
-                      className="absolute bottom-1 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full z-0" 
+                      className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full z-10" 
                       style={{ 
-                        background: "radial-gradient(circle at 35% 35%, #fff, #20bf55)", 
-                        boxShadow: "0 0 10px #a8ff7e",
+                        background: "radial-gradient(circle at 35% 35%, #fff, #ffd700, #ff8c00)", 
+                        border: "2px solid #fff",
                         willChange: "transform, opacity"
                       }} 
                     />
@@ -262,6 +273,50 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
           })}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} 
+              animate={{ scale: 1, y: 0 }} 
+              className="bg-[#1a1510] border-2 border-[#ffd700] p-6 rounded-3xl text-center shadow-2xl w-full max-w-sm"
+            >
+              <div className="text-3xl mb-4">🎰</div>
+              <h4 className="text-xl font-black text-[#ffd700] mb-2">투전 대련 도전</h4>
+              <p className="text-xs text-[#bbb] mb-6 leading-relaxed">
+                정말로 투전을 시작하시겠습니까?<br/>
+                <span className="text-[#ff4d4d] font-bold">실패 시 판돈을 잃을 수 있습니다.</span><br/>
+                (실패 시 판돈의 20%는 보전됩니다)
+              </p>
+              <div className="bg-black/50 p-3 rounded-xl border border-[#ffd70033] mb-6">
+                <div className="text-[10px] text-[#888] uppercase font-bold">설정된 판돈</div>
+                <div className="text-lg font-black text-white">{formatGold(betAmount)}</div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowConfirm(false)} 
+                  className="flex-1 py-3 bg-white/5 text-[#aaa] font-bold rounded-xl border border-white/10"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={confirmAndStart} 
+                  className="flex-2 py-3 bg-gradient-to-r from-[#ffd700] to-[#ffb300] text-black font-black rounded-xl shadow-lg"
+                  style={{ flex: 2 }}
+                >
+                  대련 시작!
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {gameState === "victory" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
+import TopBar from "@/app/components/TopBar";
 
 const goldButtonStyle: React.CSSProperties = {
   background:
@@ -97,8 +98,20 @@ export default function MePage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", padding: "24px 16px 40px", color: "white" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: `
+          linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)),
+          url("/background.jpg") center / cover no-repeat fixed
+        `,
+        color: "white",
+        padding: "20px 16px 40px",
+        fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
+      }}
+    >
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
+        <TopBar />
         <section style={{ ...cardStyle, marginBottom: 18, padding: 24 }}>
           <div
             style={{

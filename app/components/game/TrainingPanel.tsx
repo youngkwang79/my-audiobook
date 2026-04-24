@@ -505,12 +505,10 @@ export default function TrainingPanel() {
   };
 
   const handleHit = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
     performHit();
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
     // Handle only the first touch to prevent accidental double-counting with multi-finger
     if (e.changedTouches.length > 0) performHit();
   };
@@ -979,7 +977,7 @@ export default function TrainingPanel() {
           borderRadius: "20px",
           overflow: "hidden",
           cursor: showBreakthroughPopup ? "default" : "pointer",
-          touchAction: "none",
+          touchAction: "pan-y",
           boxSizing: "border-box",
           userSelect: "none",
           background: "#08060a",

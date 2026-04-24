@@ -1,0 +1,10 @@
+"use client";
+import { create } from "zustand";
+export const useGameStore = create((set, get) => ({
+  game: {
+    isAudioMuted: false,
+    activeTab: "training",
+  },
+  visitGiru: () => {},
+  interactGiru: () => ({ success: true, message: "test" }),
+}));

@@ -17,6 +17,8 @@ import TrainingPanel from "./TrainingPanel";
 import UpgradePanel from "./UpgradePanel";
 import OfflineRewardPopup from "./OfflineRewardPopup";
 import TowerPanel from "./TowerPanel";
+import GiruPanel from "./GiruPanel";
+import GamblingPanel from "./GamblingPanel";
 
 export default function GameShell() {
   const { game, markInnEntryHandled, syncFromCloud, syncToCloud } = useGameStore() as any;
@@ -62,6 +64,15 @@ export default function GameShell() {
     return () => clearInterval(interval);
   }, [user]);
 
+  // --- Night System Tick ---
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      const { updateTime } = useGameStore.getState() as any;
+      if (updateTime) updateTime(1);
+    }, 1000);
+    return () => clearInterval(ticker);
+  }, []);
+
   // Cloud Sync on Login
   useEffect(() => {
     if (user && mounted) {
@@ -100,11 +111,38 @@ export default function GameShell() {
     }));
   };
 
-  const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory"];
+  const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory", "giru", "gambling"];
 
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    const threshold = 60; // 최소 60px 이상 스와이프해야 인정
+
+    const currentIndex = mainTabs.indexOf(activeTab);
+    
+    if (diff > threshold) {
+      // 다음 탭 (왼쪽으로 스와이프)
+      const nextIndex = Math.min(mainTabs.length - 1, currentIndex + 1);
+      if (nextIndex !== currentIndex) setActiveTab(mainTabs[nextIndex]);
+    } else if (diff < -threshold) {
+      // 이전 탭 (오른쪽으로 스와이프)
+      const prevIndex = Math.max(0, currentIndex - 1);
+      if (prevIndex !== currentIndex) setActiveTab(mainTabs[prevIndex]);
+    }
+    
+    touchStartX.current = null;
+  };
 
   return (
     <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{
         maxWidth: 400,
         margin: "0 auto",
@@ -116,9 +154,36 @@ export default function GameShell() {
         flexDirection: "column",
         position: "relative",
         overflow: "hidden",
-        touchAction: "manipulation",
+        touchAction: "pan-y", // Allow vertical scroll, but we handle horizontal swipe
       }}
     >
+      {/* Night System Bar */}
+      <div style={{
+        padding: "8px 12px",
+        background: game.timeState === "night" ? "rgba(40, 20, 80, 0.9)" : 
+                   game.timeState === "dusk" ? "rgba(100, 50, 30, 0.9)" :
+                   game.timeState === "dawn" ? "rgba(120, 100, 50, 0.9)" : "rgba(30, 60, 40, 0.9)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: "12px",
+        fontWeight: "bold",
+        borderBottom: "1px solid rgba(255,255,255,0.1)",
+        zIndex: 50,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontSize: "16px" }}>
+            {game.timeState === "day" ? "☀️" : game.timeState === "dusk" ? "🌇" : game.timeState === "night" ? "🌙" : "🌅"}
+          </span>
+          <span style={{ color: "#fff" }}>
+            {game.timeState === "day" ? "낮 (수련)" : game.timeState === "dusk" ? "황혼 (정리)" : game.timeState === "night" ? "밤 (기루/도박)" : "새벽 (정산)"}
+          </span>
+        </div>
+        <div style={{ color: "#aaa" }}>
+          남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(game.timeRemaining)}초</span>
+        </div>
+      </div>
+
       <AutoTrainingManager />
 
       {!game.faction ? (
@@ -146,6 +211,8 @@ export default function GameShell() {
               {activeTab === "inventory" && <InventoryPanel />}
               {activeTab === "upgrade" && <UpgradePanel />}
               {activeTab === "tower" && <TowerPanel />}
+              {activeTab === "giru" && <GiruPanel />}
+              {activeTab === "gambling" && <GamblingPanel />}
             </div>
           </div>
         </>
@@ -521,12 +588,16 @@ export default function GameShell() {
                 <button
                   onClick={() => {
                     const store: any = useGameStore.getState();
+                    if (game.gamblingTokens <= 0) {
+                      alert("투전판 명패가 부족합니다. (객잔 대련 승리 시 확률 획득)");
+                      return;
+                    }
+                    if (!confirm("투전판에 입장하시겠습니까?\n옥구슬 찾기에 성공하면 판돈의 3배를 획득하며, 명패 1개가 소모됩니다.")) return;
+                    
                     if (store.useGamblingToken()) {
                       useGameStore.setState((s: any) => ({
                         game: { ...s.game, activeTab: "inn", pendingYabawiPlay: true }
                       }));
-                    } else {
-                      alert("투전판 명패가 부족합니다. (객잔 대련 승리 시 확률 획득)");
                     }
                   }}
                   style={{

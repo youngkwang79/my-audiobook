@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource } from "./types";
 import { FACTIONS } from "./factions";
+import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS } from "./nightSystem";
 import { defaultGameData, loadGame, saveGame } from "./storage";
 import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS } from "./items";
 import { getMovementBuff } from "./movementLogic";
@@ -18,11 +19,17 @@ import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
  
 export function formatCompactNumber(num: number): string {
   if (num < 0) return "0";
-  if (num < 1000) return Math.floor(num).toLocaleString();
-  if (num < 1000000) return (num / 1000).toFixed(1) + "K";
-  if (num < 1000000000) return (num / 1000000).toFixed(1) + "M";
-  if (num < 1000000000000) return (num / 1000000000).toFixed(1) + "B";
-  return (num / 1000000000000).toFixed(1) + "T";
+  if (num < 10000) return Math.floor(num).toLocaleString();
+  if (num < 100000000) {
+    return (num / 10000).toFixed(1).replace(/\.0$/, "") + "만";
+  }
+  if (num < 1000000000000) {
+    return (num / 100000000).toFixed(1).replace(/\.0$/, "") + "억";
+  }
+  if (num < 10000000000000000) {
+    return (num / 1000000000000).toFixed(1).replace(/\.0$/, "") + "조";
+  }
+  return (num / 10000000000000000).toFixed(1).replace(/\.0$/, "") + "경";
 }
 
 export const REALM_SETTINGS: Record<string, any> = {
@@ -325,6 +332,7 @@ interface GameState {
   getTotalEvasion: () => number;
   getTotalSpeed: () => number;
   getTotalLuck: () => number;
+  
   getTotalMp: () => number;
   getTotalHpRecovery: () => number;
   getTotalMpRecovery: () => number;
@@ -390,12 +398,16 @@ interface GameState {
   startTower: () => void;
   updateTower: (dt: number) => void;
   tapTower: (bonusDmg?: number, isWeakness?: boolean) => void;
+  stepTower: (lane: number) => void;
   selectTowerBuff: (buff: any) => void;
   selectTowerArtifact: (art: any) => void;
   handleTowerEvent: (type: "REST" | "BUFF" | "DANGER" | "MERCHANT") => void;
   leaveTower: () => void;
   toggleEquipSkill: (skillName: string) => void;
   triggerCombatTrap: (multiplier: number) => void;
+  visitGiru: () => void;
+  interactGiru: (npcId: string, actionId: string) => { success: boolean; message: string; event?: any };
+  
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -489,6 +501,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     const optionAtkPct = Math.min(200, get().getOptionSum("atk_pct"));
     const optionAtkFlat = get().getOptionSum("atk");
 
+    let nightAtkMult = 1;
+    if (game.nightBuffs) {
+      game.nightBuffs.forEach((b: any) => {
+        if (b.effect === "atk_up_10") nightAtkMult += 0.1;
+        if (b.effect === "atk_up_20") nightAtkMult += 0.2;
+      });
+    }
+
     let moveAtkMult = 1;
     if (game.movementBuff && game.movementBuff.data.atk) {
       moveAtkMult = game.movementBuff.data.atk;
@@ -507,7 +527,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     });
 
-    let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0)/100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkBonus;
+    let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0)/100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkBonus * nightAtkMult;
     
     // Special Training: Aura Type (Atk Bonus)
     if (faction?.specialTraining?.type === 'aura') {
@@ -789,8 +809,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const expB = 1 + (autoLv * 0.0003); const goldB = 1 + (autoLv * 0.0005);
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
     const innBonus = get().getInnBonus();
-    const finalExp = amount * eq.reduce((a, i) => a * (i.expMultiplier || 1), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0)/100) * expB * (1 + innBonus.exp) * (1 + get().getOptionSum("exp_pct") / 100);
-    const finalGoldB = goldB * (1 + innBonus.gold);
+        let nightExpMult = 1;
+    let nightGoldMult = 1;
+    let nightTouchMult = 1;
+    if (game.nightBuffs) {
+      game.nightBuffs.forEach((b: any) => {
+        if (b.effect === "exp_gain_up_10") nightExpMult += 0.1;
+        if (b.effect === "gold_gain_up_10") nightGoldMult += 0.1;
+        if (b.effect === "touch_eff_up_10") nightTouchMult += 0.1;
+      });
+    }
+
+    const finalExp = amount * nightExpMult * eq.reduce((a, i) => a * (i.expMultiplier || 1), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0)/100) * expB * (1 + innBonus.exp) * (1 + get().getOptionSum("exp_pct") / 100);
+    const finalGoldB = goldB * (1 + innBonus.gold) * nightGoldMult;
 
     set((s: any) => {
       const now = Date.now();
@@ -800,7 +831,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       let rep = s.game.reputation || 0;
       let eGold = 0;
       let lastR = s.game.lastReward;
-      const nTouches = s.game.touches + (1 + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0)) * amount;
+      const nTouches = s.game.touches + (nightTouchMult + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0)) * amount;
 
       const stats = getDummyStats(s.game.realm, s.game.star);
       
@@ -1451,7 +1482,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         let tokenGained = isFirstWin ? 1 : (Math.random() < 0.05 ? 1 : 0);
         
         // 투전판 이벤트 발생 확률 5%
-        if (Math.random() < 0.05 && !game.yabawiEvent?.active) {
+        if (Math.random() < 0.002 && !game.yabawiEvent?.active) {
           setTimeout(() => get().triggerYabawiEvent(), 500); // 딜레이를 주어 상태 업데이트 후 실행
         }
 
@@ -3062,7 +3093,42 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     });
   },
+stepTower: (lane: number) => {
+  set((state: any) => {
+    const tower = state.game.tower;
 
+    if (!tower.stairs || tower.stairs.length === 0) return state;
+
+    const correct = tower.stairs[0] === lane;
+
+    if (correct) {
+      return {
+        game: {
+          ...state.game,
+          tower: {
+            ...tower,
+            combo: (tower.combo || 0) + 1,
+            stairs: [
+              Math.floor(Math.random() * 3),
+              ...tower.stairs.slice(0, -1),
+            ],
+          },
+        },
+      };
+    } else {
+      return {
+        game: {
+          ...state.game,
+          tower: {
+            ...tower,
+            combo: 0,
+            hp: tower.hp - tower.maxHp * 0.1,
+          },
+        },
+      };
+    }
+  });
+},
   updateTower: (dt: number) => {
     const { game } = get();
     if (!game.tower.isInside || !game.tower.enemy || game.tower.eventRoom || game.tower.pendingBuffChoices || game.tower.pendingArtifactChoices) return;
@@ -3246,5 +3312,69 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     });
     get().triggerSave(true);
+  },
+
+  visitGiru: () => {
+    set((s: any) => ({ game: { ...s.game, activeTab: "giru" } }));
+  },
+  interactGiru: (npcId: string, actionId: string) => {
+    const { game } = get();
+    const action = GIRU_ACTIONS.find(a => a.id === actionId);
+    if (!action) return { success: false, message: "잘못된 요청입니다." };
+    if (game.coins < action.cost) return { success: false, message: "금전이 부족합니다." };
+
+    const npcEvents = GIRU_EVENTS.filter(e => e.npcId === npcId && e.action === actionId);
+    const favor = (game.npcFavors && game.npcFavors[npcId]) || 0;
+    const possibleEvents = npcEvents.filter(e => {
+      if (!e.condition) return true;
+      if (e.condition.favorMin && favor < e.condition.favorMin) return false;
+      return true;
+    });
+    
+    if (possibleEvents.length === 0) {
+        set((s: any) => {
+            const nextFavors = { ...s.game.npcFavors };
+            nextFavors[npcId] = (nextFavors[npcId] || 0) + (action.favor || 0);
+            return {
+                game: {
+                    ...s.game,
+                    coins: s.game.coins - action.cost,
+                    npcFavors: nextFavors
+                }
+            };
+        });
+        get().triggerSave(true);
+        return { success: true, message: "대화를 나눴습니다." };
+    }
+    
+    const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
+    
+    set((s: any) => {
+      const nextFavors = { ...s.game.npcFavors };
+      nextFavors[npcId] = (nextFavors[npcId] || 0) + (event.result.favor || action.favor || 0);
+      
+      const nextBuffs = [...(s.game.nightBuffs || [])];
+      if (event.result.buff) {
+        nextBuffs.push({
+          id: event.id,
+          name: event.effect,
+          effect: event.result.buff,
+          expiresAt: Date.now() + 30 * 60 * 1000
+        });
+      }
+      
+      return {
+        game: {
+          ...s.game,
+          coins: s.game.coins - action.cost,
+          npcFavors: nextFavors,
+          nightBuffs: nextBuffs,
+          gamblingTokens: (s.game.gamblingTokens || 0) + (event.result.token || 0),
+        }
+      };
+    });
+    
+    get().triggerSave(true);
+    return { success: true, message: event.text, event };
   },
 }));

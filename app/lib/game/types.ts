@@ -43,7 +43,7 @@ export type EquipSlot =
   | "ring"
   | "bracelet";
 
-export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade" | "tower";
+export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade" | "tower" | "giru" | "gambling";
 export type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse";
 
 export type ConsumableId =
@@ -54,7 +54,7 @@ export type ConsumableId =
   | "oil_eva_3" | "oil_def_3" | "oil_reflect" | "oil_vajra" | "oil_vampire"
   | "oil_speed_3" | "oil_luck_3" | "oil_clarity" | "oil_eye"
   | "oil_demon" | "oil_triple_hit" | "oil_formless" | "oil_blessed"
-  | "charm_luck" | "exp_scroll";
+  | "charm_luck" | "exp_scroll" | "paewang_box";
 
 export type ItemTier = "평범" | "명품" | "보구" | "신기";
 
@@ -96,6 +96,7 @@ export type OwnedWeapon = {
   enhancement?: number; // New: Enhancement level (+1, +2, ...)
   soulEffect?: { name: string; desc: string; key: string }; // New: Soul infusion effect
   oilEffect?: { key: string; label: string; chance: number; }; // New: Oil enhancement effect
+  baseQuality?: number; // New: Luck-influenced quality multiplier
 };
 
 export type Skill = {
@@ -308,6 +309,8 @@ export type TowerState = {
   highestFloor: number;
   hp: number;
   maxHp: number;
+  mp: number;
+maxMp: number;
   isInside: boolean;
   activeBuffs: TowerBuff[];
   artifacts: TowerArtifact[];
@@ -321,6 +324,8 @@ export type TowerState = {
     name: string;
     hp: number;
     maxHp: number;
+    mp: number;
+  maxMp: number;
     atk: number;
     traits: string[];
     def: number;
@@ -334,6 +339,7 @@ export type TowerState = {
   pendingBuffChoices: TowerBuff[] | null;
   pendingArtifactChoices: TowerArtifact[] | null;
   lastClearFloor: number;
+  stairs: number[];
 };
 
 export type MovementBuffStatus = {
@@ -479,6 +485,13 @@ export type GameSaveData = {
   yabawiEvent: { active: boolean; expiresAt: number } | null;
   pendingYabawiPlay?: boolean;
   tower: TowerState;
+
+  // --- Night System ---
+  timeState: "day" | "dusk" | "night" | "dawn";
+  timeRemaining: number; // in seconds
+  nightStreak: number;
+  npcFavors: Record<string, number>;
+  nightBuffs: { id: string; name: string; effect: any; expiresAt: number }[];
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

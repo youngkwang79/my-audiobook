@@ -30,6 +30,13 @@ type FallingObject = {
   xDirection?: number;
 };
 
+type CounterProjectile = {
+  id: number;
+  lane: number;
+  x: number;
+  speed: number;
+  type: "dart" | "slash" | "palm";
+};
 
 const MINI_GAMES: {
   key: MiniGameType;
@@ -68,6 +75,8 @@ const MINI_GAMES: {
       icon: "🎲",
     },
   ];
+
+
 
 const RANK_REWARDS = [
   { score: 500, name: "초출강호", icon: "🌱", reward: "객잔 금화 +10%", bonus: { gold: 0.1 } },
@@ -260,10 +269,10 @@ export default function InnPanel({
 
   const TUTORIAL_INFO = {
     breath: {
-      title: "청운진기",
-      method: "하늘과 땅의 기운을 조화롭게 받아들이는 수련입니다.",
-      controls: "위에서 내려오는 기운구슬(노트)이 하단의 원형 영역에 겹치는 순간, 해당 영역을 정확히 탭하세요.",
-      goal: "첫 번째 판 1000점 달성 시 자동으로 다음 단계로 넘어갑니다. 실패 전까지 보상을 획득하며 정진하세요!"
+    title: "청운진기",
+    method: "무뢰배가 날리는 암기, 검격, 장법을 막아내고 반격하는 전투형 수련입니다.",
+    controls: "오른쪽에서 왼쪽으로 공격이 날아옵니다. 공격이 왼쪽 방어 구역에 닿을 때 같은 줄의 방어 박스를 터치하세요.",
+    goal: "공격을 막아 반격 게이지를 채우면 청운반격이 발동합니다. 무뢰배의 생명력을 0으로 만들면 다음 단계로 넘어갑니다."
     },
     dodge: {
       title: "梅화樁 보법수련",
@@ -291,12 +300,21 @@ export default function InnPanel({
     }
   };
 
-  // --- Breath (Rhythm) States ---
-  const [breathNotes, setBreathNotes] = useState<{ id: number; y: number; lane: number }[]>([]);
-  const breathNoteIdRef = useRef(0);
-  const [breathTimeLeft, setBreathTimeLeft] = useState(30.0);
-  const [breathMissCount, setBreathMissCount] = useState(0);
-  const breathMissCountRef = useRef(0);
+
+ // --- Cheongun Counter Battle States ---
+const [breathNotes, setBreathNotes] = useState<CounterProjectile[]>([]);
+const breathNoteIdRef = useRef(0);
+const [breathTimeLeft, setBreathTimeLeft] = useState(30.0);
+const [breathMissCount, setBreathMissCount] = useState(0);
+const breathMissCountRef = useRef(0);
+
+const [counterPlayerHp, setCounterPlayerHp] = useState(5);
+const counterPlayerHpRef = useRef(5);
+const [counterEnemyHp, setCounterEnemyHp] = useState(100);
+const counterEnemyHpRef = useRef(100);
+const [counterGauge, setCounterGauge] = useState(0);
+const counterGaugeRef = useRef(0);
+const [counterSlashEffect, setCounterSlashEffect] = useState(false);
 
   // --- Meihua Poles (Dodge) States ---
   const [poles, setPoles] = useState<number[]>([]);
@@ -316,7 +334,7 @@ export default function InnPanel({
   const pulseIdRef = useRef(0);
 
   // --- REFS for Stale Closure Prevention ---
-  const breathNotesRef = useRef<{ id: number; y: number; lane: number }[]>([]);
+  const breathNotesRef = useRef<CounterProjectile[]>([]);
   const polesRef = useRef<number[]>([]);
   const puzzleGridRef = useRef<any[][]>([]);
   const puzzleDantianRef = useRef(0);
@@ -543,10 +561,10 @@ export default function InnPanel({
     const clearedStage = success ? currentStage : currentStage - 1;
     setRound(1); // Reset round on finish
 
-    // Robust reward check: if success OR any score was earned
+    // Robust reward check: Always calculate reward but scale by success
     const finalScore = score || playerScoreRef.current;
 
-    if (success || finalScore > 0) {
+    if (true) {
       // 승리 보상 로직: useGameStore의 상향된 최신 밸런스 로직과 동기화
       const actualStage = Math.min(15, Math.max(1, clearedStage));
       const realms = Object.keys(REALM_SETTINGS);
@@ -577,10 +595,10 @@ export default function InnPanel({
 
       if (!success) {
         repPenalty = Math.min(500, (clearedStage + 1) * 50);
-        finalGold = Math.floor(gReward * 0.5);
-        finalRep = Math.floor(rReward * 0.5);
-        finalStones = Math.floor(sReward * 0.5);
-        finalWisdom = Math.floor(wReward * 0.5);
+        finalGold = Math.floor(gReward * 0.2);
+        finalRep = Math.floor(rReward * 0.2);
+        finalStones = Math.floor(sReward * 0.2);
+        finalWisdom = Math.floor(wReward * 0.2);
       }
 
       setVictoryRewards({
@@ -621,24 +639,11 @@ export default function InnPanel({
     } else {
       triggerShake();
 
-      // Milestone Protection Logic
-      let protectionAmount = 0n;
-      if (yabawiSession && yabawiSession.stage > 5) {
-        const lastMilestoneLevel = Math.floor((yabawiSession.stage - 1) / 5) * 5;
-        if (lastMilestoneLevel >= 5) {
-          // Provide 30% of what was accumulated at the last milestone
-          // For simplicity, we'll give a fixed consolatory reward based on milestone level
-          const milestoneRewards: Record<number, bigint> = {
-            5: 1000000000n, // 10억
-            10: 1000000000000n, // 1조
-            15: 1000000000000000n, // 1000조
-          };
-          protectionAmount = milestoneRewards[lastMilestoneLevel] || 0n;
-        }
-      }
+      // Always provide 20% protection on stakedGold as requested
+      const protectionAmount = bBet / 5n;
 
       const failMsg = protectionAmount > 0n
-        ? `패배하였습니다! 하지만 마일스톤 보호로 ${formatKoreanGold(protectionAmount)}을 보전받았습니다.`
+        ? `패배하였습니다! 하지만 판돈의 20%(${formatKoreanGold(protectionAmount)})를 돌려받았습니다.`
         : "옥구슬을 찾지 못했습니다. 모든 판돈을 잃었습니다.";
 
       setFailReason(failMsg);
@@ -792,173 +797,207 @@ export default function InnPanel({
   }, [isPlaying, currentMiniGame]);
 
   // 1. Breath (Rhythm) Logic
-  const updateBreath = (dt: number) => {
-    if (isTransitioning) return;
-    
-    const realmList = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
-    const rIdx = realmList.indexOf(game.realm);
+  const getCounterLaneCount = (stage: number) => {
+  if (stage <= 2) return 2;
+  if (stage <= 5) return 3;
+  if (stage <= 8) return 4;
+  return 5;
+};
 
-    // 청운진기 단계별 속도 고정 (사용자 요청: 1-3, 4-6, 7-10, 11+)
-    let baseSpeed = 12;
-    if (currentStage <= 3) baseSpeed = 12;
-    else if (currentStage <= 6) baseSpeed = 18;
-    else if (currentStage <= 10) baseSpeed = 28;
-    else baseSpeed = 40;
+const getCounterAttackConfig = (stage: number) => {
+  const laneCount = getCounterLaneCount(stage);
 
-    const accel = (currentStage - 1) * 1.5;
-    const speed = (baseSpeed + accel) * 1.5;
-
-    const nextNotes = breathNotesRef.current
-      .map((n) => ({ ...n, y: n.y + speed * dt }));
-
-    if (nextNotes.some((n) => n.y > 96)) {
-      const missedCount = nextNotes.filter(n => n.y > 96).length;
-
-      const newMissCount = breathMissCountRef.current + missedCount;
-      breathMissCountRef.current = newMissCount;
-      setBreathMissCount(newMissCount);
-
-      const penalty = missedCount * 15; // Reduced penalty
-      const newScore = playerScoreRef.current - penalty;
-
-      playerScoreRef.current = newScore;
-      setPlayerScore(newScore);
-      addFloatText(`-${penalty}`, "#ff4d4d");
-
-      if (newMissCount >= 5) {
-        finishMission(false, "MISS", newScore, "기운을 지나치게 놓쳐 대련이 중단되었습니다. (5회 미스)");
-        return;
-      }
-
-      if (newScore <= -300) {
-        finishMission(false, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
-        return;
-      }
-
-      // Reset combo on missed notes
-      setCombo(0);
-      comboRef.current = 0;
-
-      // Filter out missed notes
-      const filteredNotes = nextNotes.filter(n => n.y <= 96);
-      breathNotesRef.current = filteredNotes;
-      setBreathNotes(filteredNotes);
-      return;
-    }
-
-    breathNotesRef.current = nextNotes;
-    setBreathNotes(nextNotes);
-
-    // Spawn rate by realm and stage
-    let baseRate = 0.015 + rIdx * 0.005;
-    if (currentStage === 1) baseRate = 0.025; // Increase stage 1 spawn rate
-    const stageBonus = (currentStage - 1) * 0.005;
-    const spawnRate = baseRate + stageBonus;
-
-    const maxNotesOnScreen = 5 + Math.floor(currentStage / 2);
-
-    if (Math.random() < spawnRate && nextNotes.length < maxNotesOnScreen) {
-      const lane = Math.floor(Math.random() * 5);
-      // Prevent vertical overlap in the same lane
-      const lastNoteInLane = nextNotes.find(n => n.lane === lane && n.y < 15);
-
-      if (!lastNoteInLane) {
-        totalNotesSpawnedRef.current += 1;
-        const newNote: { id: number; y: number; lane: number } = {
-          id: breathNoteIdRef.current++,
-          y: 0,
-          lane
-        };
-        const updated = [...nextNotes, newNote];
-        breathNotesRef.current = updated;
-        setBreathNotes(updated);
-      }
-    }
+  return {
+    laneCount,
+    speed: 22 + stage * 3.8,
+    spawnRate: Math.min(0.075, 0.018 + stage * 0.004),
+    maxOnScreen: Math.min(8, 2 + Math.floor(stage / 2)),
+    enemyHp: 100 + (stage - 1) * 80,
+    counterNeed: Math.min(12, 4 + Math.floor(stage / 2)),
   };
+};
 
-  const handleBreathTap = (lane: number) => {
-    const now = Date.now();
-    const key = `breath_${lane}`;
-    if (now - (lastHitTimeRef.current[key] || 0) < 180) return; // 레인별 중복 호출 방지 (이중터치 방지 상향)
-    lastHitTimeRef.current[key] = now;
+const getAttackData = (type: "dart" | "slash" | "palm") => {
+  if (type === "dart") {
+    return { icon: "🗡️", score: 45, damage: 1, speedMult: 1.25 };
+  }
 
-    if (!isPlaying || currentMiniGame !== "breath") return;
-    const hitZone = 88;
-    const tolerance = 10;
+  if (type === "slash") {
+    return { icon: "🌙", score: 75, damage: 1, speedMult: 1 };
+  }
 
-    // Read from REF to avoid stale closure in logic
-    const nearestNote = breathNotesRef.current.find(n => n.lane === lane && n.y > 60);
-    if (!nearestNote) return;
+  return { icon: "✊", score: 120, damage: 2, speedMult: 0.8 };
+};
 
-    const diff = Math.abs(nearestNote.y - hitZone);
-    const grade = getGrade(diff, tolerance);
+const updateBreath = (dt: number) => {
+  const cfg = getCounterAttackConfig(currentStage);
 
-    if (grade === "MISS") {
-      const newScore = playerScoreRef.current - 20;
-      playerScoreRef.current = newScore;
-      setPlayerScore(newScore);
-      addFloatText("-20", "#ff4d4d");
+  // 👉 이동 (x 기준으로 변경)
+  const moved = breathNotesRef.current.map((n) => ({
+    ...n,
+    x: n.x - n.speed * dt,
+  }));
 
-      const newMissCount = breathMissCountRef.current + 1;
-      breathMissCountRef.current = newMissCount;
-      setBreathMissCount(newMissCount);
+  // 👉 MISS 판정
+  const missed = moved.filter((n) => n.x <= 5);
 
-      if (newMissCount >= 5) {
-        finishMission(false, "MISS", newScore, "기운을 지나치게 놓쳐 대련이 중단되었습니다. (5회 미스)");
-        return;
-      }
+  if (missed.length > 0) {
+    const remain = moved.filter((n) => n.x > 5);
+    breathNotesRef.current = remain;
+    setBreathNotes(remain);
 
-      if (newScore <= -300) {
-        finishMission(false, "MISS", newScore, "기력이 다하여 대련이 중단되었습니다.");
-        const nextNotes = breathNotesRef.current.filter(n => n.id !== nearestNote.id);
-        breathNotesRef.current = nextNotes;
-        setBreathNotes(nextNotes);
-        return;
-      }
+    const newMiss = breathMissCountRef.current + missed.length;
+    breathMissCountRef.current = newMiss;
+    setBreathMissCount(newMiss);
 
-      // Reset combo on miss
-      setCombo(0);
-      comboRef.current = 0;
+    return;
+  }
 
-      const nextNotes = breathNotesRef.current.filter(n => n.id !== nearestNote.id);
-      breathNotesRef.current = nextNotes;
-      setBreathNotes(nextNotes);
-    } else {
-      const nextNotes = breathNotesRef.current.filter(n => n.id !== nearestNote.id);
-      breathNotesRef.current = nextNotes;
-      setBreathNotes(nextNotes);
+  breathNotesRef.current = moved;
+  setBreathNotes(moved);
 
-      // Score weightage based on grade
-      const scoreMap = { "PERFECT": 70, "GREAT": 45, "GOOD": 25, "MISS": 0 };
-      const baseScoreGain = scoreMap[grade] || 15;
-      const scoreGain = Math.floor(baseScoreGain * powerFactor);
-      const newScore = playerScoreRef.current + scoreGain;
+  // 👉 생성
+  if (
+    Math.random() < cfg.spawnRate &&
+    breathNotesRef.current.length < cfg.maxOnScreen
+  ) {
+    const lane = Math.floor(Math.random() * cfg.laneCount);
 
-      playerScoreRef.current = newScore;
-      setPlayerScore(newScore);
-      addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
+    const roll = Math.random();
+    const type: "dart" | "slash" | "palm" =
+      roll < 0.5 ? "dart" : roll < 0.8 ? "slash" : "palm";
 
-      // Update combo
-      const nextCombo = comboRef.current + 1;
-      comboRef.current = nextCombo;
-      setCombo(nextCombo);
-      incrementCombo(); // 문파 특성 및 스탯 보너스 갱신용
+    const attack = getAttackData(type);
 
-      playHitEffect();
+    const newAttack = {
+      id: breathNoteIdRef.current++,
+      lane,
+      x: 95,
+      speed: cfg.speed * attack.speedMult,
+      type,
+    };
 
-      // Real-time Stage Transition Check
-      const targetScore = getTargetScore(currentStage);
-      if (newScore >= targetScore) {
-        handleRoundSuccess(grade, 0, "스테이지 돌파!");
-      }
+    const next = [...breathNotesRef.current, newAttack];
+    breathNotesRef.current = next;
+    setBreathNotes(next);
+  }
+};
 
-      if (nextCombo > 0 && nextCombo % 10 === 0) {
-        addFloatText(`${nextCombo} COMBO!!`, "#ffd700");
-      }
+const fireCounterSlash = (damage: number) => {
+  setCounterSlashEffect(true);
+  playHitEffect();
+  triggerShake();
 
-      // Lane flash effect removed for stability
+  setTimeout(() => {
+    setCounterSlashEffect(false);
+  }, 450);
+
+  const nextHp = Math.max(0, counterEnemyHpRef.current - damage);
+  counterEnemyHpRef.current = nextHp;
+  setCounterEnemyHp(nextHp);
+
+  addFloatText(`청운반격 -${damage}`, "#ffd700");
+
+  if (nextHp <= 0) {
+    const stageBonus = 250 + currentStage * 80;
+    handleRoundSuccess(
+      "PERFECT",
+      stageBonus,
+      "청운반격으로 무뢰배를 제압했습니다!"
+    );
+  }
+};
+
+ const handleBreathTap = (lane: number) => {
+  const now = Date.now();
+  const key = `counter_${lane}`;
+
+  if (now - (lastHitTimeRef.current[key] || 0) < 80) return;
+  lastHitTimeRef.current[key] = now;
+
+  if (!isPlaying || currentMiniGame !== "breath") return;
+
+  const candidates = breathNotesRef.current
+    .filter((n) => n.lane === lane && n.x <= 38)
+    .sort((a, b) => a.x - b.x);
+
+  const target = candidates[0];
+
+  if (!target) {
+    addFloatText("허공 방어", "#777");
+    return;
+  }
+
+  const diff = Math.abs(target.x - 16);
+
+  let grade: Grade = "MISS";
+  if (diff <= 4) grade = "PERFECT";
+  else if (diff <= 9) grade = "GREAT";
+  else if (diff <= 16) grade = "GOOD";
+
+  const nextNotes = breathNotesRef.current.filter((n) => n.id !== target.id);
+  breathNotesRef.current = nextNotes;
+  setBreathNotes(nextNotes);
+
+  if (grade === "MISS") {
+    const attackData = getAttackData(target.type);
+    const nextHp = Math.max(0, counterPlayerHpRef.current - attackData.damage);
+
+    counterPlayerHpRef.current = nextHp;
+    setCounterPlayerHp(nextHp);
+
+    comboRef.current = 0;
+    setCombo(0);
+
+    addFloatText("방어 실패", "#ff4d4d");
+    triggerShake();
+
+    if (nextHp <= 0) {
+      finishMission(false, "MISS", playerScoreRef.current, "방어가 무너져 무뢰배에게 패배했습니다.");
     }
-  };
+
+    return;
+  }
+
+  const attackData = getAttackData(target.type);
+  const gradeBonus = grade === "PERFECT" ? 1.45 : grade === "GREAT" ? 1.2 : 1;
+  const scoreGain = Math.floor(attackData.score * gradeBonus * powerFactor);
+
+  const nextScore = playerScoreRef.current + scoreGain;
+  playerScoreRef.current = nextScore;
+  setPlayerScore(nextScore);
+
+  const nextCombo = comboRef.current + 1;
+  comboRef.current = nextCombo;
+  setCombo(nextCombo);
+  incrementCombo();
+
+  const gaugeGain = grade === "PERFECT" ? 2 : 1;
+  const nextGauge = counterGaugeRef.current + gaugeGain;
+  counterGaugeRef.current = nextGauge;
+  setCounterGauge(nextGauge);
+
+  addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
+  playHitEffect();
+
+  if (nextCombo > 0 && nextCombo % 10 === 0) {
+    addFloatText(`${nextCombo} 연속 방어!`, "#ffd700");
+  }
+
+  const cfg = getCounterAttackConfig(currentStage);
+
+  if (nextGauge >= cfg.counterNeed) {
+    counterGaugeRef.current = 0;
+    setCounterGauge(0);
+
+    const perfectBonus = grade === "PERFECT" ? 1.25 : 1;
+    const comboBonus = nextCombo >= 10 ? 1.2 : 1;
+    const palmBonus = target.type === "palm" ? 1.15 : 1;
+    const damage = Math.floor((90 + currentStage * 35) * perfectBonus * comboBonus * palmBonus);
+
+    fireCounterSlash(damage);
+  }
+};
 
   // 2. Meihua Poles (Dodge) Logic
   const getNumPoles = (stage: number) => {
@@ -1838,47 +1877,60 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                   <div style={{ position: "absolute", top: 10, right: 20, fontSize: 13, fontWeight: "900", color: "#ffd700", zIndex: 10 }}>
                     <span style={{ color: breathMissCount >= 3 ? "#ff4d4d" : "#ffd700" }}>MISS: {breathMissCount}/5</span>
                   </div>
-                  <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
-                    {[0, 1, 2, 3, 4].map(l => (
-                      <div
-                        key={l}
-                        onMouseDown={(e) => { e.preventDefault(); handleBreathTap(l); }}
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          const touches = Array.from(e.changedTouches);
-                          touches.forEach(() => handleBreathTap(l));
-                        }}
-                        style={{
-                          flex: 1,
-                          borderRight: l < 4 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                          position: "relative",
-                          background: laneFlashes[l] ? "rgba(255, 215, 0, 0.25)" : "rgba(255,255,255,0.02)",
-                          transition: "background 0.1s",
-                          cursor: "pointer"
-                        }}
-                      >
-                        <div style={{
-                          position: "absolute",
-                          bottom: "8%",
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          width: 38,
-                          height: 38,
-                          borderRadius: "50%",
-                          border: `2px solid ${laneFlashes[l] ? "#ffd700" : "rgba(255,215,0,0.4)"}`,
-                          background: laneFlashes[l] ? "rgba(255,215,0,0.4)" : "rgba(0,0,0,0.5)",
-                          boxShadow: laneFlashes[l] ? "0 0 20px #ffd700" : "none",
-                          transition: "all 0.1s"
-                        }} />
-                      </div>
-                    ))}
+                  <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "pan-y" }}>
+                   {/* 히트존: 공격이 이 선에 닿을 때 방어 */}
+
+
+{Array.from({ length: getCounterAttackConfig(currentStage).laneCount }).map((_, lane) => {
+  const laneCount = getCounterAttackConfig(currentStage).laneCount;
+  const top = 30 + lane * (300 / laneCount);
+  const height = 250 / laneCount;
+
+  return (
+    <button
+      key={lane}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        handleBreathTap(lane);
+      }}
+      style={{
+        position: "absolute",
+        left: "8%",
+        top,
+        width: "22%",
+        height,
+        zIndex: 20,
+        borderRadius: "20px",
+
+        // 🔥 핵심: 진짜 방어존 느낌
+        background:
+          "linear-gradient(90deg, rgba(255,215,0,0.35), rgba(255,215,0,0.08))",
+        border: "2px solid rgba(255,215,0,0.7)",
+        boxShadow: "0 0 25px rgba(255,215,0,0.45)",
+
+        color: "#ffd700",
+        fontSize: "13px",
+        fontWeight: 900,
+        cursor: "pointer",
+        touchAction: "manipulation",
+      }}
+    >
+      방어 {lane + 1}
+    </button>
+  );
+})}
                     {breathNotes.map(n => (
                       <div
                         key={n.id}
                         style={{
                           position: "absolute",
-                          top: `${n.y}%`,
-                          left: `${n.lane * 20 + 10}%`,
+                        top: `${
+  30 +
+  n.lane * (300 / getCounterAttackConfig(currentStage).laneCount) +
+  (250 / getCounterAttackConfig(currentStage).laneCount) / 2 -
+  16
+}px`,
+left: `${n.x}%`,
                           transform: "translateX(-50%)",
                           width: 32,
                           height: 32,
@@ -1916,7 +1968,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       </div>
                     )}
                   </div>
-                  <div style={gameTip}>하단 원에 맞춰 기운(노트)을 탭하세요!</div>
+                  <div style={gameTip}>왼쪽 노란 방어 박스를 누르면 해당 줄 공격을 막습니다!</div>
                 </div>
               )}
 
@@ -2248,7 +2300,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                           gridTemplateColumns: `repeat(${PUZZLE_COLS}, 1fr)`,
                           gridTemplateRows: `repeat(${PUZZLE_ROWS}, 1fr)`,
                           gap: "3px",
-                          touchAction: "none",
+                          touchAction: "pan-y",
                           WebkitUserSelect: "none",
                           userSelect: "none"
                         }}
@@ -2621,7 +2673,23 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
             <div style={{ fontSize: 20, fontWeight: 900, color: "#ff4d4d", marginTop: 10 }}>대련 패배</div>
             <div style={{ fontSize: 14, margin: "15px 0", opacity: 0.8 }}>{failReason}</div>
 
-            {localFailCount < 2 ? (
+            {currentMiniGame === "yabawi" ? (
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ fontSize: 12, color: "#ffd700", fontWeight: "bold" }}>
+                  (판돈의 20%가 반환되었습니다)
+                </div>
+                <button
+                  onClick={() => {
+                    setIsFailPopup(false);
+                    setIsPlaying(false);
+                    isPlayingRef.current = false;
+                  }}
+                  style={{ ...primaryButton, background: "linear-gradient(135deg, #ffd700, #b8860b)", color: "#000" }}
+                >
+                  다음에 다시 도전하기
+                </button>
+              </div>
+            ) : localFailCount < 2 ? (
               <button onClick={startMission} style={{ ...primaryButton, background: "linear-gradient(135deg, #ff4d4d, #b30000)", boxShadow: "0 4px 15px rgba(255,77,77,0.3)", color: "#fff" }}>
                 다시 도전 (남은 기회 1회)
               </button>
@@ -2634,15 +2702,17 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 }}
                 style={{ ...primaryButton, background: "#333", color: "#888" }}
               >
-                수련으로 복귀 (보상 없음)
+                수련으로 복귀 (일부 보상 수령)
               </button>
             )}
 
             <div style={{ marginTop: 15, fontSize: 11, opacity: 0.5, cursor: "pointer" }} onClick={() => {
               setIsFailPopup(false);
-              useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training", timingMission: { ...s.game.timingMission, available: false } } }));
+              if (currentMiniGame !== "yabawi") {
+                useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training", timingMission: { ...s.game.timingMission, available: false } } }));
+              }
             }}>
-              나중에 하기
+              {currentMiniGame === "yabawi" ? "닫기" : "나중에 하기"}
             </div>
           </div>
         </div>

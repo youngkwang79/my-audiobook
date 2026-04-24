@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { SYNERGY_SETS } from "@/app/lib/game/items";
+import { FORGE_ITEMS } from "@/app/lib/game/items";
 import type { EquipSlot, OwnedWeapon, WeaponId, ConsumableId } from "@/app/lib/game/types";
 
 type Props = {
@@ -19,22 +20,22 @@ const slotMeta: {
   icon: string;
   short: string;
 }[] = [
-  { slot: "mainWeapon", label: "검", icon: "⚔️", short: "무기" },
-  { slot: "subWeapon", label: "단검", icon: "🗡️", short: "보조" },
-  { slot: "gloves", label: "장갑", icon: "🧤", short: "장갑" },
-  { slot: "shoes", label: "신발", icon: "👢", short: "신발" },
-  { slot: "robe", label: "도포", icon: "🥋", short: "도포" },
-  { slot: "necklace", label: "목걸이", icon: "📿", short: "목걸이" },
-  { slot: "ring", label: "반지", icon: "💍", short: "반지" },
-  { slot: "bracelet", label: "팔찌", icon: "📿", short: "팔찌" },
-  { slot: "medicine" as any, label: "행낭", icon: "👜", short: "행낭" },
-];
+    { slot: "mainWeapon", label: "검", icon: "⚔️", short: "무기" },
+    { slot: "subWeapon", label: "단검", icon: "🗡️", short: "보조" },
+    { slot: "gloves", label: "장갑", icon: "🧤", short: "장갑" },
+    { slot: "shoes", label: "신발", icon: "👢", short: "신발" },
+    { slot: "robe", label: "도포", icon: "🥋", short: "도포" },
+    { slot: "necklace", label: "목걸이", icon: "📿", short: "목걸이" },
+    { slot: "ring", label: "반지", icon: "💍", short: "반지" },
+    { slot: "bracelet", label: "팔찌", icon: "📿", short: "팔찌" },
+    { slot: "medicine" as any, label: "행낭", icon: "👜", short: "행낭" },
+  ];
 
 export default function InventoryPanel(props: Props) {
-  const { 
+  const {
     game, equipItem, unequipItem, sellItem, useConsumable,
-    getTotalAttack, getTotalCritRate, getTotalCritDmg, 
-    getTotalDefense, getTotalHp, getTotalEvasion, getTotalSpeed 
+    getTotalAttack, getTotalCritRate, getTotalCritDmg,
+    getTotalDefense, getTotalHp, getTotalEvasion, getTotalSpeed
   } = useGameStore();
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -118,7 +119,7 @@ export default function InventoryPanel(props: Props) {
   const onGearTouchEnd = (e: React.TouchEvent, item: OwnedWeapon) => {
     if (!swipeGearId) return;
     const dist = Math.sqrt(Math.pow(swipeOffset, 2)); // Simple dist
-    
+
     if (swipeOffset > 100) {
       const price = item.name.includes("[패왕]") ? 40000000 : Math.floor(item.price * 0.25);
       if (confirm(`정말 판매하시겠습니까?\n판매 가격: ${formatCompactNumber(price)}냥`)) {
@@ -129,7 +130,7 @@ export default function InventoryPanel(props: Props) {
       // It's a tap
       setPopupItem(item);
     }
-    
+
     setSwipeGearId(null);
     setSwipeOffset(0);
   };
@@ -149,28 +150,28 @@ export default function InventoryPanel(props: Props) {
 
   const onTouchEnd = (e: React.TouchEvent) => {
     if (!draggedMedicineId) return;
-    
+
     // Check if drop location is over a quick slot
     // We can use document.elementFromPoint or a simpler rough coordinate check
     const dropX = dragPos.x;
     const dropY = dragPos.y;
-    
+
     // Quick Slots area is usually at the bottom of the panel
     // For simplicity, we'll look for elements with data-slot-index
     const elem = document.elementFromPoint(dropX, dropY);
     const slotIdxAttr = elem?.closest("[data-slot-index]")?.getAttribute("data-slot-index");
-    
+
     if (slotIdxAttr !== null && slotIdxAttr !== undefined) {
       const idx = parseInt(slotIdxAttr);
       useGameStore.getState().setQuickSlot(idx, draggedMedicineId);
     } else {
-       // If moved very little, treat as a tap
-       const dist = Math.sqrt(Math.pow(dragPos.x - dragOrigin.x, 2) + Math.pow(dragPos.y - dragOrigin.y, 2));
-       if (dist < 10) {
-         handleMedicineTap(draggedMedicineId);
-       }
+      // If moved very little, treat as a tap
+      const dist = Math.sqrt(Math.pow(dragPos.x - dragOrigin.x, 2) + Math.pow(dragPos.y - dragOrigin.y, 2));
+      if (dist < 10) {
+        handleMedicineTap(draggedMedicineId);
+      }
     }
-    
+
     setDraggedMedicineId(null);
   };
 
@@ -183,12 +184,11 @@ export default function InventoryPanel(props: Props) {
         border: "1px solid rgba(255,215,120,0.16)",
         background: "rgba(10,12,20,0.9)",
         height: "100%",
-        padding: "10px", // Reduced from 12px
-        touchAction: "none",
+        padding: "10px", 
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        gap: "6px" // Reduced from 10px
+        gap: "6px" 
       }}
     >
       {!unlocked && (
@@ -216,236 +216,236 @@ export default function InventoryPanel(props: Props) {
         </div>
       )}
 
-        {/* 상단 헤더 및 전체 능력치 */}
-        {/* 상단 공간 확보를 위해 제목 및 강화석 박스 제거 */}
-        <div style={{ marginBottom: 4 }} /> 
+      {/* 상단 헤더 및 전체 능력치 */}
+      {/* 상단 공간 확보를 위해 제목 및 강화석 박스 제거 */}
+      <div style={{ marginBottom: 4 }} />
 
-        {/* 메인 레이아웃: 좌측(부위별 슬롯) / 우측(해당 부위 장비 목록) */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "125px 1fr",
-              gap: 10,
-              flex: 1,
-              minHeight: 0, // CRITICAL: Allows flex child to shrink
-              overflowY: "hidden", // Parent of scrollable children
-              paddingRight: 2
-            }}
-            className="hide-scrollbar"
-          >
-          {/* 좌측 슬롯 네비게이션 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {slotMeta.map((meta) => {
-              const equipped = resolveEquippedItem(meta.slot);
-              const active = selectedSlot === meta.slot;
+      {/* 메인 레이아웃: 좌측(부위별 슬롯) / 우측(해당 부위 장비 목록) */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "125px 1fr",
+          gap: 10,
+          flex: 1,
+          minHeight: 0, 
+          overflowY: "hidden", 
+          paddingRight: 2
+        }}
+        className="hide-scrollbar"
+      >
+        {/* 좌측 슬롯 네비게이션 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {slotMeta.map((meta) => {
+            const equipped = resolveEquippedItem(meta.slot);
+            const active = selectedSlot === meta.slot;
 
-              return (
-                <button
-                  key={meta.slot}
-                  onClick={() => setSelectedSlot(meta.slot)}
+            return (
+              <button
+                key={meta.slot}
+                onClick={() => setSelectedSlot(meta.slot)}
+                style={{
+                  borderRadius: 10,
+                  border: active
+                    ? "1.2px solid #ffd778"
+                    : "1px solid rgba(255,255,255,0.06)",
+                  background: active
+                    ? "linear-gradient(135deg, rgba(255,215,120,0.15) 0%, rgba(255,215,120,0.05) 100%)"
+                    : "rgba(255,255,255,0.01)",
+                  padding: "6px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
+                  transition: "all 0.1s ease",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ fontSize: 16, filter: active ? "drop-shadow(0 0 3px #ffd778)" : "none" }}>
+                    {meta.icon}
+                  </div>
+                  <div style={{ fontSize: 12, color: active ? "#ffd778" : "#777", fontWeight: "900" }}>
+                    {meta.short}
+                  </div>
+                </div>
+                {equipped && (
+                  <div style={{
+                    width: 14, height: 14, background: "#ffd700", color: "#000",
+                    borderRadius: "50%", display: "grid", placeItems: "center",
+                    fontSize: 8, fontWeight: 950
+                  }}>E</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 우측 인벤토리 그리드 */}
+        <div
+          style={{
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(255,255,255,0.03)",
+            padding: 6,
+            height: "100%",
+            overflowY: "auto",
+            touchAction: "pan-y"
+          }}
+        >
+          {isMedicineSelected ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
+                <div
+                  key={id}
+                  onTouchStart={(e) => onTouchStart(e, id)}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    onTouchEnd(e);
+                  }}
                   style={{
-                    borderRadius: 8,
-                    border: active
-                      ? "1.2px solid #ffd778"
-                      : "1px solid rgba(255,255,255,0.06)",
-                    background: active
-                      ? "linear-gradient(135deg, rgba(255,215,120,0.15) 0%, rgba(255,215,120,0.05) 100%)"
-                      : "rgba(255,255,255,0.01)",
-                    padding: "4px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    cursor: "pointer",
-                    transition: "all 0.1s ease",
+                    borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+                    opacity: draggedMedicineId === id ? 0.4 : 1,
+                    cursor: "pointer"
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <div style={{ fontSize: 14, filter: active ? "drop-shadow(0 0 3px #ffd778)" : "none" }}>
-                      {meta.icon}
-                    </div>
-                    <div style={{ fontSize: 11, color: active ? "#ffd778" : "#777", fontWeight: "900" }}>
-                      {meta.short}
-                    </div>
+                  <div style={{ fontSize: 24, userSelect: "none" }}>{getPotionIcon(id)}</div>
+                  <div style={{ flex: 1, userSelect: "none" }}>
+                    <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffd778" }}>{getPotionName(id)}</div>
+                    <div style={{ fontSize: 11, color: "#aaa" }}>수량: {game.consumables[id]}개</div>
                   </div>
-                  {equipped && (
-                    <div style={{ 
-                      width: 12, height: 12, background: "#ffd700", color: "#000", 
-                      borderRadius: "50%", display: "grid", placeItems: "center",
-                      fontSize: 7, fontWeight: 950
-                    }}>E</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 우측 인벤토리 그리드 */}
-          <div
-            style={{
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.03)",
-              padding: 6,
-              height: "100%",
-              overflowY: "auto",
-              touchAction: "pan-y"
-            }}
-          >
-            {isMedicineSelected ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
-                  <div 
-                    key={id} 
-                    onTouchStart={(e) => onTouchStart(e, id)}
-                    onTouchMove={onTouchMove}
+                  <div style={{ fontSize: 9, color: "rgba(255,215,0,0.5)" }}>장착하려면 아래로 드래그</div>
+                </div>
+              ))}
+              {Object.values(game.consumables).every(v => v === 0) && (
+                <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
+              )}
+            </div>
+          ) : selectedItems.length === 0 ? (
+            <div
+              style={{
+                height: "100%",
+                display: "grid",
+                placeItems: "center",
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 12,
+              }}
+            >
+              장비 없음
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 7,
+              }}
+            >
+              {selectedItems.map((item) => {
+                const isEquipped = selectedEquippedId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      if (swipeOffset < 10) setPopupItem(item);
+                    }}
+                    onTouchStart={(e) => onGearTouchStart(e, item.id)}
+                    onTouchMove={onGearTouchMove}
                     onTouchEnd={(e) => {
                       e.preventDefault();
-                      onTouchEnd(e);
+                      onGearTouchEnd(e, item);
                     }}
                     style={{
-                      borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-                      display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-                      opacity: draggedMedicineId === id ? 0.4 : 1,
-                      cursor: "pointer", touchAction: "none"
+                      position: "relative",
+                      borderRadius: 10,
+                      background: isEquipped ? "rgba(255,215,120,0.06)" : "rgba(255,255,255,0.02)",
+                      border: isEquipped ? "1px solid #ffd778" : "1px solid rgba(255,255,255,0.04)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 12px",
+                      cursor: "pointer",
+                      animation: isEquipped ? "itemEquippedGlow 2s infinite" : "none",
+                      transform: swipeGearId === item.id ? `translateX(${swipeOffset}px)` : "none",
+                      transition: swipeGearId === item.id ? "none" : "transform 0.2s ease-out"
                     }}
                   >
-                    <div style={{ fontSize: 24, userSelect: "none" }}>{getPotionIcon(id)}</div>
-                    <div style={{ flex: 1, userSelect: "none" }}>
-                      <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffd778" }}>{getPotionName(id)}</div>
-                      <div style={{ fontSize: 11, color: "#aaa" }}>수량: {game.consumables[id]}개</div>
+                    <div style={{ fontSize: 20, filter: isEquipped ? "drop-shadow(0 0 4px rgba(255,215,120,0.3))" : "none" }}>
+                      {item.icon ?? "📦"}
                     </div>
-                    <div style={{ fontSize: 9, color: "rgba(255,215,0,0.5)" }}>장착하려면 아래로 드래그</div>
-                  </div>
-                ))}
-                {Object.values(game.consumables).every(v => v === 0) && (
-                  <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
-                )}
-              </div>
-            ) : selectedItems.length === 0 ? (
-              <div
-                style={{
-                  height: "100%",
-                  display: "grid",
-                  placeItems: "center",
-                  color: "rgba(255,255,255,0.4)",
-                  fontSize: 12,
-                }}
-              >
-                장비 없음
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                {selectedItems.map((item) => {
-                  const isEquipped = selectedEquippedId === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        if (swipeOffset < 10) setPopupItem(item);
-                      }}
-                      onTouchStart={(e) => onGearTouchStart(e, item.id)}
-                      onTouchMove={onGearTouchMove}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        onGearTouchEnd(e, item);
-                      }}
-                      style={{
-                        position: "relative",
-                        borderRadius: 8,
-                        background: isEquipped ? "rgba(255,215,120,0.06)" : "rgba(255,255,255,0.02)",
-                        border: isEquipped ? "1px solid #ffd778" : "1px solid rgba(255,255,255,0.04)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "4px 10px",
-                        cursor: "pointer",
-                        animation: isEquipped ? "itemEquippedGlow 2s infinite" : "none",
-                        transform: swipeGearId === item.id ? `translateX(${swipeOffset}px)` : "none",
-                        transition: swipeGearId === item.id ? "none" : "transform 0.2s ease-out"
-                      }}
-                    >
-                      <div style={{ fontSize: 18, filter: isEquipped ? "drop-shadow(0 0 4px rgba(255,215,120,0.3))" : "none" }}>
-                        {item.icon ?? "📦"}
+                    <div style={{ flex: 1, textAlign: "left" }}>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: "900",
+                        color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff",
+                      }}>
+                        {item.name}
                       </div>
-                      <div style={{ flex: 1, textAlign: "left" }}>
-                        <div style={{
-                          fontSize: 12,
-                          fontWeight: "900",
-                          color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff",
-                        }}>
-                          {item.name}
-                        </div>
-                        <div style={{ fontSize: 8, color: "#666", display: "flex", gap: 4 }}>
-                          <span>공격 +{item.attackBonus}</span>
-                          {item.equipmentSkill && <span style={{ color: "#00f2ff" }}>[보검]</span>}
-                        </div>
+                      <div style={{ fontSize: 9, color: "#666", display: "flex", gap: 6 }}>
+                        <span>공격 +{item.attackBonus}</span>
+                        {item.equipmentSkill && <span style={{ color: "#00f2ff" }}>[보검]</span>}
                       </div>
-                      {isEquipped && (
-                        <div style={{ 
-                          width: 15, height: 15, background: "#ffd700", color: "#000", 
-                          borderRadius: 3, display: "grid", placeItems: "center",
-                          fontSize: 9, fontWeight: 950
-                        }}>E</div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    </div>
+                    {isEquipped && (
+                      <div style={{
+                        width: 18, height: 18, background: "#ffd700", color: "#000",
+                        borderRadius: 4, display: "grid", placeItems: "center",
+                        fontSize: 10, fontWeight: 950
+                      }}>E</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* 퀵슬롯 설정 (회복제 장착) */}
-        <div style={{ 
-          marginTop: 6, 
-          padding: "8px", 
-          borderTop: "1px solid rgba(255,215,120,0.1)",
-          borderRadius: "10px",
-          background: "rgba(0,0,0,0.15)",
-          flexShrink: 0 // Prevent this area from growing
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "#ffd700", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-            <span>🧪</span> 물약 장착 (대결 시 자동 사용)
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
-            {[0, 1, 2, 3, 4].map(idx => {
-              const consumableId = game.quickSlots[idx];
-              return (
-                <button
-                  key={idx}
-                  data-slot-index={idx}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectingSlot(idx);
-                  }}
-                  style={{
-                    height: 44, borderRadius: 10, 
-                    border: consumableId ? "1.5px solid #ffd700" : "1.5px dashed rgba(255,215,0,0.3)",
-                    background: "rgba(255,255,255,0.03)", display: "grid", placeItems: "center",
-                    position: "relative", cursor: "pointer", padding: 0
-                  }}
-                >
-                  {consumableId ? (
-                    <>
-                      <div style={{ fontSize: 18 }}>{getPotionIcon(consumableId)}</div>
-                      <div style={{ position: "absolute", bottom: 1, right: 3, fontSize: 9, fontWeight: 900, color: "#fff", background: "rgba(0,0,0,0.5)", padding: "0 2px", borderRadius: 3 }}>
-                        {game.consumables[consumableId] || 0}
-                      </div>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 16, color: "rgba(255,215,0,0.4)" }}>+</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+      {/* 퀵슬롯 설정 (회복제 장착) */}
+      <div style={{
+        marginTop: 6,
+        padding: "8px",
+        borderTop: "1px solid rgba(255,215,120,0.1)",
+        borderRadius: "10px",
+        background: "rgba(0,0,0,0.15)",
+        flexShrink: 0 
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: "#ffd700", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+          <span>🧪</span> 물약 장착 (대결 시 자동 사용)
         </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+          {[0, 1, 2, 3, 4].map(idx => {
+            const consumableId = game.quickSlots[idx];
+            return (
+              <button
+                key={idx}
+                data-slot-index={idx}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectingSlot(idx);
+                }}
+                style={{
+                  height: 44, borderRadius: 10,
+                  border: consumableId ? "1.5px solid #ffd700" : "1.5px dashed rgba(255,215,0,0.3)",
+                  background: "rgba(255,255,255,0.03)", display: "grid", placeItems: "center",
+                  position: "relative", cursor: "pointer", padding: 0
+                }}
+              >
+                {consumableId ? (
+                  <>
+                    <div style={{ fontSize: 18 }}>{getPotionIcon(consumableId)}</div>
+                    <div style={{ position: "absolute", bottom: 1, right: 3, fontSize: 9, fontWeight: 900, color: "#fff", background: "rgba(0,0,0,0.5)", padding: "0 2px", borderRadius: 3 }}>
+                      {game.consumables[consumableId] || 0}
+                    </div>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 16, color: "rgba(255,215,0,0.4)" }}>+</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* 회복제 선택 모달 */}
       {selectingSlot !== null && (
@@ -466,8 +466,8 @@ export default function InventoryPanel(props: Props) {
           >
             <div style={{ fontSize: 16, fontWeight: 900, color: "#ffd700", marginBottom: 5 }}>장착할 물약 선택</div>
             <div style={{ maxHeight: 250, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }} className="hide-scrollbar">
-               {game.quickSlots[selectingSlot] && (
-                <button 
+              {game.quickSlots[selectingSlot] && (
+                <button
                   onClick={() => {
                     (useGameStore.getState() as any).useConsumable(game.quickSlots[selectingSlot]);
                     setSelectingSlot(null);
@@ -477,7 +477,7 @@ export default function InventoryPanel(props: Props) {
                   사용하기
                 </button>
               )}
-              <button 
+              <button
                 onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, null); setSelectingSlot(null); }}
                 style={{ padding: 10, borderRadius: 8, background: "#333", color: "#eee", border: "none", cursor: "pointer", fontSize: 12 }}
               >
@@ -486,21 +486,21 @@ export default function InventoryPanel(props: Props) {
               {(Object.keys(game.consumables) as ConsumableId[])
                 .filter(id => game.consumables[id] > 0 && !id.startsWith("oil_"))
                 .map(id => (
-                <button 
-                  key={id} 
-                  onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, id); setSelectingSlot(null); }}
-                  style={{ 
-                    padding: "8px 12px", borderRadius: 10, background: "rgba(255,215,0,0.05)", color: "#fff", 
-                    border: "1px solid rgba(255,215,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>{getPotionIcon(id)}</span>
-                  <div style={{ flex: 1, textAlign: "left" }}>
-                    <div style={{ fontSize: 12, fontWeight: "bold" }}>{getPotionName(id)}</div>
-                    <div style={{ fontSize: 10, opacity: 0.7 }}>보유: {game.consumables[id]}개</div>
-                  </div>
-                </button>
-              ))}
+                  <button
+                    key={id}
+                    onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, id); setSelectingSlot(null); }}
+                    style={{
+                      padding: "8px 12px", borderRadius: 10, background: "rgba(255,215,0,0.05)", color: "#fff",
+                      border: "1px solid rgba(255,215,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>{getPotionIcon(id)}</span>
+                    <div style={{ flex: 1, textAlign: "left" }}>
+                      <div style={{ fontSize: 12, fontWeight: "bold" }}>{getPotionName(id)}</div>
+                      <div style={{ fontSize: 10, opacity: 0.7 }}>보유: {game.consumables[id]}개</div>
+                    </div>
+                  </button>
+                ))}
               {(Object.keys(game.consumables) as ConsumableId[]).every(id => game.consumables[id] <= 0) && (
                 <div style={{ textAlign: "center", padding: 20, color: "#666", fontSize: 12 }}>보유 중인 비약이 없습니다.</div>
               )}
@@ -534,8 +534,8 @@ export default function InventoryPanel(props: Props) {
                 <div style={{ fontSize: 12, color: "#aaa" }}>보유 수량: {game.consumables[selectedMedicineId]}개</div>
               </div>
             </div>
-            
-            <div style={{ 
+
+            <div style={{
               background: "rgba(255,255,255,0.05)", padding: 12, borderRadius: 10,
               fontSize: 13, color: "#eee", lineHeight: 1.6, border: "1px solid rgba(255,255,255,0.1)"
             }}>
@@ -543,35 +543,35 @@ export default function InventoryPanel(props: Props) {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button 
+              <button
                 onClick={() => {
                   (useGameStore.getState() as any).useConsumable(selectedMedicineId);
                   setSelectedMedicineId(null);
                 }}
-                style={{ 
-                  padding: "12px", borderRadius: 10, background: "linear-gradient(135deg, #ffd700, #ff9d00)", 
+                style={{
+                  padding: "12px", borderRadius: 10, background: "linear-gradient(135deg, #ffd700, #ff9d00)",
                   color: "#000", border: "none", cursor: "pointer", fontWeight: 900, fontSize: 14,
                   boxShadow: "0 4px 15px rgba(255,215,0,0.4)"
                 }}
               >
                 사용하기 (따닥 터치 가능)
               </button>
-              <button 
+              <button
                 onClick={() => {
                   (useGameStore.getState() as any).sellConsumable(selectedMedicineId);
                   if (game.consumables[selectedMedicineId] <= 1) setSelectedMedicineId(null);
                 }}
-                style={{ 
-                  padding: "10px", borderRadius: 10, background: "rgba(255,255,255,0.05)", 
+                style={{
+                  padding: "10px", borderRadius: 10, background: "rgba(255,255,255,0.05)",
                   color: "#ff4b4b", border: "1px solid rgba(255,75,75,0.3)", cursor: "pointer", fontSize: 12
                 }}
               >
                 판매하기 (50% 환급)
               </button>
-              <button 
+              <button
                 onClick={() => setSelectedMedicineId(null)}
-                style={{ 
-                  padding: "10px", borderRadius: 10, background: "#333", 
+                style={{
+                  padding: "10px", borderRadius: 10, background: "#333",
                   color: "#fff", border: "none", cursor: "pointer", fontSize: 12
                 }}
               >
@@ -641,7 +641,7 @@ export default function InventoryPanel(props: Props) {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 900, color: popupItem.tier === "신기" ? "#ff9d00" : popupItem.tier === "보구" ? "#a822f3" : popupItem.tier === "명품" ? "#4facfe" : "#ffe08a" }}>
-                  {popupItem.name} 
+                  {popupItem.name}
                   {popupItem.tier && <span style={{ fontSize: 10, marginLeft: 6, padding: "1px 4px", borderRadius: 4, background: "rgba(255,255,255,0.1)", color: "#fff" }}>{popupItem.tier}</span>}
                 </div>
                 <div style={{ fontSize: 11, color: "#aaa" }}>부위: {slotLabel(popupItem.slot)}</div>
@@ -656,7 +656,7 @@ export default function InventoryPanel(props: Props) {
               <div style={{ color: "#ff4d4d", fontWeight: "bold" }}>기본 공격력 +{popupItem.attackBonus}</div>
               {popupItem.hpBonus && <div style={{ color: "#a8ff7e", fontWeight: "bold" }}>기본 생명력 +{popupItem.hpBonus}</div>}
               {popupItem.mpBonus && <div style={{ color: "#4d94ff", fontWeight: "bold" }}>기본 내공 +{popupItem.mpBonus}</div>}
-              
+
               {/* 무작위 옵션 표시 */}
               {popupItem.randomOptions && popupItem.randomOptions.length > 0 && (
                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
@@ -681,10 +681,10 @@ export default function InventoryPanel(props: Props) {
                           const requiredPieces = idx === 0 ? 3 : 5;
                           const isActive = activeCount >= requiredPieces;
                           return (
-                            <div key={idx} style={{ 
-                              color: isActive ? "#a8ff7e" : "#555", 
-                              fontSize: 11, 
-                              fontStyle: isActive ? "normal" : "normal", 
+                            <div key={idx} style={{
+                              color: isActive ? "#a8ff7e" : "#555",
+                              fontSize: 11,
+                              fontStyle: isActive ? "normal" : "normal",
                               fontWeight: isActive ? "bold" : "normal",
                               textShadow: isActive ? "0 0 5px rgba(168,255,126,0.3)" : "none"
                             }}>
@@ -711,12 +711,12 @@ export default function InventoryPanel(props: Props) {
                 <div style={{ color: "#e07eff", fontWeight: "bold" }}>마비 확률 {popupItem.paralyzeChance}% ({popupItem.paralyzeDuration! / 1000}초)</div>
               )}
               {popupItem.equipmentSkill && (
-                <div style={{ 
-                  marginTop: 4, 
-                  padding: "4px 8px", 
-                  borderRadius: 6, 
-                  background: "rgba(255, 215, 0, 0.1)", 
-                  border: "1px solid rgba(255, 215, 0, 0.3)" 
+                <div style={{
+                  marginTop: 4,
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  background: "rgba(255, 215, 0, 0.1)",
+                  border: "1px solid rgba(255, 215, 0, 0.3)"
                 }}>
                   <div style={{ color: "#ffd700", fontWeight: "900", fontSize: 11 }}>
                     ✨ 무기 전용 스킬: {popupItem.equipmentSkill.name}
@@ -729,11 +729,11 @@ export default function InventoryPanel(props: Props) {
 
               {/* 연마 효과 상세 표시 */}
               {popupItem.oilEffect && (
-                <div style={{ 
-                  marginTop: 8, 
-                  padding: "10px", 
-                  borderRadius: 10, 
-                  background: "rgba(0, 242, 255, 0.05)", 
+                <div style={{
+                  marginTop: 8,
+                  padding: "10px",
+                  borderRadius: 10,
+                  background: "rgba(0, 242, 255, 0.05)",
                   border: "1px solid rgba(0, 242, 255, 0.2)",
                   boxShadow: "inset 0 0 10px rgba(0, 242, 255, 0.1)"
                 }}>
@@ -758,8 +758,8 @@ export default function InventoryPanel(props: Props) {
                   fontSize: 13,
                   fontWeight: "bold",
                   border: popupItem.id === selectedEquippedId ? "1px solid rgba(255,255,255,0.2)" : "none",
-                  background: popupItem.id === selectedEquippedId 
-                    ? "rgba(255,255,255,0.1)" 
+                  background: popupItem.id === selectedEquippedId
+                    ? "rgba(255,255,255,0.1)"
                     : "linear-gradient(135deg, #fff1a8, #d4a23c)",
                   color: popupItem.id === selectedEquippedId ? "#fff" : "#2b1d00",
                   cursor: "pointer",
@@ -767,13 +767,13 @@ export default function InventoryPanel(props: Props) {
               >
                 {popupItem.id === selectedEquippedId ? "장착 해제" : "장착하기"}
               </button>
-              
+
               <button
                 onClick={() => {
-                   if (confirm(`${popupItem.name}을(를) 판매하시겠습니까? (판매가: ${formatCompactNumber(Math.floor(popupItem.price * 0.25))} 냥)`)) {
-                     (useGameStore.getState() as any).sellItem(popupItem.id);
-                     setPopupItem(null);
-                   }
+                  if (confirm(`${popupItem.name}을(를) 판매하시겠습니까? (판매가: ${formatCompactNumber(Math.floor(popupItem.price * 0.25))} 냥)`)) {
+                    (useGameStore.getState() as any).sellItem(popupItem.id);
+                    setPopupItem(null);
+                  }
                 }}
                 disabled={popupItem.id === selectedEquippedId}
                 style={{
@@ -811,104 +811,69 @@ export default function InventoryPanel(props: Props) {
           </div>
         </div>
       )}
-
     </section>
   );
 }
 
-function MiniBadge({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        padding: "4px 8px",
-        fontSize: "10px",
-        borderRadius: 999,
-        background: "rgba(255,255,255,0.05)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        fontWeight: 700,
-        color: "#ccc"
-      }}
-    >
-      {label}
-    </div>
-  );
-}
-
-function getPotionIcon(id: string) {
-  if (!id) return "💊";
-  if (id.startsWith("hp_")) return id === "hp_small" ? "🧪" : id === "hp_medium" ? "🏺" : "💎";
-  if (id.startsWith("mp_")) return id === "mp_small" ? "💧" : id === "mp_medium" ? "🌀" : "🌑";
-  if (id.startsWith("trance_")) return id === "trance_2" ? "⚡" : id === "trance_5" ? "🔥" : "🌞";
-  
-  const icons: Record<string, string> = {
-    oil_atk_3: "🔥", oil_crit_3: "⚡", oil_thunder: "🌩️", oil_poison: "🧪", oil_bleed: "🩸",
-    oil_eva_3: "💨", oil_def_3: "🛡️", oil_reflect: "🪞", oil_vajra: "🔱", oil_vampire: "🧛",
-    oil_speed_3: "🌀", oil_luck_3: "🍀", oil_clarity: "✨", oil_eye: "👁️",
-    oil_demon: "👺", oil_triple_hit: "⚔️", oil_formless: "🔮", oil_blessed: "🧴"
-  };
-  return icons[id] || "💊";
-}
-
-function getPotionName(id: string) {
-  if (!id) return "";
-  const names: any = {
-    hp_small: "체력 회복제(小)", hp_medium: "체력환약", hp_large: "체력 회복제(大)",
-    mp_small: "내력 회복제(小)", mp_medium: "내력환약", mp_large: "내공단",
-    trance_2: "무아 환약 X 2(공격력)", trance_5: "무아지경(x5)", trance_10: "무아지경(x10)",
-    oil_atk_3: "광폭유", oil_eva_3: "무영유", oil_crit_3: "파천유",
-    oil_def_3: "강철유", oil_speed_3: "질풍유", oil_vampire: "흡성유",
-    oil_triple_hit: "삼연유", oil_thunder: "뇌전유", oil_poison: "만독유",
-    oil_bleed: "혈염유", oil_reflect: "반탄유", oil_vajra: "금강유",
-    oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유",
-    oil_demon: "천마유", oil_formless: "무상유", oil_blessed: "축복의 기름"
-  };
-  return names[id] || id;
-}
-
-function getPotionDesc(id: string) {
-  if (!id) return "";
-  if (id.startsWith("hp_")) return "복용 시 손상된 기혈을 즉시 회복시킵니다. 대결 중 체력이 낮아지면 자동으로 복용될 수 있습니다.";
-  if (id.startsWith("mp_")) return "복용 시 소모된 내력을 즉시 보충합니다. 고차원적인 무공을 펼치기 위해 필수적인 영약입니다.";
-  if (id.startsWith("trance_")) {
-    const mult = id.split("_")[1];
-    return `복용 시 정신을 집중하여 10초간 공격력이 ${mult}배로 상승합니다. 폭발적인 화력이 필요할 때 유용한 영약입니다.`;
-  }
-  
-  const descs: Record<string, string> = {
-    oil_atk_3: "[광폭] 15% 확률로 10초간 공격력 3배 증가",
-    oil_crit_3: "[파천] 15% 확률로 10초간 치명타 피해 3배 증가",
-    oil_thunder: "[뇌전] 15% 확률로 적에게 500% 대미지 및 2초간 기절",
-    oil_poison: "[만독] 10% 확률로 10초간 적의 방어력 50% 감소",
-    oil_bleed: "[혈염] 15% 확률로 5초간 적 최대HP 10% 지속 피해 부여",
-    oil_eva_3: "[무영] 15% 확률로 10초간 회피율 3배 증가",
-    oil_def_3: "[강철] 15% 확률로 10초간 방어력 3배 증가",
-    oil_reflect: "[반탄] 15% 확률로 8초간 받는 대미지 100% 반사",
-    oil_vajra: "[금강] 10% 확률로 3초간 무적 상태 돌입",
-    oil_vampire: "[흡성] 타격 시 대미지의 5%만큼 체력/내공 흡수 (상시)",
-    oil_speed_3: "[질풍] 15% 확률로 10초간 공격 속도 3배 증가",
-    oil_luck_3: "[기연] 15% 확률로 10초간 기연(Luck) 3배 증가",
-    oil_clarity: "[청명] 15% 확률로 전체 체력/내공 20% 즉시 회복 및 상태이상 해제",
-    oil_eye: "[영안] 15% 확률로 10초간 치명 50% 상승 및 약점 노출",
-    oil_demon: "[천마] 공격 시 5% 확률로 일격필살(1000% 대미지) 발동",
-    oil_triple_hit: "[삼연] 모든 공격 시 1타 3연격 옵션 상시 부여",
-    oil_formless: "[무상] 모든 '3배' 버프의 지속 시간 연장 및 발동 확률 2배 증가",
-    oil_blessed: "[축복] 장비 제련(강화) 시 성공 확률 5% 추가 보정"
-  };
-  if (descs[id]) return descs[id] + "\n\n[제련 -> 연마] 탭에서 장비에 바를 수 있습니다.";
-  
-  return "신비로운 기운이 서린 신비한 알약입니다.";
-}
-
+// Helper functions (same as before)
 function slotLabel(slot: EquipSlot) {
-  switch (slot) {
-    case "mainWeapon": return "무기";
-    case "subWeapon": return "보조 무기";
-    case "gloves": return "장갑";
-    case "shoes": return "신발";
-    case "robe": return "도포";
-    case "necklace": return "목걸이";
-    case "ring": return "반지";
-    case "bracelet": return "팔찌";
-    default: return slot;
-  }
+  const meta = slotMeta.find(m => m.slot === slot);
+  return meta ? meta.label : slot;
+}
+
+function getPotionName(id: ConsumableId) {
+  if (id === "hp_small") return "소형 체력 영약 (20%)";
+  if (id === "hp_medium") return "중형 체력 영약 (50%)";
+  if (id === "hp_large") return "대형 체력 영약 (100%)";
+  if (id === "mp_small") return "소형 내력 영약 (20%)";
+  if (id === "mp_medium") return "중형 내력 영약 (50%)";
+  if (id === "mp_large") return "대형 내력 영약 (100%)";
+  if (id === "trance_2") return "무아지경의 환약 (2배)";
+  if (id === "trance_5") return "무아지경의 환약 (5배)";
+  if (id === "trance_10") return "무아지경의 환약 (10배)";
+  if (id === "exp_scroll") return "수련의 고서 (EXP 2배)";
+  if (id === "oil_atk_3") return "연마유: 공격 (3분)";
+  if (id === "oil_crit_3") return "연마유: 치명 (3분)";
+  if (id === "oil_thunder") return "연마유: 뇌전 (기절)";
+  if (id === "oil_poison") return "연마유: 맹독 (방깎)";
+  if (id === "oil_bleed") return "연마유: 출혈 (지속딜)";
+  if (id === "oil_eva_3") return "연마유: 회피 (3분)";
+  if (id === "oil_def_3") return "연마유: 방어 (3분)";
+  if (id === "oil_reflect") return "연마유: 반사 (20%)";
+  if (id === "oil_vajra") return "연마유: 금강 (무적)";
+  if (id === "oil_vampire") return "연마유: 흡혈 (10%)";
+  if (id === "oil_speed_3") return "연마유: 신속 (3분)";
+  if (id === "oil_luck_3") return "연마유: 행운 (3분)";
+  if (id === "oil_clarity") return "연마유: 명경 (회복)";
+  if (id === "oil_eye") return "연마유: 심안 (필중)";
+  if (id === "oil_demon") return "연마유: 마성 (추가타)";
+  if (id === "oil_triple_hit") return "연마유: 삼연격 (3회)";
+  if (id === "oil_formless") return "연마유: 무형 (고정딜)";
+  if (id === "oil_blessed") return "연마유: 축복 (모든스탯)";
+  if (id === "charm_luck") return "행운의 부적 (드랍율)";
+  if (id === "paewang_box") return "[패왕]의 유물 상자";
+  return id;
+}
+
+function getPotionIcon(id: ConsumableId) {
+  if (id.startsWith("hp_")) return "🧪";
+  if (id.startsWith("mp_")) return "🍶";
+  if (id.startsWith("trance_")) return "💊";
+  if (id === "exp_scroll") return "📜";
+  if (id.startsWith("oil_")) return "🍯";
+  if (id === "charm_luck") return "🧧";
+  if (id === "paewang_box") return "🎁";
+  return "📦";
+}
+
+function getPotionDesc(id: ConsumableId) {
+  if (id === "hp_small") return "체력을 20% 회복합니다.";
+  if (id === "hp_medium") return "체력을 50% 회복합니다.";
+  if (id === "hp_large") return "체력을 모두 회복합니다.";
+  if (id === "mp_small") return "내력을 20% 회복합니다.";
+  if (id === "mp_medium") return "내력을 50% 회복합니다.";
+  if (id === "mp_large") return "내력을 모두 회복합니다.";
+  if (id.startsWith("trance_")) return "잠시 동안 공격력이 대폭 상승하는 무아지경 상태에 빠집니다.";
+  if (id.startsWith("oil_")) return "무기에 발라 특수한 효과를 부여합니다. (효과별 상이)";
+  return "특별한 효과가 있는 비약입니다.";
 }

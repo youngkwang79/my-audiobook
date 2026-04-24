@@ -30,6 +30,7 @@ const defaultTowerState: any = {
   combo: 0,
   lastTapTime: 0,
   shieldTimer: 0,
+  stairs: [],
 };
 
 export const defaultGameData: GameSaveData = {
@@ -205,7 +206,7 @@ export const defaultGameData: GameSaveData = {
     oil_eva_3: 0, oil_def_3: 0, oil_reflect: 0, oil_vajra: 0, oil_vampire: 0,
     oil_speed_3: 0, oil_luck_3: 0, oil_clarity: 0, oil_eye: 0,
     oil_demon: 0, oil_triple_hit: 0, oil_formless: 0, oil_blessed: 0,
-    charm_luck: 0, exp_scroll: 0
+    charm_luck: 0, exp_scroll: 0, paewang_box: 0
   },
   quickSlots: [null, null, null, null, null],
   skillCooldowns: {},
@@ -235,6 +236,13 @@ export const defaultGameData: GameSaveData = {
   gamblingTokens: 0,
   yabawiEvent: null,
   tower: defaultTowerState,
+
+  // --- Night System ---
+  timeState: "day",
+  timeRemaining: 300, // 5 mins for dev
+  nightStreak: 0,
+  npcFavors: { "연화": 0, "설매": 0, "초운": 0, "홍련": 0, "백노인": 0 },
+  nightBuffs: [],
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 
@@ -290,7 +298,11 @@ export function loadGame(): GameSaveData {
     if (kills >= 100 && !repairedTabs.includes("upgrade")) repairedTabs.push("upgrade");
     if (kills >= 150 && !repairedTabs.includes("master")) repairedTabs.push("master");
     if (kills >= 200 && !repairedTabs.includes("library")) repairedTabs.push("library");
-    if (kills >= 300 && !repairedTabs.includes("inn")) repairedTabs.push("inn");
+    if (kills >= 300) {
+      if (!repairedTabs.includes("inn")) repairedTabs.push("inn");
+      if (!repairedTabs.includes("giru")) repairedTabs.push("giru");
+      if (!repairedTabs.includes("gambling")) repairedTabs.push("gambling");
+    }
 
     const realmIdx = REALM_ORDER.indexOf(v12Data.realm || "필부");
     if (realmIdx >= 1 && !repairedTabs.includes("tower")) repairedTabs.push("tower");

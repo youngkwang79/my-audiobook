@@ -1,0 +1,137 @@
+
+const fs = require('fs');
+const path = 'useGameStore.ts';
+let content = fs.readFileSync(path, 'utf8');
+
+const header = `"use client";
+import { create } from "zustand";
+import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource } from "./types";
+import { FACTIONS } from "./factions";
+import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS } from "./nightSystem";
+
+import { defaultGameData, loadGame, saveGame } from "./storage";
+import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS } from "./items";
+import { getMovementBuff } from "./movementLogic";
+import { 
+  ensureLearnedSkill, 
+  refineLearnedSkill, 
+  getRefineWisdomCost, 
+  getRefineGoldCost, 
+  canSynthesize,
+  MARTIAL_COMPENDIUM,
+  getRefineBonusMultiplier
+} from "./martialArtsSystem";
+import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
+ 
+export function formatCompactNumber(num: number): string {
+  if (num < 0) return "0";
+  if (num < 1000) return num.toFixed(1).replace(/\\.0$/, "");
+  if (num < 1000000) return (num / 1000).toFixed(1) + "K";
+  if (num < 1000000000) return (num / 1000000).toFixed(1) + "M";
+  if (num < 1000000000000) return (num / 1000000000).toFixed(1) + "B";
+  return (num / 1000000000000).toFixed(1) + "T";
+}
+
+export const REALM_SETTINGS: Record<string, any> = {
+  필부: { bonus: 1.0, minTouches: 0, dummyHp: 1000, dummyType: 'straw', label: '객잔 짚더미', hp: 150, mp: 60, goldMultiplier: 1 },
+  삼류: { bonus: 1.0, minTouches: 30000, dummyHp: 50000, dummyType: 'straw', label: '말라비틀어진 짚더미', hp: 300, mp: 150, goldMultiplier: 3 },
+  이류: { bonus: 1.5, minTouches: 2500000, dummyHp: 400000, dummyType: 'wood', label: '참나무 목인', hp: 600, mp: 350, goldMultiplier: 8 },
+  일류: { bonus: 2.5, minTouches: 15000000, dummyHp: 3500000, dummyType: 'leather', label: '가죽 목인', hp: 1200, mp: 700, goldMultiplier: 20 },
+  절정: { bonus: 4.5, minTouches: 100000000, dummyHp: 25000000, dummyType: 'iron', label: '청강철 목인', hp: 2500, mp: 1500, goldMultiplier: 50 },
+  초절정: { bonus: 8.0, minTouches: 500000000, dummyHp: 200000000, dummyType: 'spirit', label: '기운 서린 목인', hp: 5000, mp: 3000, goldMultiplier: 150 },
+  화경: { bonus: 15.0, minTouches: 2500000000, dummyHp: 1500000000, dummyType: 'master', label: '화경의 환영', hp: 12000, mp: 7000, goldMultiplier: 400 },
+  현경: { bonus: 40.0, minTouches: 15000000000, dummyHp: 12000000000, dummyType: 'legend', label: '현경의 전설', hp: 25000, mp: 15000, goldMultiplier: 1000 },
+  생사경: { bonus: 100.0, minTouches: 100000000000, dummyHp: 100000000000, dummyType: 'life-death', label: '생사의 문턱', hp: 50000, mp: 35000, goldMultiplier: 2500 },
+  신화경: { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: 'myth', label: '신화의 형상', hp: 120000, mp: 80000, goldMultiplier: 7000 },
+  천인합일: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: 'heaven', label: '천인합일의 경지', hp: 300000, mp: 200000, goldMultiplier: 20000 },
+};
+
+export function getInnStageConfig(stage: number) {
+  const getTarget = (s: number) => {
+    const scores = [
+      0, 3000, 7000, 12000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
+      58000, 67000, 77000, 88000, 100000, 113000, 127000, 142000, 158000, 200000
+    ];
+    if (s <= 20) return scores[s] || 0;
+    return 200000 + (s - 20) * 50000;
+  };
+
+  const targetScore = getTarget(stage);
+  const prevTarget = stage > 1 ? getTarget(stage - 1) : 0;
+  const relativeTarget = targetScore - prevTarget;
+
+  return {
+    targetScore,
+    relativeTarget,
+    prevTarget,
+    durationSec: 30,
+    playerDrainIntervalSec: Math.max(1.0, 2.0 - (stage - 1) * 0.05),
+    playerDrainPerTick: 7 + Math.floor(stage * 2),
+    finisherThresholdRate: 0.05,
+    finisherBleedDurationSec: 5,
+    stageDamageMult: 1 + (stage - 1) * 0.15,
+    counterCheckWindowSec: 10,
+    counterThresholdRate: 0.4,
+    counterDotDurationSec: 6,
+    counterCooldownSec: 15
+  };
+}
+
+export const REALM_ORDER = ['필부', '삼류', '이류', '일류', '절정', '초절정', '화경', '현경', '생사경', '신화경', '천인합일'];
+
+export const STAT_UPGRADE_CONFIG: Record<string, { name: string; resources: string[] }> = {
+  hpRec: { name: "생명력", resources: ["gold"] },
+  mpRec: { name: "내공", resources: ["gold"] },
+  atk: { name: "공격력", resources: ["gold"] },
+  def: { name: "방어력", resources: ["gold"] },
+  critRate: { name: "치명타 확률", resources: ["gold", "reputation"] },
+  critDmg: { name: "치명타 피해", resources: ["gold", "reputation"] },
+  eva: { name: "회피율", resources: ["gold", "reputation"] },
+  luck: { name: "기운/행운", resources: ["gold", "reputation"] },
+  autoGain: { name: "수련 효율", resources: ["gold", "reputation"] },
+  offlineLimit: { name: "수련 시간", resources: ["gold", "reputation"] },
+};
+
+export const STAT_INCREMENTS: Record<string, number> = {
+  atk: 250,
+  def: 250,
+  hpRec: 2500,
+  mpRec: 100,
+  critRate: 0.001,
+  critDmg: 1,
+  eva: 0.001,
+  luck: 0.00001,
+  autoGain: 0.01,
+  offlineLimit: 0.5,
+};
+
+export const TOWER_BUFF_POOL = [
+  { id: "atk_up", name: "천마군림", description: "공격력 +20% / 방어력 -10%", bonus: { atk: 1.2 }, penalty: { def: 0.9 } },
+  { id: "eva_up", name: "능공허도", description: "회피율 +15% / 체력 -10%", bonus: { eva: 15 }, penalty: { hp: 0.9 } },
+  { id: "crit_up", name: "유수지계", description: "치명타 확률 +15% / 받는 피해 +10%", bonus: { critRate: 15 }, penalty: { dmgTaken: 1.1 } },
+  { id: "def_up", name: "금강불괴", description: "방어력 +25% / 공격력 -10%", bonus: { def: 1.25 }, penalty: { atk: 0.9 } },
+  { id: "vamp_up", name: "역성흡혈", description: "흡혈 5% / 최대 체력 -15%", bonus: { vamp: 5 }, penalty: { maxHp: 0.85 } },
+];
+
+export const TOWER_ARTIFACT_POOL = [
+  { id: "art_thunder", name: "뇌전의 정수", tier: "RARE", description: "10콤보마다 적에게 공격력 5배의 낙뢰 피해", effect: { type: "COMBO_BOLT", value: 5, chance: 1 } },
+  { id: "art_vamp", name: "흡혈 귀면", tier: "COMMON", description: "공격 시 피해량의 3%를 생명력으로 흡수", effect: { type: "LIFE_STEAL", value: 3 } },
+  { id: "art_shield", name: "황금 갑주", tier: "RARE", description: "타격 시 10% 확률로 무적 보호막 생성 (3초)", effect: { type: "SHIELD", value: 3, chance: 10 } },
+  { id: "art_mp", name: "영천의 이슬", tier: "COMMON", description: "처치 시마다 내공 2% 회복", effect: { type: "MP_RESTORE", value: 2 } },
+  { id: "art_inst_hp", name: "만년삼", tier: "LEGENDARY", description: "사망 위기 시 즉시 체력 100% 회복 (층당 1회)", effect: { type: "INSTANT_HP", value: 100 } },
+];
+
+export const TOWER_THEMES: Record<number, any> = {
+  1: { name: "조용한 시련", color: "#64748b", effect: "none", desc: "고요한 탑의 기운이 감돕니다." },
+  21: { name: "극한의 감옥", color: "#38bdf8", effect: "slow", desc: "뼈를 깎는 추위가 공격 속도를 늦춥니다." },
+  41: { name: "연화의 지옥", color: "#f87171", effect: "burn", desc: "타오르는 열기가 매초 체력을 깎습니다." },
+  61: { name: "독무의 미궁", color: "#a855f7", effect: "poison", desc: "독안개가 회복 효율을 방해합니다." },
+  81: { name: "무극의 심연", color: "#1e293b", effect: "void", desc: "모든 기운을 통제하는 극한의 공간입니다." },
+};
+`;
+
+// Replace from start until the next logical section
+content = content.replace(/^[\\s\\S]*?export function getTowerTheme/, header + '\\n\\nexport function getTowerTheme');
+
+fs.writeFileSync(path, content, 'utf8');
+console.log('Restored header and fixed mojibake');

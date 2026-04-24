@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatCompactNumber } from "@/app/lib/game/useGameStore";
 
 export default function TowerPanel() {
-  const { game, tapTower, updateTower, leaveTower, selectTowerBuff, selectTowerArtifact, handleTowerEvent, startTower } = useGameStore();
+  const { game, stepTower, updateTower, leaveTower, selectTowerBuff, selectTowerArtifact, handleTowerEvent, startTower } = useGameStore();
   const tower = game.tower;
   const theme = getTowerTheme(tower.currentFloor);
 
@@ -24,7 +24,7 @@ export default function TowerPanel() {
         <h2 className="text-3xl font-bold mb-2 text-yellow-500">천극무한탑 (天極無限塔)</h2>
         <p className="text-slate-400 mb-6 text-center">
           무림의 끝에 닿으려는 자들이 오르는 끝없는 시련의 탑.<br/>
-          자신의 한계를 시험하고 전설의 보물을 쟁취하십시오.
+          리드미컬하게 계단을 밟고 올라가 적을 제압하십시오.
         </p>
         <div className="bg-slate-800/50 p-4 rounded-xl mb-8 w-full max-w-xs border border-white/5">
           <div className="flex justify-between mb-2">
@@ -48,10 +48,11 @@ export default function TowerPanel() {
 
   const enemy = tower.enemy;
   const hpRate = (tower.hp / tower.maxHp) * 100;
+  const mpRate = (tower.mp / tower.maxMp) * 100;
   const enemyHpRate = enemy ? (enemy.hp / enemy.maxHp) * 100 : 0;
 
   return (
-    <div className="relative h-full w-full overflow-hidden flex flex-col">
+    <div className="relative h-full w-full overflow-hidden flex flex-col font-sans select-none" onContextMenu={(e) => e.preventDefault()}>
       {/* Background with Tower Atmosphere */}
       <div className="absolute inset-0 bg-[#0f172a] overflow-hidden pointer-events-none transition-colors duration-1000" style={{ backgroundColor: theme.color + '22' }}>
         <div 
@@ -64,16 +65,7 @@ export default function TowerPanel() {
                     theme.effect === 'poison' ? 'hue-rotate(90deg) saturate(1.2)' : 'none'
           }}
         />
-        {/* Dark Vignette Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80" />
-        
-        {/* Dynamic Fog/Aura with Theme Color */}
-        <motion.div 
-          animate={{ opacity: [0.1, 0.4, 0.1] }}
-          transition={{ duration: 8, repeat: Infinity }}
-          className="absolute bottom-0 left-0 w-full h-1/2"
-          style={{ background: `linear-gradient(to t, ${theme.color}44, transparent)` }}
-        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90" />
       </div>
 
       {/* Header Info */}
@@ -86,12 +78,12 @@ export default function TowerPanel() {
              </span>
           </h2>
           <div className="flex flex-wrap gap-1 mt-2">
-            {tower.activeBuffs.map((b, i) => (
+            {tower.activeBuffs.map((b: any, i: number) => (
               <div key={i} className="px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[9px] text-yellow-300">
                 {b.name}
               </div>
             ))}
-            {tower.artifacts.map((art, i) => (
+            {tower.artifacts.map((art: any, i: number) => (
               <div key={i} className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/50 rounded text-[9px] text-blue-300">
                 ✨ {art.name}
               </div>
@@ -106,83 +98,133 @@ export default function TowerPanel() {
         </button>
       </div>
 
-      {/* Combat Area */}
-      <div className="relative flex-1 flex flex-col items-center justify-center">
-        {/* Combo Counter */}
-        {tower.combo > 1 && (
-          <motion.div
-            key={tower.combo}
-            initial={{ scale: 1.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute top-4 text-4xl font-black text-yellow-500 italic drop-shadow-[0_0_10px_rgba(255,255,0,0.5)] z-20"
-          >
-            {tower.combo}<span className="text-lg ml-1">COMBO</span>
-          </motion.div>
-        )}
-
-        {/* Enemy Rendering */}
-        <AnimatePresence mode="wait">
-          {enemy && (
-            <motion.div
-              key={enemy.name}
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.2, filter: "brightness(2)" }}
-              className="relative w-64 h-64 flex flex-col items-center justify-end mb-12"
-              onClick={() => tapTower()}
-            >
-              <div className="absolute bottom-0 w-32 h-8 bg-black/40 blur-xl rounded-full" />
-              <img 
-                src={`https://api.dicebear.com/7.x/bottts/svg?seed=${enemy.name}`} 
-                alt="enemy" 
-                className="w-48 h-48 object-contain drop-shadow-[0_0_20px_rgba(255,0,0,0.5)] cursor-pointer active:scale-95 transition-transform"
-                style={{ filter: theme.effect === 'void' ? 'brightness(0.3) contrast(1.5)' : 'none' }}
-              />
-              <div className="absolute top-0 -mt-12 text-center w-full">
-                <span className="text-lg font-bold text-red-500 tracking-widest bg-black/60 px-4 py-1 rounded-full border border-red-500/30 whitespace-nowrap">
-                  {enemy.name}
-                </span>
-                <div className="flex flex-wrap gap-1 justify-center mt-2">
-                  {enemy.traits.map((t, i) => (
-                    <span key={i} className="text-[10px] bg-slate-900/90 text-slate-300 border border-white/10 px-1.5 rounded-sm">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Enemy HP Bar */}
-              <div className="absolute bottom-[-25px] w-full max-w-[200px]">
-                <div className="h-4 bg-slate-900 rounded-full border border-white/10 overflow-hidden relative shadow-inner">
-                  <motion.div 
-                    initial={{ width: "100%" }}
-                    animate={{ width: `${enemyHpRate}%` }}
-                    className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-md">
-                    {formatCompactNumber(enemy.hp)} / {formatCompactNumber(enemy.maxHp)}
+      {/* Main Game Area */}
+      <div className="relative flex-1 flex flex-col">
+        
+        {/* Enemy Info at Top */}
+        <div className="w-full px-6 flex flex-col items-center mt-2 z-20">
+           <AnimatePresence mode="wait">
+            {enemy && (
+              <motion.div 
+                key={enemy.name}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-xs flex flex-col items-center"
+              >
+                <div className="flex items-center gap-3 w-full">
+                  <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${enemy.name}`} className="w-10 h-10 rounded-lg bg-red-900/20 border border-red-500/30" alt="boss" />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-end mb-1">
+                       <span className="text-[10px] text-red-500 font-black tracking-tight">{enemy.name}</span>
+                       <span className="text-[9px] text-slate-400">{formatCompactNumber(enemy.hp)} / {formatCompactNumber(enemy.maxHp)}</span>
+                    </div>
+                    <div className="h-1.5 bg-black/60 rounded-full border border-white/10 overflow-hidden">
+                       <motion.div 
+                        animate={{ width: `${enemyHpRate}%` }}
+                        className="h-full bg-gradient-to-r from-red-600 to-orange-500"
+                       />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
+            )}
+           </AnimatePresence>
+        </div>
+
+        {/* Rhythmic Stair Area */}
+        <div className="flex-1 relative flex justify-center items-center overflow-hidden py-10">
+           {/* Visual Guides */}
+           <div className="absolute inset-0 flex justify-center gap-2 px-10">
+              <div className="flex-1 border-x border-white/5 bg-white/2" />
+              <div className="flex-1 border-x border-white/5 bg-white/2" />
+              <div className="flex-1 border-x border-white/5 bg-white/2" />
+           </div>
+
+           {/* Stairs */}
+           <div className="relative w-full max-w-sm h-full flex flex-col-reverse items-center">
+              {tower.stairs.map((laneIdx: number, stepIdx: number) => (
+                <motion.div
+                  key={`${stepIdx}-${laneIdx}`}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ 
+                    opacity: stepIdx === 0 ? 1 : 0.8 - stepIdx * 0.15,
+                    y: stepIdx * 60,
+                    scale: 1 - stepIdx * 0.08,
+                    filter: stepIdx === 0 ? "none" : "blur(1px)"
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="absolute bottom-0 w-full flex"
+                  style={{ zIndex: 10 - stepIdx }}
+                >
+                  <div className="flex-1 px-4">
+                    <div className="relative w-full h-10 flex items-center justify-center">
+                      {laneIdx === 0 && <StairBlock active={stepIdx === 0} />}
+                    </div>
+                  </div>
+                  <div className="flex-1 px-4">
+                    <div className="relative w-full h-10 flex items-center justify-center">
+                      {laneIdx === 1 && <StairBlock active={stepIdx === 0} />}
+                    </div>
+                  </div>
+                  <div className="flex-1 px-4">
+                    <div className="relative w-full h-10 flex items-center justify-center">
+                      {laneIdx === 2 && <StairBlock active={stepIdx === 0} />}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+           </div>
+
+           {/* Combo Counter */}
+           {tower.combo > 1 && (
+            <motion.div
+              key={tower.combo}
+              initial={{ scale: 1.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl font-black text-yellow-500 italic drop-shadow-[0_0_20px_rgba(255,215,0,0.5)] z-30 pointer-events-none"
+            >
+              {tower.combo}<span className="text-xl ml-1">COMBO</span>
             </motion.div>
           )}
-        </AnimatePresence>
+        </div>
 
-        {/* Player HUD (Bottom) */}
-        <div className="absolute bottom-12 w-full max-w-sm px-6">
-          <div className="mb-2 text-white font-bold text-xs flex justify-between px-1">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              나의 기운
-            </span>
-            <span className="text-blue-400">{Math.floor(tower.hp)} / {Math.floor(tower.maxHp)}</span>
-          </div>
-          <div className="h-3 bg-slate-950 rounded-full border border-white/5 overflow-hidden relative shadow-2xl">
-            <motion.div 
-              animate={{ width: `${hpRate}%` }}
-              className={`h-full bg-gradient-to-r transition-all duration-300 ${hpRate < 30 ? 'from-red-600 to-red-400' : 'from-blue-600 to-cyan-400'}`}
-            />
-          </div>
+        {/* Control & Player HUD */}
+        <div className="bg-black/60 backdrop-blur-xl border-t border-white/10 p-6 flex flex-col gap-6">
+           {/* Player HP */}
+           <div className="w-full">
+              <div className="flex justify-between items-center mb-1.5 px-1">
+                 <span className="text-[10px] text-blue-400 font-black tracking-widest uppercase">My Vitality</span>
+                 <span className="text-xs text-white font-bold">{Math.floor(tower.hp)} / {Math.floor(tower.maxHp)}</span>
+              </div>
+              <div className="h-2 bg-black/80 rounded-full border border-white/5 overflow-hidden shadow-inner">
+                 <motion.div 
+                  animate={{ width: `${hpRate}%` }}
+                  className={`h-full bg-gradient-to-r transition-all duration-300 ${hpRate < 30 ? 'from-red-600 to-red-400' : 'from-blue-600 to-cyan-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`}
+                 />
+              </div>
+           </div>
+
+           {/* 3 Lane Buttons */}
+           <div className="grid grid-cols-3 gap-4 h-24">
+                {[0, 1, 2].map((lane) => (
+                <button
+                  key={lane}
+                  onPointerDown={() => stepTower(lane)}
+                  className="relative group overflow-hidden rounded-2xl bg-white/5 border border-white/10 active:scale-95 transition-all shadow-xl"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-active:opacity-100 transition-opacity" />
+                  <span className="text-2xl font-black text-white/20 group-active:text-yellow-500 transition-colors">
+                    {lane === 0 ? "左" : lane === 1 ? "中" : "右"}
+                  </span>
+                  {tower.stairs[0] === lane && (
+                    <motion.div 
+                      layoutId="stairTarget"
+                      className="absolute inset-0 border-2 border-yellow-500/50 rounded-2xl animate-pulse"
+                    />
+                  )}
+                </button>
+              ))}
+           </div>
         </div>
       </div>
 
@@ -193,12 +235,12 @@ export default function TowerPanel() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 bg-black/90 backdrop-blur-lg flex flex-col items-center justify-center p-6"
+            className="absolute inset-0 z-50 bg-black/95 backdrop-blur-lg flex flex-col items-center justify-center p-6"
           >
-            <h3 className="text-2xl font-bold text-yellow-500 mb-2">기연의 선택</h3>
+            <h3 className="text-2xl font-black text-yellow-500 mb-2">기연의 선택</h3>
             <p className="text-slate-400 mb-8 text-center text-sm">앞으로의 시련을 이겨내기 위한<br/>일시적인 기운을 선택하십시오.</p>
             <div className="grid gap-3 w-full max-w-sm">
-              {tower.pendingBuffChoices.map((buff) => (
+              {tower.pendingBuffChoices.map((buff: any) => (
                 <motion.div
                   key={buff.id}
                   whileHover={{ scale: 1.02, backgroundColor: "rgba(234, 179, 8, 0.1)" }}
@@ -219,14 +261,14 @@ export default function TowerPanel() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 bg-[#0f172a]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6"
+            className="absolute inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6"
           >
             <div className="text-center mb-8">
               <h3 className="text-3xl font-black text-blue-400 mb-2 tracking-tighter">영물 획득 (靈物)</h3>
               <p className="text-slate-400 text-sm">탑의 깊은 곳에서 고대 무인의 유물을 발견했습니다.</p>
             </div>
             <div className="grid gap-4 w-full max-w-sm">
-              {tower.pendingArtifactChoices.map((art) => (
+              {tower.pendingArtifactChoices.map((art: any) => (
                 <motion.div
                   key={art.id}
                   whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(59, 130, 246, 0.5)" }}
@@ -257,7 +299,7 @@ export default function TowerPanel() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 bg-black/90 backdrop-blur-lg flex flex-col items-center justify-center p-6"
+            className="absolute inset-0 z-50 bg-black/95 backdrop-blur-lg flex flex-col items-center justify-center p-6"
           >
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-white mb-2">기연의 공간</h3>
@@ -310,17 +352,35 @@ export default function TowerPanel() {
       <AnimatePresence>
         {tower.lastReward && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.8, y: 0 }}
+            animate={{ opacity: 1, scale: 1, y: -50 }}
             exit={{ opacity: 0 }}
-            className="absolute top-24 left-0 w-full text-center z-20 pointer-events-none"
+            className="absolute bottom-40 left-0 w-full text-center z-50 pointer-events-none"
           >
-            <span className="bg-yellow-500/20 text-yellow-300 px-4 py-1 rounded-full border border-yellow-500/30 text-[11px] font-bold backdrop-blur-sm shadow-xl">
+            <span className="bg-red-500/40 text-white px-6 py-2 rounded-full border border-red-500/50 text-xs font-black backdrop-blur-md shadow-2xl uppercase tracking-tighter">
               {tower.lastReward}
             </span>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function StairBlock({ active }: { active: boolean }) {
+  return (
+    <motion.div
+      animate={{ 
+        boxShadow: active ? "0 0 30px rgba(234, 179, 8, 0.4)" : "0 5px 15px rgba(0,0,0,0.5)",
+        y: active ? -5 : 0
+      }}
+      className={`w-full h-4 rounded-lg border-x-4 border-b-8 transition-colors ${
+        active 
+          ? "bg-gradient-to-b from-yellow-400 to-orange-500 border-orange-700" 
+          : "bg-gradient-to-b from-slate-600 to-slate-800 border-slate-900"
+      }`}
+    >
+      <div className="w-full h-full bg-white/10 rounded-sm" />
+    </motion.div>
   );
 }

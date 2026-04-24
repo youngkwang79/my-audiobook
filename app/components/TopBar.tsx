@@ -190,7 +190,7 @@ backdropFilter: "none",
           textAlign: "center",
         }}
       >
-        {formatCompactNumber(points)}P
+        {points.toLocaleString()}P
       </button>
 
       {/* ✅ 로그인 했을 때만 보이는 내정보 */}

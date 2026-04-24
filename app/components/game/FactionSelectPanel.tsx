@@ -45,7 +45,7 @@ export default function FactionSelectPanel({
         gap: 8,
         height: "100%",
         boxSizing: "border-box",
-        touchAction: "none",
+        touchAction: "pan-y",
       }}
     >
       <div style={{ marginBottom: 4 }}>

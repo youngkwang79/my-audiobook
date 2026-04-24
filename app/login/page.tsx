@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
+import TopBar from "@/app/components/TopBar";
 
 // 에러 메시지 한글 매핑
 function toKoreanAuthError(message?: string) {
@@ -130,7 +131,10 @@ function LoginPageInner() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: 24 }}>
+    <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: "20px 16px" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <TopBar />
+      </div>
       <style>{`
         .btnBase {
           padding: 12px 12px;

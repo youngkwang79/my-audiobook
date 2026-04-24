@@ -425,23 +425,7 @@ export default function MasterPanel() {
     requestRef.current = requestAnimationFrame(animate);
   };
 
-  useEffect(() => {
-    if (masterDuel.lastWinReward) {
-      // 승리/패배 팝업 모두 4초 유지 후 자동 소멸
-      const duration = 4000;
-
-      const timer = setTimeout(() => {
-        useGameStore.setState(s => ({
-          game: {
-            ...s.game,
-            masterDuel: { ...s.game.masterDuel, lastWinReward: undefined }
-          }
-        }));
-      }, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [masterDuel.lastWinReward]);
-
+  // Auto-close removed to allow manual confirmation
   const [isPlayerHit, setIsPlayerHit] = useState(false);
 
   useEffect(() => {
@@ -660,6 +644,34 @@ export default function MasterPanel() {
             }} />
           )}
 
+          {/* Berserk Warning Text Overlay */}
+          <AnimatePresence>
+            {masterDuel.isBerserk && (
+              <motion.div
+                key="berserk-warn"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: [1.2, 1], opacity: 1 }}
+                exit={{ scale: 0.5, opacity: 0 }}
+                style={{
+                  position: "absolute", top: "25%", left: "50%", transform: "translate(-50%, -50%)",
+                  zIndex: 1000, pointerEvents: "none", textAlign: "center", width: "100%"
+                }}
+              >
+                <div style={{ 
+                  color: "#ff0000", fontSize: 48, fontWeight: 950, 
+                  textShadow: "0 0 20px #ff0000, 0 0 40px #000",
+                  letterSpacing: 4, fontStyle: "italic",
+                  animation: "hpPulse 0.4s infinite"
+                }}>
+                  !!! 광폭화 발동 !!!
+                </div>
+                <div style={{ color: "#fff", fontSize: 16, fontWeight: 900, marginTop: 10, textShadow: "0 2px 4px #000" }}>
+                  악적의 공격력과 공속이 폭발합니다!
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Dynamic Background */}
           <div style={{
             position: "absolute", inset: "-10%",
@@ -783,7 +795,8 @@ export default function MasterPanel() {
 
               {/* Player HP/MP Bars in Combat */}
               <div style={{ position: "absolute", bottom: 810, left: "37%", transform: "translateX(10%)", width: 160 }}>
-                <div style={{ height: 18, background: "#221111", borderRadius: 4, border: "1px solid #442222", overflow: "hidden", marginBottom: 6, position: "relative" }}>
+                <div style={{ height: 18, background: "#221111", borderRadius: 4, border: "1px solid #442222", overflow: "hidden", marginBottom: 6, position: "relative" }}
+                     className={playerHpPercent <= 30 ? "hp-low" : ""}>
                   <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.3s" }} />
                   <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000" }}>
                     {formatCompactNumber(game.hp)} / {formatCompactNumber(getTotalHp())}
@@ -1582,7 +1595,6 @@ export default function MasterPanel() {
       {/* Premium Result Popup */}
       {masterDuel.lastWinReward && (
         <div
-          onClick={() => setSelectedMasterLevel(masterDuel.selectedLevel)} // Dummy click to clear
           style={{
             position: "fixed",
             inset: 0,
@@ -1684,7 +1696,7 @@ export default function MasterPanel() {
             >
               확인
             </button>
-            <div style={{ fontSize: 10, color: "#555", marginTop: 12 }}>팝업 바깥쪽을 누르면 닫힙니다.</div>
+
           </div>
         </div>
       )}

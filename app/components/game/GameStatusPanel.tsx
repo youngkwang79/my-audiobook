@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useGameStore, REALM_SETTINGS, REALM_ORDER } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_SETTINGS, REALM_ORDER, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import CharacterModal from "./CharacterModal";
 
 export default function GameStatusPanel({ game }: { game: any }) {
@@ -177,35 +177,35 @@ export default function GameStatusPanel({ game }: { game: any }) {
               초기화
             </button>
             <button
-              onClick={() => {
-                const hundredBillion = 100000000000;
-                useGameStore.setState((s: any) => ({
-                  game: {
-                    ...s.game,
-                    coins: hundredBillion,
-                    reputation: hundredBillion,
-                    points: hundredBillion,
-                    enhancementStones: hundredBillion,
-                    bossTokens: hundredBillion,
-                    wisdom: hundredBillion,
-                    isForgeFullUnlocked: true,
-                    unlockedTabs: ["training", "upgrade", "inn", "master", "library", "forge", "inventory"]
-                  }
-                }));
-                triggerSave(true);
-      
-                alert("⚠️ 천하제일인의 기운이 느껴집니다!\n\n금화/명성/강화석/징표/심득 1,000억 확보!\n모든 탭 개방 및 대장간 전 경지 해금 완료!\n(데이터가 즉시 저장되었습니다)");
-              }}
-              style={{
-                padding: "4px 6px",
-                fontSize: "10px",
-                background: "transparent",
-                border: "none",
-                borderRadius: "4px",
-                color: "#444",
-                cursor: "pointer",
-                marginLeft: "2px",
-              }}
+            onClick={() => {
+  const ok = window.confirm(
+    "정말 모든 재화를 1,000억으로 받으시겠습니까?\n취소하면 아무 일도 일어나지 않습니다."
+  );
+
+  if (!ok) return;
+
+  const hundredBillion = 100000000000;
+
+  useGameStore.setState((s: any) => ({
+    game: {
+      ...s.game,
+      coins: hundredBillion,
+      reputation: hundredBillion,
+      points: hundredBillion,
+      enhancementStones: hundredBillion,
+      bossTokens: hundredBillion,
+      wisdom: hundredBillion,
+      isForgeFullUnlocked: true,
+      unlockedTabs: ["training", "upgrade", "inn", "master", "library", "forge", "inventory"]
+    }
+  }));
+
+  triggerSave(true);
+
+  alert(
+    "⚠️ 천하제일인의 기운이 느껴집니다!\n\n금화/명성/강화석/징표/심득 1,000억 확보!\n모든 탭 개방 및 대장간 전 경지 해금 완료!\n(데이터가 즉시 저장되었습니다)"
+  );
+}}
             >
               G
             </button>
@@ -398,8 +398,60 @@ export default function GameStatusPanel({ game }: { game: any }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(5, 1fr)",
-            gap: "2px",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "4px",
+            marginBottom: 4,
+          }}
+        >
+          <div
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              padding: "4px 1px",
+              borderRadius: "6px",
+              textAlign: "center",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>포인트</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#00eeff", whiteSpace: "nowrap" }}>
+              {formatCompactNumber(safeGame.points)}
+            </div>
+          </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              padding: "4px 1px",
+              borderRadius: "6px",
+              textAlign: "center",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>명성</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffcc00", whiteSpace: "nowrap" }}>
+              {formatCompactNumber(safeGame.reputation)}
+            </div>
+          </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              padding: "4px 1px",
+              borderRadius: "6px",
+              textAlign: "center",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>자금</div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd778", whiteSpace: "nowrap" }}>
+              {formatCompactNumber(safeGame.coins)}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "4px",
             marginBottom: 8,
           }}
         >
@@ -410,42 +462,11 @@ export default function GameStatusPanel({ game }: { game: any }) {
               borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
-              minWidth: 0
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>명성</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffcc00", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {safeGame.reputation.toLocaleString()}
-            </div>
-          </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-              minWidth: 0
-            }}
-          >
-            <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>자금</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd778", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {safeGame.coins.toLocaleString()}
-            </div>
-          </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              padding: "4px 1px",
-              borderRadius: "6px",
-              textAlign: "center",
-              border: "1px solid rgba(255,255,255,0.05)",
-              minWidth: 0
             }}
           >
             <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>수련</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#55ffaa", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {safeGame.touches.toLocaleString()}
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#55ffaa", whiteSpace: "nowrap" }}>
+              {formatCompactNumber(safeGame.touches)}
             </div>
           </div>
           <div
@@ -455,12 +476,11 @@ export default function GameStatusPanel({ game }: { game: any }) {
               borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
-              minWidth: 0
             }}
           >
             <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>강화석</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {(safeGame.enhancementStones || 0).toLocaleString()}
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ffd700", whiteSpace: "nowrap" }}>
+              {formatCompactNumber(safeGame.enhancementStones || 0)}
             </div>
           </div>
           <div
@@ -470,12 +490,11 @@ export default function GameStatusPanel({ game }: { game: any }) {
               borderRadius: "6px",
               textAlign: "center",
               border: "1px solid rgba(255,255,255,0.05)",
-              minWidth: 0
             }}
           >
             <div style={{ fontSize: "7px", color: "#888", marginBottom: "1px", whiteSpace: "nowrap" }}>공격력</div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ff4d4d", textShadow: "0 0 4px rgba(255,77,77,0.3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {totalAttack.toLocaleString()}
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#ff4d4d", textShadow: "0 0 4px rgba(255,77,77,0.3)", whiteSpace: "nowrap" }}>
+              {formatCompactNumber(totalAttack)}
             </div>
           </div>
         </div>
