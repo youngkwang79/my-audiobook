@@ -2146,9 +2146,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (item.tier === "평범") return { success: false, message: "평범 등급은 재연마할 수 없습니다." };
 
     const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const repScale = Math.pow(1.8, realmIdx);
+    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    
+    const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
     const repCost = Math.floor(30000 * repScale);
-    const stoneScale = Math.pow(1.25, realmIdx);
+    const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
     const stoneCost = Math.round(10 * stoneScale);
 
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
@@ -2183,9 +2185,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     if ((item.enhancement || 0) < 10) return { success: false, message: "10강 이상 장비만 가능합니다." };
 
     const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const repScale = Math.pow(1.8, realmIdx);
+    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    
+    const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
     const repCost = Math.floor(200000 * repScale);
-    const stoneScale = Math.pow(1.25, realmIdx);
+    const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
     const stoneCost = Math.round(100 * stoneScale);
 
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
@@ -2224,9 +2228,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     if ((game.consumables[oilId] || 0) <= 0) return { success: false, message: "기름이 부족합니다." };
 
     const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const repScale = Math.pow(1.8, realmIdx);
+    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    
+    const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
     const repCost = Math.floor(80000 * repScale);
-    const stoneScale = Math.pow(1.25, realmIdx);
+    const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
     const stoneCost = Math.round(20 * stoneScale);
 
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
