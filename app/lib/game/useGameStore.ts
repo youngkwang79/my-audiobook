@@ -410,6 +410,9 @@ interface GameState {
   setLowPowerMode: (enabled: boolean) => void;
   setAutoFps: (enabled: boolean) => void;
   setActiveTab: (tab: any) => void;
+  startFootworkGame: () => void;
+  handleFootworkStep: (choice: string) => { success: boolean; combo: number; timeBonus: number; isClear: boolean };
+  updateFootwork: (dt: number) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -1023,7 +1026,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => ({ game: { ...s.game, coins: s.game.coins + amount } }));
     get().triggerSave(true);
   },
-  
+
   learnSkill: (skill: any, price: number) => {
     set((s: any) => {
       const nextMartial = ensureLearnedSkill(s.game.martialArtsSkills || [], skill.id || skill.name);
@@ -1737,9 +1740,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => {
     const { game } = get(); 
-    if (!game.masterDuel.isPlaying) return { totalDamage: 0, isCrit: false, effect: null };
+    if (!game.masterDuel.isPlaying) return { totalDamage: 0, isCrit: false, effect: null, isCounter: false };
     
-    let result = { totalDamage: 0, isCrit: false, effect: null as any };
+    let result = { totalDamage: 0, isCrit: false, effect: null as any, isCounter: false };
 
     set((s: any) => {
       if (!s.game.masterDuel.isPlaying) return s;
@@ -1769,7 +1772,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 1. 회피 판정 (사용자 기획 ✅ 5)
       const rivalEva = (masterDuel.isBoss ? 15 : 10) / 100; // 보스 15%, 일반 10%
       if (Math.random() < rivalEva) {
-        result = { totalDamage: 0, isCrit: false, effect: "DODGE" as any };
+        result = { totalDamage: 0, isCrit: false, effect: "DODGE" as any, isCounter: false };
         return { game: { ...s.game, masterDuel: { ...masterDuel, lastEffect: "DODGE", damageTakenAccumulator: 0, factionState: fState } } };
       }
 
@@ -1788,6 +1791,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       let totalDamage = baseDamage;
       let effect = isCrit ? "CRITICAL" : null;
 
+      // --- 반격 타이밍 체크 (추가 ✅) ---
+      const timing = masterDuel.rivalAttackTimer || 0;
+      let isCounter = false;
+      // 0.85 ~ 1.0 사이 (맨끝 허용된 부분)
+      if (timing >= 0.85 && timing <= 1.0) {
+        isCounter = true;
+        totalDamage = Math.floor(totalDamage * 3.5); // 추가 250% = 3.5배
+        effect = "PARRY"; // UI에서 반격으로 표시
+      }
+
       // 4. 문파 특수 효과 적용 (사용자 기획 ✅ 8, 9)
       if (faction === "화산파") {
         fState.comboCount = (fState.comboCount || 0) + 1;
@@ -1797,11 +1810,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
         if (isCrit) totalDamage += baseDamage * 0.8;
       }
+      
       if (faction === "무당파" && fState.counterReady) {
         totalDamage *= 1.5;
         fState.counterReady = false;
       }
-      if (faction === "사천당가") fState.poisonStack = (fState.poisonStack || 0) + 1;
       if (faction === "점창파") {
         fState.critStack = Math.min(10, (fState.critStack || 0) + 2);
         if (Math.random() < 0.3) totalDamage += baseDamage * 0.5;
@@ -1839,6 +1852,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (finalOilRes.buffsTriggered.includes("oil_formless")) {
         totalDamage += rivalHp * 0.1;
       }
+
+      // 반격 성공 시 이펙트 추가 통보용 결과 데이터 확장
+      result = { totalDamage, isCrit, effect, isCounter };
       
       finalOilRes.buffsTriggered.forEach((k: string) => {
         if (k === "oil_vajra" || k === "oil_atk_3" || k === "oil_crit_3") nextBuffs[k] = 5;
@@ -1896,7 +1912,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const nextMaxLevel = Math.max(masterDuel.currentLevel, nextLevel);
         const nextEnemy = generateEnemy(nextLevel);
 
-        result = { totalDamage, isCrit, effect };
+        result = { totalDamage, isCrit, effect, isCounter: false };
         return { 
           game: { 
             ...s.game, 
@@ -1930,7 +1946,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         }; 
       }
 
-      result = { totalDamage, isCrit, effect };
+      result = { totalDamage, isCrit, effect, isCounter: false };
       return { 
         game: { 
           ...s.game, 
@@ -3521,4 +3537,100 @@ stepTower: (lane: number) => {
         }
       };
     }),
+
+  startFootworkGame: () => {
+    set((s: any) => {
+      const stage = s.game.footworkGame.stage || 1;
+      const stageOptions = stage === 1 ? ["왼쪽", "오른쪽"] : 
+                           stage === 2 ? ["왼쪽", "중앙", "오른쪽"] :
+                           stage === 3 ? ["좌상", "우상", "좌하", "우하"] : 
+                           ["좌상", "우상", "중앙", "좌하", "우하"];
+      
+      return {
+        game: {
+          ...s.game,
+          footworkGame: {
+            ...s.game.footworkGame,
+            timeLeft: 30,
+            maxTime: 45,
+            combo: 0,
+            score: 0,
+            isPlaying: true,
+            currentAnswer: stageOptions[Math.floor(Math.random() * stageOptions.length)]
+          }
+        }
+      };
+    });
+  },
+
+  handleFootworkStep: (choice: string) => {
+    const { game } = get();
+    const fg = game.footworkGame;
+    if (!fg.isPlaying) return { success: false, combo: 0, timeBonus: 0, isClear: false };
+
+    let success = choice === fg.currentAnswer;
+    let nextCombo = 0;
+    let timeBonus = 0;
+    let isClear = false;
+
+    set((s: any) => {
+      const currentFG = s.game.footworkGame;
+      nextCombo = success ? currentFG.combo + 1 : Math.max(0, currentFG.combo - 3);
+      let nextTime = success ? Math.min(currentFG.maxTime, currentFG.timeLeft + 0.2) : Math.max(0, currentFG.timeLeft - 2);
+      let nextScore = success ? currentFG.score + 10 : currentFG.score;
+      
+      if (success) {
+        if (nextCombo === 5) { nextTime = Math.min(currentFG.maxTime, nextTime + 2); timeBonus = 2; }
+        else if (nextCombo === 10) { nextTime = Math.min(currentFG.maxTime, nextTime + 3); timeBonus = 3; }
+        else if (nextCombo === 15) { nextTime = Math.min(currentFG.maxTime, nextTime + 4); timeBonus = 4; }
+        
+        if (nextCombo >= 20) {
+          isClear = true;
+        }
+      }
+
+      const stage = currentFG.stage;
+      const stageOptions = stage === 1 ? ["왼쪽", "오른쪽"] : 
+                           stage === 2 ? ["왼쪽", "중앙", "오른쪽"] :
+                           stage === 3 ? ["좌상", "우상", "좌하", "우하"] : 
+                           ["좌상", "우상", "중앙", "좌하", "우하"];
+      const nextAnswer = stageOptions[Math.floor(Math.random() * stageOptions.length)];
+
+      return {
+        game: {
+          ...s.game,
+          footworkGame: {
+            ...currentFG,
+            combo: nextCombo,
+            timeLeft: nextTime,
+            score: nextScore,
+            currentAnswer: nextAnswer,
+            bestCombo: Math.max(currentFG.bestCombo || 0, nextCombo),
+            isPlaying: !isClear && nextTime > 0
+          }
+        }
+      };
+    });
+
+    return { success, combo: nextCombo, timeBonus, isClear };
+  },
+
+  updateFootwork: (dt: number) => {
+    set((s: any) => {
+      const fg = s.game.footworkGame;
+      if (!fg.isPlaying) return s;
+
+      const nextTime = Math.max(0, fg.timeLeft - dt);
+      return {
+        game: {
+          ...s.game,
+          footworkGame: {
+            ...fg,
+            timeLeft: nextTime,
+            isPlaying: nextTime > 0
+          }
+        }
+      };
+    });
+  },
 }));

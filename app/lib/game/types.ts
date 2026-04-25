@@ -290,6 +290,20 @@ export type MasterDuelState = {
   lastChargeTime: number;
   streakCount: number;
   lastAttackTime: number;
+  rivalAttackGauge: number; // 0-1 (1초 게이지)
+};
+
+export type FootworkGameState = {
+  timeLeft: number;
+  maxTime: number;
+  combo: number;
+  targetCombo: number;
+  bestCombo: number;
+  stage: number;
+  maxStage: number;
+  currentAnswer: string | null;
+  score: number;
+  isPlaying: boolean;
 };
 
 export type TowerBuff = {
@@ -418,6 +432,7 @@ export type GameSaveData = {
   timingMission: TimingMissionState;
   duel: DuelState;
   masterDuel: MasterDuelState;
+  footworkGame: FootworkGameState;
   pendingDuelReward?: any;
 
   pendingInnEntry: boolean;

@@ -187,6 +187,19 @@ export const defaultGameData: GameSaveData = {
     lastChargeTime: Date.now(),
     streakCount: 0,
     lastAttackTime: 0,
+    rivalAttackGauge: 0,
+  },
+  footworkGame: {
+    timeLeft: 30,
+    maxTime: 45,
+    combo: 0,
+    targetCombo: 20,
+    bestCombo: 0,
+    stage: 1,
+    maxStage: 4,
+    currentAnswer: null,
+    score: 0,
+    isPlaying: false
   },
   pendingInnEntry: false,
   innEventVersion: 0,
@@ -381,7 +394,12 @@ export function loadGame(): GameSaveData {
             lastChargeTime: newChargeTime,
             streakCount: 0 // 재접속 시 초기화
           };
-        })() : {})
+        })() : {}),
+      },
+      footworkGame: {
+        ...defaultGameData.footworkGame,
+        ...(v12Data.footworkGame || {}),
+        isPlaying: false // Ensure reset on load
       }
     };
   } catch (error) {

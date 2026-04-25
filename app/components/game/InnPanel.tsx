@@ -20,6 +20,24 @@ type FloatText = {
   opacity: number;
 };
 
+const FootworkButton = ({ label, onClick, style }: { label: string, onClick: () => void, style?: any }) => (
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onPointerDown={(e) => { e.preventDefault(); onClick(); }}
+    style={{
+      flex: 1, height: '60px', background: 'rgba(255,255,255,0.05)', color: 'white',
+      fontSize: '18px', fontWeight: '900', borderRadius: '15px',
+      border: '1px solid rgba(255,215,0,0.3)', cursor: 'pointer',
+      boxShadow: '0 4px rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      ...style
+    }}
+  >
+    {label}
+  </motion.button>
+);
+
 type FallingObject = {
   id: number;
   lane: number;
@@ -213,7 +231,8 @@ export default function InnPanel({
 }: { onRewardClose?: () => void } = {}) {
   const {
     game, resolveTimingMission, claimDuelReward, getTotalAttack, incrementCombo, getInnBonus,
-    startInnCombat, updateInnCombat, applyInnPuzzleScore, handleInnSecondTick
+    startInnCombat, updateInnCombat, applyInnPuzzleScore, handleInnSecondTick,
+    startFootworkGame, handleFootworkStep, updateFootwork
   } = useGameStore() as any;
 
   const mission = game.timingMission;
@@ -389,6 +408,10 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
       counterGaugeRef.current = 0;
       setBreathMissCount(0);
       breathMissCountRef.current = 0;
+    }
+
+    if (type === "dodge") {
+      startFootworkGame();
     }
 
     const initialPoles = Array.from({ length: 6 }, () => Math.round(Math.random()));
@@ -1116,74 +1139,49 @@ const fireCounterSlash = (damage: number) => {
 
   const updateDodge = (dt: number) => {
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
+    updateFootwork(dt);
 
-    let timeScale = 1 + (currentStage - 1) * 0.15;
-    if (currentStage >= 16) {
-      // Extreme speed mode for Stage 16+
-      timeScale = 1.8 + (currentStage - 16) * 0.35;
-    }
-
-    const nextTime = Math.max(0, dodgeTimeLeftRef.current - dt * timeScale);
-    dodgeTimeLeftRef.current = nextTime;
-    setDodgeTimeLeft(nextTime);
-
-    if (nextTime <= 0) {
-      const targetScore = getTargetScore(currentStage);
-      if (playerScoreRef.current >= targetScore) {
-        handleRoundSuccess("PERFECT", 200, `Stage ${currentStage} 성공!`);
-      } else {
-        finishMission(false, "MISS", playerScoreRef.current, `보법 수련이 미흡합니다. (목표: ${targetScore.toLocaleString()}점 / 현재: ${Math.floor(playerScoreRef.current).toLocaleString()})`);
+    const fg = game.footworkGame;
+    if (!fg.isPlaying && isPlaying) {
+      if (fg.combo >= 20) {
+        // Clear Stage
+        if (fg.stage < 4) {
+          useGameStore.setState((s: any) => ({
+            game: {
+              ...s.game,
+              footworkGame: {
+                ...s.game.footworkGame,
+                stage: s.game.footworkGame.stage + 1
+              }
+            }
+          }));
+          handleRoundSuccess("PERFECT", 500, `보법 ${fg.stage}단계 돌파! 다음 단계로...`);
+        } else {
+          handleRoundSuccess("PERFECT", 1000, `보법 최종 단계 완수! 전설적인 발놀림입니다.`);
+        }
+      } else if (fg.timeLeft <= 0) {
+        finishMission(false, "MISS", fg.score, `보법 수련이 미흡합니다. (목표: 20콤보 / 현재: ${fg.combo}콤보)`);
       }
     }
   };
 
-  const handlePolesStep = (side: number) => {
+  const handlePolesStep = (choice: string) => {
     const now = Date.now();
-    const key = "dodge";
-    if (now - (lastHitTimeRef.current[key] || 0) < 40) return; // 반응성 극대화: 80ms -> 40ms (연타 속도 상향)
-    lastHitTimeRef.current[key] = now;
+    if (now - (lastHitTimeRef.current["dodge"] || 0) < 50) return;
+    lastHitTimeRef.current["dodge"] = now;
 
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
 
-    if (polesRef.current[0] === side) {
-      // Success Step - Adjusted to be around 30 points as requested (3배 상향 적용)
-      const gain = Math.floor((20 + Math.min(comboRef.current, 10)) * (1 + Math.log10(Math.max(1, currentTotalAtk / 1000)) * 0.5)) * 3.6;
-      const nextScore = playerScoreRef.current + gain;
-      playerScoreRef.current = nextScore;
-      setPlayerScore(nextScore);
-
-      const nextCombo = comboRef.current + 1;
-      comboRef.current = nextCombo;
-      setCombo(nextCombo);
-      incrementCombo(); // Faction/Martial Combo update
-
-      const nPoles = getNumPoles(currentStage);
-      const nextPoles = [...polesRef.current.slice(1), Math.floor(Math.random() * nPoles)];
-      polesRef.current = nextPoles;
-      setPoles(nextPoles);
-
+    const res = handleFootworkStep(choice);
+    if (res.success) {
+      addFloatText("SUCCESS", "#ffd700");
+      if (res.timeBonus > 0) {
+        addFloatText(`TIME +${res.timeBonus}s`, "#4dff4d", 50, 40);
+      }
       playHitEffect();
-
-      // Real-time Success Check Fix
-      const targetScore = getTargetScore(currentStage);
-      if (nextScore >= targetScore) {
-        handleRoundSuccess("PERFECT", 200, "보법 수련 스테이지 돌파!");
-      }
     } else {
-      // Miss Step - Harsher penalty from Stage 3 onwards
-      const penaltyHp = currentStage >= 3 ? 2 : 1;
-      const nextHp = Math.max(0, dodgeHpRef.current - penaltyHp);
-      dodgeHpRef.current = nextHp;
-      setDodgeHp(nextHp);
-
-      comboRef.current = 0;
-      setCombo(0);
+      addFloatText("MISS", "#ff4d4d");
       triggerShake();
-      addFloatText(currentStage >= 3 ? "URGENT MISS!" : "MISS!", "#ff4d4d");
-
-      if (nextHp <= 0) {
-        finishMission(false, "MISS", playerScoreRef.current, "매화장에서 발을 헛디뎌 주화입마에 빠졌습니다!");
-      }
     }
   };
 
@@ -2351,70 +2349,111 @@ left: `${n.x}%`,
               )}
 
 
-              {/* 3. Meihua Poles Minigame (Dodge) */}
+              {/* 3. Meihua Poles Minigame (Dodge) -> Footwork Game */}
               {currentMiniGame === "dodge" && (
                 <div style={{
-                  background: '#0a0a0a', color: 'white', padding: '15px', borderRadius: '25px',
-                  textAlign: 'center', width: '100%', maxWidth: '340px', margin: '0 auto',
-                  border: '2px solid #b45309', boxShadow: '0 0 15px rgba(180, 83, 9, 0.3)',
-                  display: 'flex', flexDirection: 'column', gap: '10px'
+                  background: 'rgba(10, 10, 10, 0.9)', color: 'white', padding: '20px', borderRadius: '30px',
+                  textAlign: 'center', width: '100%', maxWidth: '380px', margin: '0 auto',
+                  border: '2px solid rgba(255, 215, 0, 0.3)', boxShadow: '0 0 30px rgba(0, 0, 0, 0.8)',
+                  display: 'flex', flexDirection: 'column', gap: '15px', position: 'relative'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                  {/* Timer & Info */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '12px', color: '#fbbf24', fontWeight: 'bold' }}>{getMeihuaRank(playerScore)}</div>
-                      <div style={{ fontSize: '10px', color: '#78716c' }}>Time: {dodgeTimeLeft.toFixed(1)}s</div>
+                      <div style={{ fontSize: '14px', color: '#ffd700', fontWeight: 900 }}>STAGE {game.footworkGame.stage}</div>
+                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>Best: {game.footworkGame.bestCombo}</div>
+                    </div>
+                    {/* Circular Timer */}
+                    <div style={{ position: 'relative', width: 60, height: 60 }}>
+                      <svg width="60" height="60" viewBox="0 0 60 60">
+                        <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+                        <motion.circle
+                          cx="30" cy="30" r="26" fill="none"
+                          stroke={game.footworkGame.timeLeft < 5 ? "#ff4d4d" : "#ffd700"}
+                          strokeWidth="4"
+                          strokeDasharray="163.36"
+                          animate={{ strokeDashoffset: 163.36 * (1 - (game.footworkGame.timeLeft || 0) / (game.footworkGame.maxTime || 45)) }}
+                          transform="rotate(-90 30 30)"
+                        />
+                      </svg>
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900 }}>
+                        {Math.ceil(game.footworkGame.timeLeft || 0)}
+                      </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '16px' }}>{'❤️'.repeat(dodgeHp)}{'🖤'.repeat(3 - dodgeHp)}</div>
-                      <div style={{ fontSize: '10px', color: '#78716c' }}>Combo: {combo}</div>
+                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>콤보</div>
+                      <div style={{ fontSize: '20px', fontWeight: 950, color: '#fff' }}>{game.footworkGame.combo}</div>
                     </div>
                   </div>
 
-                  <div style={{ background: '#000', height: '180px', position: 'relative', borderRadius: '15px', overflow: 'hidden', border: '1px solid #292524' }}>
-                    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                      {poles.map((side, i) => {
-                        const nP = getNumPoles(currentStage);
-                        const laneWidth = 100 / nP;
-                        return (
-                          <div key={i} style={{
-                            position: 'absolute', bottom: `${i * 30 + 15}px`,
-                            left: `${side * laneWidth + (laneWidth * 0.1)}%`,
-                            width: `${laneWidth * 0.8}%`, height: '20px',
-                            background: i === 0 ? 'linear-gradient(to right, #f59e0b, #d97706)' : '#44403c',
-                            borderRadius: '6px', 
-                            opacity: i === 0 ? 1 : Math.max(0.4, 1 / (i + 1.2)),
-                            transform: i === 0 ? 'scale(1.1)' : 'scale(1)',
-                            display: 'flex', justifyContent: 'center', alignItems: 'center',
-                            boxShadow: i === 0 ? '0 0 10px #fbbf24' : 'inset 0 0 5px rgba(255,255,255,0.05)',
-                            border: i === 0 ? 'none' : '1px solid #555',
-                            transition: 'all 0.1s ease-out'
-                          }}>
-                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: i === 0 ? '#fff' : '#ccc' }}>{side + 1}</span>
-                          </div>
-                        );
-                      })}
+                  {/* Progress Bar */}
+                  <div style={{ width: '100%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
+                      <span>진척도</span>
+                      <span>{game.footworkGame.combo} / 20</span>
+                    </div>
+                    <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, overflow: 'hidden' }}>
+                      <motion.div
+                        animate={{ width: `${Math.min(100, (game.footworkGame.combo / 20) * 100)}%` }}
+                        style={{ height: '100%', background: 'linear-gradient(90deg, #ffd700, #ff8c00)', boxShadow: '0 0 10px #ffd700' }}
+                      />
                     </div>
                   </div>
 
-                  <div 
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onTouchEnd={(e) => e.stopPropagation()}
-                    style={{ display: 'flex', gap: '8px', marginTop: '5px' }}
-                  >
-                    {Array.from({ length: getNumPoles(currentStage) }).map((_, idx) => (
-                      <button
-                        key={idx}
-                        onPointerDown={(e) => { e.preventDefault(); handlePolesStep(idx); }}
-                        style={{
-                          flex: 1, height: '60px', background: '#292524', color: 'white',
-                          fontSize: '20px', fontWeight: '900', borderRadius: '15px',
-                          border: '1px solid #444', cursor: 'pointer',
-                          boxShadow: '0 4px #1a1817'
-                        }}
+                  {/* Target Display */}
+                  <div style={{ 
+                    height: 140, background: 'rgba(0,0,0,0.3)', borderRadius: 20, 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid rgba(255,255,255,0.05)', position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={game.footworkGame.currentAnswer}
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 1.5, opacity: 0 }}
+                        style={{ fontSize: 42, fontWeight: 950, color: '#ffd700', textShadow: '0 0 20px rgba(255,215,0,0.5)' }}
                       >
-                        {idx + 1}
-                      </button>
+                        {game.footworkGame.currentAnswer}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Controls based on Stage */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: game.footworkGame.stage === 1 ? '1fr 1fr' : 
+                                         game.footworkGame.stage === 2 ? '1fr 1fr 1fr' : 
+                                         '1fr 1fr',
+                    gap: 10,
+                    marginTop: 10
+                  }}>
+                    {game.footworkGame.stage === 1 && ["왼쪽", "오른쪽"].map(btn => (
+                      <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />
                     ))}
+                    {game.footworkGame.stage === 2 && ["왼쪽", "중앙", "오른쪽"].map(btn => (
+                      <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />
+                    ))}
+                    {game.footworkGame.stage === 3 && ["좌상", "우상", "좌하", "우하"].map(btn => (
+                      <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />
+                    ))}
+                    {game.footworkGame.stage === 4 && (
+                      <>
+                        <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          {["좌상", "우상"].map(btn => <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />)}
+                        </div>
+                        <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'center' }}>
+                          <FootworkButton label="중앙" onClick={() => handlePolesStep("중앙")} style={{ width: '50%' }} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          {["좌하", "우하"].map(btn => <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 5 }}>
+                    제시된 방향의 발판을 정확하게 누르세요!
                   </div>
                 </div>
               )}

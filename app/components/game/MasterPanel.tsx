@@ -731,7 +731,7 @@ export default function MasterPanel() {
 
           {/* Rival HP Bar Overlay (Now relative to screen top) */}
           <div style={{
-            position: "absolute", top: "60px", left: "50%", transform: "translateX(-50%)",
+            position: "absolute", top: "45px", left: "50%", transform: "translateX(-50%)",
             width: "80%", maxWidth: 400, zIndex: 300
           }}>
             <div style={{ height: 26, background: "#1a0505", borderRadius: 2, overflow: "hidden", border: "2px solid #632a2a", boxShadow: "0 0 10px #000", position: "relative" }}>
@@ -744,6 +744,35 @@ export default function MasterPanel() {
                 fontSize: 12, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000"
               }}>
                 {formatCompactNumber(masterDuel.rivalHp)} / {formatCompactNumber(masterDuel.rivalMaxHp)}
+              </div>
+            </div>
+
+            {/* Enemy Attack Timing Bar (추가 ✅) */}
+            <div style={{ marginTop: 6, position: "relative" }}>
+              <div style={{ height: 10, background: "rgba(0,0,0,0.7)", borderRadius: 5, overflow: "hidden", border: "1px solid rgba(255,255,255,0.15)", position: "relative" }}>
+                <div style={{
+                  width: `${(masterDuel.rivalAttackTimer || 0) * 100}%`,
+                  height: "100%",
+                  background: (masterDuel.rivalAttackTimer || 0) >= 0.85 ? "linear-gradient(90deg, #ffd700, #ff8c00)" : "linear-gradient(90deg, #aaa, #fff)",
+                  transition: "none",
+                  boxShadow: (masterDuel.rivalAttackTimer || 0) >= 0.85 ? "0 0 10px #ffd700" : "none"
+                }} />
+                {/* Counter Zone Marker */}
+                <div style={{
+                  position: "absolute", right: 0, top: 0, bottom: 0, width: "15%",
+                  background: "rgba(255, 215, 0, 0.2)", borderLeft: "1px dashed rgba(255, 215, 0, 0.4)"
+                }} />
+              </div>
+              <div style={{ 
+                fontSize: 10, textAlign: "center", marginTop: 2, fontWeight: 950,
+                color: (masterDuel.rivalAttackTimer || 0) >= 0.85 ? "#ffd700" : "#888",
+                textShadow: "1px 1px 2px #000"
+              }}>
+                {(masterDuel.rivalAttackTimer || 0) >= 0.85 ? (
+                  <span style={{ animation: "hpPulse 0.3s infinite" }}>⚡ 반격 기회! ⚡</span>
+                ) : (
+                  <span>적 공격 타이밍</span>
+                )}
               </div>
             </div>
           </div>
@@ -841,6 +870,9 @@ export default function MasterPanel() {
               />
               {masterDuel.lastEffect === "DODGE" && (
                 <div style={{ position: "absolute", top: -30, left: "50%", transform: "translateX(-50%)", color: "#00f2ff", fontSize: 32, fontWeight: 950, textShadow: "0 0 10px #00f2ff" }}>회피!</div>
+              )}
+              {masterDuel.lastEffect === "PARRY" && (
+                <div style={{ position: "absolute", top: -30, left: "50%", transform: "translateX(-50%)", color: "#ffd700", fontSize: 32, fontWeight: 950, textShadow: "0 0 10px #ffd700" }}>반격!</div>
               )}
 
               {/* Player HP/MP Bars in Combat */}
