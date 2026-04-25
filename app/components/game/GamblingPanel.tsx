@@ -9,8 +9,8 @@ import {
 import TujeonExchangePanel from "./TujeonExchangePanel";
 import YabawiGame from "./YabawiGame";
 
-const ODD_EVEN_COST = 10000000;
-const DICE_COST = 30000000;
+const ODD_EVEN_COST = 5000000;
+const DICE_COST = 15000000;
 
 export default function GamblingPanel() {
   const { game, addCoins, giveGamblingToken, getNightBuffs } = useGameStore() as any;
@@ -46,7 +46,7 @@ export default function GamblingPanel() {
     if (isProcessing) return;
 
     if (game.coins < ODD_EVEN_COST) {
-      alert("금화가 부족합니다. 1,000만냥이 필요합니다.");
+      alert("금화가 부족합니다. 500만냥이 필요합니다.");
       return;
     }
 
@@ -112,7 +112,7 @@ export default function GamblingPanel() {
     if (isProcessing) return;
 
     if (game.coins < DICE_COST) {
-      alert("금화가 부족합니다. 3,000만냥이 필요합니다.");
+      alert("금화가 부족합니다. 1,500만냥이 필요합니다.");
       return;
     }
 
@@ -379,7 +379,7 @@ export default function GamblingPanel() {
               <div style={gameDescStyle}>
                 성공 시 투전패 1~2개 획득
               </div>
-              <div style={costStyle}>비용: 1,000만냥</div>
+              <div style={costStyle}>비용: 500만냥</div>
             </div>
             <div style={arrowStyle}>›</div>
           </motion.div>
@@ -396,7 +396,7 @@ export default function GamblingPanel() {
               <div style={gameDescStyle}>
                 하우스보다 높은 눈이면 승리
               </div>
-              <div style={costStyle}>비용: 3,000만냥</div>
+              <div style={costStyle}>비용: 1,500만냥</div>
             </div>
             <div style={arrowStyle}>›</div>
           </motion.div>

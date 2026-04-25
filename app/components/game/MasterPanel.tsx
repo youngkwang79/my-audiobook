@@ -606,6 +606,27 @@ export default function MasterPanel() {
         </div>
       )}
 
+      {/* 연화의 정보 브리핑 배지 */}
+      {!masterDuel.isPlaying && game.nextDayEvent && (
+        <div style={{
+          margin: "4px 10px",
+          padding: "10px 16px",
+          background: "linear-gradient(90deg, rgba(142, 45, 226, 0.2), rgba(10, 10, 25, 0.8))",
+          borderRadius: "14px",
+          border: "1px solid rgba(142, 45, 226, 0.4)",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          animation: "fadeIn 0.5s ease-out"
+        }}>
+          <div style={{ fontSize: "20px" }}>{game.nextDayEvent.type === "TREASURE_FORECAST" ? "💰" : "👹"}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "11px", color: "#e0c3fc", fontWeight: 800 }}>오늘의 강호 정보</div>
+            <div style={{ fontSize: "13px", color: "#fff", fontWeight: 700 }}>{game.nextDayEvent.clueText}</div>
+          </div>
+        </div>
+      )}
+
       {/* 저전력 모드 / 자동 FPS 버튼 */}
       {!masterDuel.isPlaying && (
         <div style={{ display: "flex", gap: 8, padding: "0 10px" }}>
@@ -1191,6 +1212,26 @@ export default function MasterPanel() {
                 </div>
               )}
             </div>
+
+            {/* 특수 보스 레이드 버튼 (BOSS_RAID_CLUE 있을 때만) */}
+            {game.nextDayEvent?.type === "BOSS_RAID_CLUE" && !game.nextDayEvent.isUsed && (
+              <button
+                onClick={() => startMasterDuel(true)}
+                style={{
+                  width: "100%", padding: "14px", borderRadius: 16,
+                  background: "linear-gradient(135deg, #4b1248 0%, #712271 50%, #4b1248 100%)",
+                  border: "2px solid #e0c3fc",
+                  color: "#fff",
+                  fontSize: 18, fontWeight: 950,
+                  boxShadow: "0 0 25px rgba(224, 195, 252, 0.4), inset 0 0 10px rgba(255,255,255,0.2)",
+                  cursor: "pointer",
+                  marginBottom: "8px",
+                  animation: "hpPulse 1.5s infinite"
+                }}
+              >
+                🔥 특수 보스 레이드 도전!
+              </button>
+            )}
 
             <button
               onClick={(e) => {

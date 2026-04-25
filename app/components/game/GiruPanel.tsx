@@ -18,6 +18,9 @@ export default function GiruPanel() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [showSecretRoom, setShowSecretRoom] = useState(false);
+  const [showInfoTradeModal, setShowInfoTradeModal] = useState(false);
+  const [showRewardPopup, setShowRewardPopup] = useState(false);
+  const [rewardData, setRewardData] = useState<any>(null);
   const [currentIllustrationIndex, setCurrentIllustrationIndex] = useState(0);
   const favor = (game.npcFavors && game.npcFavors[selectedNpc?.id || GIRU_NPCS[activeNpcIndex].id]) || 0;
 
@@ -45,11 +48,11 @@ export default function GiruPanel() {
 
   // 캐릭터별 상세 위치/크기 설정 (이곳에서 수정하시면 됩니다)
   const npcStyles: Record<string, { scale: number, y: number, height: string, boxY: number }> = {
-    yeonhwa: { scale: 0.75, y: -80, height: "100%", boxY: -200 },
-    seolmae: { scale: 0.70, y: -100, height: "100%", boxY: -220 },
-    chowoon: { scale: 0.80, y: -110, height: "100%", boxY: -230 },
-    hongryeon: { scale: 0.89, y: -30, height: "100%", boxY: -65 },   // 홍련은 박스를 아래로(10)
-    sohee: { scale: 0.89, y: -40, height: "100%", boxY: -65 },
+    yeonhwa: { scale: 0.70, y: -90, height: "100%", boxY: -240 },
+    seolmae: { scale: 0.65, y: -120, height: "100%", boxY: -255 },
+    chowoon: { scale: 0.70, y: -140, height: "100%", boxY: -270 },
+    hongryeon: { scale: 0.80, y: -50, height: "100%", boxY: -105 },   // 홍련은 박스를 아래로(10)
+    sohee: { scale: 0.80, y: -50, height: "100%", boxY: -110 },
     oldman: { scale: 0.80, y: -60, height: "100%", boxY: -120 }
   };
 
@@ -75,6 +78,19 @@ export default function GiruPanel() {
       setShowGiftModal(true);
       setIsProcessing(false);
       return;
+    }
+
+    if (actionId === "info") {
+      if (game.nightLimits.infoTradeUsed) {
+        alert("오늘의 정보 거래는 이미 완료되었습니다.");
+        setIsProcessing(false);
+        return;
+      }
+      if (npcId === "yeonhwa") {
+        setShowInfoTradeModal(true);
+        setIsProcessing(false);
+        return;
+      }
     }
 
     const result = interactGiru(npcId, actionId);
@@ -501,6 +517,8 @@ export default function GiruPanel() {
                               <button
                                 onClick={() => {
                                   const { completeQuest } = useGameStore.getState() as any;
+                                  setRewardData(q.reward);
+                                  setShowRewardPopup(true);
                                   completeQuest(q.id);
                                   setDialogue(`임무를 완수하셨군요! 여기 보상입니다.`);
                                 }}
@@ -782,6 +800,185 @@ export default function GiruPanel() {
               >
                 취소
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* 연화 정보 거래 모달 */}
+      <AnimatePresence>
+        {showInfoTradeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10000,
+              padding: "20px"
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              style={{
+                width: "100%",
+                maxWidth: "400px",
+                background: "#12121a",
+                borderRadius: "28px",
+                border: "1px solid rgba(255,215,0,0.3)",
+                padding: "30px",
+                textAlign: "center",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+              }}
+            >
+              <div style={{ fontSize: "40px", marginBottom: "15px" }}>🕯️</div>
+              <h2 style={{ fontSize: "22px", fontWeight: 900, color: "#ffd700", marginBottom: "10px" }}>강호의 은밀한 정보</h2>
+              <p style={{ fontSize: "14px", color: "#ccc", marginBottom: "25px", lineHeight: "1.6" }}>
+                연화가 특별한 정보를 입수했습니다.<br/>내일의 운명을 바꿀 정보를 선택하세요.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    const { buyGiruInformation } = useGameStore.getState() as any;
+                    buyGiruInformation("TREASURE_FORECAST");
+                    setShowInfoTradeModal(false);
+                    setDialogue("좋은 선택입니다. 내일은 주머니가 두둑해지겠군요.");
+                  }}
+                  style={{
+                    padding: "16px",
+                    borderRadius: "18px",
+                    background: "rgba(255,215,0,0.1)",
+                    border: "1px solid rgba(255,215,0,0.4)",
+                    color: "#fff",
+                    textAlign: "left",
+                    cursor: "pointer"
+                  }}
+                >
+                  <div style={{ fontWeight: 800, fontSize: "16px", color: "#ffd700" }}>💰 희귀 무뢰배 예보</div>
+                  <div style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>내일 보물 무뢰배 출현 확률이 대폭 상승합니다.</div>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    const { buyGiruInformation } = useGameStore.getState() as any;
+                    buyGiruInformation("BOSS_RAID_CLUE");
+                    setShowInfoTradeModal(false);
+                    setDialogue("위험한 정보지만 보상은 확실할 겁니다. 건승을 빕니다.");
+                  }}
+                  style={{
+                    padding: "16px",
+                    borderRadius: "18px",
+                    background: "rgba(255,77,77,0.1)",
+                    border: "1px solid rgba(255,77,77,0.4)",
+                    color: "#fff",
+                    textAlign: "left",
+                    cursor: "pointer"
+                  }}
+                >
+                  <div style={{ fontWeight: 800, fontSize: "16px", color: "#ff4d4d" }}>👹 보스 레이드 단서</div>
+                  <div style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>내일 강력한 특수 보스에게 도전할 수 있습니다.</div>
+                </motion.button>
+              </div>
+
+              <button
+                onClick={() => setShowInfoTradeModal(false)}
+                style={{
+                  marginTop: "20px",
+                  padding: "10px",
+                  color: "#888",
+                  background: "none",
+                  border: "none",
+                  fontSize: "13px",
+                  cursor: "pointer"
+                }}
+              >
+                나중에 하기
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 임무 보상 팝업 */}
+      <AnimatePresence>
+        {showRewardPopup && rewardData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+              background: "rgba(0,0,0,0.8)", backdropFilter: "blur(10px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 11000, padding: "20px"
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              style={{
+                width: "100%", maxWidth: "340px",
+                background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+                borderRadius: "32px", border: "2px solid #ffd700",
+                padding: "40px 20px", textAlign: "center",
+                boxShadow: "0 0 50px rgba(255, 215, 0, 0.2)"
+              }}
+            >
+              <div style={{ fontSize: "60px", marginBottom: "20px", animation: "bounce 2s infinite" }}>🎁</div>
+              <h2 style={{ fontSize: "24px", fontWeight: 900, color: "#ffd700", marginBottom: "30px", textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>임무 완수 보상!</h2>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "40px" }}>
+                {rewardData.gold > 0 && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "14px", color: "#ccc" }}>💰 금화</span>
+                    <span style={{ fontSize: "18px", fontWeight: 900, color: "#fff" }}>+{formatCompactNumber(rewardData.gold)}</span>
+                  </div>
+                )}
+                {rewardData.token > 0 && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "14px", color: "#ccc" }}>🎟️ 도박권</span>
+                    <span style={{ fontSize: "18px", fontWeight: 900, color: "#fff" }}>+{rewardData.token}개</span>
+                  </div>
+                )}
+                {rewardData.favor > 0 && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "14px", color: "#ccc" }}>❤️ 호감도</span>
+                    <span style={{ fontSize: "18px", fontWeight: 900, color: "#ff7eb3" }}>+{rewardData.favor}</span>
+                  </div>
+                )}
+                {rewardData.exp > 0 && (
+                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "14px", color: "#ccc" }}>✨ 경험치</span>
+                    <span style={{ fontSize: "18px", fontWeight: 900, color: "#4dff8a" }}>+{formatCompactNumber(rewardData.exp)}</span>
+                  </div>
+                )}
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowRewardPopup(false)}
+                style={{
+                  width: "100%", padding: "16px", borderRadius: "18px",
+                  background: "#ffd700", color: "#000", border: "none",
+                  fontSize: "18px", fontWeight: 950, cursor: "pointer",
+                  boxShadow: "0 10px 20px rgba(255,215,0,0.3)"
+                }}
+              >
+                확인
+              </motion.button>
             </motion.div>
           </motion.div>
         )}

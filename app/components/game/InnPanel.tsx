@@ -1064,7 +1064,7 @@ const fireCounterSlash = (damage: number) => {
   counterEnemyHpRef.current = nextHp;
   setCounterEnemyHp(nextHp);
 
-  addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 42);
+  addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 52);
 
   if (nextHp <= 0) {
   const stageBonus = 250 + currentStage * 80;
@@ -2241,7 +2241,7 @@ left: `${n.x}%`,
                     {/* Combo Overlay */}
                     {combo > 0 && (
                       <div style={{
-                        position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)",
+                        position: "absolute", top: "8%", left: "50%", transform: "translate(-50%, -50%)",
                         pointerEvents: "none", textAlign: "center", zIndex: 10
                       }}>
                         <div style={{
@@ -2273,25 +2273,25 @@ left: `${n.x}%`,
                           transition={{ duration: 1.2, ease: "easeOut" }}
                           style={{
                             position: "absolute",
-                            top: "10%",
-                            right: "5%",
+                            top: "25%",
+                            right: "12%",
                             zIndex: 200,
                             pointerEvents: "none",
                             textAlign: "right"
                           }}
                         >
                           <div style={{
-                            fontSize: 42,
+                            fontSize: 21,
                             fontWeight: 950,
                             color: "#00f2ff",
-                            textShadow: "0 0 20px rgba(0, 242, 255, 0.8), 0 0 10px #fff",
+                            textShadow: "0 0 6px rgba(0, 242, 255, 0.8), 0 0 3px #fff",
                             letterSpacing: 2,
                             fontStyle: "italic"
                           }}>
                             청운진기 반격!
                           </div>
                           <div style={{
-                            fontSize: 12,
+                            fontSize: 8,
                             color: "#fff",
                             fontWeight: 800,
                             marginTop: -2,
@@ -2967,7 +2967,7 @@ left: `${n.x}%`,
           left: `${ft.x}%`,
           top: `${ft.y}%`,
           color: ft.color,
-          fontSize: 24,
+          fontSize: 20,
           fontWeight: 900,
           pointerEvents: "none",
           animation: "floatUp 1s ease-out forwards",

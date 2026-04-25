@@ -341,7 +341,7 @@ interface GameState {
   equipItem: (itemId: string) => void;
   unequipItem: (slot: EquipSlot) => void;
   resolveTimingMission: (payload: any) => void;
-  startMasterDuel: () => void;
+  startMasterDuel: (isSpecialBoss?: boolean) => void;
   updateMasterDuel: (dt: number) => void;
   claimDuelReward: () => void;
   markInnEntryHandled: () => void;
@@ -903,7 +903,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       const intervals = [300, 400, 500, 600, 700, 800, 900, 1000];
       const currentIdx = s.game.innEventIndex || 0;
-      const targetInterval = Math.floor(intervals[currentIdx % 8] / nightBuffs.mobSpawn);
+      const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
+      const spawnBonus = isTreasureForecast ? 1.5 : 0;
+      const targetInterval = Math.floor(intervals[currentIdx % 8] / (nightBuffs.mobSpawn + spawnBonus));
       const killGap = tKills - (s.game.lastInnEventKillCount || 0);
 
       if (dHp <= 0) {
@@ -911,7 +913,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         // 다음 더미 체력 결정
         dHp = stats.hp;
         const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
-        const kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
+        const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
+        let kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
+        if (isTreasureForecast) {
+          kG *= 3; // 보물 예보 시 골드 3배
+          lastR = "💰 TREASURE!";
+        }
         eGold += kG;
         // [수정] 중요 팝업(개방, 진입 등)이 다음 타격에 의해 즉시 사라지는 현상 방지
         const isImportantMsg = typeof lastR === 'string' && (lastR.includes("개방") || lastR.includes("진입") || lastR.includes("발견") || lastR.includes("획득"));
@@ -1638,13 +1645,23 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   incrementCombo: () => set((s: any) => ({ game: { ...s.game, comboCount: (s.game.comboCount || 0) + 1, lastAttackTime: Date.now() } })),
   setSelectedMasterLevel: (l: number) => set((s: any) => { const e = generateEnemy(l); return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, selectedLevel: l, rivalName: e.name, rivalHp: e.hp, rivalMaxHp: e.hp, lastWinReward: undefined } } }; }),
-  startMasterDuel: () => {
+  startMasterDuel: (isSpecialBoss = false) => {
     const { game } = get();
-    if (game.masterDuel.challengeTickets <= 0) return;
-
-    // 모든 강화 항목 레벨이 N 이상일 때만 도전 가능 체크는 UI에서 수행하지만,
-    // 여기서도 데이터 무결성을 위해 한 번 더 레벨 생성을 진행
-    const e = generateEnemy(game.masterDuel.selectedLevel);
+    if (game.masterDuel.challengeTickets <= 0 && !isSpecialBoss) return;
+    
+    let e: any;
+    if (isSpecialBoss && game.nextDayEvent?.type === "BOSS_RAID_CLUE") {
+      const baseEnemy = generateEnemy(game.masterDuel.selectedLevel + 20);
+      e = {
+        ...baseEnemy,
+        name: `🔥 특수 보스: ${game.nextDayEvent.bossId}`,
+        hp: baseEnemy.hp * 3,
+        atk: baseEnemy.atk * 1.5,
+        isBoss: true
+      };
+    } else {
+      e = generateEnemy(game.masterDuel.selectedLevel);
+    }
     const isZhuge = game.faction === "제갈세가";
     const statMult = isZhuge ? 1.05 : 1.0;
 
@@ -1664,7 +1681,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...s.game,
         masterDuel: {
           ...s.game.masterDuel,
-          challengeTickets: s.game.masterDuel.challengeTickets - 1,
+          challengeTickets: isSpecialBoss ? s.game.masterDuel.challengeTickets : s.game.masterDuel.challengeTickets - 1,
           streakCount: streak,
           lastAttackTime: now,
           isPlaying: true,
@@ -1674,7 +1691,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           rivalDef: e.def,
           rivalName: e.name,
           isBoss: e.isBoss,
-          timeLeft: 40,
+          timeLeft: isSpecialBoss ? 60 : 40,
           rivalAttackTimer: 0,
           chargeTimer: 0,
           lastEffect: null,
@@ -1693,7 +1710,8 @@ export const useGameStore = create<GameState>((set, get) => ({
             internalCDs: {},
             statMult: statMult // 제갈세가 버프용
           }
-        }
+        },
+        nextDayEvent: isSpecialBoss ? { ...s.game.nextDayEvent, isUsed: true } : s.game.nextDayEvent
       }
     }));
   },
@@ -3804,6 +3822,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (nextTimeState === "day") {
           nextTimeState = "dusk";
           nextTimeRemaining = 60;
+          // 낮이 끝나면 이벤트 정보 초기화
+          return {
+            game: {
+              ...s.game,
+              timeState: nextTimeState,
+              timeRemaining: nextTimeRemaining,
+              nextDayEvent: null
+            }
+          };
         } else if (nextTimeState === "dusk") {
           nextTimeState = "night";
           nextTimeRemaining = 300;
