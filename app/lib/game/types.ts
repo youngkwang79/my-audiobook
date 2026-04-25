@@ -306,6 +306,12 @@ export type FootworkGameState = {
   isPlaying: boolean;
 };
 
+export type NightLimits = {
+  giluActionLeft: number;
+  npcTalkCount: Record<string, number>;
+  infoTradeUsed: boolean;
+};
+
 export type TowerBuff = {
   id: string;
   name: string;
@@ -515,10 +521,12 @@ export type GameSaveData = {
   nightStreak: number;
   npcFavors: Record<string, number>;
   nightBuffs: { id: string; name: string; effect: any; expiresAt: number }[];
+  nightLimits: NightLimits;
   options: {
     lowPowerMode: boolean;
     autoFps: boolean;
   };
+  showDawnSettlement: boolean;
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

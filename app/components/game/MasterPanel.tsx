@@ -1169,7 +1169,7 @@ export default function MasterPanel() {
                     <span style={{ fontSize: 10, color: "#ffd700", background: "rgba(255,215,0,0.1)", padding: "1px 4px", borderRadius: 4 }}>과충전</span>
                   )}
                 </div>
-                {masterDuel.challengeTickets < masterDuel.maxChallengeTickets && (
+                {masterDuel.challengeTickets < (masterDuel.overChargeMaxTickets || 12) && (
                   <div style={{ fontSize: 11, color: "#aaa", fontWeight: 700 }}>
                     {(() => {
                       const chargeInterval = 5 * 60 * 1000;

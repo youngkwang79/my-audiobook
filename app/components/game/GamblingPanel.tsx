@@ -7,22 +7,26 @@ import {
   formatCompactNumber,
 } from "@/app/lib/game/useGameStore";
 import TujeonExchangePanel from "./TujeonExchangePanel";
+import YabawiGame from "./YabawiGame";
 
 const ODD_EVEN_COST = 10000000;
 const DICE_COST = 30000000;
 
 export default function GamblingPanel() {
-  const { game, addCoins, giveGamblingToken } = useGameStore() as any;
+  const { game, addCoins, giveGamblingToken, getNightBuffs } = useGameStore() as any;
 
-  const [selectedGame, setSelectedGame] = useState<"oddeven" | "dice" | null>(
+  const [selectedGame, setSelectedGame] = useState<"oddeven" | "dice" | "yabawi" | null>(
     null
   );
   const [gameResult, setGameResult] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [yabawiSession, setYabawiSession] = useState<any | null>(null);
 
   const gamblingTokens =
     game.gamblingTokens ?? game.tujeonTokens ?? game.gambleTokens ?? 0;
+  const unlocked = game.unlockedContents ?? [];
+  const isSecretGambleUnlocked = unlocked.includes("secret_gamble");
 
   const addTujeonToken = (amount: number) => {
     if (typeof giveGamblingToken === "function") {
@@ -49,19 +53,18 @@ export default function GamblingPanel() {
     setIsProcessing(true);
     setGameResult(null);
 
-    let winRate = 0.5;
+    const nightBuffs = getNightBuffs();
+    let winRate = 0.5 + (nightBuffs.gambleWin / 100);
 
     if (game.nightBuffs) {
       game.nightBuffs.forEach((b: any) => {
-        if (b.effect === "gamble_win_up_5") winRate += 0.05;
-        if (b.effect === "gamble_win_up_10") winRate += 0.1;
         if (b.effect === "gamble_first_win_up_20" && streak === 0) {
           winRate += 0.2;
         }
       });
     }
 
-    winRate = Math.min(0.8, winRate);
+    winRate = Math.min(0.85, winRate);
 
     const rolledNumber = Math.floor(Math.random() * 100) + 1;
     const answer = rolledNumber % 2 === 0 ? "even" : "odd";
@@ -104,12 +107,11 @@ export default function GamblingPanel() {
     setIsProcessing(true);
     setGameResult(null);
 
-    let bonusWinRate = 0;
+    const nightBuffs = getNightBuffs();
+    let bonusWinRate = (nightBuffs.gambleWin / 100);
 
     if (game.nightBuffs) {
       game.nightBuffs.forEach((b: any) => {
-        if (b.effect === "gamble_win_up_5") bonusWinRate += 0.05;
-        if (b.effect === "gamble_win_up_10") bonusWinRate += 0.1;
         if (b.effect === "gamble_first_win_up_20" && streak === 0) {
           bonusWinRate += 0.2;
         }
@@ -153,10 +155,29 @@ export default function GamblingPanel() {
     }, 1000);
   };
 
+  const handleYabawiResult = (win: boolean, bet: bigint) => {
+    if (win) {
+      setYabawiSession((prev: any) => ({
+        ...prev,
+        accumulatedGold: (prev?.accumulatedGold || 0n) + BigInt(bet) * 2n,
+        stakedGold: 0n,
+        isMilestoneReached: true
+      }));
+    } else {
+      // 20% protection
+      const refund = Number(bet) * 0.2;
+      addCoins(refund);
+      alert(`패배했습니다. 위로금으로 판돈의 20%인 ${formatCompactNumber(refund)}냥을 돌려받았습니다.`);
+      setYabawiSession(null);
+      setSelectedGame(null);
+    }
+  };
+
   const resetSelection = () => {
     setSelectedGame(null);
     setGameResult(null);
     setIsProcessing(false);
+    setYabawiSession(null);
   };
 
   return (
@@ -328,6 +349,31 @@ export default function GamblingPanel() {
             <div style={arrowStyle}>›</div>
           </motion.div>
 
+          {isSecretGambleUnlocked && (
+            <motion.div
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              onClick={() => setSelectedGame("yabawi")}
+              style={{
+                ...gameCardStyle,
+                background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))",
+                border: "1px solid rgba(255,215,0,0.3)"
+              }}
+            >
+              <div style={{ ...gameIconStyle, background: "rgba(255,215,0,0.1)" }}>🎰</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ ...gameTitleStyle, color: "#ffd700" }}>고급 야바위 (비밀)</div>
+                <div style={gameDescStyle}>
+                  연승 시 상금이 기하급수적으로 증가
+                </div>
+                <div style={{ ...costStyle, background: "rgba(255,215,0,0.2)", border: "1px solid #ffd700" }}>
+                  고급 도박장 해금됨
+                </div>
+              </div>
+              <div style={arrowStyle}>›</div>
+            </motion.div>
+          )}
+
           <div
             style={{
               marginTop: "4px",
@@ -341,7 +387,11 @@ export default function GamblingPanel() {
               textAlign: "center",
             }}
           >
-            * 야바위는 객잔 특별 이벤트로 발생합니다.
+            {!isSecretGambleUnlocked ? (
+              <>* 야바위는 교환소에서 <b>비밀 도박장</b> 해금 후 이용 가능합니다.</>
+            ) : (
+              <>* 비밀 도박장 이용이 가능합니다. 행운을 빕니다!</>
+            )}
             <br />
             * 연승을 이어가면 투전패 수급 효율이 좋아집니다.
           </div>
@@ -351,17 +401,73 @@ export default function GamblingPanel() {
       ) : (
         <div
           style={{
-            padding: "18px",
+            padding: selectedGame === "yabawi" ? "0" : "18px",
             borderRadius: "22px",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))",
-            border: "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 14px 30px rgba(0,0,0,0.35)",
+            background: selectedGame === "yabawi" ? "transparent" : "linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))",
+            border: selectedGame === "yabawi" ? "none" : "1px solid rgba(255,255,255,0.12)",
+            boxShadow: selectedGame === "yabawi" ? "none" : "0 14px 30px rgba(0,0,0,0.35)",
           }}
         >
           <button onClick={resetSelection} style={backButtonStyle}>
             ← 투전판으로 돌아가기
           </button>
+
+          {selectedGame === "yabawi" && (
+            <YabawiGame
+              onResult={handleYabawiResult}
+              userCoins={game.coins}
+              session={yabawiSession}
+              onStartGame={(bet) => {
+                const bBet = BigInt(bet);
+                if (BigInt(Math.floor(game.coins)) < bBet) {
+                  alert("보유 금화가 부족합니다.");
+                  return false;
+                }
+                addCoins(-Number(bBet));
+
+                if (yabawiSession) {
+                  setYabawiSession((prev: any) => prev ? ({
+                    ...prev,
+                    stakedGold: prev.stakedGold + bBet
+                  }) : null);
+                } else {
+                  setYabawiSession({
+                    stage: 1,
+                    accumulatedGold: 0n,
+                    stakedGold: bBet,
+                    isMilestoneReached: false
+                  });
+                }
+                return true;
+              }}
+              onClaimReward={(amount) => {
+                const wReward = yabawiSession ? yabawiSession.stage * 20 : 0;
+                addCoins(Number(amount));
+                
+                useGameStore.setState((s: any) => ({
+                  game: {
+                    ...s.game,
+                    wisdom: (s.game.wisdom || 0) + wReward
+                  }
+                }));
+
+                if (wReward > 0) alert(`상금 ${formatCompactNumber(Number(amount))}냥과 함께 ${wReward}pt의 심득을 얻었습니다!`);
+                setYabawiSession(null);
+                setSelectedGame(null);
+              }}
+              onNextStage={() => {
+                setYabawiSession((prev: any) => {
+                  if (!prev) return null;
+                  return {
+                    ...prev,
+                    stage: prev.stage + 1,
+                    stakedGold: prev.accumulatedGold,
+                    accumulatedGold: 0n
+                  };
+                });
+              }}
+            />
+          )}
 
           {selectedGame === "oddeven" && (
             <div style={{ textAlign: "center" }}>

@@ -1849,8 +1849,8 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
       width: "100%",
       height: "330px",
       pointerEvents: "none",
-      zIndex: 1,
-      opacity: 0.9,
+      zIndex: 1, // 캐릭터 컨테이너를 낮게 설정
+      opacity: 0.8, // 배경 느낌을 위해 살짝 투명도 조절
     }}
   >
     {/* Player */}
@@ -1985,7 +1985,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               </button>
             </div>
           ) : isPlaying ? (
-            <div style={{ ...activeGameArea, padding: currentMiniGame === "puzzle" ? 0 : "5px" }}>
+            <div style={{ ...activeGameArea, zIndex: 100, padding: currentMiniGame === "puzzle" ? 0 : "5px" }}>
               {currentMiniGame !== "yabawi" && (
                 <div style={scoreBarContainer}>
                   <div style={scoreLabels}>
@@ -2349,111 +2349,89 @@ left: `${n.x}%`,
               )}
 
 
-              {/* 3. Meihua Poles Minigame (Dodge) -> Footwork Game */}
+              {/* 3. Meihua Poles Minigame (Dodge) -> Footwork Game (Vertical Step Style) */}
               {currentMiniGame === "dodge" && (
                 <div style={{
-                  background: 'rgba(10, 10, 10, 0.9)', color: 'white', padding: '20px', borderRadius: '30px',
-                  textAlign: 'center', width: '100%', maxWidth: '380px', margin: '0 auto',
+                  background: 'rgba(10, 10, 10, 0.85)', color: 'white', padding: '15px', borderRadius: '30px',
+                  textAlign: 'center', width: '100%', maxWidth: '380px', height: '540px', margin: '0 auto',
                   border: '2px solid rgba(255, 215, 0, 0.3)', boxShadow: '0 0 30px rgba(0, 0, 0, 0.8)',
-                  display: 'flex', flexDirection: 'column', gap: '15px', position: 'relative'
+                  display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', overflow: 'hidden'
                 }}>
-                  {/* Timer & Info */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {/* Timer & Progress */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '14px', color: '#ffd700', fontWeight: 900 }}>STAGE {game.footworkGame.stage}</div>
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>Best: {game.footworkGame.bestCombo}</div>
+                      <div style={{ fontSize: '14px', color: '#ffd700', fontWeight: 900 }}>보법 {game.footworkGame.stage}단계</div>
+                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>콤보: {game.footworkGame.combo}</div>
                     </div>
-                    {/* Circular Timer */}
-                    <div style={{ position: 'relative', width: 60, height: 60 }}>
-                      <svg width="60" height="60" viewBox="0 0 60 60">
-                        <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-                        <motion.circle
-                          cx="30" cy="30" r="26" fill="none"
-                          stroke={game.footworkGame.timeLeft < 5 ? "#ff4d4d" : "#ffd700"}
-                          strokeWidth="4"
-                          strokeDasharray="163.36"
-                          animate={{ strokeDashoffset: 163.36 * (1 - (game.footworkGame.timeLeft || 0) / (game.footworkGame.maxTime || 45)) }}
-                          transform="rotate(-90 30 30)"
+                    <div style={{ fontSize: '20px', fontWeight: 950, color: '#ffd700' }}>
+                      {Math.ceil(game.footworkGame.timeLeft || 0)}s
+                    </div>
+                  </div>
+
+                  {/* Vertical Lane Container (The Road) */}
+                  <div style={{
+                    flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: '20px',
+                    position: 'relative', display: 'flex', border: '1px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden', margin: '5px 0'
+                  }}>
+                    {/* Lanes */}
+                    {[0, 1, 2].map(laneIdx => (
+                      <div key={laneIdx} style={{
+                        flex: 1, borderRight: laneIdx < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                        position: 'relative'
+                      }}>
+                        {/* Hit Zone at the bottom */}
+                        <div style={{
+                          position: 'absolute', bottom: 0, left: 0, width: '100%', height: '80px',
+                          background: 'linear-gradient(to top, rgba(255,215,0,0.2), transparent)',
+                          borderTop: '2px solid rgba(255,215,0,0.4)', pointerEvents: 'none'
+                        }} />
+                        
+                        {/* Interactive Tap Area */}
+                        <div 
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            const laneMap: Record<number, string> = { 0: "왼쪽", 1: "중앙", 2: "오른쪽" };
+                            handlePolesStep(laneMap[laneIdx]);
+                          }}
+                          style={{ position: 'absolute', inset: 0, cursor: 'pointer', zIndex: 5 }} 
                         />
-                      </svg>
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900 }}>
-                        {Math.ceil(game.footworkGame.timeLeft || 0)}
+
+                        {/* Platforms (Based on currentAnswer and preview) */}
+                        <AnimatePresence>
+                          {(() => {
+                            const answer = game.footworkGame.currentAnswer;
+                            const laneMap: Record<string, number> = { "왼쪽": 0, "중앙": 1, "오른쪽": 2, "좌상": 0, "우상": 2, "좌하": 0, "우하": 2 };
+                            if (laneMap[answer] === laneIdx) {
+                              return (
+                                <motion.div
+                                  key={`target-${game.footworkGame.score}`}
+                                  initial={{ y: -100, opacity: 0 }}
+                                  animate={{ y: 380, opacity: 1 }} // Position at hit zone (bottom)
+                                  exit={{ scale: 1.5, opacity: 0 }}
+                                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                  style={{
+                                    position: 'absolute', left: '10%', width: '80%', height: '60px',
+                                    background: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
+                                    borderRadius: '12px', border: '2px solid #fff',
+                                    boxShadow: '0 0 15px rgba(255,215,0,0.6)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#000', fontWeight: 900, fontSize: '14px', zIndex: 2
+                                  }}
+                                >
+                                  {answer}
+                                </motion.div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </AnimatePresence>
                       </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>콤보</div>
-                      <div style={{ fontSize: '20px', fontWeight: 950, color: '#fff' }}>{game.footworkGame.combo}</div>
-                    </div>
+                    ))}
                   </div>
 
-                  {/* Progress Bar */}
-                  <div style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
-                      <span>진척도</span>
-                      <span>{game.footworkGame.combo} / 20</span>
-                    </div>
-                    <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, overflow: 'hidden' }}>
-                      <motion.div
-                        animate={{ width: `${Math.min(100, (game.footworkGame.combo / 20) * 100)}%` }}
-                        style={{ height: '100%', background: 'linear-gradient(90deg, #ffd700, #ff8c00)', boxShadow: '0 0 10px #ffd700' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Target Display */}
-                  <div style={{ 
-                    height: 140, background: 'rgba(0,0,0,0.3)', borderRadius: 20, 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '1px solid rgba(255,255,255,0.05)', position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={game.footworkGame.currentAnswer}
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 1.5, opacity: 0 }}
-                        style={{ fontSize: 42, fontWeight: 950, color: '#ffd700', textShadow: '0 0 20px rgba(255,215,0,0.5)' }}
-                      >
-                        {game.footworkGame.currentAnswer}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Controls based on Stage */}
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: game.footworkGame.stage === 1 ? '1fr 1fr' : 
-                                         game.footworkGame.stage === 2 ? '1fr 1fr 1fr' : 
-                                         '1fr 1fr',
-                    gap: 10,
-                    marginTop: 10
-                  }}>
-                    {game.footworkGame.stage === 1 && ["왼쪽", "오른쪽"].map(btn => (
-                      <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />
-                    ))}
-                    {game.footworkGame.stage === 2 && ["왼쪽", "중앙", "오른쪽"].map(btn => (
-                      <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />
-                    ))}
-                    {game.footworkGame.stage === 3 && ["좌상", "우상", "좌하", "우하"].map(btn => (
-                      <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />
-                    ))}
-                    {game.footworkGame.stage === 4 && (
-                      <>
-                        <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          {["좌상", "우상"].map(btn => <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />)}
-                        </div>
-                        <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'center' }}>
-                          <FootworkButton label="중앙" onClick={() => handlePolesStep("중앙")} style={{ width: '50%' }} />
-                        </div>
-                        <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          {["좌하", "우하"].map(btn => <FootworkButton key={btn} label={btn} onClick={() => handlePolesStep(btn)} />)}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 5 }}>
-                    제시된 방향의 발판을 정확하게 누르세요!
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                    하단의 빛나는 영역에 도달한 발판 레인을 터치하세요!
                   </div>
                 </div>
               )}

@@ -252,6 +252,7 @@ export const defaultGameData: GameSaveData = {
     autoGain: 0,
     offlineLimit: 0,
   },
+  showDawnSettlement: false,
   regenAccumulator: 0,
   oilBuffs: {},
   gamblingTokens: 0,
@@ -264,6 +265,11 @@ export const defaultGameData: GameSaveData = {
   nightStreak: 0,
   npcFavors: { "연화": 0, "설매": 0, "초운": 0, "홍련": 0, "백노인": 0 },
   nightBuffs: [],
+  nightLimits: {
+    giluActionLeft: 5,
+    npcTalkCount: {},
+    infoTradeUsed: false,
+  },
   options: {
     lowPowerMode: false,
     autoFps: true,
@@ -383,9 +389,10 @@ export function loadGame(): GameSaveData {
           let newTickets = md.challengeTickets ?? 10;
           let newChargeTime = lastCharge;
 
-          if (diff >= chargeInterval && newTickets < (md.maxChallengeTickets ?? 10)) {
+          const maxCap = md.overChargeMaxTickets ?? 12;
+          if (diff >= chargeInterval && newTickets < maxCap) {
             const earned = Math.floor(diff / chargeInterval);
-            newTickets = Math.min(md.maxChallengeTickets ?? 10, newTickets + earned);
+            newTickets = Math.min(maxCap, newTickets + earned);
             newChargeTime = lastCharge + (earned * chargeInterval);
           }
           

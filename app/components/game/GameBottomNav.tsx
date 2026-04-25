@@ -27,8 +27,9 @@ export default function GameBottomNav({
   unlockedTabs,
   onChange,
 }: Props) {
-  // [시스템 삽입] 전투 진행 여부 확인
+  // [시스템 삽입] 전투 진행 여부 및 밤 모드 확인
   const isPlaying = useGameStore((state) => state.game.masterDuel.isPlaying);
+  const isNight = useGameStore((state) => state.game.timeState === "night");
 
   // [시스템 삽입] 전투 중일 때는 하단 메뉴 전체를 렌더링하지 않음
   if (isPlaying) return null;
@@ -50,11 +51,20 @@ export default function GameBottomNav({
       {items.map((item) => {
         const unlocked = unlockedTabs.includes(item.key);
         const active = activeTab === item.key;
+        const isNightOnly = item.key === "giru" || item.key === "gambling";
+        const isLockedByDay = isNightOnly && !isNight;
 
         return (
           <button
             key={item.key}
-            onClick={() => unlocked && onChange(item.key)}
+            onClick={() => {
+              if (!unlocked) return;
+              if (isLockedByDay) {
+                alert("밤(Night)에만 입장할 수 있는 장소입니다.");
+                return;
+              }
+              onChange(item.key);
+            }}
             style={{
               position: "relative",
               borderRadius: 12,
@@ -64,9 +74,9 @@ export default function GameBottomNav({
               background: active
                 ? "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)"
                 : unlocked 
-                  ? "rgba(255,255,255,0.05)"
+                  ? isLockedByDay ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.05)"
                   : "rgba(0,0,0,0.4)",
-              color: active ? "#2b1d00" : unlocked ? "white" : "#666",
+              color: active ? "#2b1d00" : (unlocked && !isLockedByDay) ? "white" : "#666",
               padding: "10px 2px",
               fontWeight: 900,
               fontSize: 10,
@@ -79,18 +89,19 @@ export default function GameBottomNav({
               minWidth: 0,
               overflow: "hidden",
               transition: "all 0.2s ease",
-              filter: unlocked ? "none" : "grayscale(0.8)",
+              filter: (unlocked && !isLockedByDay) ? "none" : "grayscale(0.8)",
+              opacity: isLockedByDay ? 0.6 : 1,
             }}
           >
             <span style={{ fontSize: 13 }}>{item.label}</span>
-            {!unlocked && (
+            {(!unlocked || isLockedByDay) && (
               <span style={{
                 position: "absolute",
                 top: "2px",
                 right: "4px",
                 fontSize: "11px",
               }}>
-                🔒
+                {isLockedByDay ? "🌙" : "🔒"}
               </span>
             )}
           </button>

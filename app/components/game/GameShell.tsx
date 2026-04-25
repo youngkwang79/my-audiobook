@@ -19,9 +19,10 @@ import OfflineRewardPopup from "./OfflineRewardPopup";
 import TowerPanel from "./TowerPanel";
 import GiruPanel from "./GiruPanel";
 import GamblingPanel from "./GamblingPanel";
+import DawnSettlement from "./DawnSettlement";
 
 export default function GameShell() {
-  const { game, markInnEntryHandled, syncFromCloud, syncToCloud } = useGameStore() as any;
+  const { game, markInnEntryHandled, syncFromCloud, syncToCloud, closeDawnSettlement } = useGameStore() as any;
   const { user } = useAuth();
 
   useEffect(() => {
@@ -199,6 +200,12 @@ export default function GameShell() {
           </div>
         </>
       )}
+
+      <AnimatePresence>
+        {game.showDawnSettlement && (
+          <DawnSettlement onClose={closeDawnSettlement} />
+        )}
+      </AnimatePresence>
 
       <GameBottomNav
         activeTab={activeTab as any}

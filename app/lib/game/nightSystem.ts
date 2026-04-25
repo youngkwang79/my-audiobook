@@ -86,6 +86,19 @@ export const GIRU_NPCS: GiruNPC[] = [
     ]
   },
   {
+    id: "sohee",
+    name: "소희",
+    role: "유희형",
+    description: "퍼즐 미니게임 / 특별 보상 담당",
+    image: "/images/npc_sohee.png",
+    favorThresholds: [
+      { level: 20, label: "낯선 손님", effect: "퍼즐 난이도 상승" },
+      { level: 40, label: "단골", effect: "퍼즐 보상 증가" },
+      { level: 60, label: "친밀", effect: "특수 퍼즐 해금" },
+      { level: 80, label: "신뢰", effect: "비밀의 그림 공개" },
+    ]
+  },
+  {
     id: "oldman",
     name: "백노인",
     role: "숨은 고수형",

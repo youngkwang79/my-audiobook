@@ -345,160 +345,121 @@ export default function TrainingPanel() {
       }
     }
 
+    // [개선] 데미지 계산을 상태 업데이트 외부에서 먼저 수행하여 타이밍 이슈 방지
+    let totalHitDamage = 0;
+    let newDamageEntries: any[] = [];
+    
     const critDmgMult = useGameStore.getState().getTotalCritDmg ? useGameStore.getState().getTotalCritDmg() / 100 : 1.5;
     const baseFinalDmg = isCritical ? Math.floor(totalAtk * critDmgMult) : totalAtk;
 
-    // 연마유 효과 통합 트리거
     const oilRes = useGameStore.getState().triggerOilEffects();
-    useGameStore.getState().applyOilResults(oilRes); // 전역 버프 적용
+    useGameStore.getState().applyOilResults(oilRes);
 
-    // [수정] 기본 hitCount는 1로 고정 (신법 등의 영향을 여기서 받지 않도록)
-    // 오직 삼연유일 때만 3으로 변경됨
     const hitCount = oilRes.hitCount;
     const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
     const isFormless = oilRes.buffsTriggered.includes("oil_formless");
     const isDemon = oilRes.buffsTriggered.includes("oil_demon");
-
-    // [수정] 삼연유 발동 시에만 클릭 3번 인정 (일반 공격은 1번)
     const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
-    addExp(isTriple ? 3 : 1);
-
+    
     let ohkMultiplier = isThunder ? 5 : 1;
     if (oilRes.buffsTriggered.includes("oil_demon")) ohkMultiplier = 10;
 
-    setDamages(prev => {
-      const next = [...prev];
+    // 1. 타격 데미지 계산
+    for (let i = 0; i < hitCount; i++) {
+      let finalDmg = baseFinalDmg * ohkMultiplier;
 
-      // 다중 타격 처리
-      const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
-      for (let i = 0; i < hitCount; i++) {
-        let finalDmg = baseFinalDmg * ohkMultiplier;
-
-        // Log Base Damage (Normal Attack)
-        if (i === 0) {
-          logCombatDamage({
-            source: 'normal_attack',
-            damage: baseFinalDmg,
-            isCritical: isCritical
-          });
-          
-          // Log OHK Multiplier as Extra Hit if active
-          if (ohkMultiplier > 1) {
-            logCombatDamage({
-              source: 'extra_hit',
-              skillName: isThunder ? '뇌전일격' : '마신강림',
-              damage: baseFinalDmg * (ohkMultiplier - 1),
-              isCritical: false
-            });
-          }
-        } else {
-          // Additional hits from Triple Hit Oil
-          logCombatDamage({
-            source: 'extra_hit',
-            skillName: '삼연유 추가타',
-            damage: finalDmg,
-            isCritical: isCritical
-          });
+      if (i === 0) {
+        logCombatDamage({ source: 'normal_attack', damage: baseFinalDmg, isCritical });
+        if (ohkMultiplier > 1) {
+          logCombatDamage({ source: 'extra_hit', skillName: isThunder ? '뇌전일격' : '마신강림', damage: baseFinalDmg * (ohkMultiplier - 1), isCritical: false });
         }
-
-        // 무상유 추가 대미지 (적 현재 체력 10%)
-        if (i === 0 && isFormless) {
-          const formlessDmg = gameState.dummyHp * 0.10;
-          finalDmg += formlessDmg;
-          logCombatDamage({
-            source: 'extra_hit',
-            skillName: '무상유',
-            damage: formlessDmg,
-            isCritical: false
-          });
-        }
-
-        let label = isThunder ? "뇌전일격!" : (hitCount > 1 && !isTriple ? `${i + 1}연격` : undefined);
-
-        // 버프 발동 시 텍스트 추가
-        if (i === 0 && oilRes.buffsTriggered.length > 0) {
-          const buffNames: Record<string, string> = {
-            oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍",
-            oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
-            oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
-            oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
-            oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
-          };
-          const triggeredKey = oilRes.buffsTriggered[0];
-          const triggeredName = buffNames[triggeredKey];
-          if (triggeredName) {
-            if (triggeredKey === "oil_formless") label = `[${triggeredName}] 10%삭감!`;
-            else if (triggeredKey === "oil_demon") {
-              // Do not add [천마] to label as requested, it will be rainbow instead
-              label = label || undefined;
-            }
-            else label = `[${triggeredName}] ${label || ""}`;
-
-            // 화면 중앙 이펙트 트리거 (4초)
-            if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
-            setActiveOilText(triggeredName + "!");
-            oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
-          }
-        }
-
-        next.push({
-          id: Date.now() + Math.random() + i,
-          damage: finalDmg,
-          x: dummyX + (Math.random() * 16 - 8) + (i * 6),
-          y: dummyY + (Math.random() * 12 - 6) - (i * 3),
-          isCritical: isCritical || isThunder || isDemon,
-          skillText: undefined, // 데미지 위 텍스트 중복 제거
-          isRainbow: isDemon,
-          isCyan: isTriple
-        });
+      } else {
+        logCombatDamage({ source: 'extra_hit', skillName: '삼연유 추가타', damage: finalDmg, isCritical });
       }
 
-      if (equipmentSkillProc) {
-        next.push({
-          id: Date.now() + Math.random() + 1,
-          damage: eqSkillDamage,
-          x: dummyX + (Math.random() * 20 - 10),
-          y: dummyY - 10 + (Math.random() * 10 - 5),
-          isCritical: true,
-          skillText: undefined, // 데미지 위 텍스트 중복 제거
-          isSkillProc: true
-        });
+      if (i === 0 && isFormless) {
+        const formlessDmg = gameState.dummyHp * 0.10;
+        finalDmg += formlessDmg;
+        logCombatDamage({ source: 'extra_hit', skillName: '무상유', damage: formlessDmg, isCritical: false });
       }
 
-      if (martialSkillProc) {
-        next.push({
-          id: Date.now() + Math.random() + 2,
-          damage: martialSkillDamage,
-          x: dummyX + (Math.random() * 20 - 10),
-          y: dummyY - 18 + (Math.random() * 10 - 5),
-          isCritical: true,
-          skillText: undefined, // 데미지 위 텍스트 중복 제거
-          isSkillProc: true
-        });
+      totalHitDamage += finalDmg;
+      
+      newDamageEntries.push({
+        id: Date.now() + Math.random() + i,
+        damage: finalDmg,
+        x: dummyX + (Math.random() * 16 - 8) + (i * 6),
+        y: dummyY + (Math.random() * 12 - 6) - (i * 3),
+        isCritical: isCritical || isThunder || isDemon,
+        isRainbow: isDemon,
+        isCyan: isTriple
+      });
+    }
 
-        // 무공 이름 한 글자씩 나란히 가로로 타격 (매.화.초.식 따따따딱)
-        const chars = martialSkillName.split("");
-        const strikeGroupId = Date.now();
-        chars.forEach((char, i) => {
-          setTimeout(() => {
-            const strikeId = `${Date.now()}-${i}-${Math.random()}`;
-            const xOffset = (i - (chars.length - 1) / 2) * 9;
-            const hitX = 75 + xOffset;
-            const hitY = 68 + (Math.random() * 4 - 2);
+    // 2. 장비 스킬 데미지 추가
+    if (equipmentSkillProc) {
+      totalHitDamage += eqSkillDamage;
+      newDamageEntries.push({
+        id: Date.now() + Math.random() + 10,
+        damage: eqSkillDamage,
+        x: dummyX + (Math.random() * 20 - 10),
+        y: dummyY - 10 + (Math.random() * 10 - 5),
+        isCritical: true,
+        isSkillProc: true
+      });
+    }
 
-            setTextStrikes(ts => [...ts, { id: strikeId as any, char, x: hitX, y: hitY, groupId: strikeGroupId }]);
-          }, i * 200); // 0.2초 간격 (더욱 묵직하고 절도 있는 따 따 따 딱 느낌)
-        });
+    // 3. 무공 데미지 추가
+    if (martialSkillProc) {
+      totalHitDamage += martialSkillDamage;
+      newDamageEntries.push({
+        id: Date.now() + Math.random() + 20,
+        damage: martialSkillDamage,
+        x: dummyX + (Math.random() * 20 - 10),
+        y: dummyY - 18 + (Math.random() * 10 - 5),
+        isCritical: true,
+        isSkillProc: true
+      });
 
-        // 2초 뒤에 해당 그룹의 모든 글자를 한번에 제거
+      const chars = martialSkillName.split("");
+      const strikeGroupId = Date.now();
+      chars.forEach((char, i) => {
         setTimeout(() => {
-          setTextStrikes(ts => ts.filter(t => t.groupId !== strikeGroupId));
-        }, 2000 + (chars.length * 200));
-      }
-      return next.slice(-20);
-    });
+          const strikeId = `${Date.now()}-${i}-${Math.random()}`;
+          const xOffset = (i - (chars.length - 1) / 2) * 9;
+          const hitX = 75 + xOffset;
+          const hitY = 68 + (Math.random() * 4 - 2);
+          setTextStrikes(ts => [...ts, { id: strikeId as any, char, x: hitX, y: hitY, groupId: strikeGroupId }]);
+        }, i * 200);
+      });
+      setTimeout(() => {
+        setTextStrikes(ts => ts.filter(t => t.groupId !== strikeGroupId));
+      }, 2000 + (chars.length * 200));
+    }
 
-    // 자동 제거
+    // 4. 상태 업데이트 실행
+    setDamages(prev => [...prev, ...newDamageEntries].slice(-20));
+    
+    // 버프 텍스트 트리거 (첫 타격 시에만)
+    if (oilRes.buffsTriggered.length > 0) {
+      const buffNames: Record<string, string> = {
+        oil_atk_3: "광폭", oil_crit_3: "파천", oil_speed_3: "질풍",
+        oil_eva_3: "무영", oil_def_3: "강철", oil_thunder: "뇌전",
+        oil_poison: "만독", oil_bleed: "혈염", oil_reflect: "반탄",
+        oil_vajra: "금강", oil_clarity: "청명", oil_formless: "무상", oil_demon: "천마",
+        oil_triple_hit: "삼연", oil_vampire: "흡성", oil_eye: "영안"
+      };
+      const triggeredName = buffNames[oilRes.buffsTriggered[0]];
+      if (triggeredName) {
+        if (oilEffectTimeoutRef.current) clearTimeout(oilEffectTimeoutRef.current);
+        setActiveOilText(triggeredName + "!");
+        oilEffectTimeoutRef.current = setTimeout(() => setActiveOilText(null), 4000);
+      }
+    }
+
+    // 5. 최종 합계 데미지를 스토어에 전달
+    addExp(isTriple ? 3 : 1, false, totalHitDamage);
+
     setTimeout(() => {
       setHitEffects(h => h.slice(1));
     }, 500);
