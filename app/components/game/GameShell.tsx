@@ -43,7 +43,7 @@ export default function GameShell() {
   }, [game.yabawiEvent?.active]);
 
   const activeTab = game.activeTab || "training";
-  const setActiveTab = (tab: string) => useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: tab } }));
+  const { setActiveTab } = useGameStore() as any;
   const [mounted, setMounted] = useState(false);
   const [showFogWarp, setShowFogWarp] = useState(false);
   const handledWarpRef = useRef(0);
@@ -137,8 +137,8 @@ export default function GameShell() {
         overflow: "hidden",
       }}
     >
-     {/* Night System Bar - 전투 중이 아닐 때만 렌더링 */}
-{!game.masterDuel.isPlaying && (
+     {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
+{!game.masterDuel.isPlaying && activeTab !== "master" && (
   <div style={{
     padding: "8px 12px",
     background: game.timeState === "night" ? "rgba(40, 20, 80, 0.9)" : 

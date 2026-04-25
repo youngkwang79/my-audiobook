@@ -179,6 +179,14 @@ export const defaultGameData: GameSaveData = {
     },
     equippedSkillIds: [],
     isBoss: false,
+
+    // --- 도전권 시스템 (Challenge Ticket System) ---
+    challengeTickets: 10,
+    maxChallengeTickets: 10,
+    overChargeMaxTickets: 12,
+    lastChargeTime: Date.now(),
+    streakCount: 0,
+    lastAttackTime: 0,
   },
   pendingInnEntry: false,
   innEventVersion: 0,
@@ -349,6 +357,32 @@ export function loadGame(): GameSaveData {
       martialArtsSkills: Array.isArray(v12Data.martialArtsSkills) ? v12Data.martialArtsSkills : [],
       oilBuffs: v12Data.oilBuffs || {},
       tower: { ...defaultTowerState, ...(v12Data.tower || {}) },
+      masterDuel: {
+        ...defaultGameData.masterDuel,
+        ...v12Data.masterDuel,
+        // 오프라인 충전 계산
+        ...(v12Data.masterDuel ? (() => {
+          const md = v12Data.masterDuel;
+          const lastCharge = md.lastChargeTime || Date.now();
+          const now = Date.now();
+          const diff = now - lastCharge;
+          const chargeInterval = 5 * 60 * 1000;
+          let newTickets = md.challengeTickets ?? 10;
+          let newChargeTime = lastCharge;
+
+          if (diff >= chargeInterval && newTickets < (md.maxChallengeTickets ?? 10)) {
+            const earned = Math.floor(diff / chargeInterval);
+            newTickets = Math.min(md.maxChallengeTickets ?? 10, newTickets + earned);
+            newChargeTime = lastCharge + (earned * chargeInterval);
+          }
+          
+          return {
+            challengeTickets: newTickets,
+            lastChargeTime: newChargeTime,
+            streakCount: 0 // 재접속 시 초기화
+          };
+        })() : {})
+      }
     };
   } catch (error) {
     console.error("게임 저장 데이터 불러오기 실패:", error);

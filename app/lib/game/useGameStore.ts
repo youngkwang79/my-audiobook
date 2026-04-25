@@ -242,7 +242,7 @@ function getDuelTier(rating: number) {
     const isBoss = (level % 10 === 0);
 
     const refPlayer = getTargetPlayerStats(level + 1);
-    const rivalDef = Math.floor(refPlayer.atk * 0.2);
+    const rivalDef = Math.floor(refPlayer.atk * 0.01); // 기존 20%에서 1%로 대폭 축소 (타격감 강화)
     const defMultiplier = 100 / (100 + rivalDef);
     const avgDmgPerHitRaw = refPlayer.atk * defMultiplier;
     const avgDmgPerHit = avgDmgPerHitRaw * (1 + (refPlayer.critRate / 100) * (refPlayer.critDmg / 100 - 1));
@@ -318,7 +318,7 @@ interface GameState {
   addExp: (amount: number, isAuto?: boolean) => void;
   addCoins: (amount: number) => void;
   triggerSave: (immediate?: boolean) => void;
-  autoTrain: () => void;
+  autoTrain: (multiplier?: number) => void;
   takeDamage: (damage: number) => void;
   heal: (amount: number) => void;
   breakthrough: () => void;
@@ -409,6 +409,7 @@ interface GameState {
   interactGiru: (npcId: string, actionId: string) => { success: boolean; message: string; event?: any };
   setLowPowerMode: (enabled: boolean) => void;
   setAutoFps: (enabled: boolean) => void;
+  setActiveTab: (tab: any) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -1301,6 +1302,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 이전에 이미 버프가 없고 쿨다운도 없다면 일찍 반환
     if (s.game.buffTimeLeft <= 0 && !s.game.activeBuff && !hasCooldown && !hasOilBuff && !s.game.movementBuff && nextHp === s.game.hp && nextMp === s.game.mp && finalAccumulator === s.game.regenAccumulator) return s;
     
+    // --- 도전권 충전 (5분당 1개, 최대치까지) ---
+    const md = s.game.masterDuel;
+    let newTickets = md.challengeTickets;
+    let newChargeTime = md.lastChargeTime;
+    const chargeInterval = 5 * 60 * 1000;
+    
+    if (newTickets < md.maxChallengeTickets) {
+      const now = Date.now();
+      const elapsed = now - (newChargeTime || now);
+      if (elapsed >= chargeInterval) {
+        const gained = Math.floor(elapsed / chargeInterval);
+        newTickets = Math.min(md.maxChallengeTickets, newTickets + gained);
+        newChargeTime = (newChargeTime || now) + (gained * chargeInterval);
+      }
+    }
+
     return { 
       game: { 
         ...s.game, 
@@ -1314,7 +1331,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         buffTimeLeft: newBuffTimeLeft,
         movementBuff: nextMoveBuff,
         isManaShieldActive: nextManaShield,
-        nextHitMultiplier: nextHitMult
+        nextHitMultiplier: nextHitMult,
+        masterDuel: {
+          ...s.game.masterDuel,
+          challengeTickets: newTickets,
+          lastChargeTime: newChargeTime
+        }
       } 
     }; 
   }),
@@ -1547,7 +1569,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSelectedMasterLevel: (l: number) => set((s: any) => { const e = generateEnemy(l); return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, selectedLevel: l, rivalName: e.name, rivalHp: e.hp, rivalMaxHp: e.hp, lastWinReward: undefined } } }; }),
   startMasterDuel: () => { 
     const { game } = get(); 
-    if (get().getTotalHp() <= 0) return; 
+    if (game.masterDuel.challengeTickets <= 0) return;
 
     // 모든 강화 항목 레벨이 N 이상일 때만 도전 가능 체크는 UI에서 수행하지만,
     // 여기서도 데이터 무결성을 위해 한 번 더 레벨 생성을 진행
@@ -1559,11 +1581,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isSama = game.faction === "사마세가";
     const initialShield = isSama ? get().getTotalMp() * 0.2 : 0;
 
+    const now = Date.now();
+    // 10분 이상 지났으면 연속 처치 초기화
+    let streak = game.masterDuel.streakCount || 0;
+    if (now - (game.masterDuel.lastAttackTime || 0) > 10 * 60 * 1000) {
+      streak = 0;
+    }
+
     set((s: any) => ({ 
       game: { 
         ...s.game, 
         masterDuel: { 
           ...s.game.masterDuel, 
+          challengeTickets: s.game.masterDuel.challengeTickets - 1,
+          streakCount: streak,
+          lastAttackTime: now,
           isPlaying: true, 
           rivalHp: e.hp, 
           rivalMaxHp: e.hp, 
@@ -1831,8 +1863,19 @@ export const useGameStore = create<GameState>((set, get) => ({
       const nGauge = Math.min(100, (masterDuel.ultimateGauge || 0) + (isWeakness ? 5 : 2));
 
       if (nHp <= 0) {
+        // 연속 처치 보너스 계산
+        let streakBonus = 1.0;
+        const currentStreak = masterDuel.streakCount || 0;
+        if (currentStreak >= 9) streakBonus = 1.2; // 이번이 10회째가 됨
+        else if (currentStreak >= 4) streakBonus = 1.1; // 이번이 5회째가 됨
+        else if (currentStreak >= 2) streakBonus = 1.05; // 이번이 3회째가 됨
+
         const level = masterDuel.selectedLevel;
-        const goldGain = Math.floor(900 * Math.pow(level, 1.2) * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.05));
+        // 기본 보상 2배 상향 (900 -> 1800)
+        const baseGold = 1800 * Math.pow(level, 1.2);
+        const goldGain = Math.floor(baseGold * streakBonus * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.05));
+        const reputationGain = goldGain; // 명성도 동일하게 적용
+
         const expGain = Math.floor(90 * Math.pow(level, 1.1) * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.1));
         const rewardBase = 5 + (level - 1) * 0.7;
         const bossTokenGain = Math.floor(rewardBase); 
@@ -1843,7 +1886,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         
         const oilNameMap: Record<string, string> = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
 
-        let msg = `[처단 완료]\n금화 +${goldGain.toLocaleString()}\n명성 +${goldGain.toLocaleString()}\n징표 ${bossTokenGain.toLocaleString()}\n심득 +${wisdomGain.toLocaleString()}\n수련 정진 +${expGain.toLocaleString()}`;
+        let bonusText = streakBonus > 1 ? ` (보너스 +${Math.round((streakBonus - 1) * 100)}%)` : "";
+        let msg = `[처단 완료] 연속 ${currentStreak + 1}회${bonusText}\n금화 +${goldGain.toLocaleString()}\n명성 +${reputationGain.toLocaleString()}\n징표 ${bossTokenGain.toLocaleString()}\n심득 +${wisdomGain.toLocaleString()}\n수련 정진 +${expGain.toLocaleString()}`;
         if (oilId) msg += `\n[획득] ${oilNameMap[oilId] || oilId}`;
 
         const nextConsumables = { ...s.game.consumables };
@@ -1857,7 +1901,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           game: { 
             ...s.game, 
             coins: s.game.coins + goldGain, 
-            reputation: (s.game.reputation || 0) + goldGain, 
+            reputation: (s.game.reputation || 0) + reputationGain, 
             bossTokens: (s.game.bossTokens || 0) + bossTokenGain,
             wisdom: (s.game.wisdom || 0) + wisdomGain,
             touches: (s.game.touches || 0) + expGain,
@@ -1865,7 +1909,22 @@ export const useGameStore = create<GameState>((set, get) => ({
             consumables: nextConsumables,
             oilBuffs: nextBuffs,
             masterDuel: { 
-              ...nextMD, isPlaying: false, currentLevel: nextMaxLevel, selectedLevel: nextLevel, rivalHp: nextEnemy.hp, rivalMaxHp: nextEnemy.hp, rivalAtk: nextEnemy.atk, rivalName: nextEnemy.name, lastWinReward: msg, damageTakenAccumulator: 0, lastEffect: null, ultimateGauge: 0, factionState: { ...fState, comboCount: 0, shield: 0, slowStack: 0, poisonStack: 0 }, lastDefeatTimes: { ...(nextMD.lastDefeatTimes || {}), [level]: now }
+              ...nextMD, 
+              isPlaying: false, 
+              currentLevel: nextMaxLevel, 
+              selectedLevel: nextLevel, 
+              rivalHp: nextEnemy.hp, 
+              rivalMaxHp: nextEnemy.hp, 
+              rivalAtk: nextEnemy.atk, 
+              rivalName: nextEnemy.name, 
+              lastWinReward: msg, 
+              damageTakenAccumulator: 0, 
+              lastEffect: null, 
+              ultimateGauge: 0, 
+              factionState: { ...fState, comboCount: 0, shield: 0, slowStack: 0, poisonStack: 0 }, 
+              lastDefeatTimes: { ...(nextMD.lastDefeatTimes || {}), [level]: now },
+              streakCount: (masterDuel.challengeTickets === 0) ? 0 : currentStreak + 1, // 0개가 되면 초기화
+              lastAttackTime: now
             } 
           } 
         }; 
@@ -3444,4 +3503,22 @@ stepTower: (lane: number) => {
         },
       },
     })),
+
+  setActiveTab: (tab: any) =>
+    set((s: any) => {
+      let streak = s.game.masterDuel.streakCount || 0;
+      if (tab !== "master") {
+        streak = 0; // 대경페이지를 벗어남 시 초기화
+      }
+      return {
+        game: {
+          ...s.game,
+          activeTab: tab,
+          masterDuel: {
+            ...s.game.masterDuel,
+            streakCount: streak
+          }
+        }
+      };
+    }),
 }));

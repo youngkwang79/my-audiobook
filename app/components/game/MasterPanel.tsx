@@ -1097,7 +1097,7 @@ export default function MasterPanel() {
           <div style={{ width: "95%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
             {/* 도전 조건 현황판 */}
             <div style={{
-              background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "6px 8px",
+              background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "4px 8px",
               display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, overflowX: "auto"
             }} className="hide-scrollbar">
               {[
@@ -1121,6 +1121,45 @@ export default function MasterPanel() {
               })}
             </div>
 
+            {/* 도전권 및 연속 보너스 정보 */}
+            <div style={{
+              background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "8px 12px",
+              display: "flex", flexDirection: "column", gap: 4, marginBottom: 4
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>🎫</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>도전권</span>
+                  <span style={{ fontSize: 15, fontWeight: 950, color: masterDuel.challengeTickets > 0 ? "#4dabf7" : "#ff4d4d" }}>
+                    {masterDuel.challengeTickets} / {masterDuel.maxChallengeTickets}
+                  </span>
+                  {masterDuel.challengeTickets > masterDuel.maxChallengeTickets && (
+                    <span style={{ fontSize: 10, color: "#ffd700", background: "rgba(255,215,0,0.1)", padding: "1px 4px", borderRadius: 4 }}>과충전</span>
+                  )}
+                </div>
+                {masterDuel.challengeTickets < masterDuel.maxChallengeTickets && (
+                  <div style={{ fontSize: 11, color: "#aaa", fontWeight: 700 }}>
+                    {(() => {
+                      const chargeInterval = 5 * 60 * 1000;
+                      const rem = Math.max(0, chargeInterval - (now - (masterDuel.lastChargeTime || now)));
+                      return `충전까지 ${formatCooldown(rem)}`;
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {masterDuel.streakCount > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#ffd700" }}>
+                    🔥 연속 처단 {masterDuel.streakCount}회
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#4dff4d" }}>
+                    보상 +{masterDuel.streakCount >= 10 ? 20 : (masterDuel.streakCount >= 5 ? 10 : (masterDuel.streakCount >= 3 ? 5 : 0))}%
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1128,19 +1167,23 @@ export default function MasterPanel() {
                   alert(`모든 항목이 Lv.${masterDuel.selectedLevel} 이상이어야 도전 가능합니다.`);
                   return;
                 }
+                if (masterDuel.challengeTickets <= 0) {
+                  alert("도전권이 부족합니다. (5분당 1개 충전)");
+                  return;
+                }
                 if (!isOnCooldown) triggerMasterDuelSequence();
               }}
-              disabled={isOnCooldown || isCurrentLevelLocked}
+              disabled={isOnCooldown || isCurrentLevelLocked || masterDuel.challengeTickets <= 0}
               style={{
-                width: "100%", padding: "14px", borderRadius: 14,
-                background: (isOnCooldown || isCurrentLevelLocked)
+                width: "100%", padding: "12px", borderRadius: 14,
+                background: (isOnCooldown || isCurrentLevelLocked || masterDuel.challengeTickets <= 0)
                   ? "rgba(50, 50, 50, 0.8)"
                   : "linear-gradient(135deg, #990000 0%, #ff0000 100%)",
-                border: (isOnCooldown || isCurrentLevelLocked) ? "2px solid #444" : "2px solid #ff4444",
-                color: (isOnCooldown || isCurrentLevelLocked) ? "#888" : "#fff",
+                border: (isOnCooldown || isCurrentLevelLocked || masterDuel.challengeTickets <= 0) ? "2px solid #444" : "2px solid #ff4444",
+                color: (isOnCooldown || isCurrentLevelLocked || masterDuel.challengeTickets <= 0) ? "#888" : "#fff",
                 fontSize: 18, fontWeight: 950,
-                boxShadow: (isOnCooldown || isCurrentLevelLocked) ? "none" : "0 0 20px rgba(255,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)",
-                cursor: (isOnCooldown || isCurrentLevelLocked) ? "default" : "pointer",
+                boxShadow: (isOnCooldown || isCurrentLevelLocked || masterDuel.challengeTickets <= 0) ? "none" : "0 0 20px rgba(255,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.3)",
+                cursor: (isOnCooldown || isCurrentLevelLocked || masterDuel.challengeTickets <= 0) ? "default" : "pointer",
                 transition: "0.2s"
               }}
             >
@@ -1149,7 +1192,7 @@ export default function MasterPanel() {
                   <span>악적이 달아나 몸을 숨겼습니다...</span>
                   <span style={{ color: "#ffd700", fontSize: 15 }}>다시 출현까지: {formatCooldown(remainingMs)}</span>
                 </div>
-              ) : isCurrentLevelLocked ? "강화 단계 부족 (도전 불가)" : "⚔️ 악적 처단하기"}
+              ) : isCurrentLevelLocked ? "강화 단계 부족 (도전 불가)" : (masterDuel.challengeTickets <= 0 ? "도전권 부족" : "⚔️ 악적 처단하기")}
             </button>
           </div>
         )}

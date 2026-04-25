@@ -282,6 +282,14 @@ export type MasterDuelState = {
   };
   equippedSkillIds: string[]; // 무공 이름 리스트 (최대 4개)
   isBoss: boolean;
+
+  // --- 도전권 시스템 (Challenge Ticket System) ---
+  challengeTickets: number;
+  maxChallengeTickets: number;
+  overChargeMaxTickets: number;
+  lastChargeTime: number;
+  streakCount: number;
+  lastAttackTime: number;
 };
 
 export type TowerBuff = {
