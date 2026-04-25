@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useGameStore } from "@/app/lib/game/useGameStore";
+import { GIRU_GIFT_ITEMS } from "@/app/lib/game/nightSystem";
 
 const EXCHANGE_ITEMS = [
   {
@@ -11,8 +12,8 @@ const EXCHANGE_ITEMS = [
     grade: "일반",
     cost: 5,
     limit: 5,
-    desc: "기루 NPC 호감도 상승용 선물권을 얻습니다.",
-    rewardText: "기루 선물권 +1",
+    desc: "기루 NPC 호감도 상승용 무작위 선물을 얻습니다.",
+    rewardText: "무작위 선물 +1",
   },
   {
     id: "moon_buff",
@@ -134,9 +135,15 @@ export default function TujeonExchangePanel() {
           [item.id]: (s.game.tujeonExchangeBought?.[item.id] ?? 0) + 1,
         },
       };
-
+ 
       if (item.id === "gilu_gift") {
-        nextGame.giluGiftTickets = (s.game.giluGiftTickets ?? 0) + 1;
+        const gifts = GIRU_GIFT_ITEMS;
+        const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
+        const nextGifts = { ...(s.game.giruGifts || {}) };
+        nextGifts[randomGift.id] = (nextGifts[randomGift.id] || 0) + 1;
+        nextGame.giruGifts = nextGifts;
+        // 알림은 밖에서 처리하거나 여기서 nextGame에 메시지 담기 힘드니 alert 사용
+        setTimeout(() => alert(`선물함에서 [${randomGift.icon} ${randomGift.name}]을(를) 얻었습니다!`), 100);
       }
 
       if (item.id === "moon_buff") {

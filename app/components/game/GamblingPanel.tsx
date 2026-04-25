@@ -83,6 +83,18 @@ export default function GamblingPanel() {
             answer === "odd" ? "홀" : "짝"
           }입니다. 투전패 ${reward}개를 획득했습니다.`
         );
+        // --- Quest Progression ---
+        useGameStore.setState((s: any) => {
+          if (!s.game.activeQuests) return s;
+          const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+          if (qIdx === -1) return s;
+          const q = s.game.activeQuests[qIdx];
+          const nextCount = q.currentCount + 1;
+          const nextQuests = [...s.game.activeQuests];
+          nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
+          if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+          return { game: { ...s.game, activeQuests: nextQuests } };
+        });
       } else {
         setStreak(0);
         setGameResult(
@@ -146,6 +158,18 @@ export default function GamblingPanel() {
         setGameResult(
           `승리! 나 ${playerRoll} / 하우스 ${houseRoll}. 투전패 ${reward}개를 획득했습니다.`
         );
+        // --- Quest Progression ---
+        useGameStore.setState((s: any) => {
+          if (!s.game.activeQuests) return s;
+          const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+          if (qIdx === -1) return s;
+          const q = s.game.activeQuests[qIdx];
+          const nextCount = q.currentCount + 1;
+          const nextQuests = [...s.game.activeQuests];
+          nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
+          if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+          return { game: { ...s.game, activeQuests: nextQuests } };
+        });
       } else {
         setStreak(0);
         setGameResult(`패배... 나 ${playerRoll} / 하우스 ${houseRoll}.`);
@@ -155,14 +179,42 @@ export default function GamblingPanel() {
     }, 1000);
   };
 
+  const getYabawiMultiplier = (stage: number) => {
+    const multipliers: Record<number, number> = {
+      1: 1.5,
+      2: 2.0,
+      3: 2.5,
+      4: 3.0,
+      5: 4.0,
+      6: 5.0,
+      7: 6.0,
+      8: 7.0
+    };
+    return multipliers[stage] || 7.0;
+  };
+
   const handleYabawiResult = (win: boolean, bet: bigint) => {
     if (win) {
+      const stage = yabawiSession?.stage || 1;
+      const multiplier = getYabawiMultiplier(stage);
       setYabawiSession((prev: any) => ({
         ...prev,
-        accumulatedGold: (prev?.accumulatedGold || 0n) + BigInt(bet) * 2n,
+        accumulatedGold: (prev?.accumulatedGold || 0n) + BigInt(Math.floor(Number(bet) * multiplier)),
         stakedGold: 0n,
         isMilestoneReached: true
       }));
+      // --- Quest Progression ---
+      useGameStore.setState((s: any) => {
+        if (!s.game.activeQuests) return s;
+        const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+        if (qIdx === -1) return s;
+        const q = s.game.activeQuests[qIdx];
+        const nextCount = q.currentCount + 1;
+        const nextQuests = [...s.game.activeQuests];
+        nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
+        if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+        return { game: { ...s.game, activeQuests: nextQuests } };
+      });
     } else {
       // 20% protection
       const refund = Number(bet) * 0.2;

@@ -239,18 +239,19 @@ export default function InnPanel({
   const duel = game.duel;
 
   const getTargetScore = (s: number) => {
-  const scores = [
-    0, 1500, 5000, 10000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
-    58000, 67000, 77000, 88000, 100000, 113000, 127000, 142000, 158000, 200000
-  ];
+    const scores = [
+      0, 1500, 5000, 10000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
+      58000, 67000, 77000, 88000, 100000, 113000, 127000, 142000, 158000, 200000
+    ];
 
-  const baseScore = s <= 20 ? scores[s] : 200000 + (s - 20) * 50000;
+    const baseScore = s <= 20 ? scores[s] : 200000 + (s - 20) * 50000;
 
-  const atk = typeof getTotalAttack === "function" ? getTotalAttack() : 100;
-  const attackScale = Math.max(1, Math.log10(Math.max(1, atk / 100)) * 2);
+    const atk = typeof getTotalAttack === "function" ? getTotalAttack() : 100;
+    // 배율 영향도를 2 -> 1.5로 하향하여 목표 점수를 현실적으로 조정
+    const attackScale = Math.max(1, Math.log10(Math.max(1, atk / 100)) * 1.5);
 
-  return Math.floor(baseScore * attackScale);
-};
+    return Math.floor(baseScore * attackScale);
+  };
 
   const playPopSFX = () => {
     if (useGameStore.getState().game.isAudioMuted) return;
@@ -481,6 +482,14 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
   };
 
   const getRivalImage = () => {
+    // 게임마다 독립적으로 캐릭터 이미지를 배치할 수 있도록 설정
+    if (currentMiniGame === "puzzle") {
+      return "/images/rival_puzzle_boss.png"; // 퍼즐 전용 적 이미지
+    }
+    if (currentMiniGame === "dodge") {
+      return "/images/rival_dodge_master.png"; // 보법수련 전용 적 이미지
+    }
+
     const stage = mission?.currentStage || 1;
     if (mission?.rivalName && RIVAL_IMAGE_MAP[mission.rivalName]) {
       return RIVAL_IMAGE_MAP[mission.rivalName];
@@ -498,6 +507,14 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
   };
 
   const getPlayerImage = () => {
+    // 게임마다 독립적으로 주인공 이미지를 배치할 수 있도록 설정
+    if (currentMiniGame === "puzzle") {
+       return "/images/char_puzzle_ready.png";
+    }
+    if (currentMiniGame === "dodge") {
+       return "/images/char_dodge_ready.png";
+    }
+
     const faction = FACTIONS.find(f => f.name === game.faction);
     // Restoration: uses the original paths which were restored via git checkout
     return faction?.characterImages?.ready || "/images/char_hwasan_ready.png";
@@ -605,6 +622,26 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
     const clearedStage = success ? currentStage : currentStage - 1;
     setRound(1); // Reset round on finish
 
+    // --- Quest Progression (q_seolmae_1: Rogue Kills) ---
+    if (success) {
+      useGameStore.setState((s: any) => {
+        if (!s.game.activeQuests) return s;
+        const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_seolmae_1" && q.status === "active");
+        if (qIdx === -1) return s;
+
+        const q = s.game.activeQuests[qIdx];
+        const nextCount = q.currentCount + 1;
+        const nextQuests = [...s.game.activeQuests];
+        nextQuests[qIdx] = { 
+          ...q, 
+          currentCount: nextCount,
+          status: nextCount >= q.targetCount ? "completed" : "active"
+        };
+        if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+        return { game: { ...s.game, activeQuests: nextQuests } };
+      });
+    }
+
     // Robust reward check: Always calculate reward but scale by success
     const finalScore = score || playerScoreRef.current;
 
@@ -679,6 +716,25 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
           isMilestoneReached: prev.isMilestoneReached || prev.stage % 5 === 0
         };
       });
+
+      // --- Quest Progression (q_chowoon_1: Gamble Wins) ---
+      useGameStore.setState((s: any) => {
+        if (!s.game.activeQuests) return s;
+        const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+        if (qIdx === -1) return s;
+
+        const q = s.game.activeQuests[qIdx];
+        const nextCount = q.currentCount + 1;
+        const nextQuests = [...s.game.activeQuests];
+        nextQuests[qIdx] = { 
+          ...q, 
+          currentCount: nextCount,
+          status: nextCount >= q.targetCount ? "completed" : "active"
+        };
+        if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+        return { game: { ...s.game, activeQuests: nextQuests } };
+      });
+
       // Winners will choose to claim or continue in the UI popup handled by YabawiGame
     } else {
       triggerShake();
@@ -1002,13 +1058,13 @@ const fireCounterSlash = (damage: number) => {
 
   setTimeout(() => {
     setCounterSlashEffect(false);
-  }, 450);
+  }, 1200);
 
   const nextHp = Math.max(0, counterEnemyHpRef.current - damage);
   counterEnemyHpRef.current = nextHp;
   setCounterEnemyHp(nextHp);
 
-  addFloatText(`청운반격 -${damage}`, "#ffd700", 50, 32);
+  addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 42);
 
   if (nextHp <= 0) {
   const stageBonus = 250 + currentStage * 80;
@@ -1439,7 +1495,8 @@ const fireCounterSlash = (damage: number) => {
         }
       }
 
-      const scoreGain = Math.floor(cellsToDestroy.size * 5 * (1 + currentCombo * 0.3) * powerFactor);
+      // 셀당 점수를 5 -> 15로 대폭 상향 (9000점 달성을 수월하게 함)
+      const scoreGain = Math.floor(cellsToDestroy.size * 15 * (1 + currentCombo * 0.3) * powerFactor);
       totalScoreGain += scoreGain;
 
       // Update Dantian overload significantly
@@ -2021,7 +2078,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 </div>
               )}
 
-                {currentMiniGame !== "yabawi" && currentMiniGame !== "breath" && (
+                {currentMiniGame !== "yabawi" && currentMiniGame !== "breath" && currentMiniGame !== "puzzle" && (
   <div style={roundBadge}>Stage {currentStage}</div>
 )}
 
@@ -2211,38 +2268,38 @@ left: `${n.x}%`,
                       {counterSlashEffect && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.5, filter: "blur(20px)" }}
-                          animate={{ opacity: 1, scale: 1.8, filter: "blur(0px)" }}
-                          exit={{ opacity: 0, scale: 2.5, filter: "blur(15px)" }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
+                          animate={{ opacity: 1, scale: 1.1, filter: "blur(0px)" }}
+                          exit={{ opacity: 0, scale: 1.5, filter: "blur(10px)" }}
+                          transition={{ duration: 1.2, ease: "easeOut" }}
                           style={{
                             position: "absolute",
-                            top: "45%",
-                            left: "50%",
-                            transform: "translate(-50%, -50%)",
-                            zIndex: 100,
+                            top: "10%",
+                            right: "5%",
+                            zIndex: 200,
                             pointerEvents: "none",
-                            textAlign: "center"
+                            textAlign: "right"
                           }}
                         >
                           <div style={{
-                            fontSize: 48,
+                            fontSize: 42,
                             fontWeight: 950,
-                            color: "#ffd700",
-                            textShadow: "0 0 30px rgba(255, 215, 0, 0.8), 0 0 10px #fff",
-                            letterSpacing: 4,
+                            color: "#00f2ff",
+                            textShadow: "0 0 20px rgba(0, 242, 255, 0.8), 0 0 10px #fff",
+                            letterSpacing: 2,
                             fontStyle: "italic"
                           }}>
-                            청운반격!
+                            청운진기 반격!
                           </div>
                           <div style={{
-                            fontSize: 14,
+                            fontSize: 12,
                             color: "#fff",
                             fontWeight: 800,
-                            marginTop: -10,
-                            opacity: 0.8,
-                            textShadow: "0 0 5px #000"
+                            marginTop: -2,
+                            opacity: 0.9,
+                            textShadow: "0 0 5px #00f2ff",
+                            letterSpacing: 1
                           }}>
-                            CHUN-GUN COUNTER
+                            CHEONGUN COUNTER
                           </div>
                         </motion.div>
                       )}
@@ -2360,78 +2417,96 @@ left: `${n.x}%`,
                   {/* Timer & Progress */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '14px', color: '#ffd700', fontWeight: 900 }}>보법 {game.footworkGame.stage}단계</div>
+                      <div style={{ fontSize: '14px', color: '#ffd700', fontWeight: 900 }}>梅花樁 보법수련 ({game.footworkGame.stage}단계)</div>
                       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>콤보: {game.footworkGame.combo}</div>
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: 950, color: '#ffd700' }}>
+                    <div style={{ fontSize: '20px', fontWeight: 950, color: game.footworkGame.timeLeft < 10 ? "#ff4d4d" : "#ffd700" }}>
                       {Math.ceil(game.footworkGame.timeLeft || 0)}s
                     </div>
                   </div>
 
-                  {/* Vertical Lane Container (The Road) */}
+                  {/* Sequence Preview Area */}
                   <div style={{
-                    flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: '20px',
-                    position: 'relative', display: 'flex', border: '1px solid rgba(255,255,255,0.1)',
-                    overflow: 'hidden', margin: '5px 0'
+                    flex: 1, background: 'rgba(0,0,0,0.4)', borderRadius: '20px',
+                    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    border: '2px solid rgba(255,215,0,0.2)',
+                    overflow: 'hidden', margin: '10px 0', padding: '20px 0'
                   }}>
-                    {/* Lanes */}
-                    {[0, 1, 2].map(laneIdx => (
-                      <div key={laneIdx} style={{
-                        flex: 1, borderRight: laneIdx < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                        position: 'relative'
-                      }}>
-                        {/* Hit Zone at the bottom */}
-                        <div style={{
-                          position: 'absolute', bottom: 0, left: 0, width: '100%', height: '80px',
-                          background: 'linear-gradient(to top, rgba(255,215,0,0.2), transparent)',
-                          borderTop: '2px solid rgba(255,215,0,0.4)', pointerEvents: 'none'
-                        }} />
-                        
-                        {/* Interactive Tap Area */}
-                        <div 
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            const laneMap: Record<number, string> = { 0: "왼쪽", 1: "중앙", 2: "오른쪽" };
-                            handlePolesStep(laneMap[laneIdx]);
-                          }}
-                          style={{ position: 'absolute', inset: 0, cursor: 'pointer', zIndex: 5 }} 
-                        />
+                    {/* The Path (Meihua Poles) */}
+                    <div style={{
+                      position: 'absolute', top: 0, bottom: 0, width: '4px',
+                      background: 'linear-gradient(to bottom, transparent, rgba(255,215,0,0.3), transparent)',
+                      zIndex: 0
+                    }} />
 
-                        {/* Platforms (Based on currentAnswer and preview) */}
-                        <AnimatePresence>
-                          {(() => {
-                            const answer = game.footworkGame.currentAnswer;
-                            const laneMap: Record<string, number> = { "왼쪽": 0, "중앙": 1, "오른쪽": 2, "좌상": 0, "우상": 2, "좌하": 0, "우하": 2 };
-                            if (laneMap[answer] === laneIdx) {
-                              return (
-                                <motion.div
-                                  key={`target-${game.footworkGame.score}`}
-                                  initial={{ y: -100, opacity: 0 }}
-                                  animate={{ y: 380, opacity: 1 }} // Position at hit zone (bottom)
-                                  exit={{ scale: 1.5, opacity: 0 }}
-                                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                  style={{
-                                    position: 'absolute', left: '10%', width: '80%', height: '60px',
-                                    background: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
-                                    borderRadius: '12px', border: '2px solid #fff',
-                                    boxShadow: '0 0 15px rgba(255,215,0,0.6)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: '#000', fontWeight: 900, fontSize: '14px', zIndex: 2
-                                  }}
-                                >
-                                  {answer}
-                                </motion.div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </AnimatePresence>
-                      </div>
-                    ))}
+                    <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '15px', zIndex: 2 }}>
+                      {game.footworkGame.sequence?.slice(0, 6).map((step: string, i: number) => (
+                        <motion.div
+                          key={`${step}-${game.footworkGame.score + i}`}
+                          layout
+                          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                          animate={{ 
+                            opacity: i === 0 ? 1 : 1 - (i * 0.15), 
+                            scale: i === 0 ? 1.2 : 1 - (i * 0.05),
+                            y: 0 
+                          }}
+                          style={{
+                            width: '120px', height: '50px',
+                            background: i === 0 
+                              ? 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)' 
+                              : 'rgba(255,255,255,0.1)',
+                            borderRadius: '12px',
+                            border: i === 0 ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
+                            boxShadow: i === 0 ? '0 0 20px rgba(255,215,0,0.6)' : 'none',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: i === 0 ? '#000' : '#fff', 
+                            fontWeight: 900, fontSize: i === 0 ? '18px' : '14px'
+                          }}
+                        >
+                          {step}
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Hit Zone Indicator */}
+                    <div style={{
+                      position: 'absolute', bottom: '20px', width: '160px', height: '60px',
+                      border: '2px dashed rgba(255,215,0,0.5)', borderRadius: '15px',
+                      pointerEvents: 'none'
+                    }} />
                   </div>
 
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
-                    하단의 빛나는 영역에 도달한 발판 레인을 터치하세요!
+                  {/* Dynamic Control Buttons based on Stage */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10 }}>
+                    {/* Upper Buttons (Stage 3+) */}
+                    {game.footworkGame.stage >= 3 && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <FootworkButton label="左上" onClick={() => handlePolesStep("좌상")} />
+                        <FootworkButton label="右上" onClick={() => handlePolesStep("우상")} />
+                      </div>
+                    )}
+                    
+                    {/* Middle Buttons */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <FootworkButton label="左" onClick={() => handlePolesStep("왼쪽")} />
+                      {game.footworkGame.stage >= 2 && (
+                        <FootworkButton label="中" onClick={() => handlePolesStep("중앙")} 
+                          style={{ background: 'rgba(255,215,0,0.1)' }} />
+                      )}
+                      <FootworkButton label="右" onClick={() => handlePolesStep("오른쪽")} />
+                    </div>
+
+                    {/* Lower Buttons (Stage 3+) */}
+                    {game.footworkGame.stage >= 3 && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <FootworkButton label="左下" onClick={() => handlePolesStep("좌하")} />
+                        <FootworkButton label="右下" onClick={() => handlePolesStep("우하")} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: '12px', color: '#ffd700', fontWeight: 700, textShadow: '0 0 5px #000', marginTop: '5px' }}>
+                    가장 아래의 발판(황금색)을 순서대로 누르세요!
                   </div>
                 </div>
               )}
@@ -2583,7 +2658,7 @@ left: `${n.x}%`,
                     }}>
                       <div style={{
                         width: "100%",
-                        maxWidth: "360px",
+                        maxWidth: "320px", // 블록 사이즈 축소를 위해 너비 하향 조정 (하단 잘림 방지)
                         aspectRatio: `${PUZZLE_COLS} / ${PUZZLE_ROWS}`,
                         background: "#1a1a1a",
                         borderRadius: 20,

@@ -253,6 +253,8 @@ export const defaultGameData: GameSaveData = {
     offlineLimit: 0,
   },
   showDawnSettlement: false,
+  giruGifts: {},
+  activeQuests: [],
   regenAccumulator: 0,
   oilBuffs: {},
   gamblingTokens: 0,
@@ -274,6 +276,8 @@ export const defaultGameData: GameSaveData = {
     lowPowerMode: false,
     autoFps: true,
   },
+  dayCount: 1,
+  nextDayEvent: null,
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

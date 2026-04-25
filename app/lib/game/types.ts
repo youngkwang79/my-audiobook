@@ -332,6 +332,23 @@ export type TowerArtifact = {
   };
 };
 
+export interface Quest {
+  id: string;
+  npcId: string;
+  title: string;
+  desc: string;
+  targetCount: number;
+  currentCount: number;
+  status: "active" | "completed" | "rewarded";
+  reward: {
+    gold?: number;
+    exp?: number;
+    item?: string;
+    token?: number;
+    favor?: number;
+  };
+}
+
 export type TowerState = {
   currentFloor: number;
   highestFloor: number;
@@ -382,6 +399,14 @@ export type HeroProfile = {
   name: string;
   age: number;
   height: number;
+};
+
+export type NextDayEvent = {
+  type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE" | null;
+  targetArea?: string;
+  bossId?: string;
+  clueText?: string;
+  isUsed: boolean;
 };
 
 export type GameSaveData = {
@@ -522,11 +547,15 @@ export type GameSaveData = {
   npcFavors: Record<string, number>;
   nightBuffs: { id: string; name: string; effect: any; expiresAt: number }[];
   nightLimits: NightLimits;
+  giruGifts: Record<string, number>; // New: { "gift_wine": 3, ... }
   options: {
     lowPowerMode: boolean;
     autoFps: boolean;
   };
   showDawnSettlement: boolean;
+  activeQuests: Quest[]; // New: List of active/completed NPC quests
+  dayCount: number;
+  nextDayEvent: NextDayEvent | null;
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

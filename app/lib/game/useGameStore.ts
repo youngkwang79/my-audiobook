@@ -1,8 +1,8 @@
 "use client";
 import { create } from "zustand";
-import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource } from "./types";
+import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource, NextDayEvent, Quest } from "./types";
 import { FACTIONS } from "./factions";
-import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS } from "./nightSystem";
+import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS } from "./nightSystem";
 import { defaultGameData, loadGame, saveGame } from "./storage";
 import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS } from "./items";
 import { getMovementBuff } from "./movementLogic";
@@ -406,7 +406,7 @@ interface GameState {
   toggleEquipSkill: (skillName: string) => void;
   triggerCombatTrap: (multiplier: number) => void;
   visitGiru: () => void;
-  interactGiru: (npcId: string, actionId: string) => { success: boolean; message: string; event?: any };
+  interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string }) => { success: boolean; message: string; event?: any };
   setLowPowerMode: (enabled: boolean) => void;
   setAutoFps: (enabled: boolean) => void;
   setActiveTab: (tab: any) => void;
@@ -415,6 +415,10 @@ interface GameState {
   updateFootwork: (dt: number) => void;
   closeDawnSettlement: () => void;
   getNightBuffs: () => any;
+  addGiruGift: (giftId: string, count: number) => void;
+  acceptQuest: (questId: string) => void;
+  completeQuest: (questId: string) => void;
+  buyGiruInformation: (type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE") => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -1045,6 +1049,21 @@ export const useGameStore = create<GameState>((set, get) => ({
           dummyHp: dHp,
           maxDummyHp: currentMaxHp,
           totalDummyKills: tKills,
+          activeQuests: (() => {
+            if (!s.game.activeQuests) return [];
+            const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_yeonhwa_1" && q.status === "active");
+            if (qIdx === -1) return s.game.activeQuests;
+            const q = s.game.activeQuests[qIdx];
+            const nextCount = q.currentCount + 1;
+            const nextQuests = [...s.game.activeQuests];
+            nextQuests[qIdx] = { 
+              ...q, 
+              currentCount: nextCount,
+              status: nextCount >= q.targetCount ? "completed" : "active"
+            };
+            if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+            return nextQuests;
+          })(),
           dummyKills: tKills >= 300 ? killGap : tKills,
           questTarget: tKills >= 300 ? targetInterval : qT,
           currentMissionTitle: cMT,
@@ -3486,8 +3505,55 @@ export const useGameStore = create<GameState>((set, get) => ({
   visitGiru: () => {
     set((s: any) => ({ game: { ...s.game, activeTab: "giru" } }));
   },
-  interactGiru: (npcId: string, actionId: string) => {
+  interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string }) => {
     const { game } = get();
+    
+    // --- Gift Action Special Handling ---
+    if (actionId === "gift") {
+      const giftId = extra?.giftId;
+      if (!giftId) return { success: false, message: "선물을 선택해주세요." };
+      
+      const giftItem = GIRU_GIFT_ITEMS.find(g => g.id === giftId);
+      if (!giftItem) return { success: false, message: "존재하지 않는 선물입니다." };
+
+      if ((game.giruGifts?.[giftId] || 0) <= 0) {
+        return { success: false, message: "해당 선물을 가지고 있지 않습니다." };
+      }
+
+      const npcData = GIRU_NPCS.find(n => n.id === npcId);
+      const isPreferred = npcData?.preferredGifts.includes(giftId);
+      const favorGain = (giftItem.bonusFavor || 5) + (isPreferred ? 10 : 0);
+
+      set((s: any) => {
+        const nextGifts = { ...(s.game.giruGifts || {}) };
+        nextGifts[giftId] -= 1;
+        if (nextGifts[giftId] <= 0) delete nextGifts[giftId];
+
+        const nextFavors = { ...(s.game.npcFavors || {}) };
+        nextFavors[npcId] = Math.min(100, (nextFavors[npcId] || 0) + favorGain);
+
+        return {
+          game: {
+            ...s.game,
+            giruGifts: nextGifts,
+            npcFavors: nextFavors,
+            nightLimits: {
+              ...s.game.nightLimits,
+              giluActionLeft: s.game.nightLimits.giluActionLeft - 1
+            }
+          }
+        };
+      });
+
+      get().triggerSave(true);
+      return { 
+        success: true, 
+        message: isPreferred 
+          ? `${npcData?.name}님이 선물을 매우 기뻐하며 받습니다! (호감도 +${favorGain})`
+          : `${npcData?.name}님에게 선물을 주었습니다. (호감도 +${favorGain})`
+      };
+    }
+
     const action = GIRU_ACTIONS.find(a => a.id === actionId);
     if (!action) return { success: false, message: "잘못된 요청입니다." };
     
@@ -3635,6 +3701,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           stage === 3 ? ["좌상", "우상", "좌하", "우하"] :
             ["좌상", "우상", "중앙", "좌하", "우하"];
 
+      const initialSequence = Array.from({ length: 10 }, () => stageOptions[Math.floor(Math.random() * stageOptions.length)]);
+
       return {
         game: {
           ...s.game,
@@ -3645,7 +3713,8 @@ export const useGameStore = create<GameState>((set, get) => ({
             combo: 0,
             score: 0,
             isPlaying: true,
-            currentAnswer: stageOptions[Math.floor(Math.random() * stageOptions.length)]
+            sequence: initialSequence,
+            currentAnswer: initialSequence[0]
           }
         }
       };
@@ -3683,7 +3752,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         stage === 2 ? ["왼쪽", "중앙", "오른쪽"] :
           stage === 3 ? ["좌상", "우상", "좌하", "우하"] :
             ["좌상", "우상", "중앙", "좌하", "우하"];
-      const nextAnswer = stageOptions[Math.floor(Math.random() * stageOptions.length)];
+      const nextSequence = success ? [...currentFG.sequence.slice(1), stageOptions[Math.floor(Math.random() * stageOptions.length)]] : currentFG.sequence;
+      const nextAnswer = nextSequence[0];
 
       return {
         game: {
@@ -3693,6 +3763,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             combo: nextCombo,
             timeLeft: nextTime,
             score: nextScore,
+            sequence: nextSequence,
             currentAnswer: nextAnswer,
             bestCombo: Math.max(currentFG.bestCombo || 0, nextCombo),
             isPlaying: !isClear && nextTime > 0
@@ -3727,6 +3798,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       let nextTimeState = s.game.timeState || "day";
       let nextTimeRemaining = (s.game.timeRemaining || 300) - dt;
       let nextNightLimits = s.game.nightLimits;
+      let triggerSettlement = false;
 
       if (nextTimeRemaining <= 0) {
         if (nextTimeState === "day") {
@@ -3745,23 +3817,108 @@ export const useGameStore = create<GameState>((set, get) => ({
           nextTimeState = "dawn";
           nextTimeRemaining = 60;
           // 새벽 정산 팝업 트리거
-          s.showDawnSettlement = true;
+          triggerSettlement = true;
         } else {
           nextTimeState = "day";
           nextTimeRemaining = 300;
+          // 다음 날 시작 시 dayCount 증가 및 이벤트 준비
+          const nextDayCount = (s.game.dayCount || 1) + 1;
+          const nextEvent = s.game.nextDayEvent ? { ...s.game.nextDayEvent, isUsed: false } : null;
+          return {
+            game: {
+              ...s.game,
+              timeState: nextTimeState,
+              timeRemaining: nextTimeRemaining,
+              dayCount: nextDayCount,
+              nextDayEvent: nextEvent,
+              nightLimits: nextNightLimits,
+              showDawnSettlement: s.game.showDawnSettlement
+            }
+          };
         }
       }
 
       return {
+        showDawnSettlement: undefined, // 최상단 오염 프로퍼티 제거
         game: {
           ...s.game,
           timeState: nextTimeState,
           timeRemaining: nextTimeRemaining,
           nightLimits: nextNightLimits,
-          showDawnSettlement: s.showDawnSettlement
+          showDawnSettlement: triggerSettlement ? true : s.game.showDawnSettlement
         }
       };
     });
   },
   closeDawnSettlement: () => set((s: any) => ({ game: { ...s.game, showDawnSettlement: false } })),
+  
+  buyGiruInformation: (type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE") => set((s: any) => {
+    if (s.game.coins < 100000) return s; // 기본 비용 10만 금화
+    
+    let nextEvent: NextDayEvent;
+    if (type === "TREASURE_FORECAST") {
+      const areas = ["낙양", "장안", "항주", "성도"];
+      const area = areas[Math.floor(Math.random() * areas.length)];
+      nextEvent = {
+        type: "TREASURE_FORECAST",
+        targetArea: area,
+        clueText: `내일 ${area} 지역에 금화를 가득 든 보물 무뢰배들이 나타날 것입니다.`,
+        isUsed: false
+      };
+    } else {
+      const bosses = ["어둠의 검객", "피의 군주", "무영객"];
+      const boss = bosses[Math.floor(Math.random() * bosses.length)];
+      nextEvent = {
+        type: "BOSS_RAID_CLUE",
+        bossId: boss,
+        clueText: `내일 강력한 보스 [${boss}]의 은신처가 발견될 것입니다.`,
+        isUsed: false
+      };
+    }
+
+    return {
+      game: {
+        ...s.game,
+        coins: s.game.coins - 100000,
+        nextDayEvent: nextEvent,
+        nightLimits: { ...s.game.nightLimits, infoTradeUsed: true }
+      }
+    };
+  }),
+  addGiruGift: (giftId: string, count: number) => set((s: any) => {
+    const nextGifts = { ...(s.game.giruGifts || {}) };
+    nextGifts[giftId] = (nextGifts[giftId] || 0) + count;
+    if (nextGifts[giftId] <= 0) delete nextGifts[giftId];
+    return { game: { ...s.game, giruGifts: nextGifts } };
+  }),
+  acceptQuest: (questId: string) => set((s: any) => {
+    const q = GIRU_QUESTS.find(q => q.id === questId);
+    if (!q) return s;
+    if (s.game.activeQuests?.some((aq: any) => aq.id === questId)) return s;
+    return { game: { ...s.game, activeQuests: [...(s.game.activeQuests || []), { ...q, status: "active" }] } };
+  }),
+  completeQuest: (questId: string) => set((s: any) => {
+    const quests = [...(s.game.activeQuests || [])];
+    const idx = quests.findIndex(q => q.id === questId);
+    if (idx === -1 || quests[idx].status !== "completed") return s;
+    
+    const q = quests[idx];
+    const reward = q.reward;
+    
+    quests[idx].status = "rewarded";
+    
+    const nextGame = { 
+      ...s.game, 
+      activeQuests: quests,
+      coins: s.game.coins + (reward.gold || 0),
+      exp: s.game.exp + (reward.exp || 0),
+      gamblingTokens: (s.game.gamblingTokens || 0) + (reward.token || 0),
+      npcFavors: { 
+        ...(s.game.npcFavors || {}), 
+        [q.npcId]: Math.min(100, (s.game.npcFavors?.[q.npcId] || 0) + (reward.favor || 0)) 
+      }
+    };
+    
+    return { game: nextGame };
+  }),
 }));
