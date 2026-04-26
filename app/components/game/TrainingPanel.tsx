@@ -330,8 +330,7 @@ export default function TrainingPanel() {
 
         // [수정] 무공 대미지 계산식 정교화 (성급 보너스 및 문파 보정 포함)
         const skData = MARTIAL_COMPENDIUM.find(m => m.name === bestSkill.name && m.factionName === game.faction) || bestSkill;
-        const learned = game.martialArtsSkills.find(ms => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);
-        const stars = learned?.stars || 0;
+        const learned = game.martialArtsSkills.find((ms: any) => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);        const stars = learned?.stars || 0;
         const refineMult = getRefineBonusMultiplier(stars);
         const baseMultiplier = (skData as any).multiplier || 1.5;
 

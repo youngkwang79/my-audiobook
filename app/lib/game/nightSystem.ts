@@ -114,7 +114,7 @@ export interface GiruEvent {
   id: string;
   npcId: string;
   type: "normal" | "rare" | "danger" | "secret" | "special";
-  action: "talk" | "drink" | "gift" | "trade" | "rest";
+  action: "talk" | "drink" | "gift" | "trade" | "rest"| "info";
   text: string;
   effect: string;
   condition?: {
@@ -127,6 +127,8 @@ export interface GiruEvent {
     token?: number;
     gold?: number;
     unlock?: string;
+    healPct?: number;
+    mpHealPct?: number;
   };
 }
 

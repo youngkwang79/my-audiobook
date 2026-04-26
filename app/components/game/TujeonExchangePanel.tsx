@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 import { GIRU_GIFT_ITEMS } from "@/app/lib/game/nightSystem";
+import { useState } from "react";
 
 const EXCHANGE_ITEMS = [
   {
