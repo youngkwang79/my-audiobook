@@ -22,6 +22,10 @@ export default function GamblingPanel() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [streak, setStreak] = useState(0);
   const [yabawiSession, setYabawiSession] = useState<any | null>(null);
+  const [oddEvenNumbers, setOddEvenNumbers] = useState<number[]>([]);
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [playerDice, setPlayerDice] = useState<number[]>([1, 1]);
+  const [enemyDice, setEnemyDice] = useState<number[]>([1, 1]);
 
   const gamblingTokens =
     game.gamblingTokens ?? game.tujeonTokens ?? game.gambleTokens ?? 0;
@@ -52,6 +56,8 @@ export default function GamblingPanel() {
 
     setIsProcessing(true);
     setGameResult(null);
+    setOddEvenNumbers([]);
+    setRevealedCount(0);
 
     const nightBuffs = getNightBuffs();
     let winRate = 0.5 + (nightBuffs.gambleWin / 100);
@@ -66,46 +72,68 @@ export default function GamblingPanel() {
 
     winRate = Math.min(0.85, winRate);
 
-    const rolledNumber = Math.floor(Math.random() * 100) + 1;
-    const answer = rolledNumber % 2 === 0 ? "even" : "odd";
-    const matched = choice === answer;
-    const isWin = matched && Math.random() < winRate;
+    const isWin = Math.random() < winRate;
+    
+    // 주사위 3개 생성
+    const rolls = [
+      Math.floor(Math.random() * 6) + 1,
+      Math.floor(Math.random() * 6) + 1,
+      Math.floor(Math.random() * 6) + 1,
+    ];
+
+    // 결과에 맞춰 마지막 주사위 조정
+    const currentSum = rolls[0] + rolls[1] + rolls[2];
+    const currentParity = currentSum % 2 === 0 ? "even" : "odd";
+    const targetParity = isWin ? choice : (choice === "odd" ? "even" : "odd");
+
+    if (currentParity !== targetParity) {
+      rolls[2] = rolls[2] === 6 ? 5 : rolls[2] + 1;
+    }
+
+    const finalSum = rolls[0] + rolls[1] + rolls[2];
+    const finalParity = finalSum % 2 === 0 ? "even" : "odd";
     const reward = isWin ? Math.floor(1 + Math.random() * 2) : 0;
 
-    setTimeout(() => {
-      addCoins(-ODD_EVEN_COST);
+    setOddEvenNumbers(rolls);
+    addCoins(-ODD_EVEN_COST);
 
-      if (isWin) {
-        addTujeonToken(reward);
-        setStreak((prev) => prev + 1);
-        setGameResult(
-          `승리! 결과는 ${rolledNumber} ${
-            answer === "odd" ? "홀" : "짝"
-          }입니다. 투전패 ${reward}개를 획득했습니다.`
-        );
-        // --- Quest Progression ---
-        useGameStore.setState((s: any) => {
-          if (!s.game.activeQuests) return s;
-          const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
-          if (qIdx === -1) return s;
-          const q = s.game.activeQuests[qIdx];
-          const nextCount = q.currentCount + 1;
-          const nextQuests = [...s.game.activeQuests];
-          nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
-          if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
-          return { game: { ...s.game, activeQuests: nextQuests } };
-        });
-      } else {
-        setStreak(0);
-        setGameResult(
-          `패배했습니다. 결과는 ${rolledNumber} ${
-            answer === "odd" ? "홀" : "짝"
-          }입니다.`
-        );
-      }
+    rolls.forEach((_, index) => {
+      setTimeout(() => {
+        setRevealedCount(index + 1);
 
-      setIsProcessing(false);
-    }, 850);
+        if (index === rolls.length - 1) {
+          if (isWin) {
+            addTujeonToken(reward);
+            setStreak((prev) => prev + 1);
+            setGameResult(
+              `승리! 합계 ${finalSum}, ${
+                finalParity === "even" ? "짝" : "홀"
+              }입니다. 투전패 ${reward}개를 획득했습니다.`
+            );
+            // --- Quest Progression ---
+            useGameStore.setState((s: any) => {
+              if (!s.game.activeQuests) return s;
+              const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+              if (qIdx === -1) return s;
+              const q = s.game.activeQuests[qIdx];
+              const nextCount = q.currentCount + 1;
+              const nextQuests = [...s.game.activeQuests];
+              nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
+              if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+              return { game: { ...s.game, activeQuests: nextQuests } };
+            });
+          } else {
+            setStreak(0);
+            setGameResult(
+              `패배... 합계 ${finalSum}, ${
+                finalParity === "even" ? "짝" : "홀"
+              }입니다.`
+            );
+          }
+          setIsProcessing(false);
+        }
+      }, 650 * (index + 1));
+    });
   };
 
   const handleDice = () => {
@@ -130,53 +158,86 @@ export default function GamblingPanel() {
       });
     }
 
-    const playerRoll = Math.floor(Math.random() * 6) + 1;
-    const houseRoll = Math.floor(Math.random() * 6) + 1;
+    let count = 0;
+    const interval = setInterval(() => {
+      setPlayerDice([
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+      ]);
+      setEnemyDice([
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+      ]);
 
-    let isWin = playerRoll > houseRoll;
+      count++;
+      if (count >= 18) {
+        clearInterval(interval);
 
-    if (!isWin && playerRoll !== houseRoll && Math.random() < bonusWinRate) {
-      isWin = true;
-    }
+        let finalPlayer = [
+          Math.floor(Math.random() * 6) + 1,
+          Math.floor(Math.random() * 6) + 1,
+        ];
+        let finalEnemy = [
+          Math.floor(Math.random() * 6) + 1,
+          Math.floor(Math.random() * 6) + 1,
+        ];
 
-    const reward = isWin ? Math.floor(2 + Math.random() * 3) : 0;
+        let pSum = finalPlayer[0] + finalPlayer[1];
+        let eSum = finalEnemy[0] + finalEnemy[1];
 
-    setTimeout(() => {
-      if (playerRoll === houseRoll) {
-        setGameResult(
-          `무승부! 나 ${playerRoll} / 하우스 ${houseRoll}. 금화는 차감되지 않았습니다.`
-        );
-        setIsProcessing(false);
-        return;
+        // 승리 확률 보정 (자연스럽게 졌을 때만 적용)
+        if (pSum <= eSum && Math.random() < bonusWinRate) {
+          // 승리하도록 주사위 재설정
+          finalPlayer = [Math.floor(Math.random() * 3) + 4, Math.floor(Math.random() * 3) + 4]; // 8~12
+          finalEnemy = [Math.floor(Math.random() * 3) + 1, Math.floor(Math.random() * 3) + 1];  // 2~6
+          pSum = finalPlayer[0] + finalPlayer[1];
+          eSum = finalEnemy[0] + finalEnemy[1];
+        }
+
+        setPlayerDice(finalPlayer);
+        setEnemyDice(finalEnemy);
+
+        const isWin = pSum > eSum;
+        const isTie = pSum === eSum;
+        const reward = isWin ? Math.floor(2 + Math.random() * 3) : 0;
+
+        setTimeout(() => {
+          if (isTie) {
+            setGameResult(
+              `무승부! 나 ${pSum} / 하우스 ${eSum}. 금화는 차감되지 않았습니다.`
+            );
+            setIsProcessing(false);
+            return;
+          }
+
+          addCoins(-DICE_COST);
+
+          if (isWin) {
+            addTujeonToken(reward);
+            setStreak((prev) => prev + 1);
+            setGameResult(
+              `승리! 나 ${pSum} / 하우스 ${eSum}. 투전패 ${reward}개를 획득했습니다.`
+            );
+            // --- Quest Progression ---
+            useGameStore.setState((s: any) => {
+              if (!s.game.activeQuests) return s;
+              const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+              if (qIdx === -1) return s;
+              const q = s.game.activeQuests[qIdx];
+              const nextCount = q.currentCount + 1;
+              const nextQuests = [...s.game.activeQuests];
+              nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
+              if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
+              return { game: { ...s.game, activeQuests: nextQuests } };
+            });
+          } else {
+            setStreak(0);
+            setGameResult(`패배... 나 ${pSum} / 하우스 ${eSum}.`);
+          }
+          setIsProcessing(false);
+        }, 100);
       }
-
-      addCoins(-DICE_COST);
-
-      if (isWin) {
-        addTujeonToken(reward);
-        setStreak((prev) => prev + 1);
-        setGameResult(
-          `승리! 나 ${playerRoll} / 하우스 ${houseRoll}. 투전패 ${reward}개를 획득했습니다.`
-        );
-        // --- Quest Progression ---
-        useGameStore.setState((s: any) => {
-          if (!s.game.activeQuests) return s;
-          const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
-          if (qIdx === -1) return s;
-          const q = s.game.activeQuests[qIdx];
-          const nextCount = q.currentCount + 1;
-          const nextQuests = [...s.game.activeQuests];
-          nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
-          if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
-          return { game: { ...s.game, activeQuests: nextQuests } };
-        });
-      } else {
-        setStreak(0);
-        setGameResult(`패배... 나 ${playerRoll} / 하우스 ${houseRoll}.`);
-      }
-
-      setIsProcessing(false);
-    }, 1000);
+    }, 75);
   };
 
   const getYabawiMultiplier = (stage: number) => {
@@ -526,15 +587,55 @@ export default function GamblingPanel() {
               <div style={{ fontSize: "46px", marginBottom: "6px" }}>🌓</div>
               <h3 style={playTitleStyle}>홀짝 맞추기</h3>
               <p style={playDescStyle}>
-                숫자가 홀인지 짝인지 맞추면 투전패를 얻습니다.
+                세 주사위 합이 홀인지 짝인지 맞추면 투전패를 얻습니다.
               </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "12px",
+                  margin: "20px 0",
+                  minHeight: "60px",
+                }}
+              >
+                {[0, 1, 2].map((idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ scale: 0.5, opacity: 0, y: 10 }}
+                    animate={{
+                      scale: revealedCount > idx ? 1 : 0.8,
+                      opacity: revealedCount > idx ? 1 : 0.3,
+                      y: revealedCount > idx ? 0 : 10,
+                    }}
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      background: "linear-gradient(145deg, #ffffff, #e6e6e6)",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "24px",
+                      color: "#1a1a1a",
+                      fontWeight: 900,
+                      boxShadow: revealedCount > idx 
+                        ? "0 6px 12px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.8)"
+                        : "0 2px 4px rgba(0,0,0,0.2)",
+                      border: "1px solid #ccc",
+                    }}
+                  >
+                    {revealedCount > idx ? oddEvenNumbers[idx] : "?"}
+                  </motion.div>
+                ))}
+              </div>
 
               <div
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
                   gap: "10px",
-                  marginTop: "18px",
+                  marginTop: "10px",
                 }}
               >
                 <button
@@ -560,8 +661,83 @@ export default function GamblingPanel() {
               <div style={{ fontSize: "46px", marginBottom: "6px" }}>🎲</div>
               <h3 style={playTitleStyle}>주사위 대결</h3>
               <p style={playDescStyle}>
-                내 주사위가 하우스보다 높으면 투전패를 획득합니다.
+                두 개의 주사위를 던져 합이 하우스보다 높으면 승리합니다.
               </p>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "15px",
+                  margin: "20px 0",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "12px",
+                    borderRadius: "16px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "8px" }}>나의 패</div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                    {playerDice.map((d, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          background: "#fff",
+                          borderRadius: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "18px",
+                          color: "#111",
+                          fontWeight: 900,
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                        }}
+                      >
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "12px",
+                    borderRadius: "16px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "8px" }}>하우스</div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                    {enemyDice.map((d, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          background: "#ffd700",
+                          borderRadius: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "18px",
+                          color: "#111",
+                          fontWeight: 900,
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                        }}
+                      >
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               <button
                 disabled={isProcessing}
@@ -569,7 +745,7 @@ export default function GamblingPanel() {
                 style={{
                   ...playButtonStyle,
                   width: "100%",
-                  marginTop: "18px",
+                  marginTop: "10px",
                 }}
               >
                 주사위 굴리기
