@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
 import TopBar from "@/app/components/TopBar";
+import { loadGameFromFirebase } from "@/lib/gameSave";
 
 // 에러 메시지 한글 매핑
 function toKoreanAuthError(message?: string) {
@@ -78,12 +79,21 @@ function LoginPageInner() {
         ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirect)}`
         : undefined;
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo,
-      },
-    });
+    const { data, error } = await supabase.auth.signInWithOAuth({
+  provider,
+});
+
+if (!error) {
+  // 로그인 성공 후 유저 가져오기
+  const { data: userData } = await supabase.auth.getUser();
+
+  const user = userData?.user;
+
+  if (user) {
+    // 🔥 Firebase 저장/불러오기
+    await loadGameFromFirebase(user.id);
+  }
+}
 
     if (error) {
       setMsg(toKoreanAuthError(error.message));

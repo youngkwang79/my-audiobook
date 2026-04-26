@@ -36,6 +36,7 @@ export default function GameShell() {
   const faction = useGameStore((s: any) => s.game.faction);
   const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
   const gamblingTokens = useGameStore((s: any) => s.game.gamblingTokens);
+  const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
 
   const markInnEntryHandled = useGameStore((s: any) => s.markInnEntryHandled);
   const syncFromCloud = useGameStore((s: any) => s.syncFromCloud);
@@ -162,7 +163,7 @@ export default function GameShell() {
 
   const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory", "giru", "gambling"];
 
-  const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
+  
 
   return (
     <MotionConfig transition={lowPowerMode ? { duration: 0 } : undefined}>

@@ -581,6 +581,16 @@ export default function InnPanel({
     return () => clearInterval(iv);
   }, [nextRivalTime]);
 
+  useEffect(() => {
+    useGameStore.setState((s: any) => ({ game: { ...s.game, isMinigameActive: isPlaying } }));
+  }, [isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      useGameStore.setState((s: any) => ({ game: { ...s.game, isMinigameActive: false } }));
+    };
+  }, []);
+
   const clearAllIntervals = () => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);

@@ -3860,6 +3860,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   updateTime: (dt: number) => {
+    const state = get();
+    // 미니게임, 대결, 무한탑 진행 중에는 시간(낮/밤)이 흐르지 않도록 방어
+    if (state.game.isMinigameActive || state.game.masterDuel.isPlaying || state.game.tower?.isInside) return;
+
     set((s: any) => {
       let nextTimeState = s.game.timeState || "day";
       let nextTimeRemaining = (s.game.timeRemaining || 300) - dt;
