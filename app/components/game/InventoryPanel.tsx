@@ -39,6 +39,9 @@ export default function InventoryPanel(props: Props) {
   } = useGameStore();
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swipeConsumableId, setSwipeConsumableId] = useState<ConsumableId | null>(null);
+  const [swipeConsumableOffset, setSwipeConsumableOffset] = useState(0);
+  const [consumableDragOrigin, setConsumableDragOrigin] = useState({ x: 0, y: 0 });
   const unlocked = game.unlockedTabs.includes("inventory");
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>("mainWeapon");
   const [popupItem, setPopupItem] = useState<OwnedWeapon | null>(null);
@@ -133,6 +136,44 @@ export default function InventoryPanel(props: Props) {
 
     setSwipeGearId(null);
     setSwipeOffset(0);
+  };
+
+  // 소비 아이템(행낭) 터치 핸들러
+  const onConsumableTouchStart = (e: React.TouchEvent, id: ConsumableId) => {
+    setSwipeConsumableId(id);
+    const touch = e.touches[0];
+    setConsumableDragOrigin({ x: touch.clientX, y: touch.clientY });
+    setSwipeConsumableOffset(0);
+  };
+
+  const onConsumableTouchMove = (e: React.TouchEvent) => {
+    if (!swipeConsumableId) return;
+    const touch = e.touches[0];
+    const diff = touch.clientX - consumableDragOrigin.x;
+    if (diff > 0) setSwipeConsumableOffset(diff); // Only right swipe
+  };
+
+  const onConsumableTouchEnd = (e: React.TouchEvent, id: ConsumableId) => {
+    if (!swipeConsumableId) return;
+    const dist = Math.sqrt(Math.pow(swipeConsumableOffset, 2));
+
+    if (swipeConsumableOffset > 100) {
+      // 판매 가격 계산
+      const prices: Record<string, number> = {
+        hp_small: 250, hp_medium: 1000, hp_large: 5000,
+        mp_small: 250, mp_medium: 1000, mp_large: 5000
+      };
+      const price = prices[id] || 500;
+      if (confirm(`정말 판매하시겠습니까?\n판매 가격: ${formatCompactNumber(price)}냥`)) {
+        useGameStore.getState().sellConsumable(id);
+      }
+    } else if (dist < 10) {
+      // It's a tap
+      setSelectedMedicineId(id);
+    }
+
+    setSwipeConsumableId(null);
+    setSwipeConsumableOffset(0);
   };
 
   const onTouchStart = (e: React.TouchEvent, id: ConsumableId) => {
@@ -292,31 +333,89 @@ export default function InventoryPanel(props: Props) {
           }}
         >
           {isMedicineSelected ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
-                <div
-                  key={id}
-                  onTouchStart={(e) => onTouchStart(e, id)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    onTouchEnd(e);
-                  }}
-                  style={{
-                    borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-                    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-                    opacity: draggedMedicineId === id ? 0.4 : 1,
-                    cursor: "pointer"
-                  }}
-                >
-                  <div style={{ fontSize: 24, userSelect: "none" }}>{getPotionIcon(id)}</div>
-                  <div style={{ flex: 1, userSelect: "none" }}>
-                    <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffd778" }}>{getPotionName(id)}</div>
-                    <div style={{ fontSize: 11, color: "#aaa" }}>수량: {game.consumables[id]}개</div>
-                  </div>
-                  <div style={{ fontSize: 9, color: "rgba(255,215,0,0.5)" }}>장착하려면 아래로 드래그</div>
-                </div>
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
+              {/* 행낭 카드 그리드 */}
+              <div style={{
+                display: "flex",
+                gap: 8,
+                overflowX: "auto",
+                overflowY: "hidden",
+                paddingBottom: 6,
+                flex: 1
+              }}
+              className="hide-scrollbar"
+              >
+                {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
+                  <button
+                    key={id}
+                    onTouchStart={(e) => onConsumableTouchStart(e, id)}
+                    onTouchMove={onConsumableTouchMove}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onConsumableTouchEnd(e, id);
+                    }}
+                    onClick={() => {
+                      if (swipeConsumableOffset < 10) setSelectedMedicineId(id);
+                    }}
+                    style={{
+                      position: "relative",
+                      minWidth: 75,
+                      width: 75,
+                      height: 95,
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.03)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                      padding: 6,
+                      cursor: "pointer",
+                      flex: "0 0 auto",
+                      transition: "all 0.2s ease",
+                      transform: swipeConsumableId === id ? `translateX(${swipeConsumableOffset}px)` : "none",
+                      opacity: swipeConsumableId === id ? 0.7 : 1
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as any).style.background = "rgba(255,215,120,0.08)";
+                      (e.currentTarget as any).style.borderColor = "rgba(255,215,120,0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as any).style.background = "rgba(255,255,255,0.03)";
+                      (e.currentTarget as any).style.borderColor = "rgba(255,255,255,0.1)";
+                    }}
+                  >
+                    <div style={{ fontSize: 28, userSelect: "none" }}>{getPotionIcon(id)}</div>
+                    <div style={{
+                      fontSize: 11,
+                      fontWeight: "bold",
+                      color: "#ffd778",
+                      textAlign: "center",
+                      lineHeight: 1.2,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      width: "100%"
+                    }}>
+                      {getPotionName(id).split("(")[0].trim()}
+                    </div>
+                    <div style={{
+                      position: "absolute",
+                      bottom: 3,
+                      right: 3,
+                      fontSize: 10,
+                      fontWeight: 900,
+                      color: "#fff",
+                      background: "rgba(0,0,0,0.6)",
+                      padding: "1px 4px",
+                      borderRadius: 3
+                    }}>
+                      {game.consumables[id]}
+                    </div>
+                  </button>
+                ))}
+              </div>
               {Object.values(game.consumables).every(v => v === 0) && (
                 <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
               )}

@@ -65,11 +65,32 @@ export default function GameShell() {
 
     // Autosave interval every 30 seconds
     const interval = setInterval(() => {
-      const { triggerSave, syncToCloud } = useGameStore.getState() as any;
+      const { triggerSave, syncToCloud, isSyncingFromCloud } = useGameStore.getState() as any;
+      if (isSyncingFromCloud) return; // Syncing in progress, skip auto-save
       if (triggerSave) triggerSave(true);
       if (user && syncToCloud) syncToCloud();
     }, 30000);
-    return () => clearInterval(interval);
+
+    // Handle mobile backgrounding / tab closing
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        const { triggerSave, syncToCloud, user: storeUser } = useGameStore.getState() as any;
+        if (triggerSave) triggerSave(true);
+        if (user && syncToCloud) syncToCloud();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      
+      // Final save attempt on unmount
+      const { triggerSave, syncToCloud } = useGameStore.getState() as any;
+      if (triggerSave) triggerSave(true);
+      if (user && syncToCloud) syncToCloud();
+    };
   }, [user]);
 
   // --- Night System Tick ---

@@ -393,7 +393,7 @@ export default function GiruPanel() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              
                 {/* 적용 중인 효과 보기 버튼 */}
                 {game.nightBuffs && game.nightBuffs.length > 0 && (
                   <button

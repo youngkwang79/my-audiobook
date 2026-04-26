@@ -10,7 +10,7 @@ import GameIntroPanel from "@/app/components/game/GameIntroPanel";
 export default function MeGamePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { game, syncToCloud } = useGameStore(); // [시스템 삽입] syncToCloud 추가
+  const { game, syncToCloud, isSyncingFromCloud } = useGameStore(); // [시스템 삽입] syncToCloud, isSyncingFromCloud 추가
 
   useEffect(() => {
     if (!loading && !user) {
@@ -81,7 +81,9 @@ export default function MeGamePage() {
     useGameStore.getState().syncToCloud();
   }, []);
 
-  if (loading) {
+
+
+  if (loading || (isSyncingFromCloud && !game.isInitialized)) {
     return (
       <main
         style={{
@@ -89,9 +91,15 @@ export default function MeGamePage() {
           padding: "16px 12px",
           color: "white",
           background: "#05060b",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        불러오는 중...
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 24, marginBottom: 12 }}>🏮</div>
+          <div style={{ fontSize: 16, opacity: 0.8 }}>강호의 기록을 불러오는 중...</div>
+        </div>
       </main>
     );
   }

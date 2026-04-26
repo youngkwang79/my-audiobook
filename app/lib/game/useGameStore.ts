@@ -353,6 +353,7 @@ interface GameState {
   setSelectedMasterLevel: (level: number) => void;
   syncToCloud: () => Promise<void>;
   syncFromCloud: () => Promise<void>;
+  isSyncingFromCloud: boolean;
   learnSkill: (skill: any, price: number) => void;
   refineSkill: (skillId: string) => void;
   synthesizeSkill: (recipeId: string) => void;
@@ -425,6 +426,7 @@ let debounceTimer: NodeJS.Timeout | null = null;
 
 export const useGameStore = create<GameState>((set, get) => ({
   game: { ...defaultGameData, ...loadGame() },
+  isSyncingFromCloud: false,
   combatAnalysis: {
     isActive: false,
     timeLeft: 0,
@@ -2973,6 +2975,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   syncToCloud: async () => {
+    const { isSyncingFromCloud } = get();
+    if (isSyncingFromCloud) {
+      console.warn("데이터 불러오기 중에는 클라우드 저장을 차단합니다.");
+      return;
+    }
     try {
       const response = await fetch("/api/game/sync", {
         method: "POST",
@@ -2992,11 +2999,16 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       console.log("클라우드 동기화 성공");
     } catch (e) {
-      console.error("네트워크 에러:", e);
+      if (e instanceof TypeError && e.message === "Failed to fetch") {
+        console.warn("클라우드 동기화 실패: 네트워크 연결이 원활하지 않거나 서버가 응답하지 않습니다.");
+      } else {
+        console.warn("클라우드 동기화 중 에러 발생:", e);
+      }
       get().triggerSave(true); // 실패 시 로컬에라도 저장
     }
   },
   syncFromCloud: async () => {
+    set({ isSyncingFromCloud: true });
     try {
       const res = await fetch("/api/game/sync");
       if (res.ok) {
@@ -3009,7 +3021,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
     } catch (e) {
-      console.error("데이터 불러오기 실패:", e);
+      if (e instanceof TypeError && e.message === "Failed to fetch") {
+        console.warn("데이터 불러오기 실패: 네트워크 연결이 원활하지 않습니다.");
+      } else {
+        console.warn("데이터 불러오기 중 에러 발생:", e);
+      }
+    } finally {
+      set({ isSyncingFromCloud: false });
     }
   }, resetGame: () => {
     if (typeof window !== "undefined") {
