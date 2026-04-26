@@ -6,7 +6,8 @@ import CharacterModal from "./CharacterModal";
 
 export default function GameStatusPanel({ game }: { game: any }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis } = useGameStore() as any;
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps } = useGameStore() as any;
 
   // 데이터 유실 방지를 위한 초기화 및 매핑
   const safeGame: any = {
@@ -73,11 +74,11 @@ export default function GameStatusPanel({ game }: { game: any }) {
           width: "100%",
           maxWidth: "400px",
           boxSizing: "border-box",
-          margin: "8px auto",
+          margin: "0 auto",
           display: "flex",
           flexDirection: "column",
           alignSelf: "center",
-          borderRadius: 16,
+          borderRadius: 0,
           background: "rgba(15, 15, 20, 0.95)",
           backdropFilter: "blur(12px)",
           border: "1px solid rgba(255, 215, 120, 0.2)",
@@ -126,134 +127,10 @@ export default function GameStatusPanel({ game }: { game: any }) {
                 color: "#1a1612",
                 cursor: "pointer",
                 fontWeight: "bold",
+                marginLeft: "6px"
               }}
             >
               홈
-            </button>
-
-            {typeof window !== "undefined" && !/iPhone|iPad|iPod/i.test(navigator.userAgent) && (
-              <button
-                onClick={() => {
-                  if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
-                  } else {
-                    if (document.exitFullscreen) document.exitFullscreen();
-                  }
-                }}
-                style={{
-                  padding: "2px 4px",
-                  fontSize: "10px",
-                  background: "rgba(0,180,255,0.4)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "4px",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  whiteSpace: "nowrap"
-                }}
-              >
-                전체
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                if (confirm("정말 게임을 처음으로 초기화하시겠습니까?")) {
-                  useGameStore.getState().resetGame();
-                }
-              }}
-              style={{
-                padding: "2px 4px",
-                fontSize: "10px",
-                background: "rgba(255,0,0,0.4)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "4px",
-                color: "white",
-                cursor: "pointer",
-                fontWeight: "bold",
-                whiteSpace: "nowrap"
-              }}
-            >
-              초기화
-            </button>
-            <button
-              onClick={() => {
-                const ok = window.confirm(
-                  "정말 모든 재화를 1,000억으로 받으시겠습니까?\n취소하면 아무 일도 일어나지 않습니다."
-                );
-
-                if (!ok) return;
-
-                const hundredBillion = 100000000000;
-
-                useGameStore.setState((s: any) => ({
-                  game: {
-                    ...s.game,
-                    coins: hundredBillion,
-                    reputation: hundredBillion,
-                    points: hundredBillion,
-                    enhancementStones: hundredBillion,
-                    bossTokens: hundredBillion,
-                    wisdom: hundredBillion,
-                    isForgeFullUnlocked: true,
-                    unlockedTabs: ["training", "upgrade", "inn", "master", "library", "forge", "inventory"]
-                  }
-                }));
-
-                triggerSave(true);
-
-                alert(
-                  "⚠️ 천하제일인의 기운이 느껴집니다!\n\n금화/명성/강화석/징표/심득 1,000억 확보!\n모든 탭 개방 및 대장간 전 경지 해금 완료!\n(데이터가 즉시 저장되었습니다)"
-                );
-              }}
-            >
-              G
-            </button>
-            <button
-              onClick={() => {
-                useGameStore.getState().toggleAudio();
-              }}
-              title="배경음악 켜기/끄기"
-              style={{
-                width: "26px",
-                height: "26px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "14px",
-                background: !safeGame.isAudioMuted ? "linear-gradient(180deg, #f3c969, #d4a23c)" : "#444",
-                border: !safeGame.isAudioMuted ? "none" : "1px solid rgba(255,255,255,0.2)",
-                borderRadius: "8px",
-                color: !safeGame.isAudioMuted ? "#1a1612" : "#aaa",
-                cursor: "pointer",
-                marginLeft: "4px",
-                marginRight: "4px",
-              }}
-            >
-              {!safeGame.isAudioMuted ? "🎵" : "🔇"}
-            </button>
-            <button
-              onClick={() => {
-                if (combatAnalysis.isActive) stopCombatAnalysis();
-                else startCombatAnalysis(10);
-              }}
-              title="전투 분석 시작 (10초)"
-              style={{
-                width: "26px",
-                height: "26px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "14px",
-                background: combatAnalysis.isActive ? "#ef4444" : "linear-gradient(180deg, #55aaff, #3b82f6)",
-                border: "none",
-                borderRadius: "8px",
-                color: "#fff",
-                cursor: "pointer",
-                marginLeft: "2px",
-              }}
-            >
-              ⚔️
             </button>
           </div>
 
@@ -268,9 +145,31 @@ export default function GameStatusPanel({ game }: { game: any }) {
               color: "#1a1612",
               cursor: "pointer",
               fontWeight: "bold",
+              marginRight: "6px"
             }}
           >
             상태창
+          </button>
+
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            title="환경 설정"
+            style={{
+              width: "28px",
+              height: "28px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "15px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,215,120,0.3)",
+              borderRadius: "8px",
+              color: "#ffd778",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            ⚙️
           </button>
         </div>
 
@@ -490,6 +389,122 @@ export default function GameStatusPanel({ game }: { game: any }) {
       `}</style>
 
       <CharacterModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      {/* 설정 모달 */}
+      {isSettingsOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }} onClick={() => setIsSettingsOpen(false)}>
+          <div style={{
+            width: "100%", maxWidth: 320, background: "#1c1c24", borderRadius: 20,
+            border: "1.5px solid rgba(255, 215, 120, 0.4)", padding: 20,
+            display: "flex", flexDirection: "column", gap: 15, boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+              <div style={{ fontSize: 18, fontWeight: 950, color: "#ffd778" }}>⚙️ 환경 설정</div>
+              <button onClick={() => setIsSettingsOpen(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 20, cursor: "pointer" }}>&times;</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* 음악 설정 */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontSize: 13, color: "#eee", fontWeight: "bold" }}>🎵 배경 음악</div>
+                <button
+                  onClick={toggleAudio}
+                  style={{
+                    padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                    background: !safeGame.isAudioMuted ? "linear-gradient(135deg, #ffd778, #d4a23c)" : "#333",
+                    color: !safeGame.isAudioMuted ? "#000" : "#888", border: "none", cursor: "pointer"
+                  }}
+                >
+                  {safeGame.isAudioMuted ? "OFF" : "ON"}
+                </button>
+              </div>
+
+              {/* 저전력 모드 */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#eee", fontWeight: "bold" }}>🔋 저전력 모드</div>
+                  <div style={{ fontSize: 9, color: "#888" }}>UI 애니메이션을 제한하여 배터리를 절약합니다.</div>
+                </div>
+                <button
+                  onClick={() => setLowPowerMode(!game.options?.lowPowerMode)}
+                  style={{
+                    padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                    background: game.options?.lowPowerMode ? "linear-gradient(135deg, #a8ff7e, #78cc5d)" : "#333",
+                    color: game.options?.lowPowerMode ? "#000" : "#888", border: "none", cursor: "pointer"
+                  }}
+                >
+                  {game.options?.lowPowerMode ? "ON" : "OFF"}
+                </button>
+              </div>
+
+              {/* 자동 FPS */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#eee", fontWeight: "bold" }}>⚡ 자동 FPS 모드</div>
+                  <div style={{ fontSize: 9, color: "#888" }}>비활성 시 프레임을 낮춰 발열을 방지합니다.</div>
+                </div>
+                <button
+                  onClick={() => setAutoFps(!game.options?.autoFps)}
+                  style={{
+                    padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                    background: game.options?.autoFps ? "linear-gradient(135deg, #7ee7ff, #5bb0ff)" : "#333",
+                    color: game.options?.autoFps ? "#000" : "#888", border: "none", cursor: "pointer"
+                  }}
+                >
+                  {game.options?.autoFps ? "ON" : "OFF"}
+                </button>
+              </div>
+
+              {/* 전체 화면 */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#eee", fontWeight: "bold" }}>🖥️ 전체 화면</div>
+                  <div style={{ fontSize: 9, color: "#888" }}>브라우저 UI를 숨기고 꽉 찬 화면으로 즐깁니다.</div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+                    else if (document.exitFullscreen) document.exitFullscreen();
+                  }}
+                  style={{
+                    padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                    background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer"
+                  }}
+                >
+                  전환
+                </button>
+              </div>
+
+              {/* 초기화 버튼 */}
+              <div style={{ marginTop: 10, padding: "12px", background: "rgba(255,77,77,0.05)", borderRadius: 12, border: "1px solid rgba(255,77,77,0.2)" }}>
+                <div style={{ fontSize: 11, color: "#ff8c8c", marginBottom: 8, textAlign: "center" }}>
+                  ⚠️ 모든 게임 데이터가 영구적으로 삭제됩니다.
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm("정말 모든 데이터를 초기화하고 처음부터 다시 시작하시겠습니까?")) {
+                      resetGame();
+                      setIsSettingsOpen(false);
+                    }
+                  }}
+                  style={{
+                    width: "100%", padding: "10px", borderRadius: 10, fontSize: 13, fontWeight: 950,
+                    background: "linear-gradient(135deg, #ff4d4d, #c0392b)", color: "#fff", border: "none", cursor: "pointer"
+                  }}
+                >
+                  데이터 초기화
+                </button>
+              </div>
+            </div>
+
+            <div style={{ textAlign: "center", fontSize: 10, color: "#555", marginTop: 5 }}>v1.4.2 Settings Menu</div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

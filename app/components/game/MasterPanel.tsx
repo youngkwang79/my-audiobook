@@ -606,54 +606,9 @@ export default function MasterPanel() {
         </div>
       )}
 
-      {/* 연화의 정보 브리핑 배지 */}
-      {!masterDuel.isPlaying && game.nextDayEvent && (
-        <div style={{
-          margin: "4px 10px",
-          padding: "10px 16px",
-          background: "linear-gradient(90deg, rgba(142, 45, 226, 0.2), rgba(10, 10, 25, 0.8))",
-          borderRadius: "14px",
-          border: "1px solid rgba(142, 45, 226, 0.4)",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          animation: "fadeIn 0.5s ease-out"
-        }}>
-          <div style={{ fontSize: "20px" }}>{game.nextDayEvent.type === "TREASURE_FORECAST" ? "💰" : "👹"}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: "11px", color: "#e0c3fc", fontWeight: 800 }}>오늘의 강호 정보</div>
-            <div style={{ fontSize: "13px", color: "#fff", fontWeight: 700 }}>{game.nextDayEvent.clueText}</div>
-          </div>
-        </div>
-      )}
+      {/* 상단 정보 브리핑 배지 제거 (로비 이미지 내부로 이동됨) */}
 
-      {/* 저전력 모드 / 자동 FPS 버튼 */}
-      {!masterDuel.isPlaying && (
-        <div style={{ display: "flex", gap: 8, padding: "0 10px" }}>
-          <button
-            onClick={() => useGameStore.getState().setLowPowerMode(!game.options?.lowPowerMode)}
-            style={{
-              flex: 1, padding: "6px", borderRadius: 10, fontSize: 10, fontWeight: 900,
-              background: game.options?.lowPowerMode ? "rgba(0,255,0,0.2)" : "rgba(255,255,255,0.05)",
-              color: game.options?.lowPowerMode ? "#00ff00" : "#888",
-              border: "1px solid " + (game.options?.lowPowerMode ? "#00ff00" : "rgba(255,255,255,0.1)")
-            }}
-          >
-            🔋 저전력 모드 {game.options?.lowPowerMode ? "ON" : "OFF"}
-          </button>
-          <button
-            onClick={() => useGameStore.getState().setAutoFps(!game.options?.autoFps)}
-            style={{
-              flex: 1, padding: "6px", borderRadius: 10, fontSize: 10, fontWeight: 900,
-              background: game.options?.autoFps ? "rgba(0,242,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: game.options?.autoFps ? "#00f2ff" : "#888",
-              border: "1px solid " + (game.options?.autoFps ? "#00f2ff" : "rgba(255,255,255,0.1)")
-            }}
-          >
-            ⚡ 자동 FPS {game.options?.autoFps ? "ON" : "OFF"}
-          </button>
-        </div>
-      )}
+
 
       {/* --- LOBBY VIEW --- */}
       {!masterDuel.isPlaying && (
@@ -688,6 +643,33 @@ export default function MasterPanel() {
               filter: "drop-shadow(0 10px 30px rgba(0,0,0,0.8))",
               animation: "bossFlutter 5s ease-in-out infinite"
             }} />
+
+            {/* 이동된 강호 정보 브리핑 배지 (이미지 하단 오버레이) */}
+            {game.nextDayEvent && (
+              <div style={{
+                position: "absolute",
+                bottom: "20px",
+                left: "10px",
+                right: "10px",
+                padding: "8px 12px",
+                background: "rgba(10, 10, 25, 0.65)",
+                backdropFilter: "blur(8px)",
+                borderRadius: "12px",
+                border: "1px solid rgba(142, 45, 226, 0.5)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                zIndex: 10,
+                animation: "fadeIn 0.8s ease-out"
+              }}>
+                <div style={{ fontSize: "18px" }}>{game.nextDayEvent.type === "TREASURE_FORECAST" ? "💰" : "👹"}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "10px", color: "#e0c3fc", fontWeight: 800 }}>강호 소식</div>
+                  <div style={{ fontSize: "12px", color: "#fff", fontWeight: 700, lineHeight: 1.3 }}>{game.nextDayEvent.clueText}</div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

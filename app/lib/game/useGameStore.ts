@@ -2406,7 +2406,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const oilNames: Record<string, string> = {
       oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유",
       oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유",
-      oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유",
+      oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "천명유", oil_eye: "영안유",
       oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유"
     };
 

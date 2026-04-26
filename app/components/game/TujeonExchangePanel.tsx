@@ -94,6 +94,7 @@ function gradeColor(grade: string) {
 
 export default function TujeonExchangePanel() {
   const game = useGameStore((s: any) => s.game);
+  const [message, setMessage] = useState<string | null>(null);
 
   const tujeon = getTujeon(game);
   const bought = game.tujeonExchangeBought ?? {};
@@ -101,27 +102,30 @@ export default function TujeonExchangePanel() {
 
   const spendTujeon = (game: any, cost: number) => {
     const current = getTujeon(game);
-
     return {
       ...game,
       gamblingTokens: current - cost,
-      tujeonTokens:
-        game.tujeonTokens !== undefined ? current - cost : game.tujeonTokens,
-      gambleTokens:
-        game.gambleTokens !== undefined ? current - cost : game.gambleTokens,
+      tujeonTokens: game.tujeonTokens !== undefined ? current - cost : game.tujeonTokens,
+      gambleTokens: game.gambleTokens !== undefined ? current - cost : game.gambleTokens,
     };
+  };
+
+  const showMsg = (msg: string) => {
+
+    setMessage(msg);
+    setTimeout(() => setMessage(null), 1200);
   };
 
   const buyItem = (item: any) => {
     const boughtCount = bought[item.id] ?? 0;
 
     if (boughtCount >= item.limit) {
-      alert("오늘은 더 이상 교환할 수 없습니다.");
+      showMsg("오늘은 더 이상 교환할 수 없습니다.");
       return;
     }
 
     if (tujeon < item.cost) {
-      alert("투전패가 부족합니다.");
+      showMsg("투전패가 부족합니다.");
       return;
     }
 
@@ -135,15 +139,14 @@ export default function TujeonExchangePanel() {
           [item.id]: (s.game.tujeonExchangeBought?.[item.id] ?? 0) + 1,
         },
       };
- 
+
       if (item.id === "gilu_gift") {
         const gifts = GIRU_GIFT_ITEMS;
         const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
         const nextGifts = { ...(s.game.giruGifts || {}) };
         nextGifts[randomGift.id] = (nextGifts[randomGift.id] || 0) + 1;
         nextGame.giruGifts = nextGifts;
-        // 알림은 밖에서 처리하거나 여기서 nextGame에 메시지 담기 힘드니 alert 사용
-        setTimeout(() => alert(`선물함에서 [${randomGift.icon} ${randomGift.name}]을(를) 얻었습니다!`), 100);
+        showMsg(`선물함에서 [${randomGift.icon} ${randomGift.name}]을(를) 획득!`);
       }
 
       if (item.id === "moon_buff") {
@@ -185,17 +188,19 @@ export default function TujeonExchangePanel() {
       return { game: nextGame };
     });
 
-    alert(`${item.name} 교환 완료!\n${item.rewardText}`);
+    if (item.id !== "gilu_gift") {
+      showMsg(`${item.name} 교환 완료!`);
+    }
   };
 
   const unlockContent = (item: any) => {
     if (unlocked.includes(item.id)) {
-      alert("이미 해금된 콘텐츠입니다.");
+      showMsg("이미 해금된 콘텐츠입니다.");
       return;
     }
 
     if (tujeon < item.cost) {
-      alert("투전패가 부족합니다.");
+      showMsg("투전패가 부족합니다.");
       return;
     }
 
@@ -210,7 +215,7 @@ export default function TujeonExchangePanel() {
       };
     });
 
-    alert(`${item.name} 해금 완료!`);
+    showMsg(`${item.name} 해금 완료!`);
   };
 
   return (
@@ -511,6 +516,33 @@ export default function TujeonExchangePanel() {
           ※ 투전패는 홀짝, 주사위, 야바위 승리와 연승 보너스로 획득합니다.
         </div>
       </div>
+
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              position: "absolute",
+              bottom: 40,
+              left: 20,
+              right: 20,
+              background: "rgba(0,0,0,0.85)",
+              color: "#ffd700",
+              padding: "10px 20px",
+              borderRadius: 12,
+              border: "1px solid #ffd700",
+              textAlign: "center",
+              zIndex: 100,
+              fontWeight: 900,
+              pointerEvents: "none"
+            }}
+          >
+            {message}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

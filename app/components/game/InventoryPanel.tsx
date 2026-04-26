@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { SYNERGY_SETS } from "@/app/lib/game/items";
 import { FORGE_ITEMS } from "@/app/lib/game/items";
@@ -32,6 +32,7 @@ const slotMeta: {
   ];
 
 export default function InventoryPanel(props: Props) {
+
   const {
     game, equipItem, unequipItem, sellItem, useConsumable,
     getTotalAttack, getTotalCritRate, getTotalCritDmg,
@@ -39,12 +40,15 @@ export default function InventoryPanel(props: Props) {
   } = useGameStore();
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
+  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const unlocked = game.unlockedTabs.includes("inventory");
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>("mainWeapon");
   const [popupItem, setPopupItem] = useState<OwnedWeapon | null>(null);
   const [selectingSlot, setSelectingSlot] = useState<number | null>(null);
   const [selectedMedicineId, setSelectedMedicineId] = useState<ConsumableId | null>(null);
   const [lastTapTime, setLastTapTime] = useState(0);
+  const [lastTapId, setLastTapId] = useState<string | null>(null);
+
   const [draggedMedicineId, setDraggedMedicineId] = useState<ConsumableId | null>(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
@@ -89,18 +93,55 @@ export default function InventoryPanel(props: Props) {
 
   const handleMedicineTap = (id: ConsumableId) => {
     const now = Date.now();
-    // Use a ref-like state to track the previously clicked item ID
-    if (now - lastTapTime < 350 && selectedMedicineId === id) {
+    if (now - lastTapTime < 600 && lastTapId === id) {
       // Double tap -> Use
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
       useConsumable(id);
       setSelectedMedicineId(null);
+      setLastTapId(null);
       setLastTapTime(0);
     } else {
-      // Single tap -> Open Modal or update time
-      setSelectedMedicineId(id);
+      // First tap
+      setLastTapId(id as string);
       setLastTapTime(now);
+
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
+      tapTimeoutRef.current = setTimeout(() => {
+        setSelectedMedicineId(id);
+        tapTimeoutRef.current = null;
+      }, 150);
     }
   };
+
+  const handleItemTap = (item: OwnedWeapon) => {
+    const now = Date.now();
+    if (now - lastTapTime < 600 && lastTapId === item.id) {
+      // Double tap -> Sell (Immediate)
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
+      sellItem(item.id);
+      setPopupItem(null);
+      setLastTapId(null);
+      setLastTapTime(0);
+    } else {
+      // First tap
+      setLastTapId(item.id);
+      setLastTapTime(now);
+
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
+      tapTimeoutRef.current = setTimeout(() => {
+        setPopupItem(item);
+        tapTimeoutRef.current = null;
+      }, 150);
+    }
+  };
+
+
 
   const onGearTouchStart = (e: React.TouchEvent, id: string) => {
     setSwipeGearId(id);
@@ -148,7 +189,7 @@ export default function InventoryPanel(props: Props) {
     if (!draggedMedicineId) return;
     const touch = e.touches[0];
     setDragPos({ x: touch.clientX, y: touch.clientY });
-    
+
     // Swipe logic
     const diff = touch.clientX - dragOrigin.x;
     if (Math.abs(diff) > Math.abs(touch.clientY - dragOrigin.y)) {
@@ -197,15 +238,17 @@ export default function InventoryPanel(props: Props) {
       style={{
         position: "relative",
         overflow: "hidden",
-        borderRadius: 20,
+        borderRadius: "0 0 20px 20px",
         border: "1px solid rgba(255,215,120,0.16)",
+        borderTop: "none",
+        marginTop: "-1px",
         background: "rgba(10,12,20,0.9)",
         height: "100%",
-        padding: "10px", 
+        padding: "10px",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        gap: "6px" 
+        gap: "6px"
       }}
     >
       {!unlocked && (
@@ -244,8 +287,8 @@ export default function InventoryPanel(props: Props) {
           gridTemplateColumns: "125px 1fr",
           gap: 10,
           flex: 1,
-          minHeight: 0, 
-          overflowY: "hidden", 
+          minHeight: 0,
+          overflowY: "hidden",
           paddingRight: 2
         }}
         className="hide-scrollbar"
@@ -310,92 +353,66 @@ export default function InventoryPanel(props: Props) {
         >
           {isMedicineSelected ? (
             <div style={{
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.03)",
-              padding: 6,
               height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              overflowY: "hidden"
-            }}>
-              {/* 물약 세로 슬라이드 영역 */}
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                overflowX: "hidden",
-                overflowY: "auto",
-                paddingRight: 2,
-                paddingBottom: 6,
-                flex: 1
-              }}
-              className="hide-scrollbar"
-              >
-                {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
-                  <div
-                    key={id}
-                    onTouchStart={(e) => onTouchStart(e, id)}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onTouchEnd(e);
-                    }}
-                    style={{
-                      minHeight: 56,
-                      flex: "0 0 auto",
-                      borderRadius: 12,
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      justifyContent: "center",
-                      gap: 4,
-                      padding: "8px 12px",
-                      opacity: draggedMedicineId === id ? 0.4 : 1,
-                      cursor: "pointer",
-                      width: "100%",
-                      position: "relative",
-                      transform: swipeGearId === id ? `translateX(${swipeOffset}px)` : "none",
-                      transition: swipeGearId === id ? "none" : "transform 0.2s ease-out"
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-                      <div style={{ fontSize: 22, userSelect: "none" }}>{getPotionIcon(id)}</div>
-                      <div style={{ flex: 1, userSelect: "none" }}>
-                        <div style={{ fontSize: 13, fontWeight: "900", color: "#ffd778" }}>{getPotionName(id)}</div>
-                        <div style={{ fontSize: 11, color: "#aaa" }}>수량: {game.consumables[id]}개</div>
-                      </div>
-                    </div>
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(65px, 1fr))",
+              gap: 8,
+              alignContent: "start",
+              overflowY: "auto",
+              paddingRight: 2,
+              paddingBottom: 10
+            }} className="hide-scrollbar">
+              {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
+                <div
+                  key={id}
+                  onTouchStart={(e) => onTouchStart(e, id)}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    onTouchEnd(e);
+                  }}
+                  style={{
+                    aspectRatio: "1 / 1",
+                    borderRadius: 12,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "6px",
+                    opacity: draggedMedicineId === id ? 0.4 : 1,
+                    cursor: "pointer",
+                    position: "relative",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 2 }}>{getPotionIcon(id)}</div>
+                  <div style={{ fontSize: 9, fontWeight: "900", color: "#ffd778", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>
+                    {getPotionName(id).split(' ')[0]}
                   </div>
-                ))}
-              </div>
-
+                  <div style={{ position: "absolute", bottom: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 8, padding: "0 3px", borderRadius: 3, fontWeight: "bold" }}>
+                    {game.consumables[id]}
+                  </div>
+                </div>
+              ))}
               {Object.values(game.consumables).every(v => v === 0) && (
-                <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
+                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
               )}
-            </div>
-          ) : selectedItems.length === 0 ? (
-            <div
-              style={{
-                height: "100%",
-                display: "grid",
-                placeItems: "center",
-                color: "rgba(255,255,255,0.4)",
-                fontSize: 12,
-              }}
-            >
-              장비 없음
             </div>
           ) : (
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 7,
+                height: "100%",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(65px, 1fr))",
+                gap: 8,
+                alignContent: "start",
+                overflowY: "auto",
+                paddingRight: 2,
+                paddingBottom: 10
               }}
+              className="hide-scrollbar"
             >
               {selectedItems.map((item) => {
                 const isEquipped = selectedEquippedId === item.id;
@@ -403,50 +420,35 @@ export default function InventoryPanel(props: Props) {
                   <button
                     key={item.id}
                     onClick={() => {
-                      if (swipeOffset < 10) setPopupItem(item);
-                    }}
-                    onTouchStart={(e) => onGearTouchStart(e, item.id)}
-                    onTouchMove={onGearTouchMove}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onGearTouchEnd(e, item);
+                      handleItemTap(item);
                     }}
                     style={{
-                      position: "relative",
-                      borderRadius: 10,
-                      background: isEquipped ? "rgba(255,215,120,0.06)" : "rgba(255,255,255,0.02)",
-                      border: isEquipped ? "1px solid #ffd778" : "1px solid rgba(255,255,255,0.04)",
+                      aspectRatio: "1 / 1",
+                      borderRadius: 12,
+                      background: isEquipped ? "rgba(255,215,120,0.1)" : "rgba(255,255,255,0.04)",
+                      border: isEquipped ? "1.5px solid #ffd778" : "1px solid rgba(255,255,255,0.08)",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
-                      gap: 10,
-                      padding: "7px 12px",
+                      justifyContent: "center",
+                      padding: "6px",
                       cursor: "pointer",
-                      animation: isEquipped ? "itemEquippedGlow 2s infinite" : "none",
-                      transform: swipeGearId === item.id ? `translateX(${swipeOffset}px)` : "none",
-                      transition: swipeGearId === item.id ? "none" : "transform 0.2s ease-out"
+                      position: "relative",
+                      transition: "all 0.2s"
                     }}
                   >
-                    <div style={{ fontSize: 20, filter: isEquipped ? "drop-shadow(0 0 4px rgba(255,215,120,0.3))" : "none" }}>
+                    <div style={{ fontSize: 24, marginBottom: 2 }}>
                       {item.icon ?? "📦"}
                     </div>
-                    <div style={{ flex: 1, textAlign: "left" }}>
-                      <div style={{
-                        fontSize: 13,
-                        fontWeight: "900",
-                        color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff",
-                      }}>
-                        {item.name}
-                      </div>
-                      <div style={{ fontSize: 9, color: "#666", display: "flex", gap: 6 }}>
-                        <span>공격 +{item.attackBonus}</span>
-                        {item.equipmentSkill && <span style={{ color: "#00f2ff" }}>[보검]</span>}
-                      </div>
+                    <div style={{ fontSize: 9, fontWeight: "900", color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>
+                      {item.name.split(' ')[0]}
                     </div>
                     {isEquipped && (
                       <div style={{
-                        width: 18, height: 18, background: "#ffd700", color: "#000",
-                        borderRadius: 4, display: "grid", placeItems: "center",
-                        fontSize: 10, fontWeight: 950
+                        position: "absolute", top: 4, right: 4,
+                        width: 14, height: 14, background: "#ffd700", color: "#000",
+                        borderRadius: 3, display: "grid", placeItems: "center",
+                        fontSize: 8, fontWeight: 950
                       }}>E</div>
                     )}
                   </button>
@@ -464,7 +466,7 @@ export default function InventoryPanel(props: Props) {
         borderTop: "1px solid rgba(255,215,120,0.1)",
         borderRadius: "10px",
         background: "rgba(0,0,0,0.15)",
-        flexShrink: 0 
+        flexShrink: 0
       }}>
         <div style={{ fontSize: 11, fontWeight: 900, color: "#ffd700", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
           <span>🧪</span> 물약 장착 (대결 시 자동 사용)
@@ -796,9 +798,13 @@ export default function InventoryPanel(props: Props) {
                   <div style={{ color: "#00f2ff", fontWeight: "900", fontSize: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
                     <span>{getPotionIcon(popupItem.oilEffect.key || (popupItem.oilEffect as any).id)}</span>
                     <span>{(getPotionName(popupItem.oilEffect.key || (popupItem.oilEffect as any).id) || "").split('(')[0]}</span>
+                    <span style={{ fontSize: 10, color: "#ffd700", marginLeft: "auto" }}>발동확률: {popupItem.oilEffect.chance}%</span>
                   </div>
                   <div style={{ color: "#caf9ff", fontSize: 11, lineHeight: 1.5 }}>
-                    {(getPotionDesc(popupItem.oilEffect.key || (popupItem.oilEffect as any).id) || "").split('\n\n')[0]}
+                    {popupItem.oilEffect.label.includes(':') ? popupItem.oilEffect.label.split(': ')[1] : getPotionDesc(popupItem.oilEffect.key || (popupItem.oilEffect as any).id)}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 10, color: "rgba(202, 249, 255, 0.6)", borderTop: "1px dashed rgba(0, 242, 255, 0.2)", paddingTop: 4 }}>
+                    ⏱️ 효과 지속시간: {popupItem.oilEffect.label.includes('초') ? popupItem.oilEffect.label.split('(').pop()?.split(')')[0] : "즉시 발동"}
                   </div>
                 </div>
               )}
@@ -888,24 +894,24 @@ function getPotionName(id: ConsumableId) {
   if (id === "trance_5") return "무아지경의 환약 (5배)";
   if (id === "trance_10") return "무아지경의 환약 (10배)";
   if (id === "exp_scroll") return "수련의 고서 (EXP 2배)";
-  if (id === "oil_atk_3") return "연마유: 공격 (3분)";
-  if (id === "oil_crit_3") return "연마유: 치명 (3분)";
-  if (id === "oil_thunder") return "연마유: 뇌전 (기절)";
-  if (id === "oil_poison") return "연마유: 맹독 (방깎)";
-  if (id === "oil_bleed") return "연마유: 출혈 (지속딜)";
-  if (id === "oil_eva_3") return "연마유: 회피 (3분)";
-  if (id === "oil_def_3") return "연마유: 방어 (3분)";
-  if (id === "oil_reflect") return "연마유: 반사 (20%)";
-  if (id === "oil_vajra") return "연마유: 금강 (무적)";
-  if (id === "oil_vampire") return "연마유: 흡혈 (10%)";
-  if (id === "oil_speed_3") return "연마유: 신속 (3분)";
-  if (id === "oil_luck_3") return "연마유: 행운 (3분)";
-  if (id === "oil_clarity") return "연마유: 명경 (회복)";
-  if (id === "oil_eye") return "연마유: 심안 (필중)";
-  if (id === "oil_demon") return "연마유: 마성 (추가타)";
-  if (id === "oil_triple_hit") return "연마유: 삼연격 (3회)";
-  if (id === "oil_formless") return "연마유: 무형 (고정딜)";
-  if (id === "oil_blessed") return "연마유: 축복 (모든스탯)";
+  if (id === "oil_atk_3") return "광폭유";
+  if (id === "oil_crit_3") return "파천유";
+  if (id === "oil_thunder") return "뇌전유";
+  if (id === "oil_poison") return "만독유";
+  if (id === "oil_bleed") return "혈염유";
+  if (id === "oil_eva_3") return "무영유";
+  if (id === "oil_def_3") return "강철유";
+  if (id === "oil_reflect") return "반탄유";
+  if (id === "oil_vajra") return "금강유";
+  if (id === "oil_vampire") return "흡성유";
+  if (id === "oil_speed_3") return "질풍유";
+  if (id === "oil_luck_3") return "기연유";
+  if (id === "oil_clarity") return "청명유";
+  if (id === "oil_eye") return "영안유";
+  if (id === "oil_demon") return "천마유";
+  if (id === "oil_triple_hit") return "삼연유";
+  if (id === "oil_formless") return "무상유";
+  if (id === "oil_blessed") return "가호유";
   if (id === "charm_luck") return "행운의 부적 (드랍율)";
   if (id === "paewang_box") return "[패왕]의 유물 상자";
   return id;
@@ -930,6 +936,24 @@ function getPotionDesc(id: ConsumableId) {
   if (id === "mp_medium") return "내력을 50% 회복합니다.";
   if (id === "mp_large") return "내력을 모두 회복합니다.";
   if (id.startsWith("trance_")) return "잠시 동안 공격력이 대폭 상승하는 무아지경 상태에 빠집니다.";
-  if (id.startsWith("oil_")) return "무기에 발라 특수한 효과를 부여합니다. (효과별 상이)";
+  if (id === "oil_atk_3") return "2% 확률로 공격력이 3배로 증가합니다. (지속 5초)";
+  if (id === "oil_crit_3") return "2% 확률로 치명타 피해가 3배로 증가합니다. (지속 5초)";
+  if (id === "oil_thunder") return "5% 확률로 500%의 강력한 뇌전 피해를 입히고 기절시킵니다.";
+  if (id === "oil_poison") return "5% 확률로 적의 방어력을 50% 약화시킵니다. (지속 10초)";
+  if (id === "oil_bleed") return "5% 확률로 매초 최대 체력의 10%만큼 지속 피해를 입힙니다.";
+  if (id === "oil_eva_3") return "5% 확률로 회피율이 3배로 증가합니다. (지속 10초)";
+  if (id === "oil_def_3") return "7% 확률로 받는 모든 피해가 50% 감소합니다. (지속 10초)";
+  if (id === "oil_reflect") return "7% 확률로 받은 피해의 200%를 반사합니다. (지속 10초)";
+  if (id === "oil_vajra") return "5% 확률로 모든 공격을 무시하는 금강불괴 상태가 됩니다. (지속 5초)";
+  if (id === "oil_vampire") return "5% 확률로 입힌 대미지의 50%를 흡혈합니다.";
+  if (id === "oil_speed_3") return "5% 확률로 공격 속도가 2배로 증가합니다. (지속 10초)";
+  if (id === "oil_luck_3") return "5% 확률로 전리품의 등급이 상승할 확률이 크게 증가합니다. (지속 10초)";
+  if (id === "oil_clarity") return "8% 확률로 모든 상태이상을 즉시 해제합니다.";
+  if (id === "oil_eye") return "15% 확률로 적의 공격을 반드시 회피합니다.";
+  if (id === "oil_demon") return "2% 확률로 적을 즉시 일격필살(1000% 대미지)합니다.";
+  if (id === "oil_triple_hit") return "5% 확률로 3배의 연타 공격을 발동합니다.";
+  if (id === "oil_formless") return "3% 확률로 적 현재 체력의 10%를 즉시 삭감합니다.";
+  if (id === "oil_blessed") return "모든 능력치가 소폭 상승하는 축복을 받습니다.";
+  if (id.startsWith("oil_")) return "무기에 발라 특수한 효과를 부여합니다.";
   return "특별한 효과가 있는 비약입니다.";
 }

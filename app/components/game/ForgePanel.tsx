@@ -119,8 +119,9 @@ export default function ForgePanel(props: Props) {
     addWeapon(rolledItem);
 
     setPurchaseEffect({ name: rolledItem.name, icon: rolledItem.icon ?? "⚔️" });
-    setTimeout(() => setPurchaseEffect(null), 1200);
+    setTimeout(() => setPurchaseEffect(null), 600);
   };
+
 
   const [useBlessedOil, setUseBlessedOil] = useState(false);
   const [useHeavenlyTalisman, setUseHeavenlyTalisman] = useState(false);
@@ -212,24 +213,27 @@ export default function ForgePanel(props: Props) {
     if (result.success) {
       // Keep checkbox states as requested by user
     }
-    setTimeout(() => setEnhanceResult(null), 2000);
+    setTimeout(() => setEnhanceResult(null), 800);
   };
+
 
   const handleReroll = () => {
     if (!selectedEnhanceItem) return;
     const { rerollWeaponOptions } = useGameStore.getState();
     const result = rerollWeaponOptions(selectedEnhanceItem);
     setEnhanceResult(result);
-    setTimeout(() => setEnhanceResult(null), 2000);
+    setTimeout(() => setEnhanceResult(null), 800);
   };
+
 
   const handleInfuse = (type: string) => {
     if (!selectedEnhanceItem) return;
     const { infuseSoul } = useGameStore.getState();
     const result = infuseSoul(selectedEnhanceItem, type);
     setEnhanceResult(result);
-    setTimeout(() => setEnhanceResult(null), 2000);
+    setTimeout(() => setEnhanceResult(null), 800);
   };
+
 
   const isInnBuffActive = now < (game.innBuffEndTime || 0);
   const oilCount = game.consumables["oil_blessed"] || 0;
@@ -238,9 +242,11 @@ export default function ForgePanel(props: Props) {
     <section
       style={{
         border: "1px solid rgba(255,215,120,0.18)",
-        borderRadius: 20,
-        background: "rgba(12,12,18,0.85)",
-        padding: "12px 10px",
+        borderTop: "none",
+        borderRadius: "0 0 20px 20px",
+        marginTop: "-1px",
+        background: "rgba(10,12,20,0.95)",
+        padding: "10px",
         position: "relative",
         overflow: "hidden",
         touchAction: "pan-y",
@@ -254,7 +260,7 @@ export default function ForgePanel(props: Props) {
       {purchaseEffect && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", animation: "fadeIn 0.2s ease-out forwards"
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)", pointerEvents: "none", animation: "fadeIn 0.2s ease-out forwards"
         }}>
           <div style={{ textAlign: "center", animation: "purchasedScaleUp 0.6s forwards" }}>
             <div style={{ fontSize: 60, filter: "drop-shadow(0 0 20px #ffd700)", marginBottom: 15 }}>{purchaseEffect.icon}</div>
@@ -263,7 +269,7 @@ export default function ForgePanel(props: Props) {
           </div>
         </div>
       )}
-{/* 2024-04-24 상단 통합 재화 바 (탭 아래로 이동) */}
+      {/* 2024-04-24 상단 통합 재화 바 (탭 아래로 이동) */}
       <div
         style={{
           display: "flex",
@@ -317,7 +323,7 @@ export default function ForgePanel(props: Props) {
         </div>
       </div>
 
-      
+
 
       {/* 메인 콘텐츠 (스크롤 영역) */}
       <div style={{ flex: 1, overflowY: "auto", position: "relative" }} className="hide-scrollbar">
@@ -356,29 +362,28 @@ export default function ForgePanel(props: Props) {
             </div>
 
             {/* 제작 목록 */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {selectedRealm === "회복제" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { id: "hp_small", name: "생명력 회복제(小)", icon: "🧪", desc: "전체 생명력의 30% 회복", basePrice: 10000 },
-                    { id: "hp_medium", name: "생명력 회복제(中)", icon: "🏺", desc: "전체 생명력의 60% 회복", basePrice: 25000 },
-                    { id: "hp_large", name: "생명력 회복제(大)", icon: "💎", desc: "전체 생명력 100% 회복", basePrice: 50000 },
-                    { id: "mp_small", name: "내공 회복제(小)", icon: "💧", desc: "전체 내공의 30% 회복", basePrice: 8000 },
-                    { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 내공의 60% 회복", basePrice: 20000 },
-                    { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 내공 100% 회복", basePrice: 40000 },
-                    { id: "trance_2", name: "무아지경(x2)", icon: "⚡", desc: "공격력 2배 (30초)", basePrice: 200000 },
-                    { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 150000000 },
-                    { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 1000000000 },
-                  ].map(p => (
-                    <PotionItem key={p.id} p={p} game={game} buyPotion={buyPotion} unlocked={unlocked} currentCoins={currentCoins} />
-                  ))}
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {filteredItems.map(item => {
-                    const owned = ownedIds.includes(item.id);
-                    return (
-                      <div key={item.id} style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 20 }} className="hide-scrollbar">
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {selectedRealm === "회복제" ? (
+                  <>
+                    {[
+                      { id: "hp_small", name: "생명력 회복제(小)", icon: "🧪", desc: "전체 생명력의 30% 회복", basePrice: 10000 },
+                      { id: "hp_medium", name: "생명력 회복제(中)", icon: "🏺", desc: "전체 생명력의 60% 회복", basePrice: 25000 },
+                      { id: "hp_large", name: "생명력 회복제(大)", icon: "💎", desc: "전체 생명력 100% 회복", basePrice: 50000 },
+                      { id: "mp_small", name: "내공 회복제(小)", icon: "💧", desc: "전체 내공의 30% 회복", basePrice: 8000 },
+                      { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 내공의 60% 회복", basePrice: 20000 },
+                      { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 내공 100% 회복", basePrice: 40000 },
+                      { id: "trance_2", name: "무아지경(x2)", icon: "⚡", desc: "공격력 2배 (30초)", basePrice: 200000 },
+                      { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 150000000 },
+                      { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 1000000000 },
+                    ].map(p => (
+                      <PotionItem key={p.id} p={p} game={game} buyPotion={buyPotion} unlocked={unlocked} currentCoins={currentCoins} />
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {filteredItems.map(item => (
+                      <div key={item.id} style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", fontSize: 20 }}>{item.icon}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a" }}>{item.name}</div>
@@ -389,10 +394,10 @@ export default function ForgePanel(props: Props) {
                           {"구매"}
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}

@@ -201,11 +201,6 @@ export default function GameShell() {
 
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            {activeTab === "inventory" && (
-              <div style={{ marginBottom: 4 }}>
-                <GameStatusPanel game={game} />
-              </div>
-            )}
             <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
               {activeTab === "training" && <TrainingPanel />}
               {activeTab === "inn" && <InnPanel />}

@@ -544,25 +544,8 @@ export default function TrainingPanel() {
         </div>
       )}
 
-      {/* 오늘의 강호 정보 (예보) */}
-      {!showBreakthroughPopup && game.nextDayEvent && (
-        <div style={{
-          width: "90%",
-          margin: "10px auto",
-          padding: "8px 12px",
-          background: "rgba(142, 45, 226, 0.15)",
-          backdropFilter: "blur(5px)",
-          borderRadius: "14px",
-          border: "1px solid rgba(142, 45, 226, 0.3)",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          zIndex: 10
-        }}>
-          <span style={{ fontSize: "16px" }}>{game.nextDayEvent.type === "TREASURE_FORECAST" ? "💰" : "👹"}</span>
-          <span style={{ fontSize: "12px", color: "#e0c3fc", fontWeight: "bold" }}>{game.nextDayEvent.clueText}</span>
-        </div>
-      )}
+      {/* 오늘의 강호 정보 예보 제거 (대결 페이지에서만 확인 가능하도록 변경) */}
+
 
       {showMissionPopup &&
         game.lastReward &&
@@ -964,7 +947,7 @@ export default function TrainingPanel() {
           flexDirection: "column",
           minHeight: "440px",
           width: "100%",
-          borderRadius: "20px",
+          borderRadius: 0,
           overflow: "hidden",
           cursor: showBreakthroughPopup ? "default" : "pointer",
           touchAction: "pan-y",
@@ -1365,12 +1348,13 @@ export default function TrainingPanel() {
           maxWidth: "95%",
           background: "rgba(20, 20, 20, 0.95)",
           border: "1px solid rgba(255, 215, 120, 0.25)",
-          borderRadius: "20px 20px 0 0",
+          borderTop: "none",
+          borderRadius: "0 0 16px 16px",
           padding: "10px 15px",
           textAlign: "center",
           boxShadow: "inset 0 0 15px rgba(0,0,0,0.8)",
           boxSizing: "border-box",
-          marginTop: "0px",
+          marginTop: "-1px",
         }}
       >
         <div

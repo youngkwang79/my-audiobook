@@ -399,9 +399,10 @@ export default function UpgradePanel() {
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
-  height: "100%", width: "100%", padding: "12px 15px",
-  background: "linear-gradient(165deg, rgba(20,20,30,0.8) 0%, rgba(10,10,15,0.9) 100%)",
-  borderRadius: "32px", border: "1px solid rgba(255,215,0,0.1)",
+  height: "100%", width: "100%", padding: "10px",
+  background: "rgba(10,12,20,0.95)",
+  borderRadius: "0 0 20px 20px", border: "1px solid rgba(255,215,0,0.1)",
+  borderTop: "none", marginTop: "-1px",
   backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", boxSizing: "border-box"
 };
 
