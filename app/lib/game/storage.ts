@@ -196,8 +196,10 @@ export const defaultGameData: GameSaveData = {
     targetCombo: 20,
     bestCombo: 0,
     stage: 1,
-    maxStage: 4,
+    maxStage: 15,
     currentAnswer: null,
+    sequence: [],
+    laneCount: 2,
     score: 0,
     isPlaying: false
   },

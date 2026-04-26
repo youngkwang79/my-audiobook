@@ -38,14 +38,14 @@ export default function GameBottomNav({
     <div
       style={{
         position: "sticky",
-        bottom: 0,
-        zIndex: 40,
+        top: 0,
+        zIndex: 100,
         display: "grid",
         gridTemplateColumns: "repeat(10, 1fr)",
         gap: 2,
-        padding: "8px 2px calc(15px + env(safe-area-inset-bottom))",
-        background: "linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,1))",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
+        padding: "calc(env(safe-area-inset-top) + 8px) 2px 8px",
+        background: "linear-gradient(180deg, rgba(0,0,0,0.95), rgba(10,10,12,1))",
+        borderBottom: "1px solid rgba(255,215,120,0.15)",
       }}
     >
       {items.map((item) => {

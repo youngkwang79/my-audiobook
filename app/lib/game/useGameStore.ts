@@ -411,7 +411,7 @@ interface GameState {
   setAutoFps: (enabled: boolean) => void;
   setActiveTab: (tab: any) => void;
   startFootworkGame: () => void;
-  handleFootworkStep: (choice: string) => { success: boolean; combo: number; timeBonus: number; isClear: boolean };
+  handleFootworkStep: (choice: number) => { success: boolean; combo: number; timeBonus: number; isClear: boolean };
   updateFootwork: (dt: number) => void;
   closeDawnSettlement: () => void;
   getNightBuffs: () => any;
@@ -3714,18 +3714,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   startFootworkGame: () => {
     set((s: any) => {
       const stage = s.game.footworkGame.stage || 1;
-      const stageOptions = stage === 1 ? ["왼쪽", "오른쪽"] :
-        stage === 2 ? ["왼쪽", "중앙", "오른쪽"] :
-          stage === 3 ? ["좌상", "우상", "좌하", "우하"] :
-            ["좌상", "우상", "중앙", "좌하", "우하"];
-
-      const initialSequence = Array.from({ length: 10 }, () => stageOptions[Math.floor(Math.random() * stageOptions.length)]);
+      const laneCount = stage <= 3 ? 2 : (stage <= 5 ? 3 : (stage <= 7 ? 4 : 5));
+      const initialSequence = Array.from({ length: 12 }, () => Math.floor(Math.random() * laneCount));
 
       return {
         game: {
           ...s.game,
           footworkGame: {
             ...s.game.footworkGame,
+            laneCount,
             timeLeft: 30,
             maxTime: 45,
             combo: 0,
@@ -3739,7 +3736,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  handleFootworkStep: (choice: string) => {
+  handleFootworkStep: (choice: number) => {
     const { game } = get();
     const fg = game.footworkGame;
     if (!fg.isPlaying) return { success: false, combo: 0, timeBonus: 0, isClear: false };
@@ -3751,26 +3748,25 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     set((s: any) => {
       const currentFG = s.game.footworkGame;
-      nextCombo = success ? currentFG.combo + 1 : Math.max(0, currentFG.combo - 3);
-      let nextTime = success ? Math.min(currentFG.maxTime, currentFG.timeLeft + 0.2) : Math.max(0, currentFG.timeLeft - 2);
-      let nextScore = success ? currentFG.score + 10 : currentFG.score;
+      nextCombo = success ? currentFG.combo + 1 : 0;
+      let nextTime = success ? Math.min(currentFG.maxTime, currentFG.timeLeft + 0.4) : Math.max(0, currentFG.timeLeft - 1.5);
+      let nextScore = success ? currentFG.score + 20 : currentFG.score;
 
       if (success) {
-        if (nextCombo === 5) { nextTime = Math.min(currentFG.maxTime, nextTime + 2); timeBonus = 2; }
-        else if (nextCombo === 10) { nextTime = Math.min(currentFG.maxTime, nextTime + 3); timeBonus = 3; }
-        else if (nextCombo === 15) { nextTime = Math.min(currentFG.maxTime, nextTime + 4); timeBonus = 4; }
+        if (nextCombo > 0 && nextCombo % 10 === 0) {
+          nextTime = Math.min(currentFG.maxTime, nextTime + 2.5);
+          timeBonus = 2.5;
+        }
 
-        if (nextCombo >= 20) {
+        // Target hits to clear stage: scale with stage
+        const targetHits = 20 + (currentFG.stage * 5);
+        if (currentFG.score / 20 >= targetHits) {
           isClear = true;
         }
       }
 
-      const stage = currentFG.stage;
-      const stageOptions = stage === 1 ? ["왼쪽", "오른쪽"] :
-        stage === 2 ? ["왼쪽", "중앙", "오른쪽"] :
-          stage === 3 ? ["좌상", "우상", "좌하", "우하"] :
-            ["좌상", "우상", "중앙", "좌하", "우하"];
-      const nextSequence = success ? [...currentFG.sequence.slice(1), stageOptions[Math.floor(Math.random() * stageOptions.length)]] : currentFG.sequence;
+      const laneCount = currentFG.laneCount;
+      const nextSequence = success ? [...currentFG.sequence.slice(1), Math.floor(Math.random() * laneCount)] : currentFG.sequence;
       const nextAnswer = nextSequence[0];
 
       return {

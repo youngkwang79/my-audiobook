@@ -45,9 +45,10 @@ export const FORGE_ITEMS: OwnedWeapon[] = [
     critBonus: 0,
     evadeBonus: 0,
     defenseBonus: 0,
+    touchMultiplier: 1000,
     price: 3750,
     icon: "🗡️",
-    description: "공격 +6",
+    description: "공격 +6 | 수련 +1000",
   },
   {
     id: "필부_gloves",

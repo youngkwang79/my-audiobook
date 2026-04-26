@@ -301,7 +301,9 @@ export type FootworkGameState = {
   bestCombo: number;
   stage: number;
   maxStage: number;
-  currentAnswer: string | null;
+  currentAnswer: number | null;
+  sequence: number[];
+  laneCount: number;
   score: number;
   isPlaying: boolean;
 };

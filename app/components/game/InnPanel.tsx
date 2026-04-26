@@ -356,6 +356,8 @@ export default function InnPanel({
   const [puzzleCombo, setPuzzleCombo] = useState(0);
   const [puzzleSwipeStart, setPuzzleSwipeStart] = useState<{ r: number, c: number, x: number, y: number } | null>(null);
   const [puzzleEffects, setPuzzleEffects] = useState<{ id: number; r: number; c: number; color: string }[]>([]);
+  const [pulseLives, setPulseLives] = useState(7);
+  const pulseLivesRef = useRef(7);
   const pulseIdRef = useRef(0);
 
   // --- REFS for Stale Closure Prevention ---
@@ -440,6 +442,8 @@ export default function InnPanel({
     currentProgressRef.current = 0;
     setPulseTargets([]);
     pulseTargetsRef.current = [];
+    setPulseLives(7);
+    pulseLivesRef.current = 7;
   }, [currentStage, initPuzzleGrid]);
   const successHitsRef = useRef(0);
   const currentProgressRef = useRef(0);
@@ -1198,37 +1202,37 @@ export default function InnPanel({
     updateFootwork(dt);
 
     const fg = game.footworkGame;
+    // 게임 종료 감지
     if (!fg.isPlaying && isPlaying) {
-      if (fg.combo >= 20) {
-        // Clear Stage
-        if (fg.stage < 4) {
-          useGameStore.setState((s: any) => ({
-            game: {
-              ...s.game,
-              footworkGame: {
-                ...s.game.footworkGame,
-                stage: s.game.footworkGame.stage + 1
-              }
+      const targetHits = 20 + (fg.stage * 5);
+      const currentHits = Math.floor(fg.score / 20);
+
+      if (currentHits >= targetHits) {
+        // 스테이지 클리어
+        useGameStore.setState((s: any) => ({
+          game: {
+            ...s.game,
+            footworkGame: {
+              ...s.game.footworkGame,
+              stage: s.game.footworkGame.stage + 1
             }
-          }));
-          handleRoundSuccess("PERFECT", 500, `보법 ${fg.stage}단계 돌파! 다음 단계로...`);
-        } else {
-          handleRoundSuccess("PERFECT", 1000, `보법 최종 단계 완수! 전설적인 발놀림입니다.`);
-        }
+          }
+        }));
+        handleRoundSuccess("PERFECT", 600, `보법 ${fg.stage}단계 돌파! 다음 단계로...`);
       } else if (fg.timeLeft <= 0) {
-        finishMission(false, "MISS", fg.score, `보법 수련이 미흡합니다. (목표: 20콤보 / 현재: ${fg.combo}콤보)`);
+        finishMission(false, "MISS", fg.score, `시간 내에 보법 수련을 완수하지 못했습니다. (목표: ${targetHits}회 / 현재: ${currentHits}회)`);
       }
     }
   };
 
-  const handlePolesStep = (choice: string) => {
+  const handleLaneStep = (laneIndex: number) => {
     const now = Date.now();
     if (now - (lastHitTimeRef.current["dodge"] || 0) < 50) return;
     lastHitTimeRef.current["dodge"] = now;
 
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
 
-    const res = handleFootworkStep(choice);
+    const res = handleFootworkStep(laneIndex);
     if (res.success) {
       addFloatText("SUCCESS", "#ffd700");
       if (res.timeBonus > 0) {
@@ -1236,7 +1240,7 @@ export default function InnPanel({
       }
       playHitEffect();
     } else {
-      addFloatText("MISS", "#ff4d4d");
+      addFloatText("FALL!", "#ff4d4d");
       triggerShake();
     }
   };
@@ -1660,8 +1664,17 @@ export default function InnPanel({
     setPulseTargets(moved);
 
     if (moved.some(t => t.progress > 100)) {
-      // 타이머/실패 제거 요청으로 인해 단순히 삭제 처리
-      pulseTargetsRef.current = pulseTargetsRef.current.filter(t => t.progress <= 100);
+      const nextLives = pulseLivesRef.current - 1;
+      pulseLivesRef.current = nextLives;
+      setPulseLives(nextLives);
+      triggerShake();
+      addFloatText("기운 폭주 -1 HP", "#ff4d4d");
+
+      if (nextLives <= 0) {
+        finishMission(false, "MISS", playerScoreRef.current, "내공의 기운이 폭발하여 수련에 실패했습니다.");
+      } else {
+        pulseTargetsRef.current = pulseTargetsRef.current.filter(t => t.progress <= 100);
+      }
       return;
     }
 
@@ -1689,7 +1702,15 @@ export default function InnPanel({
     const grade = target.progress > 20 ? (target.progress > 64 ? "PERFECT" : "GREAT") : (target.progress > 0 ? "GOOD" : "MISS");
 
     if (grade === "MISS") {
-      finishMission(false, "MISS", playerScoreRef.current, "타이밍이 맞지 않았습니다.");
+      const nextLives = pulseLivesRef.current - 1;
+      pulseLivesRef.current = nextLives;
+      setPulseLives(nextLives);
+      triggerShake();
+      addFloatText("응축 실패 -1 HP", "#ff4d4d");
+
+      if (nextLives <= 0) {
+        finishMission(false, "MISS", playerScoreRef.current, "내공이 어지러워져 수련에 실패했습니다.");
+      }
     } else {
       const nextTargets = pulseTargetsRef.current.filter(t => t.id !== id);
       pulseTargetsRef.current = nextTargets;
@@ -2309,11 +2330,46 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               )}
 
               {currentMiniGame === "pulse" && (
-                <div style={{ ...reflectArea, position: "relative" }}>
+                <div 
+                  onClick={() => {
+                    const nextLives = pulseLivesRef.current - 1;
+                    pulseLivesRef.current = nextLives;
+                    setPulseLives(nextLives);
+                    triggerShake();
+                    addFloatText("허공 타격 -1 HP", "#ff4d4d");
+                    if (nextLives <= 0) {
+                      finishMission(false, "MISS", playerScoreRef.current, "기맥이 뒤틀려 수련에 실패했습니다.");
+                    }
+                  }}
+                  style={{ ...reflectArea, position: "relative", cursor: 'crosshair' }}
+                >
+                  {/* Heart UI (Cheongun Style) */}
+                  <div style={{
+                    position: "absolute", top: "15px", left: "20px", display: "flex", gap: "5px", zIndex: 10
+                  }}>
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <motion.span
+                        key={i}
+                        animate={{ 
+                          scale: i < pulseLives ? [1, 1.2, 1] : 1,
+                          opacity: i < pulseLives ? 1 : 0.3,
+                          filter: i < pulseLives ? "drop-shadow(0 0 5px #ff4d4d)" : "grayscale(1)"
+                        }}
+                        transition={{ repeat: i < pulseLives ? Infinity : 0, duration: 2, delay: i * 0.2 }}
+                        style={{ fontSize: "20px", color: i < pulseLives ? "#ff4d4d" : "#666" }}
+                      >
+                        ❤️
+                      </motion.span>
+                    ))}
+                  </div>
+
                   {pulseTargets.map(t => (
                     <div
                       key={t.id}
-                      onClick={() => handlePulseTap(t.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePulseTap(t.id);
+                      }}
                       style={{
                         position: "absolute",
                         left: `${t.x}%`,
@@ -2344,7 +2400,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       <div style={{ ...reflectTargetCircle, fontSize: 14 }}>응축</div>
                     </div>
                   ))}
-                  <div style={gameTip}>기운이 가득 찼을 때 탭하세요! ({currentProgress}/{4 + (round - 1)})</div>
+                  <div style={gameTip}>기운이 가득 찼을 때 탭하세요! ({currentProgress}/{4 + (currentStage - 1) * 2})</div>
                 </div>
               )}
 
@@ -2408,104 +2464,138 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               {/* 3. Meihua Poles Minigame (Dodge) -> Footwork Game (Vertical Step Style) */}
               {currentMiniGame === "dodge" && (
                 <div style={{
-                  background: 'rgba(10, 10, 10, 0.85)', color: 'white', padding: '15px', borderRadius: '30px',
+                  background: 'rgba(10, 10, 10, 0.9)', color: 'white', padding: '15px', borderRadius: '30px',
                   textAlign: 'center', width: '100%', maxWidth: '380px', height: '540px', margin: '0 auto',
-                  border: '2px solid rgba(255, 215, 0, 0.3)', boxShadow: '0 0 30px rgba(0, 0, 0, 0.8)',
+                  border: '2px solid rgba(255, 215, 0, 0.4)', boxShadow: '0 0 40px rgba(0, 0, 0, 0.9)',
                   display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', overflow: 'hidden'
                 }}>
                   {/* Timer & Progress */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '14px', color: '#ffd700', fontWeight: 900 }}>梅花樁 보법수련 ({game.footworkGame.stage}단계)</div>
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>콤보: {game.footworkGame.combo}</div>
+                      <div style={{ fontSize: '15px', color: '#ffd700', fontWeight: 900, textShadow: '0 0 5px rgba(255,215,0,0.3)' }}>梅花樁 보법수련 ({game.footworkGame.stage}단계)</div>
+                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 800 }}>연속 성공: {game.footworkGame.combo}</div>
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: 950, color: game.footworkGame.timeLeft < 10 ? "#ff4d4d" : "#ffd700" }}>
+                    <div style={{
+                      fontSize: '22px', fontWeight: 950,
+                      color: game.footworkGame.timeLeft < 10 ? "#ff4d4d" : "#ffd700",
+                      textShadow: game.footworkGame.timeLeft < 10 ? '0 0 10px #ff4d4d' : '0 0 10px rgba(255,215,0,0.5)'
+                    }}>
                       {Math.ceil(game.footworkGame.timeLeft || 0)}s
                     </div>
                   </div>
 
-                  {/* Sequence Preview Area */}
+                  {/* Lane Preview Area */}
                   <div style={{
-                    flex: 1, background: 'rgba(0,0,0,0.4)', borderRadius: '20px',
-                    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    border: '2px solid rgba(255,215,0,0.2)',
-                    overflow: 'hidden', margin: '10px 0', padding: '20px 0'
+                    flex: 1, background: 'rgba(0,0,0,0.6)', borderRadius: '25px',
+                    position: 'relative', display: 'flex', justifyContent: 'center',
+                    border: '2px solid rgba(255,215,0,0.15)',
+                    overflow: 'hidden', margin: '5px 0', padding: '0'
                   }}>
-                    {/* The Path (Meihua Poles) */}
-                    <div style={{
-                      position: 'absolute', top: 0, bottom: 0, width: '4px',
-                      background: 'linear-gradient(to bottom, transparent, rgba(255,215,0,0.3), transparent)',
-                      zIndex: 0
-                    }} />
+                    {/* Lane Dividers */}
+                    {Array.from({ length: (game.footworkGame.laneCount || 2) - 1 }).map((_, i) => (
+                      <div key={i} style={{
+                        position: 'absolute',
+                        left: `${((i + 1) / (game.footworkGame.laneCount || 2)) * 100}%`,
+                        top: 0, bottom: 0, width: '1px',
+                        background: 'rgba(255,215,0,0.15)',
+                        zIndex: 1
+                      }} />
+                    ))}
 
-                    <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '15px', zIndex: 2 }}>
-                      {game.footworkGame.sequence?.slice(0, 6).map((step: string, i: number) => (
-                        <motion.div
-                          key={`${step}-${game.footworkGame.score + i}`}
-                          layout
-                          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                          animate={{
-                            opacity: i === 0 ? 1 : 1 - (i * 0.15),
-                            scale: i === 0 ? 1.2 : 1 - (i * 0.05),
-                            y: 0
-                          }}
-                          style={{
-                            width: '120px', height: '50px',
-                            background: i === 0
-                              ? 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)'
-                              : 'rgba(255,255,255,0.1)',
-                            borderRadius: '12px',
-                            border: i === 0 ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
-                            boxShadow: i === 0 ? '0 0 20px rgba(255,215,0,0.6)' : 'none',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: i === 0 ? '#000' : '#fff',
-                            fontWeight: 900, fontSize: i === 0 ? '18px' : '14px'
-                          }}
-                        >
-                          {step}
-                        </motion.div>
-                      ))}
+                    {/* Descending Platforms */}
+                    <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+                      <AnimatePresence mode="popLayout">
+                        {game.footworkGame.sequence?.slice(0, 8).map((laneIndex: number, i: number) => {
+                          const laneCount = game.footworkGame.laneCount || 2;
+                          const laneWidth = 100 / laneCount;
+                          const bottomOffset = 40 + (i * 60);
+
+                          return (
+                            <motion.div
+                              key={`${laneIndex}-${game.footworkGame.score + i}`}
+                              layout
+                              initial={{ opacity: 0, y: -40, scale: 0.5 }}
+                              animate={{
+                                opacity: i === 0 ? 1 : Math.max(0.2, 1 - (i * 0.12)),
+                                scale: i === 0 ? 1.1 : 0.9,
+                                y: 400 - bottomOffset,
+                                x: `${(laneIndex / laneCount) * 100}%`
+                              }}
+                              exit={{ opacity: 0, scale: 1.2, filter: 'brightness(2)' }}
+                              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                              style={{
+                                position: 'absolute',
+                                width: `${laneWidth * 0.8}%`,
+                                height: '40px',
+                                left: `${laneWidth * 0.1}%`,
+                                background: i === 0
+                                  ? 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)'
+                                  : 'rgba(255,215,0,0.2)',
+                                borderRadius: '10px',
+                                border: i === 0 ? '3px solid #fff' : '1px solid rgba(255,215,0,0.4)',
+                                boxShadow: i === 0 ? '0 0 25px rgba(255,215,0,0.7), inset 0 0 10px #fff' : 'none',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: i === 0 ? '#000' : '#ffd700',
+                                fontWeight: 950, fontSize: '14px'
+                              }}
+                            >
+                              {i === 0 ? "踏!" : ""}
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
                     </div>
 
-                    {/* Hit Zone Indicator */}
+                    {/* Hit Zone Indicator (Visual only) */}
                     <div style={{
-                      position: 'absolute', bottom: '20px', width: '160px', height: '60px',
-                      border: '2px dashed rgba(255,215,0,0.5)', borderRadius: '15px',
-                      pointerEvents: 'none'
+                      position: 'absolute', bottom: '30px', left: '5%', right: '5%', height: '60px',
+                      border: '2px dashed rgba(255,215,0,0.3)', borderRadius: '15px',
+                      pointerEvents: 'none', background: 'rgba(255,215,0,0.05)',
+                      zIndex: 1
                     }} />
                   </div>
 
-                  {/* Dynamic Control Buttons based on Stage */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10 }}>
-                    {/* Upper Buttons (Stage 3+) */}
-                    {game.footworkGame.stage >= 3 && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <FootworkButton label="左上" onClick={() => handlePolesStep("좌상")} />
-                        <FootworkButton label="右上" onClick={() => handlePolesStep("우상")} />
-                      </div>
-                    )}
-
-                    {/* Middle Buttons */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <FootworkButton label="左" onClick={() => handlePolesStep("왼쪽")} />
-                      {game.footworkGame.stage >= 2 && (
-                        <FootworkButton label="中" onClick={() => handlePolesStep("중앙")}
-                          style={{ background: 'rgba(255,215,0,0.1)' }} />
-                      )}
-                      <FootworkButton label="右" onClick={() => handlePolesStep("오른쪽")} />
-                    </div>
-
-                    {/* Lower Buttons (Stage 3+) */}
-                    {game.footworkGame.stage >= 3 && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <FootworkButton label="左下" onClick={() => handlePolesStep("좌하")} />
-                        <FootworkButton label="右下" onClick={() => handlePolesStep("우하")} />
-                      </div>
-                    )}
+                  {/* Lane Buttons */}
+                  <div style={{
+                    display: 'flex', gap: '8px', padding: '5px',
+                    justifyContent: 'center', alignItems: 'center'
+                  }}>
+                    {Array.from({ length: game.footworkGame.laneCount || 2 }).map((_, i) => (
+                      <motion.button
+                        key={i}
+                        whileTap={{ scale: 0.92 }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          handleLaneStep(i);
+                        }}
+                        style={{
+                          flex: 1,
+                          height: '70px',
+                          background: 'rgba(255,215,0,0.1)',
+                          border: '2px solid rgba(255,215,0,0.4)',
+                          borderRadius: '15px',
+                          color: '#ffd700',
+                          fontSize: '18px',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 0 rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        {game.footworkGame.laneCount === 2 
+                          ? (i === 0 ? "左" : "右") 
+                          : (game.footworkGame.laneCount === 3 
+                            ? (i === 0 ? "左" : (i === 1 ? "中" : "右"))
+                            : (i + 1))
+                        }
+                      </motion.button>
+                    ))}
                   </div>
 
-                  <div style={{ fontSize: '12px', color: '#ffd700', fontWeight: 700, textShadow: '0 0 5px #000', marginTop: '5px' }}>
-                    가장 아래의 발판(황금색)을 순서대로 누르세요!
+                  <div style={{ fontSize: '12px', color: '#ffd700', fontWeight: 800, textShadow: '0 0 5px #000', marginTop: '5px' }}>
+                    가장 아래의 황금색 발판을 순서대로 밟으세요!
                   </div>
                 </div>
               )}
