@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 import { useAuth } from "@/app/providers/AuthProvider";
 import GameStatusPanel from "./GameStatusPanel";
@@ -22,29 +22,47 @@ import GamblingPanel from "./GamblingPanel";
 import DawnSettlement from "./DawnSettlement";
 
 export default function GameShell() {
-  const { game, markInnEntryHandled, syncFromCloud, syncToCloud, closeDawnSettlement } = useGameStore() as any;
+  const activeTab = useGameStore((s: any) => s.game.activeTab || "training");
+  const unlockEffectText = useGameStore((s: any) => s.game.unlockEffectText);
+  const yabawiActive = useGameStore((s: any) => s.game.yabawiEvent?.active);
+  const yabawiExpiresAt = useGameStore((s: any) => s.game.yabawiEvent?.expiresAt);
+  const pendingInnEntry = useGameStore((s: any) => s.game.pendingInnEntry);
+  const innEventVersion = useGameStore((s: any) => s.game.innEventVersion);
+  const lastOfflineRewards = useGameStore((s: any) => s.game.lastOfflineRewards);
+  const showDawnSettlement = useGameStore((s: any) => s.game.showDawnSettlement);
+  const masterDuelIsPlaying = useGameStore((s: any) => s.game.masterDuel.isPlaying);
+  const timeState = useGameStore((s: any) => s.game.timeState);
+  const timeRemaining = useGameStore((s: any) => s.game.timeRemaining);
+  const faction = useGameStore((s: any) => s.game.faction);
+  const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
+  const gamblingTokens = useGameStore((s: any) => s.game.gamblingTokens);
+
+  const markInnEntryHandled = useGameStore((s: any) => s.markInnEntryHandled);
+  const syncFromCloud = useGameStore((s: any) => s.syncFromCloud);
+  const syncToCloud = useGameStore((s: any) => s.syncToCloud);
+  const closeDawnSettlement = useGameStore((s: any) => s.closeDawnSettlement);
+  const setActiveTab = useGameStore((s: any) => s.setActiveTab);
   const { user } = useAuth();
 
   useEffect(() => {
-    if (game.unlockEffectText) {
+    if (unlockEffectText) {
       const timer = setTimeout(() => {
         useGameStore.setState((s: any) => ({ game: { ...s.game, unlockEffectText: null } }));
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [game.unlockEffectText]);
+  }, [unlockEffectText]);
 
   useEffect(() => {
-    if (game.yabawiEvent?.active) {
+    if (yabawiActive) {
       const timer = setTimeout(() => {
         useGameStore.setState((s: any) => ({ game: { ...s.game, yabawiEvent: null } }));
       }, 8000);
       return () => clearTimeout(timer);
     }
-  }, [game.yabawiEvent?.active]);
+  }, [yabawiActive]);
 
-  const activeTab = game.activeTab || "training";
-  const { setActiveTab } = useGameStore() as any;
+
   const [mounted, setMounted] = useState(false);
   const [showFogWarp, setShowFogWarp] = useState(false);
   const handledWarpRef = useRef(0);
@@ -52,7 +70,7 @@ export default function GameShell() {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -63,13 +81,14 @@ export default function GameShell() {
     const store: any = useGameStore.getState();
     if (store.checkOfflineRewards) store.checkOfflineRewards();
 
-    // Autosave interval every 30 seconds
+    // Autosave interval every 120 seconds
     const interval = setInterval(() => {
+      if (document.hidden) return;
       const { triggerSave, syncToCloud, isSyncingFromCloud } = useGameStore.getState() as any;
       if (isSyncingFromCloud) return; // Syncing in progress, skip auto-save
       if (triggerSave) triggerSave(true);
       if (user && syncToCloud) syncToCloud();
-    }, 30000);
+    }, 120000);
 
     // Handle mobile backgrounding / tab closing
     const handleVisibilityChange = () => {
@@ -96,9 +115,10 @@ export default function GameShell() {
   // --- Night System Tick ---
   useEffect(() => {
     const ticker = setInterval(() => {
-      const { updateTime } = useGameStore.getState() as any;
-      if (updateTime) updateTime(1);
-    }, 1000);
+      const { updateTime, game } = useGameStore.getState() as any;
+      if (document.hidden || game.options?.lowPowerMode) return;
+      if (updateTime) updateTime(5);
+    }, 5000);
     return () => clearInterval(ticker);
   }, []);
 
@@ -110,10 +130,10 @@ export default function GameShell() {
   }, [user, mounted]);
 
   useEffect(() => {
-    if (!game.pendingInnEntry) return;
-    if (game.innEventVersion === handledWarpRef.current) return;
+    if (!pendingInnEntry) return;
+    if (innEventVersion === handledWarpRef.current) return;
 
-    handledWarpRef.current = game.innEventVersion;
+    handledWarpRef.current = innEventVersion;
     setShowFogWarp(true);
 
     const moveTimer = setTimeout(() => {
@@ -130,7 +150,7 @@ export default function GameShell() {
       clearTimeout(moveTimer);
       clearTimeout(hideTimer);
     };
-  }, [game.pendingInnEntry, game.innEventVersion, markInnEntryHandled]);
+  }, [pendingInnEntry, innEventVersion, markInnEntryHandled, setActiveTab]);
 
   if (!mounted) return null;
 
@@ -142,98 +162,97 @@ export default function GameShell() {
 
   const mainTabs: string[] = ["training", "upgrade", "tower", "inn", "master", "library", "forge", "inventory", "giru", "gambling"];
 
-
+  const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
 
   return (
-    <div
-      style={{
-        maxWidth: 400,
-        margin: "0 auto",
-        padding: "0",
-        color: "white",
-        height: "100dvh",
-        background: "#0a0a0c",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
-{!game.masterDuel.isPlaying && activeTab !== "master" && (
-  <div style={{
-    padding: "8px 12px",
-    background: game.timeState === "night" ? "rgba(40, 20, 80, 0.9)" : 
-               game.timeState === "dusk" ? "rgba(100, 50, 30, 0.9)" :
-               game.timeState === "dawn" ? "rgba(120, 100, 50, 0.9)" : "rgba(30, 60, 40, 0.9)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "12px",
-    fontWeight: "bold",
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
-    zIndex: 50,
-  }}>
-    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-      <span style={{ fontSize: "16px" }}>
-        {game.timeState === "day" ? "☀️" : game.timeState === "dusk" ? "🌇" : game.timeState === "night" ? "🌙" : "🌅"}
-      </span>
-      <span style={{ color: "#fff" }}>
-        {game.timeState === "day" ? "낮 (수련)" : game.timeState === "dusk" ? "황혼 (정리)" : game.timeState === "night" ? "밤 (기루/도박)" : "새벽 (정산)"}
-      </span>
-    </div>
-    <div style={{ color: "#aaa" }}>
-      남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(game.timeRemaining)}초</span>
-    </div>
-  </div>
-)}
-
-      <AutoTrainingManager />
-
-      {!game.faction ? (
-        <FactionSelectPanel
-          faction={null}
-          factionLocked={false}
-          onSelect={handleSetFaction}
-        />
-      ) : (
-        <>
-
-
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              {activeTab === "training" && <TrainingPanel />}
-              {activeTab === "inn" && <InnPanel />}
-              {activeTab === "master" && <MasterPanel />}
-              {activeTab === "library" && <LibraryPanel />}
-              {activeTab === "forge" && <ForgePanel />}
-              {activeTab === "inventory" && <InventoryPanel />}
-              {activeTab === "upgrade" && <UpgradePanel />}
-              {activeTab === "tower" && <TowerPanel />}
-              {activeTab === "giru" && <GiruPanel />}
-              {activeTab === "gambling" && <GamblingPanel />}
+    <MotionConfig transition={lowPowerMode ? { duration: 0 } : undefined}>
+      <div
+        style={{
+          maxWidth: 400,
+          margin: "0 auto",
+          padding: "0",
+          color: "white",
+          height: "100dvh",
+          background: "#0a0a0c",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
+        {!masterDuelIsPlaying && activeTab !== "master" && (
+          <div style={{
+            padding: "8px 12px",
+            background: timeState === "night" ? "rgba(40, 20, 80, 0.9)" : 
+                       timeState === "dusk" ? "rgba(100, 50, 30, 0.9)" :
+                       timeState === "dawn" ? "rgba(120, 100, 50, 0.9)" : "rgba(30, 60, 40, 0.9)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "12px",
+            fontWeight: "bold",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            zIndex: 50,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "16px" }}>
+                {timeState === "day" ? "☀️" : timeState === "dusk" ? "🌇" : timeState === "night" ? "🌙" : "🌅"}
+              </span>
+              <span style={{ color: "#fff" }}>
+                {timeState === "day" ? "낮 (수련)" : timeState === "dusk" ? "황혼 (정리)" : timeState === "night" ? "밤 (기루/도박)" : "새벽 (정산)"}
+              </span>
+            </div>
+            <div style={{ color: "#aaa" }}>
+              남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(timeRemaining)}초</span>
             </div>
           </div>
-        </>
-      )}
-
-      <AnimatePresence>
-        {game.showDawnSettlement && (
-          <DawnSettlement onClose={closeDawnSettlement} />
         )}
-      </AnimatePresence>
 
-      <GameBottomNav
-        activeTab={activeTab as any}
-        unlockedTabs={game.unlockedTabs as any}
-        onChange={(tab) => setActiveTab(tab)}
-      />
+        <AutoTrainingManager />
+
+        {!faction ? (
+          <FactionSelectPanel
+            faction={null}
+            factionLocked={false}
+            onSelect={handleSetFaction}
+          />
+        ) : (
+          <>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                {activeTab === "training" && <TrainingPanel />}
+                {activeTab === "inn" && <InnPanel />}
+                {activeTab === "master" && <MasterPanel />}
+                {activeTab === "library" && <LibraryPanel />}
+                {activeTab === "forge" && <ForgePanel />}
+                {activeTab === "inventory" && <InventoryPanel />}
+                {activeTab === "upgrade" && <UpgradePanel />}
+                {activeTab === "tower" && <TowerPanel />}
+                {activeTab === "giru" && <GiruPanel />}
+                {activeTab === "gambling" && <GamblingPanel />}
+              </div>
+            </div>
+          </>
+        )}
+
+        <AnimatePresence>
+          {showDawnSettlement && (
+            <DawnSettlement onClose={closeDawnSettlement} />
+          )}
+        </AnimatePresence>
+
+        <GameBottomNav
+          activeTab={activeTab as any}
+          unlockedTabs={unlockedTabs as any}
+          onChange={(tab) => setActiveTab(tab)}
+        />
 
 
 
       {showFogWarp && (
         <div
-          key={`fog-container-${game.innEventVersion}`}
+          key={`fog-container-${innEventVersion}`}
           style={{
             position: "absolute",
             inset: 0,
@@ -260,7 +279,7 @@ export default function GameShell() {
               gap: 12,
               textAlign: "center",
               pointerEvents: "none",
-              marginTop: "-12vh", // 보상 팝업이 있던 위쪽 위치로 이동
+              marginTop: "-12vh",
             }}
           >
             <div className="thug-text-container">
@@ -297,42 +316,30 @@ export default function GameShell() {
               filter: blur(26px);
             }
 
-            .fog-a {
-              animation: fogMoveA 5s ease-in-out forwards;
-            }
-
-            .fog-b {
-              animation: fogMoveB 5s ease-in-out forwards;
-            }
-
-            .fog-c {
-              animation: fogMoveC 5s ease-in-out forwards;
-            }
+            .fog-a { animation: fogMoveA 5s ease-in-out forwards; }
+            .fog-b { animation: fogMoveB 5s ease-in-out forwards; }
+            .fog-c { animation: fogMoveC 5s ease-in-out forwards; }
 
             @keyframes fogMoveA {
               0% { transform: translateX(-10%) scale(1); opacity: 0; }
               15% { opacity: 0.9; }
               100% { transform: translateX(8%) scale(1.12); opacity: 0; }
             }
-
             @keyframes fogMoveB {
               0% { transform: translateY(8%) scale(1); opacity: 0; }
               15% { opacity: 0.8; }
               100% { transform: translateY(-6%) scale(1.08); opacity: 0; }
             }
-
             @keyframes fogMoveC {
               0% { transform: translate(-4%, 4%) scale(0.96); opacity: 0; }
               15% { opacity: 0.75; }
               100% { transform: translate(6%, -8%) scale(1.1); opacity: 0; }
             }
-
             .thug-text-container {
               position: relative;
               display: inline-block;
               animation: innWarpText 5s ease forwards;
             }
-
             .thug-text {
               font-size: 42px;
               font-weight: 950;
@@ -341,7 +348,6 @@ export default function GameShell() {
               letter-spacing: 2px;
               animation: textShake 0.4s cubic-bezier(.36,.07,.19,.97) 1.2s forwards;
             }
-
             .sword-slash {
               position: absolute;
               top: 50%;
@@ -355,7 +361,6 @@ export default function GameShell() {
               z-index: 10;
               animation: slashStrike 0.2s ease-in 1.2s forwards;
             }
-
             .blood-splatter {
               position: absolute;
               background: radial-gradient(circle, #ff0000 0%, #aa0000 60%, transparent 100%);
@@ -365,7 +370,6 @@ export default function GameShell() {
               z-index: 5;
               mix-blend-mode: overlay;
             }
-
             .b1 { width: 140px; height: 50px; top: 30%; left: 10%; animation: bloodSplash1 3s ease-out 1.25s forwards; }
             .b2 { width: 80px; height: 120px; top: -20%; right: 5%; animation: bloodSplash2 3s ease-out 1.28s forwards; }
             .b3 { width: 100px; height: 40px; bottom: -10%; left: 40%; animation: bloodSplash3 3s ease-out 1.22s forwards; }
@@ -373,18 +377,13 @@ export default function GameShell() {
             @keyframes textShake {
               0% { transform: translate(0,0) skew(0deg); color: #ff3333; }
               20% { transform: translate(-10px, 5px) skew(-12deg); color: #ffeb3b; text-shadow: 0 0 40px #ff0000; }
-              40% { transform: translate(8px, -5px) skew(10deg); }
-              60% { transform: translate(-6px, 3px) skew(-5deg); }
-              80% { transform: translate(4px, -3px) skew(3deg); }
               100% { transform: translate(0,0) skew(0deg); color: #aa0000; text-shadow: 3px 3px 0 #000, 0 0 25px #ff0000; }
             }
-
             @keyframes slashStrike {
               0% { transform: rotate(-15deg) scaleX(0); opacity: 1; }
               50% { transform: rotate(-15deg) scaleX(1); opacity: 1; }
               100% { transform: rotate(-15deg) scaleX(1); opacity: 0; }
             }
-
             @keyframes bloodSplash1 {
               0% { transform: rotate(-20deg) scale(0); opacity: 0; }
               10% { transform: rotate(-20deg) scale(1.5); opacity: 0.9; }
@@ -400,14 +399,12 @@ export default function GameShell() {
               10% { transform: scale(1.5); opacity: 0.9; }
               100% { transform: scale(2.2); opacity: 0; }
             }
-
             @keyframes innFogFade {
               0% { opacity: 0; }
               8% { opacity: 1; }
               90% { opacity: 1; }
               100% { opacity: 0; }
             }
-
             @keyframes innWarpText {
               0% { opacity: 0; transform: scale(0.92) translateY(12px); }
               8% { opacity: 1; transform: scale(1) translateY(0); }
@@ -418,7 +415,7 @@ export default function GameShell() {
         </div>
       )}
 
-      {game.unlockEffectText && (
+      {unlockEffectText && (
         <div
           style={{
             position: "absolute",
@@ -459,7 +456,7 @@ export default function GameShell() {
                 marginBottom: 20,
               }}
             >
-              {game.unlockEffectText}
+              {unlockEffectText}
             </div>
             <div
               style={{
@@ -479,9 +476,9 @@ export default function GameShell() {
         </div>
       )}
 
-      {game.lastOfflineRewards && <OfflineRewardPopup />}
+      {lastOfflineRewards && <OfflineRewardPopup />}
 
-      {game.yabawiEvent?.active && now < game.yabawiEvent.expiresAt && (
+      {yabawiActive && now < yabawiExpiresAt && (
         <div
           style={{
             position: "absolute",
@@ -510,7 +507,6 @@ export default function GameShell() {
               zIndex: 9999,
             }}
           >
-            {/* Layer 1: Background */}
             <div
               style={{
                 position: "absolute",
@@ -523,20 +519,12 @@ export default function GameShell() {
               }}
             />
 
-            {/* Layer 2: Character with Motion (Positioned at TOP) */}
             <motion.img
               src="/images/yabawi_npc.png"
               alt="Mysterious Old Man"
               initial={{ scale: 1, y: 0 }}
-              animate={{
-                scale: [1, 1.03, 1],
-                y: [0, 5, 0]
-              }}
-              transition={{
-                duration: 5,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+              animate={{ scale: [1, 1.03, 1], y: [0, 5, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
               style={{
                 position: "absolute",
                 top: "-15%",
@@ -550,7 +538,6 @@ export default function GameShell() {
               }}
             />
 
-            {/* Content Layer (Shifted LOWER) */}
             <div
               style={{
                 position: "relative",
@@ -574,8 +561,8 @@ export default function GameShell() {
 
               <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(0,0,0,0.7)", borderRadius: 12, border: "1px solid rgba(255,215,0,0.2)" }}>
                 <span style={{ fontSize: 13, color: "#bbb" }}>보유 명패:</span>
-                <span style={{ fontSize: 15, color: game.gamblingTokens > 0 ? "#4dff4d" : "#ff4d4d", fontWeight: "900" }}>
-                  {game.gamblingTokens || 0} 개
+                <span style={{ fontSize: 15, color: gamblingTokens > 0 ? "#4dff4d" : "#ff4d4d", fontWeight: "900" }}>
+                  {gamblingTokens || 0} 개
                 </span>
               </div>
 
@@ -595,27 +582,28 @@ export default function GameShell() {
                 <button
                   onClick={() => {
                     const store: any = useGameStore.getState();
-                    if (game.gamblingTokens <= 0) {
+                    if (gamblingTokens <= 0) {
                       alert("투전판 명패가 부족합니다. (객잔 대련 승리 시 확률 획득)");
                       return;
                     }
                     if (!confirm("투전판에 입장하시겠습니까?\n옥구슬 찾기에 성공하면 판돈의 3배를 획득하며, 명패 1개가 소모됩니다.")) return;
                     
                     if (store.useGamblingToken()) {
+                      setActiveTab("inn");
                       useGameStore.setState((s: any) => ({
-                        game: { ...s.game, activeTab: "inn", pendingYabawiPlay: true }
+                        game: { ...s.game, pendingYabawiPlay: true }
                       }));
                     }
                   }}
                   style={{
                     flex: 1.5, padding: "12px", borderRadius: "10px",
-                    background: game.gamblingTokens > 0 ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)" : "#333",
-                    border: "none", color: "#000", fontWeight: 950, cursor: game.gamblingTokens > 0 ? "pointer" : "not-allowed",
-                    boxShadow: game.gamblingTokens > 0 ? "0 4px 15px rgba(255,215,0,0.3)" : "none",
+                    background: gamblingTokens > 0 ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)" : "#333",
+                    border: "none", color: "#000", fontWeight: 950, cursor: gamblingTokens > 0 ? "pointer" : "not-allowed",
+                    boxShadow: gamblingTokens > 0 ? "0 4px 15px rgba(255,215,0,0.3)" : "none",
                     fontSize: 14
                   }}
                 >
-                  {game.gamblingTokens > 0 ? "수락 (명패 1개)" : "명패 부족"}
+                  {gamblingTokens > 0 ? "수락 (명패 1개)" : "명패 부족"}
                 </button>
               </div>
 
@@ -626,6 +614,7 @@ export default function GameShell() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </MotionConfig>
   );
 }

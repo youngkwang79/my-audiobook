@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
+import { useGameStore, formatCompactNumber, shouldPauseHeavyLoop } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 import DamageText from "./elements/DamageText";
 
@@ -242,8 +242,31 @@ const BOX_ANIM_CSS = `
 `;
 
 export default function MasterPanel() {
-  const { game, startMasterDuel, updateMasterDuel, tapMasterDuel, setSelectedMasterLevel, useSkill, useConsumable, buyBossShopItem, getTotalHp, getTotalMp, parryBossAttack, triggerUltimate, triggerCombatTrap } = useGameStore();
-  const { masterDuel } = game;
+  const masterDuel = useGameStore((s: any) => s.game.masterDuel);
+  const options = useGameStore((s: any) => s.game.options);
+  const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
+  const hp = useGameStore((s: any) => s.game.hp);
+  const mp = useGameStore((s: any) => s.game.mp);
+  const bossTokens = useGameStore((s: any) => s.game.bossTokens);
+  const nextDayEvent = useGameStore((s: any) => s.game.nextDayEvent);
+  const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
+  const faction = useGameStore((s: any) => s.game.faction);
+  const quickSlots = useGameStore((s: any) => s.game.quickSlots);
+  const consumables = useGameStore((s: any) => s.game.consumables);
+  const learnedSkills = useGameStore((s: any) => s.game.learnedSkills);
+  const skillCooldowns = useGameStore((s: any) => s.game.skillCooldowns);
+  const movementBuff = useGameStore((s: any) => s.game.movementBuff);
+
+  const startMasterDuel = useGameStore((s: any) => s.startMasterDuel);
+  const updateMasterDuel = useGameStore((s: any) => s.updateMasterDuel);
+  const tapMasterDuel = useGameStore((s: any) => s.tapMasterDuel);
+  const setSelectedMasterLevel = useGameStore((s: any) => s.setSelectedMasterLevel);
+  const useSkill = useGameStore((s: any) => s.useSkill);
+  const useConsumable = useGameStore((s: any) => s.useConsumable);
+  const buyBossShopItem = useGameStore((s: any) => s.buyBossShopItem);
+  const parryBossAttack = useGameStore((s: any) => s.parryBossAttack);
+  const triggerUltimate = useGameStore((s: any) => s.triggerUltimate);
+  const triggerCombatTrap = useGameStore((s: any) => s.triggerCombatTrap);
   const [damages, setDamages] = useState<any[]>([]);
   const [combatTargets, setCombatTargets] = useState<any[]>([]);
   const requestRef = useRef<number | null>(null);
@@ -264,8 +287,8 @@ export default function MasterPanel() {
   const [countdownValue, setCountdownValue] = useState(0);
 
   const getTargetFPS = useCallback(() => {
-    const lowPower = game.options?.lowPowerMode;
-    const autoFps = game.options?.autoFps;
+    const lowPower = options?.lowPowerMode;
+    const autoFps = options?.autoFps;
 
     if (lowPower) return 10;
     if (autoFps) {
@@ -275,7 +298,7 @@ export default function MasterPanel() {
       return 30;
     }
     return 30;
-  }, [game.options?.lowPowerMode, game.options?.autoFps]);
+  }, [options?.lowPowerMode, options?.autoFps]);
 
   useEffect(() => {
     if (!masterDuel.isPlaying) {
@@ -283,10 +306,17 @@ export default function MasterPanel() {
       return;
     }
 
-    const interval = setInterval(() => {
-      // 60% 확률로 타겟 생성 (더 빈번하게)
-      if (Math.random() > 0.6) return;
+    const spawnInterval = shouldPauseHeavyLoop() ? 10000 : 800;
 
+    const interval = setInterval(() => {
+      const { game } = useGameStore.getState() as any;
+      if (shouldPauseHeavyLoop()) {
+        // 절전 모드일 때는 타겟 생성을 10초마다 고정적으로 시도
+      } else {
+        // 일반 모드일 때는 기존처럼 확률적으로 생성
+        if (Math.random() > 0.6) return;
+      }
+      
       const bodyParts = [
         { label: "머리", top: "10%", left: "55%" },
         { label: "가슴", top: "30%", left: "50%" },
@@ -301,11 +331,12 @@ export default function MasterPanel() {
 
       setCombatTargets(prev => [...prev, { ...part, type, id }]);
 
-      // 1.2초 후 자동 소멸 (더 빠르게 반응해야 함)
+      // 절전 모드일 때는 타겟 유지 시간도 약간 늘려줌 (터치 여유)
+      const duration = shouldPauseHeavyLoop() ? 3000 : 1200;
       setTimeout(() => {
         setCombatTargets(prev => prev.filter(t => t.id !== id));
-      }, 1200);
-    }, 800);
+      }, duration);
+    }, spawnInterval);
 
     return () => clearInterval(interval);
   }, [masterDuel.isPlaying]);
@@ -326,7 +357,7 @@ export default function MasterPanel() {
   const onTargetClick = useCallback((target: any) => {
     if (target.type === "WEAKNESS") {
       // 약점 포착: 강력한 대미지 (공격력의 5배 수준)
-      const res = tapMasterDuel(game.masterDuel.rivalAtk * 0.5, true);
+      const res = tapMasterDuel(masterDuel.rivalAtk * 0.5, true);
       spawnDamage(res.totalDamage, true, "rival", "약점 포착!");
     } else {
       // 함정 클릭: 악적의 강력한 반격 (3~10배 대미지)
@@ -334,7 +365,7 @@ export default function MasterPanel() {
       triggerCombatTrap(mult);
     }
     setCombatTargets(prev => prev.filter(t => t.id !== target.id));
-  }, [game.masterDuel.rivalAtk, tapMasterDuel, spawnDamage, triggerCombatTrap]);
+  }, [masterDuel.rivalAtk, tapMasterDuel, spawnDamage, triggerCombatTrap]);
 
 
   const triggerMasterDuelSequence = () => {
@@ -342,13 +373,13 @@ export default function MasterPanel() {
   };
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     // 진입 시 현재 선택된 레벨의 정보를 갱신 (15k 등 초기 기본값 방지)
     setSelectedMasterLevel(masterDuel.selectedLevel);
     return () => clearInterval(timer);
   }, []);
 
-  const isUnlocked = game.unlockedTabs.includes("master");
+  const isUnlocked = unlockedTabs.includes("master");
 
 
   const handleOpenBox = () => {
@@ -421,9 +452,10 @@ export default function MasterPanel() {
     const store = useGameStore.getState();
     const isPlaying = store.game.masterDuel.isPlaying;
 
-    if (document.hidden || !isPlaying) {
-      lastTickRef.current = time;
-      requestRef.current = requestAnimationFrame(animate);
+    const game = store.game;
+    if (!isPlaying || shouldPauseHeavyLoop()) {
+      lastTickRef.current = 0;
+      requestRef.current = null;
       return;
     }
 
@@ -466,11 +498,15 @@ export default function MasterPanel() {
   }, [masterDuel.damageTakenAccumulator]);
 
   useEffect(() => {
+    if (!masterDuel.isPlaying) return;
+
     requestRef.current = requestAnimationFrame(animate);
+
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      requestRef.current = null;
     };
-  }, []);
+  }, [masterDuel.isPlaying, animate]);
 
   if (!isUnlocked) {
     return (
@@ -484,11 +520,11 @@ export default function MasterPanel() {
     );
   }
 
-  const totalMaxHp = useGameStore.getState().getTotalHp();
-  const totalMaxMp = useGameStore.getState().getTotalMp();
+  const totalMaxHp = useGameStore(s => s.getTotalHp());
+  const totalMaxMp = useGameStore(s => s.getTotalMp());
   const hpPercent = (masterDuel.rivalHp / masterDuel.rivalMaxHp) * 100;
-  const playerHpPercent = (game.hp / totalMaxHp) * 100;
-  const playerMpPercent = (game.mp / totalMaxMp) * 100;
+  const playerHpPercent = (hp / totalMaxHp) * 100;
+  const playerMpPercent = (mp / totalMaxMp) * 100;
 
   // Recommended Combat Power
   const recommendedCP = 500 * Math.pow(1.8, masterDuel.selectedLevel - 1);
@@ -508,7 +544,7 @@ export default function MasterPanel() {
 
   // --- 도전 가능 여부 체크 ---
   const canChallenge = (level: number) => {
-    const ups = game.upgradeLevels;
+    const ups = upgradeLevels;
     const requiredStats = ['atk', 'def', 'hpRec', 'critRate', 'critDmg', 'eva'];
     return requiredStats.every(stat => (ups[stat as keyof typeof ups] || 0) >= level);
   };
@@ -579,7 +615,7 @@ export default function MasterPanel() {
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <div style={{ fontSize: 9, color: "#aaa" }}>추천력: <span style={{ color: "#ffd700" }}>{formatCompactNumber(recommendedCP)}</span></div>
               <div style={{ display: "flex", gap: 6 }}>
-                <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {game.bossTokens || 0}</span>
+                <span style={{ fontSize: 9, color: "#ff6b6b" }}>🩸 {bossTokens || 0}</span>
               </div>
             </div>
             <button
@@ -645,7 +681,7 @@ export default function MasterPanel() {
             }} />
 
             {/* 이동된 강호 정보 브리핑 배지 (이미지 하단 오버레이) */}
-            {game.nextDayEvent && (
+            {nextDayEvent && (
               <div style={{
                 position: "absolute",
                 bottom: "20px",
@@ -662,10 +698,10 @@ export default function MasterPanel() {
                 zIndex: 10,
                 animation: "fadeIn 0.8s ease-out"
               }}>
-                <div style={{ fontSize: "18px" }}>{game.nextDayEvent.type === "TREASURE_FORECAST" ? "💰" : "👹"}</div>
+                <div style={{ fontSize: "18px" }}>{nextDayEvent.type === "TREASURE_FORECAST" ? "💰" : "👹"}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "10px", color: "#e0c3fc", fontWeight: 800 }}>강호 소식</div>
-                  <div style={{ fontSize: "12px", color: "#fff", fontWeight: 700, lineHeight: 1.3 }}>{game.nextDayEvent.clueText}</div>
+                  <div style={{ fontSize: "12px", color: "#fff", fontWeight: 700, lineHeight: 1.3 }}>{nextDayEvent.clueText}</div>
                 </div>
               </div>
             )}
@@ -731,6 +767,30 @@ export default function MasterPanel() {
             backgroundImage: "url('/bg-master-vibrant.png')", backgroundSize: "cover",
             opacity: 0.4
           }} />
+
+          {/* 타겟이 없을 때 표시되는 탐색 문구 (절전 모드 최적화) */}
+          {combatTargets.length === 0 && (
+            <div style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              textAlign: "center",
+              zIndex: 50,
+              pointerEvents: "none"
+            }}>
+              <div style={{
+                fontSize: "16px",
+                fontWeight: 900,
+                color: "#ffd700",
+                opacity: 0.6,
+                textShadow: "0 0 10px rgba(0,0,0,1)",
+                animation: "hpPulse 2s infinite"
+              }}>
+                {shouldPauseHeavyLoop() ? "악적의 흔적을 추적 중입니다..." : "다음 틈을 노리고 있습니다..."}
+              </div>
+            </div>
+          )}
 
           {/* Rival HP Bar Overlay (Now relative to screen top) */}
           <div style={{
@@ -860,7 +920,7 @@ export default function MasterPanel() {
             {/* Player Side */}
             <div style={{ position: "absolute", left: "-44%", bottom: "-33%", zIndex: 200 }}>
               <img
-                src={(game.faction && BACK_IMAGES[game.faction]) || FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
+                src={(faction && BACK_IMAGES[faction]) || FACTIONS.find(f => f.name === faction)?.characterImages?.ready || "/images/char_hwasan_ready.png"}
                 style={{
                   height: 850, // Massive focus
                   width: "auto",
@@ -868,7 +928,7 @@ export default function MasterPanel() {
                   animation: isPlayerHit ? "playerHitShake 0.25s ease-in-out" : "none",
                   filter: isPlayerHit
                     ? "drop-shadow(0 0 10px rgba(255,0,0,0.8))"
-                    : (game.movementBuff ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" : "none")
+                    : (movementBuff ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)" : "none")
                 }}
               />
               {masterDuel.lastEffect === "DODGE" && (
@@ -884,13 +944,13 @@ export default function MasterPanel() {
                      className={playerHpPercent <= 30 ? "hp-low" : ""}>
                   <div style={{ width: `${playerHpPercent}%`, height: "100%", background: "linear-gradient(90deg, #cc0000, #ff4444)", transition: "0.3s" }} />
                   <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000" }}>
-                    {formatCompactNumber(game.hp)} / {formatCompactNumber(getTotalHp())}
+                    {formatCompactNumber(hp)} / {formatCompactNumber(totalMaxHp)}
                   </div>
                 </div>
                 <div style={{ height: 14, background: "#111122", borderRadius: 3, border: "1px solid #222244", overflow: "hidden", position: "relative", marginBottom: 6 }}>
                   <div style={{ width: `${playerMpPercent}%`, height: "100%", background: "#00f2ff", transition: "0.3s" }} />
                   <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 900, color: "#fff", textShadow: "1px 1px 2px #000" }}>
-                    {formatCompactNumber(game.mp)} / {formatCompactNumber(getTotalMp())}
+                    {formatCompactNumber(mp)} / {formatCompactNumber(totalMaxMp)}
                   </div>
                 </div>
                 {/* Ultimate Gauge Bar */}
@@ -954,8 +1014,8 @@ export default function MasterPanel() {
               position: "absolute", left: 25, top: "62%", transform: "translateY(-50%)",
               display: "flex", flexDirection: "column", gap: 8, zIndex: 500
             }}>
-              {game.quickSlots.map((id, idx) => {
-                const qty = id ? (game.consumables[id] || 0) : 0;
+              {quickSlots.map((id: any, idx: number) => {
+                const qty = id ? (consumables[id] || 0) : 0;
                 const data = id ? POTION_UI[id] : null;
                 return (
                   <div key={idx} onClick={(e) => { e.stopPropagation(); if (id) useConsumable(id); }} style={{
@@ -979,22 +1039,22 @@ export default function MasterPanel() {
               position: "absolute", bottom: 25, left: "50%", transform: "translateX(-50%)",
               display: "flex", gap: 8, zIndex: 500
             }}>
-              {[0, 1, 2, 3].map(idx => {
-                const equippedIds = game.masterDuel.equippedSkillIds || [];
+              {[0, 1, 2, 3].map((idx: number) => {
+                const equippedIds = masterDuel.equippedSkillIds || [];
                 let skill = null;
                 
                 if (equippedIds.length > 0) {
                   const sName = equippedIds[idx];
                   if (sName) {
-                    skill = game.learnedSkills.find(s => s.name === sName);
+                    skill = learnedSkills.find((s: any) => s.name === sName);
                   }
                 } else {
                   // Fallback for old users: last 4 skills
-                  skill = game.learnedSkills[game.learnedSkills.length - 1 - idx];
+                  skill = learnedSkills[learnedSkills.length - 1 - idx];
                 }
 
-                const cd = skill ? (game.skillCooldowns[skill.name] || 0) : 0;
-                const canUse = skill && game.mp >= (skill.mpCost || 10) && cd <= 0;
+                const cd = skill ? (skillCooldowns[skill.name] || 0) : 0;
+                const canUse = skill && mp >= (skill.mpCost || 10) && cd <= 0;
                 const emojis = ["🔥", "⚡", "✨", "💥"];
 
                 return (
@@ -1097,8 +1157,8 @@ export default function MasterPanel() {
               {[
                 { label: '공격', key: 'atk' }, { label: '방어', key: 'def' }, { label: '생명', key: 'hpRec' },
                 { label: '확률', key: 'critRate' }, { label: '치댐', key: 'critDmg' }, { label: '회피', key: 'eva' }
-              ].map(stat => {
-                const cur = game.upgradeLevels[stat.key as keyof typeof game.upgradeLevels] || 0;
+              ].map((stat: any) => {
+                const cur = upgradeLevels[stat.key as keyof typeof upgradeLevels] || 0;
                 const isOk = cur >= masterDuel.selectedLevel;
                 return (
                   <div key={stat.key} style={{
@@ -1155,7 +1215,7 @@ export default function MasterPanel() {
             </div>
 
             {/* 특수 보스 레이드 버튼 (BOSS_RAID_CLUE 있을 때만) */}
-            {game.nextDayEvent?.type === "BOSS_RAID_CLUE" && !game.nextDayEvent.isUsed && (
+            {nextDayEvent?.type === "BOSS_RAID_CLUE" && !nextDayEvent.isUsed && (
               <button
                 onClick={() => startMasterDuel(true)}
                 style={{
@@ -1279,7 +1339,7 @@ export default function MasterPanel() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ fontSize: 28 }}>🩸</div>
                   <div style={{ fontSize: 34, fontWeight: 950, color: "#fff", textShadow: "0 0 15px rgba(255,107,107,0.4)", letterSpacing: -1 }}>
-                    {game.bossTokens || 0}
+                    {bossTokens || 0}
                   </div>
                 </div>
               </div>
@@ -1299,7 +1359,7 @@ export default function MasterPanel() {
                     key={idx}
                     onClick={() => {
                       if (item.id === "paewang_box") {
-                        if ((game.bossTokens || 0) < 500) {
+                        if ((bossTokens || 0) < 500) {
                           alert("혈투의 징표가 부족합니다.");
                           return;
                         }

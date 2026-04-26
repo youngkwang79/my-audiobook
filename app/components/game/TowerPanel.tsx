@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { useGameStore, getTowerTheme } from "@/app/lib/game/useGameStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatCompactNumber } from "@/app/lib/game/useGameStore";
+import { formatCompactNumber, shouldPauseHeavyLoop } from "@/app/lib/game/useGameStore";
 
 export default function TowerPanel() {
   const { game, stepTower, updateTower, leaveTower, selectTowerBuff, selectTowerArtifact, handleTowerEvent, startTower } = useGameStore();
@@ -12,11 +12,16 @@ export default function TowerPanel() {
   // Combat loop
   useEffect(() => {
     if (!tower.isInside) return;
+    const intervalMs = game.options?.lowPowerMode ? 3000 : 500;
+
     const interval = setInterval(() => {
-      updateTower(0.1);
-    }, 100);
+      const { game: sGame } = useGameStore.getState();
+      if (shouldPauseHeavyLoop()) return;
+      // intervalMs를 초 단위로 변환하여 넘겨줌 (예: 3초면 3.0)
+      updateTower(intervalMs / 1000);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [tower.isInside, updateTower]);
+  }, [tower.isInside, updateTower, game.options?.lowPowerMode]);
 
   if (!tower.isInside) {
     return (
@@ -126,6 +131,11 @@ export default function TowerPanel() {
                     </div>
                   </div>
                 </div>
+                {game.options?.lowPowerMode && (
+                  <div className="mt-2 text-[10px] text-yellow-500/80 font-bold animate-pulse">
+                    ⚡ 절전 전투 진행 중 (3초 간격 업데이트)
+                  </div>
+                )}
               </motion.div>
             )}
            </AnimatePresence>
@@ -216,11 +226,14 @@ export default function TowerPanel() {
                   <span className="text-2xl font-black text-white/20 group-active:text-yellow-500 transition-colors">
                     {lane === 0 ? "左" : lane === 1 ? "中" : "右"}
                   </span>
-                  {tower.stairs[0] === lane && (
+                  {tower.stairs[0] === lane && !game.options?.lowPowerMode && (
                     <motion.div 
                       layoutId="stairTarget"
                       className="absolute inset-0 border-2 border-yellow-500/50 rounded-2xl animate-pulse"
                     />
+                  )}
+                  {tower.stairs[0] === lane && game.options?.lowPowerMode && (
+                    <div className="absolute inset-0 border-2 border-yellow-500/50 rounded-2xl" />
                   )}
                 </button>
               ))}

@@ -4,9 +4,9 @@ import { useGameStore, REALM_ORDER } from "@/app/lib/game/useGameStore";
 
 function getAutoTrainInterval(realm: string) {
   const realmIndex = Math.max(0, REALM_ORDER.indexOf(realm));
-  // 기본 200ms (초당 5회 타격) 기준, 경지가 높을수록 조금 더 빨라짐
+  // 자동수련은 1.5초 1회여도 충분합니다. 보상량은 배율로 보정합니다.
   const speedMultiplier = 1 + realmIndex * 0.1; 
-  return Math.max(100, Math.round(200 / speedMultiplier));
+  return Math.max(1000, Math.round(1500 / speedMultiplier));
 }
 
 export default function AutoTrainingManager() {
@@ -17,13 +17,14 @@ export default function AutoTrainingManager() {
   useEffect(() => {
     const lowPowerMode = useGameStore.getState().game.options?.lowPowerMode;
     let intervalMs = getAutoTrainInterval(realm);
-    if (lowPowerMode) intervalMs *= 1.2; // 저사양 모드 시 약간 느려짐
+    if (lowPowerMode) intervalMs *= 2.0; // 저사양 모드 시 추가 완화
 
     const timer = setInterval(() => {
-      if (document.hidden) return;
+      const game = useGameStore.getState().game;
+      if (document.hidden || game.options?.lowPowerMode) return;
 
-      // 초당 5회(200ms) 타격 기준이므로 multiplier를 1로 설정하여 정직하게 addExp 호출
-      autoTrain(1);
+      // 200ms 기준 보상량을 intervalMs에 맞춰 배율로 보정 (예: 1000ms면 5배 보상)
+      autoTrain(intervalMs / 200);
 
       const isCombat = useGameStore.getState().game.masterDuel.isPlaying;
       if (updateBuffs && !isCombat) {

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useGameStore, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
+import { useGameStore, REALM_SETTINGS, formatCompactNumber, shouldPauseHeavyLoop } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
 import { MARTIAL_COMPENDIUM, getRefineBonusMultiplier } from "@/app/lib/game/martialArtsSystem";
 import DamageText from "./elements/DamageText";
@@ -8,12 +8,44 @@ import GameStatusPanel from "./GameStatusPanel";
 
 
 export default function TrainingPanel() {
-  const { game, addExp, addCoins, breakthrough, getTotalCombatPower, clearLastReward, setInnVictoryEffect } = useGameStore() as any;
+  const realm = useGameStore((s: any) => s.game.realm);
+  const star = useGameStore((s: any) => s.game.star);
+  const faction = useGameStore((s: any) => s.game.faction);
+  const lastReward = useGameStore((s: any) => s.game.lastReward);
+  const attackMultiplier = useGameStore((s: any) => s.game.attackMultiplier);
+  const buffTimeLeft = useGameStore((s: any) => s.game.buffTimeLeft);
+  const learnedSkills = useGameStore((s: any) => s.game.learnedSkills);
+  const martialArtsSkills = useGameStore((s: any) => s.game.martialArtsSkills);
+  const equippedGear = useGameStore((s: any) => s.game.equippedGear);
+  const ownedWeapons = useGameStore((s: any) => s.game.ownedWeapons);
+  const dummyHp = useGameStore((s: any) => s.game.dummyHp);
+  const hp = useGameStore((s: any) => s.game.hp);
+  const mp = useGameStore((s: any) => s.game.mp);
+  const pendingInnEntry = useGameStore((s: any) => s.game.pendingInnEntry);
+  const innHighScore = useGameStore((s: any) => s.game.innHighScore);
+  const showInnVictoryEffect = useGameStore((s: any) => s.game.showInnVictoryEffect);
+  const currentMissionTitle = useGameStore((s: any) => s.game.currentMissionTitle);
+  const totalDummyKills = useGameStore((s: any) => s.game.totalDummyKills);
+  const dummyKills = useGameStore((s: any) => s.game.dummyKills);
+  const questTarget = useGameStore((s: any) => s.game.questTarget);
+  const movementBuff = useGameStore((s: any) => s.game.movementBuff);
+  const unlockEffectText = useGameStore((s: any) => s.game.unlockEffectText);
+  const multiHitActive = useGameStore((s: any) => s.game.multiHitActive);
+  const maxDummyHp = useGameStore((s: any) => s.game.maxDummyHp);
+  const timingMission = useGameStore((s: any) => s.game.timingMission);
+
+  const addExp = useGameStore((s: any) => s.addExp);
+  const addCoins = useGameStore((s: any) => s.addCoins);
+  const breakthrough = useGameStore((s: any) => s.breakthrough);
+  const clearLastReward = useGameStore((s: any) => s.clearLastReward);
+  const setInnVictoryEffect = useGameStore((s: any) => s.setInnVictoryEffect);
+  const logCombatDamage = useGameStore((s: any) => s.logCombatDamage);
+  const getTotalCombatPower = useGameStore((s: any) => s.getTotalCombatPower);
 
   // Ensure victory effect is cleared on unmount to prevent repetition when switching tabs
   useEffect(() => {
     return () => {
-      if (useGameStore.getState().game.showInnVictoryEffect) {
+      if (showInnVictoryEffect) {
         useGameStore.setState((s: any) => ({ game: { ...s.game, showInnVictoryEffect: false } }));
       }
     };
@@ -48,14 +80,14 @@ export default function TrainingPanel() {
   const lastHitTimeRef = useRef<number>(0);
 
   const realmKeys = Object.keys(REALM_SETTINGS);
-  const currentRealmIndex = realmKeys.indexOf(game.realm);
+  const currentRealmIndex = realmKeys.indexOf(realm);
   const currentRealmName = currentRealmIndex >= 0 ? realmKeys[currentRealmIndex] : "필부";
   const nextRealmName =
     currentRealmIndex >= 0 ? realmKeys[currentRealmIndex + 1] ?? null : null;
 
 
   const currentRealmInfo =
-    currentRealmIndex >= 0 ? REALM_SETTINGS[game.realm] : REALM_SETTINGS["필부"];
+    currentRealmIndex >= 0 ? REALM_SETTINGS[realm] : REALM_SETTINGS["필부"];
   const nextRealmInfo = nextRealmName ? REALM_SETTINGS[nextRealmName] : null;
 
   const currentMinTouches = currentRealmInfo?.minTouches ?? 0;
@@ -63,13 +95,13 @@ export default function TrainingPanel() {
 
   const canBreakthrough = (useGameStore.getState() as any).canBreakthrough();
   const isBreakthroughReady = canBreakthrough && nextRealmName &&
-    (dismissedRealmRef.current !== game.realm || dismissedStarRef.current !== game.star);
+    (dismissedRealmRef.current !== realm || dismissedStarRef.current !== star);
 
-  const isRealmBreakthrough = game.star === 10;
-  const upgradeTargetLabel = isRealmBreakthrough ? `${nextRealmName} 경지` : `${game.star + 1}성`;
+  const isRealmBreakthrough = star === 10;
+  const upgradeTargetLabel = isRealmBreakthrough ? `${nextRealmName} 경지` : `${star + 1}성`;
 
   const getPopupContent = () => {
-    const raw = game.lastReward;
+    const raw = lastReward;
     const msg = String(raw ?? "");
 
     if (!msg.trim()) {
@@ -173,7 +205,7 @@ export default function TrainingPanel() {
       return {
         title: "🔥 무아지경 발동!",
         body: "공격력이 폭발적으로 상승합니다!",
-        reward: `효과: 공격력 ${game.attackMultiplier}배 (${Math.ceil(game.buffTimeLeft || 30)}초)`,
+        reward: `효과: 공격력 ${attackMultiplier}배 (${Math.ceil(buffTimeLeft || 30)}초)`,
       };
     }
 
@@ -186,14 +218,14 @@ export default function TrainingPanel() {
 
   const popupContent = getPopupContent();
   const isTrainingStatReward =
-    String(game.lastReward ?? "").includes("HP +") &&
-    String(game.lastReward ?? "").includes("MP +");
+    String(lastReward ?? "").includes("HP +") &&
+    String(lastReward ?? "").includes("MP +");
 
 
   useEffect(() => {
-    if (!game.lastReward) return;
+    if (!lastReward) return;
 
-    const msg = String(game.lastReward);
+    const msg = String(lastReward);
 
     if (msg.includes("HP +") && msg.includes("MP +")) {
       const hpMatch = msg.match(/HP \+(\d+)/);
@@ -229,47 +261,49 @@ export default function TrainingPanel() {
 
     const timer = setTimeout(() => setShowMissionPopup(false), 5000);
     return () => clearTimeout(timer);
-  }, [game.lastReward]);
+  }, [lastReward]);
 
   useEffect(() => {
     if (isBreakthroughReady && nextRealmName) {
       setShowBreakthroughPopup(true);
     }
-  }, [isBreakthroughReady, nextRealmName, game.realm, game.star]);
+  }, [isBreakthroughReady, nextRealmName, realm, star]);
 
   useEffect(() => {
     dismissedRealmRef.current = null;
-  }, [game.realm]);
+  }, [realm]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setMissionSlide(s => (s + 1) % 2);
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (Date.now() - lastTouchTime > 3000) {
+      if (Date.now() - lastTouchTime > 5000) {
         setShowPrompt(true);
       }
-    }, 500);
+    }, 3000);
     return () => clearInterval(interval);
   }, [lastTouchTime]);
 
-  const { combatAnalysis, startCombatAnalysis, stopCombatAnalysis, logCombatDamage } = useGameStore();
+  const combatAnalysis = useGameStore((s: any) => s.combatAnalysis);
+  const startCombatAnalysis = useGameStore((s: any) => s.startCombatAnalysis);
+  const stopCombatAnalysis = useGameStore((s: any) => s.stopCombatAnalysis);
 
   // Combat Analysis Tick
   useEffect(() => {
     let lastTime = Date.now();
     const timer = setInterval(() => {
+      const { game: sGame } = useGameStore.getState();
+      if (!combatAnalysis.isActive || shouldPauseHeavyLoop()) return;
       const now = Date.now();
       const dt = (now - lastTime) / 1000;
       lastTime = now;
-      if (combatAnalysis.isActive) {
-        useGameStore.getState().updateCombatAnalysis(dt);
-      }
-    }, 100);
+      useGameStore.getState().updateCombatAnalysis(dt);
+    }, 1000);
     return () => clearInterval(timer);
   }, [combatAnalysis.isActive]);
 
@@ -308,9 +342,9 @@ export default function TrainingPanel() {
     let eqSkillDamage = 0;
     let eqSkillName = "";
 
-    const equippedIds = Object.values(gameState.equippedGear ?? {}).filter(Boolean);
-    const equippedWeapons = gameState.ownedWeapons.filter(w => equippedIds.includes(w.id));
-    const skillWeapons = equippedWeapons.filter(w => w.equipmentSkill);
+    const equippedIds = Object.values(equippedGear ?? {}).filter(Boolean);
+    const equippedWeapons = ownedWeapons.filter((w: any) => equippedIds.includes(w.id));
+    const skillWeapons = equippedWeapons.filter((w: any) => w.equipmentSkill);
     const skillRoll = Math.random();
 
     let martialSkillProc = false;
@@ -320,23 +354,24 @@ export default function TrainingPanel() {
     if (skillRoll < 0.1) {
       if (skillWeapons.length > 0) {
         equipmentSkillProc = true;
-        const bestEqSkill = skillWeapons.sort((a, b) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;
+        const bestEqSkill = skillWeapons.sort((a: any, b: any) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;
         eqSkillName = bestEqSkill.name;
         eqSkillDamage = totalAtk * bestEqSkill.multiplier;
       } else if (gameState.learnedSkills.length > 0) {
-        const bestSkill = [...gameState.learnedSkills].sort((a, b) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
+        const bestSkill = [...gameState.learnedSkills].sort((a: any, b: any) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
         martialSkillProc = true;
         martialSkillName = bestSkill.name;
 
         // [수정] 무공 대미지 계산식 정교화 (성급 보너스 및 문파 보정 포함)
-        const skData = MARTIAL_COMPENDIUM.find(m => m.name === bestSkill.name && m.factionName === game.faction) || bestSkill;
-        const learned = game.martialArtsSkills.find((ms: any) => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);        const stars = learned?.stars || 0;
+        const skData = MARTIAL_COMPENDIUM.find((m: any) => m.name === bestSkill.name && m.factionName === faction) || bestSkill;
+        const learned = martialArtsSkills.find((ms: any) => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);
+        const stars = learned?.stars || 0;
         const refineMult = getRefineBonusMultiplier(stars);
         const baseMultiplier = (skData as any).multiplier || 1.5;
 
         let damageMultiplier = 1.0;
-        if (game.faction === "천마신교") damageMultiplier = 5.0;
-        if (game.faction === "하북팽가") damageMultiplier = 1.5;
+        if (faction === "천마신교") damageMultiplier = 5.0;
+        if (faction === "하북팽가") damageMultiplier = 1.5;
 
         martialSkillDamage = totalAtk * baseMultiplier * refineMult * damageMultiplier;
         // Training auto-proc does not consume inner power
@@ -386,7 +421,7 @@ export default function TrainingPanel() {
       }
 
       if (i === 0 && isFormless) {
-        const formlessDmg = gameState.dummyHp * 0.10;
+        const formlessDmg = dummyHp * 0.10;
         finalDmg += formlessDmg;
         logCombatDamage({ source: 'extra_hit', skillName: '무상유', damage: formlessDmg, isCritical: false });
       }
@@ -488,8 +523,8 @@ export default function TrainingPanel() {
     const targetRealm = nextRealmName;
 
     setShowBreakthroughPopup(false);
-    dismissedRealmRef.current = game.realm;
-    dismissedStarRef.current = game.star;
+    dismissedRealmRef.current = realm;
+    dismissedStarRef.current = star;
 
     if (targetRealm) {
       setBreakthroughSuccessRealm(targetRealm);
@@ -507,8 +542,8 @@ export default function TrainingPanel() {
 
 
   const popupIsLibrary =
-    String(game.lastReward ?? "").includes("서각") ||
-    String(game.lastReward ?? "").includes("장경각");
+    String(lastReward ?? "").includes("서각") ||
+    String(lastReward ?? "").includes("장경각");
 
   return (
     <div
@@ -522,7 +557,7 @@ export default function TrainingPanel() {
       }}
     >
 
-      <GameStatusPanel game={game} />
+      <GameStatusPanel />
 
       {/* 연마유 효과 중앙 팝업 */}
       {activeOilText && (
@@ -547,7 +582,7 @@ export default function TrainingPanel() {
 
 
       {showMissionPopup &&
-        game.lastReward &&
+        lastReward &&
         !showBreakthroughPopup &&
         !isTrainingStatReward && (
           <div
@@ -696,7 +731,7 @@ export default function TrainingPanel() {
               pointerEvents: "none"
             }}>
               <img
-                src={FACTIONS.find(f => f.name === game.faction)?.characterImages?.ready || "/warrior.png"}
+                src={FACTIONS.find((f: any) => f.name === faction)?.characterImages?.ready || "/warrior.png"}
                 alt="Character"
                 style={{ width: "100%", height: "100%", objectFit: "contain", filter: "brightness(2) contrast(1.5) drop-shadow(0 0 20px #ffd700)" }}
               />
@@ -743,7 +778,7 @@ export default function TrainingPanel() {
                 textShadow: "0 0 10px rgba(255,255,255,0.10)",
               }}
             >
-              ✨ {game.realm} {game.star}성 수련 조건을 달성했습니다.✨
+              ✨ {realm} {star}성 수련 조건을 달성했습니다.✨
               {"\n"}
               {upgradeTargetLabel}(으)로 {isRealmBreakthrough ? "돌파" : "승급"}하시겠습니까?
             </div>
@@ -783,7 +818,7 @@ export default function TrainingPanel() {
       )}
 
       {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 */}
-      {game.pendingInnEntry && (
+      {pendingInnEntry && (
         <div
           style={{
             position: "absolute",
@@ -993,7 +1028,7 @@ export default function TrainingPanel() {
           }}
         />
 
-        {game.attackMultiplier > 1 && (
+        {attackMultiplier > 1 && (
           <div
             style={{
               position: "absolute",
@@ -1017,12 +1052,12 @@ export default function TrainingPanel() {
                 WebkitTextStroke: "1px #ffd700",
               }}
             >
-              무아지경 X{game.attackMultiplier}
+              무아지경 X{attackMultiplier}
             </div>
           </div>
         )}
 
-        {game.movementBuff && (
+        {movementBuff && (
           <div
             style={{
               position: "absolute",
@@ -1042,16 +1077,16 @@ export default function TrainingPanel() {
               boxShadow: "0 0 15px rgba(0,242,255,0.3)"
             }}>
               <div style={{ fontSize: "16px", fontWeight: "950", color: "#fff", textShadow: "0 0 10px #00f2ff" }}>
-                {game.movementBuff.name} 극의 발동!
+                {movementBuff.name} 극의 발동!
               </div>
               <div style={{ fontSize: "14px", fontWeight: "900", color: "#00f2ff" }}>
-                남은 시간: {game.movementBuff.timeLeft.toFixed(1)}s
+                남은 시간: {movementBuff.timeLeft.toFixed(1)}s
               </div>
             </div>
           </div>
         )}
 
-        {game.unlockEffectText && (
+        {unlockEffectText && (
           <div
             style={{
               position: "absolute",
@@ -1076,12 +1111,12 @@ export default function TrainingPanel() {
                 whiteSpace: "nowrap",
               }}
             >
-              {game.unlockEffectText}
+              {unlockEffectText}
             </div>
           </div>
         )}
 
-        {(game.attackMultiplier > 1 || game.multiHitActive) && (
+        {(attackMultiplier > 1 || multiHitActive) && (
           <div
             style={{
               position: "absolute",
@@ -1102,7 +1137,7 @@ export default function TrainingPanel() {
                 textShadow: "0 0 10px #fff, 0 0 20px #ffd700",
               }}
             >
-              {Math.ceil(game.buffTimeLeft)}s
+              {Math.ceil(buffTimeLeft)}s
             </div>
           </div>
         )}
@@ -1130,8 +1165,8 @@ export default function TrainingPanel() {
               textAlign: "center",
             }}
           >
-            {REALM_SETTINGS[game.realm]?.label || "허수아비"} (
-            {formatCompactNumber(game.dummyHp)} / {formatCompactNumber(game.maxDummyHp)})
+            {REALM_SETTINGS[realm]?.label || "허수아비"} (
+            {formatCompactNumber(dummyHp)} / {formatCompactNumber(maxDummyHp)})
           </div>
           <div
             style={{
@@ -1146,7 +1181,7 @@ export default function TrainingPanel() {
           >
             <div
               style={{
-                width: `${game.maxDummyHp > 0 ? (game.dummyHp / game.maxDummyHp) * 100 : 0}%`,
+                width: `${maxDummyHp > 0 ? (dummyHp / maxDummyHp) * 100 : 0}%`,
                 height: "100%",
                 background: "linear-gradient(90deg, #ff3300, #ffaa00)",
                 transition: "width 0.15s ease-out",
@@ -1196,14 +1231,14 @@ export default function TrainingPanel() {
         )}
 
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 150 }}>
-          {damages.map((dmg) => (
+          {damages.map((dmg: any) => (
             <DamageText key={dmg.id} {...dmg} />
           ))}
         </div>
 
         {/* Hit Effects Layer */}
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 160 }}>
-          {hitEffects.map(eff => (
+          {hitEffects.map((eff: any) => (
             <div key={eff.id} style={{
               position: "absolute",
               left: `${eff.x}%`,
@@ -1225,7 +1260,7 @@ export default function TrainingPanel() {
               )}
             </div>
           ))}
-          {textStrikes.map(st => (
+          {textStrikes.map((st: any) => (
             <div key={st.id} style={{
               position: "absolute",
               left: `${st.x}%`,
@@ -1247,7 +1282,7 @@ export default function TrainingPanel() {
         </div>
 
         <div style={{ position: "relative", width: "100%", flex: 1, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {showPrompt && !game.pendingInnEntry && !game.timingMission.available && (
+          {showPrompt && !pendingInnEntry && !timingMission.available && (
             <div style={{
               position: "absolute",
               top: "45%",
@@ -1304,7 +1339,7 @@ export default function TrainingPanel() {
           >
             <img
               src={(() => {
-                const fInfo = FACTIONS.find(f => f.name === game.faction);
+                const fInfo = FACTIONS.find((f: any) => f.name === faction);
                 if (characterAction === "attack") {
                   return fInfo?.characterImages?.attack || "/warrior_attack.png";
                 }
@@ -1313,9 +1348,9 @@ export default function TrainingPanel() {
               alt="수행자"
               style={{
                 width: "100%",
-                filter: game.movementBuff
+                filter: movementBuff
                   ? "drop-shadow(0 0 20px #00f2ff) brightness(1.3)"
-                  : (game.attackMultiplier > 1 ? "drop-shadow(0 0 15px #ff4500) brightness(1.2)" : "drop-shadow(10px 15px 12px rgba(0,0,0,0.9))"),
+                  : (attackMultiplier > 1 ? "drop-shadow(0 0 15px #ff4500) brightness(1.2)" : "drop-shadow(10px 15px 12px rgba(0,0,0,0.9))"),
               }}
             />
           </div>
@@ -1337,7 +1372,7 @@ export default function TrainingPanel() {
             whiteSpace: "nowrap",
           }}
         >
-          {missionSlide === 0 ? `임무: ${game.dummyKills}/${game.questTarget}` : `무뢰배: ${game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills}/${game.totalDummyKills < 300 ? 300 : game.questTarget}`} | 총합: {game.totalDummyKills}
+          {missionSlide === 0 ? `임무: ${dummyKills}/${questTarget}` : `무뢰배: ${totalDummyKills < 300 ? totalDummyKills : dummyKills}/${totalDummyKills < 300 ? 300 : questTarget}`} | 총합: {totalDummyKills}
         </div>
       </div>
 
@@ -1379,11 +1414,11 @@ export default function TrainingPanel() {
         >
           {missionSlide === 0 ? (
             <span style={{ color: "#ffd700", animation: "goldShine 1.5s ease-in-out infinite", whiteSpace: "pre-wrap" }}>
-              {game.currentMissionTitle}
+              {currentMissionTitle}
             </span>
           ) : (
             <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
-              객잔 무뢰배 추격 (현재: {game.totalDummyKills < 300 ? game.totalDummyKills : game.dummyKills} / {game.totalDummyKills < 300 ? 300 : game.questTarget})
+              객잔 무뢰배 추격 (현재: {totalDummyKills < 300 ? totalDummyKills : dummyKills} / {totalDummyKills < 300 ? 300 : questTarget})
             </span>
           )}
         </div>
@@ -1400,7 +1435,7 @@ export default function TrainingPanel() {
         >
           <div
             style={{
-              width: `${Math.min(100, (missionSlide === 0 ? (game.dummyKills / game.questTarget) : (game.totalDummyKills < 300 ? (game.totalDummyKills / 300) : (game.dummyKills / game.questTarget))) * 100)}%`,
+              width: `${Math.min(100, (missionSlide === 0 ? (dummyKills / questTarget) : (totalDummyKills < 300 ? (totalDummyKills / 300) : (dummyKills / questTarget))) * 100)}%`,
               height: "100%",
               background: "linear-gradient(90deg, #f9d423, #ffdb01)",
               boxShadow: "0 0 10px #ffd700",
@@ -1412,7 +1447,7 @@ export default function TrainingPanel() {
 
 
 
-      {game.showInnVictoryEffect && (
+      {showInnVictoryEffect && (
         <div style={{
           position: "fixed",
           inset: 0,
@@ -1426,7 +1461,7 @@ export default function TrainingPanel() {
           animation: "victoryOverlayFade 3s forwards"
         }}>
           {/* 파팍 이펙트 레이어 */}
-          {[...Array(12)].map((_, i) => (
+          {[...Array(12)].map((_: any, i: number) => (
             <div key={i} style={{
               position: "absolute",
               width: "40px",

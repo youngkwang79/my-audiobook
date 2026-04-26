@@ -4006,3 +4006,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { game: nextGame };
   }),
 }));
+
+export function shouldPauseHeavyLoop() {
+  if (typeof document === 'undefined') return false;
+  const game = useGameStore.getState().game;
+  return document.hidden || game.options?.lowPowerMode;
+}
+
+export function getBatteryInterval(normal: number, low: number) {
+  const game = useGameStore.getState().game;
+  return game.options?.lowPowerMode ? low : normal;
+}

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useGameStore, REALM_SETTINGS, REALM_ORDER, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import CharacterModal from "./CharacterModal";
 
-export default function GameStatusPanel({ game }: { game: any }) {
+export default function GameStatusPanel() {
+  const game = useGameStore((s: any) => s.game);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps } = useGameStore() as any;
@@ -430,14 +431,14 @@ export default function GameStatusPanel({ game }: { game: any }) {
                   <div style={{ fontSize: 9, color: "#888" }}>UI 애니메이션을 제한하여 배터리를 절약합니다.</div>
                 </div>
                 <button
-                  onClick={() => setLowPowerMode(!game.options?.lowPowerMode)}
+                  onClick={() => setLowPowerMode(!useGameStore.getState().game.options?.lowPowerMode)}
                   style={{
                     padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900,
-                    background: game.options?.lowPowerMode ? "linear-gradient(135deg, #a8ff7e, #78cc5d)" : "#333",
-                    color: game.options?.lowPowerMode ? "#000" : "#888", border: "none", cursor: "pointer"
+                    background: useGameStore.getState().game.options?.lowPowerMode ? "linear-gradient(135deg, #a8ff7e, #78cc5d)" : "#333",
+                    color: useGameStore.getState().game.options?.lowPowerMode ? "#000" : "#888", border: "none", cursor: "pointer"
                   }}
                 >
-                  {game.options?.lowPowerMode ? "ON" : "OFF"}
+                  {useGameStore.getState().game.options?.lowPowerMode ? "ON" : "OFF"}
                 </button>
               </div>
 

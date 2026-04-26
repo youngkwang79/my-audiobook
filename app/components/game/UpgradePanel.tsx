@@ -16,7 +16,21 @@ const TAB_CONFIG = [
 const MULTIPLIERS: number[] = [1, 10, 100, 1000];
 
 export default function UpgradePanel() {
-  const { game, getTotalAttack, getTotalDefense, getTotalHp, getTotalEvasion, getTotalCritRate } = useGameStore() as any;
+  const coins = useGameStore((s: any) => s.game.coins);
+  const reputation = useGameStore((s: any) => s.game.reputation);
+  const enhancementStones = useGameStore((s: any) => s.game.enhancementStones);
+  const wisdom = useGameStore((s: any) => s.game.wisdom);
+  const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
+  const statUpgrades = useGameStore((s: any) => s.game.statUpgrades);
+  const factionName = useGameStore((s: any) => s.game.faction);
+
+  const getTotalAttack = useGameStore((s: any) => s.getTotalAttack);
+  const getTotalDefense = useGameStore((s: any) => s.getTotalDefense);
+  const getTotalHp = useGameStore((s: any) => s.getTotalHp);
+  const getTotalEvasion = useGameStore((s: any) => s.getTotalEvasion);
+  const getTotalCritRate = useGameStore((s: any) => s.getTotalCritRate);
+  const upgradeStatMulti = useGameStore((s: any) => s.upgradeStatMulti);
+  const getMultiUpgradeCost = useGameStore((s: any) => s.getMultiUpgradeCost);
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [multiplier, setMultiplier] = useState<number>(1);
   const [activeDesc, setActiveDesc] = useState<{ id: string; name: string; text: string } | null>(null);
@@ -47,10 +61,8 @@ export default function UpgradePanel() {
     touchStartX.current = null;
   };
 
-  if (!game) return null;
-
-  const currentCoins = game.coins;
-  const currentRep = game.reputation || 0;
+  const currentCoins = coins;
+  const currentRep = reputation || 0;
 
   // Stat Mappings to Tabs
   const UPGRADE_GROUPS: Record<TabType, string[]> = {
@@ -59,7 +71,7 @@ export default function UpgradePanel() {
     mastery: ['luck', 'autoGain', 'offlineLimit']
   };
 
-  const faction = useMemo(() => FACTIONS.find(f => f.name === game.faction), [game.faction]);
+  const faction = useMemo(() => FACTIONS.find(f => f.name === factionName), [factionName]);
 
   const currentUpgrades = UPGRADE_GROUPS[activeTab].map(id => {
     const defaultData = STAT_UPGRADE_CONFIG[id];
@@ -104,8 +116,8 @@ export default function UpgradePanel() {
       id,
       ...defaultData,
       displayName,
-      level: (game.upgradeLevels as any)[id] || 0,
-      currentValue: (game.statUpgrades as any)[id] || 0,
+      level: (upgradeLevels as any)[id] || 0,
+      currentValue: (statUpgrades as any)[id] || 0,
       desc: displayDesc
     };
   });
@@ -189,9 +201,9 @@ export default function UpgradePanel() {
         <span style={{ color: "#444" }}>|</span>
         <span>🏆 {formatCompactNumber(currentRep)}</span>
         <span style={{ color: "#444" }}>|</span>
-        <span>💎 {formatCompactNumber(game.enhancementStones || 0)}</span>
+        <span>💎 {formatCompactNumber(enhancementStones || 0)}</span>
         <span style={{ color: "#444" }}>|</span>
-        <span>💡 {formatCompactNumber(game.wisdom || 0)}</span>
+        <span>💡 {formatCompactNumber(wisdom || 0)}</span>
       </div>
 
       {/* 2. Mini Stats Summary */}
@@ -216,10 +228,10 @@ export default function UpgradePanel() {
           <span style={{ opacity: 0.6 }}>치명</span>
           <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{Math.floor(getTotalCritRate())}%</span>
         </div>
-        {game.statUpgrades.damageReduction > 0 && (
+        {statUpgrades.damageReduction > 0 && (
           <div style={summaryItem}>
             <span style={{ opacity: 0.6 }}>피감</span>
-            <span style={{ color: "#bde7ff", fontWeight: 900 }}>{game.statUpgrades.damageReduction}%</span>
+            <span style={{ color: "#bde7ff", fontWeight: 900 }}>{statUpgrades.damageReduction}%</span>
           </div>
         )}
       </div>
@@ -264,16 +276,14 @@ export default function UpgradePanel() {
       {/* 5. Upgrade List */}
       <div className="hide-scrollbar" style={listAreaStyle}>
         {currentUpgrades.map(upgrade => {
-          const store = useGameStore.getState() as any;
-
           const actualM = multiplier;
-          const goldCost = store.getMultiUpgradeCost(upgrade.id, actualM, 'gold');
+          const goldCost = getMultiUpgradeCost(upgrade.id, actualM, 'gold');
           const canAffordGold = currentCoins >= goldCost && goldCost > 0;
 
           // Reputation logic if applicable
           const canUseRep = upgrade.resources.includes('reputation');
           const actualMRep = multiplier;
-          const repCost = canUseRep ? store.getMultiUpgradeCost(upgrade.id, actualMRep, 'reputation') : 0;
+          const repCost = canUseRep ? getMultiUpgradeCost(upgrade.id, actualMRep, 'reputation') : 0;
           const canAffordRep = canUseRep && currentRep >= repCost && repCost > 0;
 
           const statColor = getStatColor(upgrade.id);
@@ -306,7 +316,7 @@ export default function UpgradePanel() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {/* Gold Upgrade (Gold Box) */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualM, 'gold'); }}
+                    onClick={(e) => { e.stopPropagation(); upgradeStatMulti(upgrade.id, actualM, 'gold'); }}
                     disabled={!canAffordGold}
                     style={{
                       ...actionButtonStyle,
@@ -326,7 +336,7 @@ export default function UpgradePanel() {
                   {/* Reputation Upgrade (Blue Box) */}
                   {canUseRep && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); store.upgradeStatMulti(upgrade.id, actualMRep, 'reputation'); }}
+                      onClick={(e) => { e.stopPropagation(); upgradeStatMulti(upgrade.id, actualMRep, 'reputation'); }}
                       disabled={!canAffordRep}
                       style={{
                         ...actionButtonStyle,

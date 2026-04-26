@@ -123,8 +123,14 @@ function getMeihuaRank(s: number) {
 
 const Counter = ({ value, duration = 1500 }: { value: number, duration?: number }) => {
   const [count, setCount] = useState(0);
+  const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
 
   useEffect(() => {
+    if (lowPowerMode) {
+      setCount(value);
+      return;
+    }
+
     let startTime: number | null = null;
     const startValue = 0;
     const endValue = value;
@@ -140,8 +146,9 @@ const Counter = ({ value, duration = 1500 }: { value: number, duration?: number 
       }
     };
 
-    requestAnimationFrame(animate);
-  }, [value, duration]);
+    const handle = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(handle);
+  }, [value, duration, lowPowerMode]);
 
   return <>{count.toLocaleString()}</>;
 };
@@ -229,14 +236,32 @@ function formatKoreanGold(val: bigint | number): string {
 export default function InnPanel({
   onRewardClose,
 }: { onRewardClose?: () => void } = {}) {
-  const {
-    game, resolveTimingMission, claimDuelReward, getTotalAttack, incrementCombo, getInnBonus,
-    startInnCombat, updateInnCombat, applyInnPuzzleScore, handleInnSecondTick,
-    startFootworkGame, handleFootworkStep, updateFootwork, markInnEntryHandled
-  } = useGameStore() as any;
+  const timingMission = useGameStore((s: any) => s.game.timingMission);
+  const duel = useGameStore((s: any) => s.game.duel);
+  const innHighScore = useGameStore((s: any) => s.game.innHighScore);
+  const isAudioMuted = useGameStore((s: any) => s.game.isAudioMuted);
+  const faction = useGameStore((s: any) => s.game.faction);
+  const pendingYabawiPlay = useGameStore((s: any) => s.game.pendingYabawiPlay);
+  const nextRivalKills = useGameStore((s: any) => s.game.nextRivalKills);
+  const coins = useGameStore((s: any) => s.game.coins);
+  const nextRivalTime = useGameStore((s: any) => s.game.nextRivalTime);
+  const realm = useGameStore((s: any) => s.game.realm);
 
-  const mission = game.timingMission;
-  const duel = game.duel;
+  const resolveTimingMission = useGameStore((s: any) => s.resolveTimingMission);
+  const claimDuelReward = useGameStore((s: any) => s.claimDuelReward);
+  const getTotalAttack = useGameStore((s: any) => s.getTotalAttack);
+  const incrementCombo = useGameStore((s: any) => s.incrementCombo);
+  const getInnBonus = useGameStore((s: any) => s.getInnBonus);
+  const startInnCombat = useGameStore((s: any) => s.startInnCombat);
+  const updateInnCombat = useGameStore((s: any) => s.updateInnCombat);
+  const applyInnPuzzleScore = useGameStore((s: any) => s.applyInnPuzzleScore);
+  const handleInnSecondTick = useGameStore((s: any) => s.handleInnSecondTick);
+  const startFootworkGame = useGameStore((s: any) => s.startFootworkGame);
+  const handleFootworkStep = useGameStore((s: any) => s.handleFootworkStep);
+  const updateFootwork = useGameStore((s: any) => s.updateFootwork);
+  const markInnEntryHandled = useGameStore((s: any) => s.markInnEntryHandled);
+
+  const mission = timingMission;
 
   const getTargetScore = (s: number) => {
     const scores = [
@@ -254,7 +279,7 @@ export default function InnPanel({
   };
 
   const playPopSFX = () => {
-    if (useGameStore.getState().game.isAudioMuted) return;
+    if (isAudioMuted) return;
     const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3");
     audio.volume = 0.4;
     audio.play().catch(() => { });
@@ -520,15 +545,15 @@ export default function InnPanel({
       return "/images/char_dodge_ready.png";
     }
 
-    const faction = FACTIONS.find(f => f.name === game.faction);
+    const factionObj = FACTIONS.find(f => f.name === faction);
     // Restoration: uses the original paths which were restored via git checkout
-    return faction?.characterImages?.ready || "/images/char_hwasan_ready.png";
+    return factionObj?.characterImages?.ready || "/images/char_hwasan_ready.png";
   };
 
   const [rivalTimeLeft, setRivalTimeLeft] = useState("");
 
   useEffect(() => {
-    if (game.pendingYabawiPlay) {
+    if (pendingYabawiPlay) {
       // Use requestAnimationFrame to avoid synchronous setState warning
       requestAnimationFrame(() => {
         resetGameState("yabawi");
@@ -537,12 +562,12 @@ export default function InnPanel({
         useGameStore.setState((s: any) => ({ game: { ...s.game, pendingYabawiPlay: false } }));
       });
     }
-  }, [game.pendingYabawiPlay, resetGameState]);
+  }, [pendingYabawiPlay, resetGameState]);
 
   useEffect(() => {
-    if (!game.nextRivalTime) return;
+    if (!nextRivalTime) return;
     const update = () => {
-      const diff = game.nextRivalTime - Date.now();
+      const diff = nextRivalTime - Date.now();
       if (diff <= 0) {
         setRivalTimeLeft("");
       } else {
@@ -554,7 +579,7 @@ export default function InnPanel({
     update();
     const iv = setInterval(update, 1000);
     return () => clearInterval(iv);
-  }, [game.nextRivalTime]);
+  }, [nextRivalTime]);
 
   const clearAllIntervals = () => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -569,7 +594,7 @@ export default function InnPanel({
 
   const currentTotalAtk = getTotalAttack();
   // [위명 위압] 최다 위명 기록 50000점당 1% 공격력(점수 획득량) 보너스 적용
-  const prestigeBonus = Math.floor((game.innHighScore || 0) / 50000) / 100;
+  const prestigeBonus = Math.floor((innHighScore || 0) / 50000) / 100;
   const powerFactor = (1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 2) * (1 + prestigeBonus);
 
   const addFloatText = (text: string, color: string, x = 50, y = 50) => {
@@ -666,11 +691,11 @@ export default function InnPanel({
       // 승리 보상 로직: useGameStore의 상향된 최신 밸런스 로직과 동기화
       const actualStage = Math.min(15, Math.max(1, clearedStage));
       const realms = Object.keys(REALM_SETTINGS);
-      const rIdx = realms.indexOf(game.realm);
+      const rIdx = realms.indexOf(realm);
       // useGameStore.ts의 getInnMiniGameRewardMultiplier 로직과 동일
       const innRewardMult = rIdx !== -1 ? (10 + rIdx * 5) : 10;
 
-      const commonFactor = Math.pow(1.45, actualStage) * (REALM_SETTINGS[game.realm]?.rewardMultiplier || 1) * innRewardMult;
+      const commonFactor = Math.pow(1.45, actualStage) * (REALM_SETTINGS[realm]?.rewardMultiplier || 1) * innRewardMult;
       const gReward = Math.floor(3000 * commonFactor);
       const rReward = Math.floor(3000 * commonFactor);
 
@@ -841,7 +866,7 @@ export default function InnPanel({
   };
 
   const startMission = () => {
-    if (!game.timingMission.available) return;
+    if (!timingMission.available) return;
 
     // Reset all flags first
     clearAllIntervals();
@@ -867,7 +892,7 @@ export default function InnPanel({
     lastSecondTickRef.current = 0;
     lastScoreAtTickRef.current = 0;
 
-    const selected = game.timingMission.selectedGameType || "breath";
+    const selected = timingMission.selectedGameType || "breath";
     setCurrentMiniGame(selected);
     currentMiniGameRef.current = selected;
 
@@ -895,8 +920,28 @@ export default function InnPanel({
     if (!isPlaying) return;
 
     let lastTime = performance.now();
+    let lastFrame = 0;
+    const getMiniGameFps = () => {
+      const lowPower = useGameStore.getState().game.options?.lowPowerMode;
+      return lowPower ? 15 : 30;
+    };
+
     const loop = (time: number) => {
-      const dt = (time - lastTime) / 1000;
+      const fps = getMiniGameFps();
+      const frame = 1000 / fps;
+
+      if (time - lastFrame < frame) {
+        gameLoopRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      lastFrame = time;
+
+      if (document.hidden) {
+        gameLoopRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
       if (currentMiniGameRef.current === "breath") {
@@ -1804,9 +1849,9 @@ export default function InnPanel({
           아직 객잔 대련이 열리지 않았습니다.
           <br />
           허수아비를 꾸준히 처치하여 무뢰배를 유인하세요.
-          {game.nextRivalKills > 0 && (
+          {nextRivalKills > 0 && (
             <div style={{ marginTop: 10, color: "#ffd700", fontWeight: 'bold' }}>
-              남은 처치 수: {game.nextRivalKills}회
+              남은 처치 수: {nextRivalKills}회
             </div>
           )}
           {rivalTimeLeft && (
@@ -1949,9 +1994,9 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
             >
               <div style={{ ...statLabel, color: "#ffd700", fontWeight: 900 }}>최다 위명 기록</div>
               <div style={{ ...statValue, fontSize: 16, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <Counter value={game.innHighScore || 0} />
+                <Counter value={innHighScore || 0} />
                 <span style={{ fontSize: 10, color: "#4dff4d", fontWeight: "800" }}>
-                  (+{Math.floor((game.innHighScore || 0) / 50000)}%)
+                  (+{Math.floor((innHighScore || 0) / 50000)}%)
                 </span>
               </div>
             </div>
@@ -2086,7 +2131,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
                 <img
                   src={(() => {
-                    const fInfo = FACTIONS.find(f => f.name === game.faction);
+                    const fInfo = FACTIONS.find(f => f.name === faction);
                     return fInfo?.characterImages?.ready || "/warrior.png";
                   })()}
                   alt="My Character"
@@ -2462,11 +2507,11 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               {currentMiniGame === "yabawi" && (
                 <YabawiGame
                   onResult={handleYabawiResult}
-                  userCoins={game.coins}
+                  userCoins={coins}
                   session={yabawiSession}
                   onStartGame={(bet) => {
                     const bBet = BigInt(bet);
-                    if (BigInt(Math.floor(game.coins)) < bBet && Number(game.coins) < Number(bBet)) return false;
+                    if (BigInt(Math.floor(coins)) < bBet && Number(coins) < Number(bBet)) return false;
                     useGameStore.setState((s: any) => ({
                       game: { ...s.game, coins: s.game.coins - Number(bBet) }
                     }));

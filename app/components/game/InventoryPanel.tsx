@@ -33,15 +33,29 @@ const slotMeta: {
 
 export default function InventoryPanel(props: Props) {
 
-  const {
-    game, equipItem, unequipItem, sellItem, useConsumable,
-    getTotalAttack, getTotalCritRate, getTotalCritDmg,
-    getTotalDefense, getTotalHp, getTotalEvasion, getTotalSpeed
-  } = useGameStore();
+  const ownedWeaponsState = useGameStore((s: any) => s.game.ownedWeapons);
+  const equippedGear = useGameStore((s: any) => s.game.equippedGear);
+  const consumables = useGameStore((s: any) => s.game.consumables);
+  const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
+  const quickSlots = useGameStore((s: any) => s.game.quickSlots);
+
+  const equipItem = useGameStore((s: any) => s.equipItem);
+  const unequipItem = useGameStore((s: any) => s.unequipItem);
+  const sellItem = useGameStore((s: any) => s.sellItem);
+  const useConsumable = useGameStore((s: any) => s.useConsumable);
+  const setQuickSlot = useGameStore((s: any) => s.setQuickSlot);
+  
+  const getTotalAttack = useGameStore((s: any) => s.getTotalAttack);
+  const getTotalCritRate = useGameStore((s: any) => s.getTotalCritRate);
+  const getTotalCritDmg = useGameStore((s: any) => s.getTotalCritDmg);
+  const getTotalDefense = useGameStore((s: any) => s.getTotalDefense);
+  const getTotalHp = useGameStore((s: any) => s.getTotalHp);
+  const getTotalEvasion = useGameStore((s: any) => s.getTotalEvasion);
+  const getTotalSpeed = useGameStore((s: any) => s.getTotalSpeed);
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const unlocked = game.unlockedTabs.includes("inventory");
+  const unlocked = unlockedTabs.includes("inventory");
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>("mainWeapon");
   const [popupItem, setPopupItem] = useState<OwnedWeapon | null>(null);
   const [selectingSlot, setSelectingSlot] = useState<number | null>(null);
@@ -52,26 +66,25 @@ export default function InventoryPanel(props: Props) {
   const [draggedMedicineId, setDraggedMedicineId] = useState<ConsumableId | null>(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [dragOrigin, setDragOrigin] = useState({ x: 0, y: 0 });
-  const ownedWeapons = props.ownedWeapons ?? game.ownedWeapons;
-  const equippedGear = game.equippedGear;
+  const ownedWeapons = props.ownedWeapons ?? ownedWeaponsState;
 
-  const totalAttack = useMemo(() => getTotalAttack(), [game, getTotalAttack]);
-  const totalCritRate = useMemo(() => getTotalCritRate(), [game, getTotalCritRate]);
-  const totalCritDmg = useMemo(() => getTotalCritDmg(), [game, getTotalCritDmg]);
-  const totalDefense = useMemo(() => getTotalDefense(), [game, getTotalDefense]);
-  const totalHp = useMemo(() => getTotalHp(), [game, getTotalHp]);
-  const totalEvasion = useMemo(() => getTotalEvasion(), [game, getTotalEvasion]);
-  const totalSpeed = useMemo(() => getTotalSpeed(), [game, getTotalSpeed]);
+  const totalAttack = useMemo(() => getTotalAttack(), [getTotalAttack]);
+  const totalCritRate = useMemo(() => getTotalCritRate(), [getTotalCritRate]);
+  const totalCritDmg = useMemo(() => getTotalCritDmg(), [getTotalCritDmg]);
+  const totalDefense = useMemo(() => getTotalDefense(), [getTotalDefense]);
+  const totalHp = useMemo(() => getTotalHp(), [getTotalHp]);
+  const totalEvasion = useMemo(() => getTotalEvasion(), [getTotalEvasion]);
+  const totalSpeed = useMemo(() => getTotalSpeed(), [getTotalSpeed]);
   const equippedCount = Object.values(equippedGear ?? {}).filter(Boolean).length;
 
-  const selectedItems = ownedWeapons.filter((item) => item.slot === selectedSlot);
+  const selectedItems = ownedWeapons.filter((item: any) => item.slot === selectedSlot);
   const selectedEquippedId = equippedGear?.[selectedSlot] ?? null;
 
   const isMedicineSelected = (selectedSlot as any) === "medicine";
 
 
   const resolveEquippedItem = (slot: EquipSlot) =>
-    ownedWeapons.find((item) => item.id === equippedGear?.[slot]) ?? null;
+    ownedWeapons.find((item: any) => item.id === equippedGear?.[slot]) ?? null;
 
   const handleEquipFromPopup = () => {
     if (!popupItem) return;
@@ -362,7 +375,7 @@ export default function InventoryPanel(props: Props) {
               paddingRight: 2,
               paddingBottom: 10
             }} className="hide-scrollbar">
-              {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
+              {(Object.keys(consumables) as ConsumableId[]).filter((id: any) => consumables[id] > 0).map((id: any) => (
                 <div
                   key={id}
                   onTouchStart={(e) => onTouchStart(e, id)}
@@ -392,11 +405,11 @@ export default function InventoryPanel(props: Props) {
                     {getPotionName(id).split(' ')[0]}
                   </div>
                   <div style={{ position: "absolute", bottom: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 8, padding: "0 3px", borderRadius: 3, fontWeight: "bold" }}>
-                    {game.consumables[id]}
+                    {consumables[id]}
                   </div>
                 </div>
               ))}
-              {Object.values(game.consumables).every(v => v === 0) && (
+              {Object.values(consumables).every(v => v === 0) && (
                 <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
               )}
             </div>
@@ -414,7 +427,7 @@ export default function InventoryPanel(props: Props) {
               }}
               className="hide-scrollbar"
             >
-              {selectedItems.map((item) => {
+              {selectedItems.map((item: any) => {
                 const isEquipped = selectedEquippedId === item.id;
                 return (
                   <button
@@ -473,7 +486,7 @@ export default function InventoryPanel(props: Props) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
           {[0, 1, 2, 3, 4].map(idx => {
-            const consumableId = game.quickSlots[idx];
+            const consumableId = quickSlots[idx];
             return (
               <button
                 key={idx}
@@ -493,7 +506,7 @@ export default function InventoryPanel(props: Props) {
                   <>
                     <div style={{ fontSize: 18 }}>{getPotionIcon(consumableId)}</div>
                     <div style={{ position: "absolute", bottom: 1, right: 3, fontSize: 9, fontWeight: 900, color: "#fff", background: "rgba(0,0,0,0.5)", padding: "0 2px", borderRadius: 3 }}>
-                      {game.consumables[consumableId] || 0}
+                      {consumables[consumableId] || 0}
                     </div>
                   </>
                 ) : (
@@ -524,10 +537,10 @@ export default function InventoryPanel(props: Props) {
           >
             <div style={{ fontSize: 16, fontWeight: 900, color: "#ffd700", marginBottom: 5 }}>장착할 물약 선택</div>
             <div style={{ maxHeight: 250, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }} className="hide-scrollbar">
-              {game.quickSlots[selectingSlot] && (
+              {quickSlots[selectingSlot] && (
                 <button
                   onClick={() => {
-                    (useGameStore.getState() as any).useConsumable(game.quickSlots[selectingSlot]);
+                    (useGameStore.getState() as any).useConsumable(quickSlots[selectingSlot]);
                     setSelectingSlot(null);
                   }}
                   style={{ padding: 10, borderRadius: 8, background: "linear-gradient(135deg, #ff8c8c, #ff4b4b)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 'bold' }}
@@ -536,17 +549,17 @@ export default function InventoryPanel(props: Props) {
                 </button>
               )}
               <button
-                onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, null); setSelectingSlot(null); }}
+                onClick={() => { setQuickSlot(selectingSlot, null); setSelectingSlot(null); }}
                 style={{ padding: 10, borderRadius: 8, background: "#333", color: "#eee", border: "none", cursor: "pointer", fontSize: 12 }}
               >
                 비우기
               </button>
-              {(Object.keys(game.consumables) as ConsumableId[])
-                .filter(id => game.consumables[id] > 0 && !id.startsWith("oil_"))
-                .map(id => (
+              {(Object.keys(consumables) as ConsumableId[])
+                .filter((id: any) => consumables[id] > 0 && !id.startsWith("oil_"))
+                .map((id: any) => (
                   <button
                     key={id}
-                    onClick={() => { useGameStore.getState().setQuickSlot(selectingSlot, id); setSelectingSlot(null); }}
+                    onClick={() => { setQuickSlot(selectingSlot, id); setSelectingSlot(null); }}
                     style={{
                       padding: "8px 12px", borderRadius: 10, background: "rgba(255,215,0,0.05)", color: "#fff",
                       border: "1px solid rgba(255,215,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10
@@ -555,11 +568,11 @@ export default function InventoryPanel(props: Props) {
                     <span style={{ fontSize: 18 }}>{getPotionIcon(id)}</span>
                     <div style={{ flex: 1, textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: "bold" }}>{getPotionName(id)}</div>
-                      <div style={{ fontSize: 10, opacity: 0.7 }}>보유: {game.consumables[id]}개</div>
+                      <div style={{ fontSize: 10, opacity: 0.7 }}>보유: {consumables[id]}개</div>
                     </div>
                   </button>
                 ))}
-              {(Object.keys(game.consumables) as ConsumableId[]).every(id => game.consumables[id] <= 0) && (
+              {(Object.keys(consumables) as ConsumableId[]).every((id: any) => consumables[id] <= 0) && (
                 <div style={{ textAlign: "center", padding: 20, color: "#666", fontSize: 12 }}>보유 중인 비약이 없습니다.</div>
               )}
             </div>
@@ -589,7 +602,7 @@ export default function InventoryPanel(props: Props) {
               <div style={{ fontSize: 40 }}>{getPotionIcon(selectedMedicineId)}</div>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 900, color: "#ffd700" }}>{getPotionName(selectedMedicineId)}</div>
-                <div style={{ fontSize: 12, color: "#aaa" }}>보유 수량: {game.consumables[selectedMedicineId]}개</div>
+                <div style={{ fontSize: 12, color: "#aaa" }}>보유 수량: {consumables[selectedMedicineId]}개</div>
               </div>
             </div>
 
@@ -617,7 +630,7 @@ export default function InventoryPanel(props: Props) {
               <button
                 onClick={() => {
                   (useGameStore.getState() as any).sellConsumable(selectedMedicineId);
-                  if (game.consumables[selectedMedicineId] <= 1) setSelectedMedicineId(null);
+                  if (consumables[selectedMedicineId] <= 1) setSelectedMedicineId(null);
                 }}
                 style={{
                   padding: "10px", borderRadius: 10, background: "rgba(255,255,255,0.05)",
@@ -718,7 +731,7 @@ export default function InventoryPanel(props: Props) {
               {/* 무작위 옵션 표시 */}
               {popupItem.randomOptions && popupItem.randomOptions.length > 0 && (
                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                  {popupItem.randomOptions.map((opt, i) => (
+                  {popupItem.randomOptions.map((opt: any, i: number) => (
                     <div key={i} style={{ color: "#7ee7ff", fontSize: 11 }}>🔹 {opt.label}</div>
                   ))}
                 </div>
@@ -879,7 +892,7 @@ export default function InventoryPanel(props: Props) {
 
 // Helper functions (same as before)
 function slotLabel(slot: EquipSlot) {
-  const meta = slotMeta.find(m => m.slot === slot);
+  const meta = slotMeta.find((m: any) => m.slot === slot);
   return meta ? meta.label : slot;
 }
 
