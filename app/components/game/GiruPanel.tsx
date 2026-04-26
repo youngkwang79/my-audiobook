@@ -397,22 +397,28 @@ export default function GiruPanel() {
                 {/* 적용 중인 효과 보기 버튼 */}
                 {game.nightBuffs && game.nightBuffs.length > 0 && (
                   <button
-                    onClick={() => setShowBuffs(!showBuffs)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowBuffs(!showBuffs);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
                     style={{
                       width: "90%",
-                      padding: "8px",
-                      marginTop: "10px",
-                      background: "rgba(224, 195, 252, 0.1)",
-                      border: "1px solid rgba(224, 195, 252, 0.3)",
-                      borderRadius: "10px",
-                      color: "#e0c3fc",
+                      padding: "10px",
+                      marginTop: "12px",
+                      background: "rgba(224, 195, 252, 0.15)",
+                      border: "1px solid rgba(224, 195, 252, 0.4)",
+                      borderRadius: "12px",
+                      color: "#fff",
                       fontSize: "12px",
                       fontWeight: "bold",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px"
+                      gap: "6px",
+                      zIndex: 10,
+                      position: "relative"
                     }}
                   >
                     ✨ 적용 중인 효과 ({game.nightBuffs.length}) {showBuffs ? "▲" : "▼"}
@@ -485,7 +491,12 @@ export default function GiruPanel() {
               >
                 ←
               </button>
-              <div style={{ fontWeight: 800, fontSize: "18px", color: "#ffd700" }}>{selectedNpc.name}와의 시간</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: "18px", color: "#ffd700" }}>{selectedNpc.name}와의 시간</div>
+                <div style={{ fontSize: "12px", color: "#e0c3fc", opacity: 0.8 }}>
+                  {getFavorLabel(selectedNpc.id)} ({favor})
+                </div>
+              </div>
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", paddingTop: "10px" }} className="hide-scrollbar">
@@ -507,21 +518,45 @@ export default function GiruPanel() {
                 </p>
                 {lastEvent && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
                     style={{
-                      marginTop: "12px",
-                      fontSize: "12px",
-                      color: "#ffd700",
-                      fontWeight: "bold",
-                      padding: "6px 12px",
-                      background: "rgba(255, 215, 0, 0.15)",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(255, 215, 0, 0.3)",
-                      display: "inline-block"
+                      marginTop: "14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px"
                     }}
                   >
-                    효과: {lastEvent.effect}
+                    <div style={{
+                      height: "1px",
+                      background: "linear-gradient(90deg, transparent, rgba(255,215,0,0.3), transparent)",
+                      width: "100%"
+                    }} />
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "4px 0"
+                    }}>
+                      <span style={{
+                        fontSize: "10px",
+                        padding: "2px 6px",
+                        background: "#ffd700",
+                        color: "#000",
+                        borderRadius: "4px",
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px"
+                      }}>RESULT</span>
+                      <span style={{
+                        fontSize: "13px",
+                        color: "#ffd700",
+                        fontWeight: 800,
+                        textShadow: "0 0 10px rgba(255,215,0,0.3)"
+                      }}>
+                        {lastEvent.effect}
+                      </span>
+                    </div>
                   </motion.div>
                 )}
               </div>

@@ -413,7 +413,8 @@ export function loadGame(): GameSaveData {
         ...defaultGameData.footworkGame,
         ...(v12Data.footworkGame || {}),
         isPlaying: false // Ensure reset on load
-      }
+      },
+      showInnVictoryEffect: false
     };
   } catch (error) {
     console.error("게임 저장 데이터 불러오기 실패:", error);

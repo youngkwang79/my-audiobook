@@ -850,7 +850,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addExp: (amount: number, isAuto = false, manualDamage?: number) => {
     const { game } = get(); if (game.pendingInnEntry || game.timingMission.available) return;
-    if (!isAuto && Math.random() < 0.002 && !game.yabawiEvent?.active) {
+    if (!isAuto && Math.random() < 0.001 && !game.yabawiEvent?.active) {
       get().triggerYabawiEvent();
     }
     const totalAtk = get().getTotalAttack(); const autoLv = game.upgradeLevels.autoGain || 0;
@@ -1313,12 +1313,11 @@ export const useGameStore = create<GameState>((set, get) => ({
             unlockedTabs: nextTabs
           }
         }));
+        // 경지 돌파 시 투전판 이벤트 확정 발생
+        if (!get().game.yabawiEvent?.active) {
+          setTimeout(() => get().triggerYabawiEvent(), 500);
+        }
       }
-    }
-
-    // 경지 돌파 시 투전판 이벤트 확정 발생
-    if (!get().game.yabawiEvent?.active) {
-      setTimeout(() => get().triggerYabawiEvent(), 500);
     }
 
     get().triggerSave(true);
@@ -1585,8 +1584,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         const isFirstWin = (game.duel.totalWins || 0) === 0;
         let tokenGained = isFirstWin ? 1 : (Math.random() < 0.05 ? 1 : 0);
 
-        // 투전판 이벤트 발생 확률 5%
-        if (Math.random() < 0.002 && !game.yabawiEvent?.active) {
+        // 투전판 이벤트 발생 확률 0.1%
+        if (Math.random() < 0.001 && !game.yabawiEvent?.active) {
           setTimeout(() => get().triggerYabawiEvent(), 500); // 딜레이를 주어 상태 업데이트 후 실행
         }
 
@@ -1622,6 +1621,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             lastInnScore: score,
             innHighScore: Math.max(game.innHighScore || 0, score),
             timingMission: { ...s.game.timingMission, available: false },
+            pendingInnEntry: false, // Ensure the overlay is removed
             activeTab: "training",
             gamblingTokens: (s.game.gamblingTokens || 0) + tokenGained,
             duel: {
@@ -1641,7 +1641,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     } else {
       // 실패/후퇴 시 수련장으로 즉시 복귀
-      set((s: any) => ({ game: { ...s.game, timingMission: { ...s.game.timingMission, available: false }, activeTab: "training" } }));
+      set((s: any) => ({ game: { ...s.game, timingMission: { ...s.game.timingMission, available: false }, pendingInnEntry: false, activeTab: "training" } }));
     }
     get().triggerSave(true);
   },
@@ -3673,10 +3673,24 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
 
+      let nextHp = s.game.hp;
+      if (event.result.healPct) {
+        const healAmt = get().getTotalHp() * (event.result.healPct / 100);
+        nextHp = Math.min(get().getTotalHp(), nextHp + healAmt);
+      }
+
+      let nextMp = s.game.mp;
+      if (event.result.mpHealPct) {
+        const mpHealAmt = get().getTotalMp() * (event.result.mpHealPct / 100);
+        nextMp = Math.min(get().getTotalMp(), nextMp + mpHealAmt);
+      }
+
       return {
         game: {
           ...s.game,
           coins: s.game.coins - action.cost,
+          hp: nextHp,
+          mp: nextMp,
           npcFavors: nextFavors,
           nightBuffs: nextBuffs,
           nightLimits: nextLimits,
@@ -3721,6 +3735,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         game: {
           ...s.game,
           activeTab: tab,
+          showInnVictoryEffect: false, // 탭 전환 시 이펙트 초기화
           masterDuel: {
             ...s.game.masterDuel,
             streakCount: streak
@@ -3733,7 +3748,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const stage = s.game.footworkGame.stage || 1;
       const laneCount = stage <= 3 ? 2 : (stage <= 5 ? 3 : (stage <= 7 ? 4 : 5));
-      const initialSequence = Array.from({ length: 12 }, () => Math.floor(Math.random() * laneCount));
+      const initialSequence: number[] = [];
+      let lastLane = Math.floor(Math.random() * laneCount);
+      for (let i = 0; i < 15; i++) {
+        if (Math.random() < 0.4) {
+          initialSequence.push(lastLane);
+        } else {
+          lastLane = Math.floor(Math.random() * laneCount);
+          initialSequence.push(lastLane);
+        }
+      }
 
       return {
         game: {
@@ -3783,8 +3807,18 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
 
+      const generateNextLane = (prev: number, count: number) => {
+        // 40% chance to repeat the same lane to create '연타' (spam) clusters
+        if (Math.random() < 0.4) return prev;
+        return Math.floor(Math.random() * count);
+      };
+
       const laneCount = currentFG.laneCount;
-      const nextSequence = success ? [...currentFG.sequence.slice(1), Math.floor(Math.random() * laneCount)] : currentFG.sequence;
+      let nextSequence = currentFG.sequence;
+      if (success) {
+        const lastInSeq = currentFG.sequence[currentFG.sequence.length - 1];
+        nextSequence = [...currentFG.sequence.slice(1), generateNextLane(lastInSeq, laneCount)];
+      }
       const nextAnswer = nextSequence[0];
 
       return {
@@ -3848,21 +3882,31 @@ export const useGameStore = create<GameState>((set, get) => ({
         } else if (nextTimeState === "dusk") {
           nextTimeState = "night";
           nextTimeRemaining = 300;
-          // 밤 진입 시 행동 제한 초기화
+          // 밤 진입 시 행동 제한 및 이전 기록 초기화
           nextNightLimits = {
             giluActionLeft: 5,
             npcTalkCount: {},
             infoTradeUsed: false,
+          };
+          return {
+            game: {
+              ...s.game,
+              timeState: nextTimeState,
+              timeRemaining: nextTimeRemaining,
+              nightLimits: nextNightLimits,
+              nightBuffs: [], // 새로운 밤이 시작되므로 이전 밤의 버프 초기화
+              tujeonExchangeBought: {} // 투전 거래 내역 초기화
+            }
           };
         } else if (nextTimeState === "night") {
           nextTimeState = "dawn";
           nextTimeRemaining = 60;
           // 새벽 정산 팝업 트리거
           triggerSettlement = true;
-        } else {
+        } else if (nextTimeState === "dawn") {
           nextTimeState = "day";
           nextTimeRemaining = 300;
-          // 다음 날 시작 시 dayCount 증가 및 이벤트 준비
+          // 다음 날 시작 시 dayCount 증가 및 이벤트 준비, 밤 버프 초기화
           const nextDayCount = (s.game.dayCount || 1) + 1;
           const nextEvent = s.game.nextDayEvent ? { ...s.game.nextDayEvent, isUsed: false } : null;
           return {
@@ -3873,14 +3917,13 @@ export const useGameStore = create<GameState>((set, get) => ({
               dayCount: nextDayCount,
               nextDayEvent: nextEvent,
               nightLimits: nextNightLimits,
-              showDawnSettlement: s.game.showDawnSettlement
+              showDawnSettlement: false // 새벽 정산 팝업 강제 닫기
             }
           };
         }
       }
 
       return {
-        showDawnSettlement: undefined, // 최상단 오염 프로퍼티 제거
         game: {
           ...s.game,
           timeState: nextTimeState,

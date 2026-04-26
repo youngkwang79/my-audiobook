@@ -137,8 +137,8 @@ export const GIRU_EVENTS: GiruEvent[] = [
     type: "normal",
     action: "talk",
     text: "강호의 소식은 언제나 바람처럼 흐르죠. 당신은 그 바람을 탈 준비가 되었나요?",
-    effect: "기초적인 정보를 얻었습니다.",
-    result: { favor: 2 }
+    effect: "수련 효율 +10% (30분 유지)",
+    result: { favor: 2, buff: "touch_eff_up_10" }
   },
   {
     id: "e_drink_seolmae_1",
@@ -146,17 +146,44 @@ export const GIRU_EVENTS: GiruEvent[] = [
     type: "normal",
     action: "drink",
     text: "이 술은 마음을 편안하게 해주죠. 당신의 검술도 조금 더 부드러워질 거예요.",
-    effect: "기운이 회복되었습니다.",
-    result: { favor: 5, buff: "atk_up" }
+    effect: "공격력 +10% & 체력 회복",
+    result: { favor: 5, buff: "atk_up_10", healPct: 50 }
+  },
+  {
+    id: "e_drink_hongryeon_1",
+    npcId: "hongryeon",
+    type: "normal",
+    action: "drink",
+    text: "월향루의 술맛은 천하일품이죠. 기운을 차리고 다시 정진하세요.",
+    effect: "체력 및 내력 완전 회복",
+    result: { favor: 5, healPct: 100, mpHealPct: 100 }
+  },
+  {
+    id: "e_talk_sohee_1",
+    npcId: "sohee",
+    type: "normal",
+    action: "talk",
+    text: "세상에는 칼싸움보다 재미있는 게 많답니다. 제 수수께끼 하나 들어보실래요?",
+    effect: "지혜 +10% (30분 유지)",
+    result: { favor: 2, buff: "insight_gain_up_10" }
+  },
+  {
+    id: "e_info_yeonhwa_rare",
+    npcId: "yeonhwa",
+    type: "rare",
+    action: "info",
+    text: "이건 정말 비밀인데... 최근 남궁세가의 움직임이 심상치 않아요.",
+    effect: "아이템 드롭률 +20% (30분 유지)",
+    result: { favor: 4, buff: "drop_up_20" }
   },
   {
     id: "e_info_chowoon_1",
     npcId: "chowoon",
     type: "rare",
-    action: "trade",
+    action: "info",
     text: "도박장 뒷이야기가 궁금하신가요? 판돈을 키우는 건 용기가 아니라 실력입니다.",
-    effect: "희귀한 정보를 획득했습니다.",
-    result: { favor: 3, token: 1 }
+    effect: "도박 승률 +10% & 명패 획득",
+    result: { favor: 3, token: 1, buff: "gamble_win_up_10" }
   },
 ];
 

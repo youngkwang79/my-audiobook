@@ -232,7 +232,7 @@ export default function InnPanel({
   const {
     game, resolveTimingMission, claimDuelReward, getTotalAttack, incrementCombo, getInnBonus,
     startInnCombat, updateInnCombat, applyInnPuzzleScore, handleInnSecondTick,
-    startFootworkGame, handleFootworkStep, updateFootwork
+    startFootworkGame, handleFootworkStep, updateFootwork, markInnEntryHandled
   } = useGameStore() as any;
 
   const mission = game.timingMission;
@@ -414,16 +414,17 @@ export default function InnPanel({
     }
 
     if (type === "dodge") {
-      startFootworkGame();
+      const nPoles = getNumPoles(currentStage);
+      const initialPoles = Array.from({ length: 15 }, () => Math.floor(Math.random() * nPoles));
+      setPoles(initialPoles);
+      polesRef.current = initialPoles;
+      setDodgeHp(3);
+      dodgeHpRef.current = 3;
+      setDodgeTimeLeft(30.0);
+      dodgeTimeLeftRef.current = 30.0;
+      setCombo(0);
+      comboRef.current = 0;
     }
-
-    const initialPoles = Array.from({ length: 6 }, () => Math.round(Math.random()));
-    setPoles(initialPoles);
-    polesRef.current = initialPoles;
-    setDodgeHp(3);
-    dodgeHpRef.current = 3;
-    setCombo(0);
-    comboRef.current = 0;
 
     const initialGrid = initPuzzleGrid();
     setPuzzleGrid(initialGrid);
@@ -579,9 +580,10 @@ export default function InnPanel({
       { id, text, color, x, y, opacity: 1 },
     ]);
 
+    const duration = text.startsWith('+') ? 2500 : 1000;
     setTimeout(() => {
       setFloatTexts((prev: FloatText[]) => prev.filter((t) => t.id !== id));
-    }, 1000);
+    }, duration);
   };
   const closeSuccessAndExit = () => {
     setIsSuccessPopup(false);
@@ -616,6 +618,17 @@ export default function InnPanel({
     clearAllIntervals();
     setIsPlaying(false);
     isPlayingRef.current = false;
+    setIsTransitioning(false);
+    setShowTutorial(false);
+    setIsHitFlash(false);
+    
+    // Clear all notes and states immediately
+    breathNotesRef.current = [];
+    setBreathNotes([]);
+    polesRef.current = [];
+    setPoles([]);
+    setPulseTargets([]);
+    pulseTargetsRef.current = [];
 
     try {
       if (typeof document !== "undefined" && document.fullscreenElement && document.exitFullscreen) {
@@ -838,6 +851,9 @@ export default function InnPanel({
     setShowTutorial(false);
     setIsTransitioning(false);
 
+    // Mark as handled to remove the overlay from TrainingPanel
+    markInnEntryHandled();
+    
     // Enter Fullscreen
     enterFullScreen();
 
@@ -1071,6 +1087,10 @@ export default function InnPanel({
     addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 52);
 
     if (nextHp <= 0) {
+      // Clear notes immediately to avoid "stuck" look
+      breathNotesRef.current = [];
+      setBreathNotes([]);
+      
       const stageBonus = 250 + currentStage * 80;
       const nextScore = playerScoreRef.current + stageBonus;
 
@@ -1189,7 +1209,6 @@ export default function InnPanel({
     }
   };
 
-  // 2. Meihua Poles (Dodge) Logic
   const getNumPoles = (stage: number) => {
     if (stage <= 5) return 2;
     if (stage <= 7) return 3;
@@ -1199,49 +1218,82 @@ export default function InnPanel({
 
   const updateDodge = (dt: number) => {
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
-    updateFootwork(dt);
 
-    const fg = game.footworkGame;
-    // 게임 종료 감지
-    if (!fg.isPlaying && isPlaying) {
-      const targetHits = 20 + (fg.stage * 5);
-      const currentHits = Math.floor(fg.score / 20);
+    let timeScale = 1 + (currentStage - 1) * 0.15;
+    if (currentStage >= 16) {
+       // Extreme speed mode for Stage 16+
+       timeScale = 1.8 + (currentStage - 16) * 0.35;
+    }
 
-      if (currentHits >= targetHits) {
-        // 스테이지 클리어
-        useGameStore.setState((s: any) => ({
-          game: {
-            ...s.game,
-            footworkGame: {
-              ...s.game.footworkGame,
-              stage: s.game.footworkGame.stage + 1
-            }
-          }
-        }));
-        handleRoundSuccess("PERFECT", 600, `보법 ${fg.stage}단계 돌파! 다음 단계로...`);
-      } else if (fg.timeLeft <= 0) {
-        finishMission(false, "MISS", fg.score, `시간 내에 보법 수련을 완수하지 못했습니다. (목표: ${targetHits}회 / 현재: ${currentHits}회)`);
+    const nextTime = Math.max(0, dodgeTimeLeftRef.current - dt * timeScale);
+    dodgeTimeLeftRef.current = nextTime;
+    setDodgeTimeLeft(nextTime);
+
+    if (nextTime <= 0) {
+      const targetScore = getTargetScore(currentStage);
+      if (playerScoreRef.current >= targetScore) {
+        handleRoundSuccess("PERFECT", 200, `Stage ${currentStage} 성공!`);
+      } else {
+        finishMission(false, "MISS", playerScoreRef.current, `보법 수련이 미흡합니다. (목표: ${targetScore.toLocaleString()}점 / 현재: ${Math.floor(playerScoreRef.current).toLocaleString()})`);
       }
     }
   };
 
-  const handleLaneStep = (laneIndex: number) => {
+  const handleLaneStep = (side: number) => {
     const now = Date.now();
     if (now - (lastHitTimeRef.current["dodge"] || 0) < 50) return;
     lastHitTimeRef.current["dodge"] = now;
 
     if (!isPlaying || currentMiniGameRef.current !== "dodge") return;
 
-    const res = handleFootworkStep(laneIndex);
-    if (res.success) {
-      addFloatText("SUCCESS", "#ffd700");
-      if (res.timeBonus > 0) {
-        addFloatText(`TIME +${res.timeBonus}s`, "#4dff4d", 50, 40);
+    if (polesRef.current[0] === side) {
+      // Success Step - Using the user's specific gain formula
+      const gain = Math.floor((20 + Math.min(comboRef.current, 10)) * (1 + Math.log10(Math.max(1, currentTotalAtk / 1000)) * 0.5)) * 3.6;
+      const nextScore = playerScoreRef.current + gain;
+      playerScoreRef.current = nextScore;
+      setPlayerScore(nextScore);
+      
+      const nextCombo = comboRef.current + 1;
+      comboRef.current = nextCombo;
+      setCombo(nextCombo);
+      incrementCombo(); // Faction/Martial Combo update
+
+      // Time Bonus every 10 combo
+      if (nextCombo > 0 && nextCombo % 10 === 0) {
+        const bonus = 2.0;
+        dodgeTimeLeftRef.current = Math.min(60, dodgeTimeLeftRef.current + bonus);
+        setDodgeTimeLeft(dodgeTimeLeftRef.current);
+        addFloatText(`+${bonus}s`, "#e0f2fe", 50, 45); // Misty light blue
       }
+      
+      const nPoles = getNumPoles(currentStage);
+      const nextPoles = [...polesRef.current.slice(1), Math.floor(Math.random() * nPoles)];
+      polesRef.current = nextPoles;
+      setPoles(nextPoles);
+      
       playHitEffect();
+      // 'SUCCESS' text removed
+      
+      // Real-time Success Check
+      const targetScore = getTargetScore(currentStage);
+      if (nextScore >= targetScore) {
+        handleRoundSuccess("PERFECT", 200, "보법 수련 스테이지 돌파!");
+      }
     } else {
-      addFloatText("FALL!", "#ff4d4d");
+      // Miss Step - Harsher penalty from Stage 3 onwards
+      const penaltyHp = currentStage >= 3 ? 2 : 1;
+      const nextHp = Math.max(0, dodgeHpRef.current - penaltyHp);
+      dodgeHpRef.current = nextHp;
+      setDodgeHp(nextHp);
+      
+      comboRef.current = 0;
+      setCombo(0);
       triggerShake();
+      addFloatText(currentStage >= 3 ? "URGENT MISS!" : "MISS!", "#ff4d4d");
+
+      if (nextHp <= 0) {
+        finishMission(false, "MISS", playerScoreRef.current, "매화장에서 발을 헛디뎌 주화입마에 빠졌습니다!");
+      }
     }
   };
 
@@ -2046,7 +2098,11 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               <div style={{ marginTop: 20, fontSize: 50, fontWeight: 900, color: "#00f2ff" }}>{transitionCountdown}</div>
 
               <button
-                onClick={() => finishMission(true, "PERFECT", playerScoreRef.current)}
+                onClick={() => {
+                  if (confirm("현재 단계까지의 보상을 수령하고 종료하시겠습니까? (수락 시 더 이상 단계를 진행할 수 없습니다)")) {
+                    finishMission(true, "PERFECT", playerScoreRef.current);
+                  }
+                }}
                 style={{
                   marginTop: "30px",
                   padding: "10px 25px",
@@ -2258,7 +2314,6 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       />
                     ))}
 
-                    {/* Combo Overlay */}
                     {combo > 0 && (
                       <div style={{
                         position: "absolute", top: "8%", left: "50%", transform: "translate(-50%, -50%)",
@@ -2283,7 +2338,6 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       </div>
                     )}
 
-                    {/* 반격 팝업 연출 (중앙 글씨 확대 후 안개처럼 사라짐) */}
                     <AnimatePresence>
                       {counterSlashEffect && (
                         <motion.div
@@ -2343,7 +2397,6 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                   }}
                   style={{ ...reflectArea, position: "relative", cursor: 'crosshair' }}
                 >
-                  {/* Heart UI (Cheongun Style) */}
                   <div style={{
                     position: "absolute", top: "15px", left: "20px", display: "flex", gap: "5px", zIndex: 10
                   }}>
@@ -2380,7 +2433,6 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                         cursor: "pointer"
                       }}
                     >
-                      {/* Outer Ring */}
                       <div style={{
                         position: "absolute",
                         inset: 0,
@@ -2389,7 +2441,6 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                         transform: `scale(${t.progress / 100})`,
                         opacity: 1 - (t.progress / 100)
                       }} />
-                      {/* Inner Target */}
                       <div style={{
                         position: "absolute",
                         inset: "10%",
@@ -2397,7 +2448,10 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                         border: "2px solid rgba(255,215,0,0.5)",
                         background: t.progress > 20 ? "rgba(0,242,255,0.2)" : "transparent"
                       }} />
-                      <div style={{ ...reflectTargetCircle, fontSize: 14 }}>응축</div>
+                      <div style={{ 
+                        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#00f2ff', fontSize: 14, fontWeight: 900, textShadow: '0 0 5px #000'
+                      }}>응축</div>
                     </div>
                   ))}
                   <div style={gameTip}>기운이 가득 찼을 때 탭하세요! ({currentProgress}/{4 + (currentStage - 1) * 2})</div>
@@ -2417,7 +2471,6 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       game: { ...s.game, coins: s.game.coins - Number(bBet) }
                     }));
 
-                    // Initialize or update session stake
                     if (yabawiSession) {
                       setYabawiSession(prev => prev ? ({
                         ...prev,
@@ -2452,7 +2505,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       return {
                         ...prev,
                         stage: prev.stage + 1,
-                        stakedGold: prev.accumulatedGold, // Carry over accumulated winnings as stake
+                        stakedGold: prev.accumulatedGold,
                         accumulatedGold: 0n
                       };
                     });
@@ -2460,142 +2513,129 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 />
               )}
 
-
-              {/* 3. Meihua Poles Minigame (Dodge) -> Footwork Game (Vertical Step Style) */}
+              {/* 3. Meihua Poles Minigame (Dodge) */}
               {currentMiniGame === "dodge" && (
-                <div style={{
-                  background: 'rgba(10, 10, 10, 0.9)', color: 'white', padding: '15px', borderRadius: '30px',
-                  textAlign: 'center', width: '100%', maxWidth: '380px', height: '540px', margin: '0 auto',
-                  border: '2px solid rgba(255, 215, 0, 0.4)', boxShadow: '0 0 40px rgba(0, 0, 0, 0.9)',
-                  display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', overflow: 'hidden'
+                <div style={{ 
+                  background: '#0a0a0a', color: 'white', padding: '20px', borderRadius: '30px', 
+                  textAlign: 'center', width: '100%', maxWidth: '360px', margin: '0 auto', 
+                  border: '2px solid #b45309', boxShadow: '0 0 30px rgba(180, 83, 9, 0.4)',
+                  display: 'flex', flexDirection: 'column', gap: '15px'
                 }}>
-                  {/* Timer & Progress */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '15px', color: '#ffd700', fontWeight: 900, textShadow: '0 0 5px rgba(255,215,0,0.3)' }}>梅花樁 보법수련 ({game.footworkGame.stage}단계)</div>
-                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 800 }}>연속 성공: {game.footworkGame.combo}</div>
+                      <div style={{ fontSize: '14px', color: '#fbbf24', fontWeight: 'bold' }}>
+                        {(() => {
+                          const s = playerScore;
+                          if (s >= 50000) return "전설적인 보법";
+                          if (s >= 20000) return "신묘한 보법";
+                          if (s >= 8000) return "능숙한 보법";
+                          if (s >= 2000) return "익숙한 보법";
+                          return "서툰 보법";
+                        })()}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#78716c' }}>Time: {dodgeTimeLeft.toFixed(1)}s</div>
                     </div>
-                    <div style={{
-                      fontSize: '22px', fontWeight: 950,
-                      color: game.footworkGame.timeLeft < 10 ? "#ff4d4d" : "#ffd700",
-                      textShadow: game.footworkGame.timeLeft < 10 ? '0 0 10px #ff4d4d' : '0 0 10px rgba(255,215,0,0.5)'
-                    }}>
-                      {Math.ceil(game.footworkGame.timeLeft || 0)}s
+                    <div style={{ textAlign: 'right' }}>
+                       <div style={{ fontSize: '18px' }}>{'❤️'.repeat(dodgeHp)}</div>
+                       <div style={{ fontSize: '11px', color: '#78716c' }}>Combo: {combo}</div>
                     </div>
                   </div>
 
-                  {/* Lane Preview Area */}
-                  <div style={{
-                    flex: 1, background: 'rgba(0,0,0,0.6)', borderRadius: '25px',
-                    position: 'relative', display: 'flex', justifyContent: 'center',
-                    border: '2px solid rgba(255,215,0,0.15)',
-                    overflow: 'hidden', margin: '5px 0', padding: '0'
-                  }}>
-                    {/* Lane Dividers */}
-                    {Array.from({ length: (game.footworkGame.laneCount || 2) - 1 }).map((_, i) => (
-                      <div key={i} style={{
-                        position: 'absolute',
-                        left: `${((i + 1) / (game.footworkGame.laneCount || 2)) * 100}%`,
-                        top: 0, bottom: 0, width: '1px',
-                        background: 'rgba(255,215,0,0.15)',
-                        zIndex: 1
-                      }} />
-                    ))}
+                  {/* Platforms Area - Tightened spacing */}
+                  <div style={{ background: '#000', height: '240px', position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '1px solid #292524' }}>
+                    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                       {(poles || []).slice(0, 6).map((side: number, i: number) => {
+                         const nP = getNumPoles(currentStage);
+                         const laneWidth = 100 / nP;
+                         const isCurrent = i === 0;
+                         return (
+                           <div key={`${i}-${playerScore}-${side}`} style={{
+                             position: 'absolute', bottom: `${i * 28 + 35}px`,
+                             left: `${side * laneWidth + (laneWidth * 0.15)}%`,
+                             width: `${laneWidth * 0.7}%`, height: '18px', 
+                             background: isCurrent 
+                               ? 'linear-gradient(to right, #fbbf24, #d97706)' 
+                               : 'rgba(120, 113, 108, 0.5)',
+                             borderRadius: '6px', 
+                             opacity: isCurrent ? 1 : 1 / (i * 0.5 + 1),
+                             transform: isCurrent ? 'scale(1.1)' : 'scale(1)',
+                             display: 'flex', justifyContent: 'center', alignItems: 'center',
+                             boxShadow: isCurrent ? '0 0 15px #fbbf24, inset 0 0 5px #fff' : 'none',
+                             transition: 'all 0.1s ease-out',
+                             zIndex: 10 - i,
+                             border: isCurrent ? '2px solid #fff' : '1px solid rgba(251, 191, 36, 0.4)'
+                           }}>
+                             <span style={{ 
+                               fontSize: isCurrent ? '12px' : '10px', 
+                               fontWeight: 'bold', 
+                               color: isCurrent ? '#fff' : '#fbbf24',
+                               textShadow: isCurrent ? '0 1px 2px #000' : 'none'
+                             }}>{side + 1}</span>
+                           </div>
+                         );
+                       })}
 
-                    {/* Descending Platforms */}
-                    <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
-                      <AnimatePresence mode="popLayout">
-                        {game.footworkGame.sequence?.slice(0, 8).map((laneIndex: number, i: number) => {
-                          const laneCount = game.footworkGame.laneCount || 2;
-                          const laneWidth = 100 / laneCount;
-                          const bottomOffset = 40 + (i * 60);
-
-                          return (
-                            <motion.div
-                              key={`${laneIndex}-${game.footworkGame.score + i}`}
-                              layout
-                              initial={{ opacity: 0, y: -40, scale: 0.5 }}
-                              animate={{
-                                opacity: i === 0 ? 1 : Math.max(0.2, 1 - (i * 0.12)),
-                                scale: i === 0 ? 1.1 : 0.9,
-                                y: 400 - bottomOffset,
-                                x: `${(laneIndex / laneCount) * 100}%`
-                              }}
-                              exit={{ opacity: 0, scale: 1.2, filter: 'brightness(2)' }}
-                              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                              style={{
-                                position: 'absolute',
-                                width: `${laneWidth * 0.8}%`,
-                                height: '40px',
-                                left: `${laneWidth * 0.1}%`,
-                                background: i === 0
-                                  ? 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)'
-                                  : 'rgba(255,215,0,0.2)',
-                                borderRadius: '10px',
-                                border: i === 0 ? '3px solid #fff' : '1px solid rgba(255,215,0,0.4)',
-                                boxShadow: i === 0 ? '0 0 25px rgba(255,215,0,0.7), inset 0 0 10px #fff' : 'none',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: i === 0 ? '#000' : '#ffd700',
-                                fontWeight: 950, fontSize: '14px'
-                              }}
-                            >
-                              {i === 0 ? "踏!" : ""}
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
+                       {/* 7s Countdown Overlay */}
+                       <AnimatePresence>
+                         {dodgeTimeLeft > 0 && dodgeTimeLeft <= 7.1 && (
+                           <motion.div
+                             key={Math.ceil(dodgeTimeLeft)}
+                             initial={{ scale: 2.5, opacity: 0 }}
+                             animate={{ scale: 1, opacity: 1 }}
+                             exit={{ scale: 0.5, opacity: 0 }}
+                             transition={{ duration: 0.4 }}
+                             style={{
+                               position: 'absolute', inset: 0,
+                               display: 'flex', alignItems: 'center', justifyContent: 'center',
+                               fontSize: '80px', fontWeight: 900, color: '#ff4d4d',
+                               textShadow: '0 0 20px rgba(255, 77, 77, 0.6), 0 0 40px rgba(0,0,0,0.8)',
+                               pointerEvents: 'none', zIndex: 100
+                             }}
+                           >
+                             {Math.ceil(dodgeTimeLeft)}
+                           </motion.div>
+                         )}
+                         {dodgeTimeLeft <= 0 && isPlaying && currentMiniGame === "dodge" && (
+                           <motion.div
+                             initial={{ scale: 0.5, opacity: 0 }}
+                             animate={{ scale: 1.2, opacity: 1 }}
+                             style={{
+                               position: 'absolute', inset: 0,
+                               display: 'flex', alignItems: 'center', justifyContent: 'center',
+                               fontSize: '44px', fontWeight: 900, color: '#ff4d4d',
+                               textShadow: '0 0 20px #000',
+                               pointerEvents: 'none', zIndex: 100,
+                               letterSpacing: '-2px'
+                             }}
+                           >
+                             GAME OVER
+                           </motion.div>
+                         )}
+                       </AnimatePresence>
                     </div>
-
-                    {/* Hit Zone Indicator (Visual only) */}
-                    <div style={{
-                      position: 'absolute', bottom: '30px', left: '5%', right: '5%', height: '60px',
-                      border: '2px dashed rgba(255,215,0,0.3)', borderRadius: '15px',
-                      pointerEvents: 'none', background: 'rgba(255,215,0,0.05)',
-                      zIndex: 1
-                    }} />
                   </div>
 
-                  {/* Lane Buttons */}
-                  <div style={{
-                    display: 'flex', gap: '8px', padding: '5px',
-                    justifyContent: 'center', alignItems: 'center'
-                  }}>
-                    {Array.from({ length: game.footworkGame.laneCount || 2 }).map((_, i) => (
-                      <motion.button
-                        key={i}
-                        whileTap={{ scale: 0.92 }}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          handleLaneStep(i);
-                        }}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                    {Array.from({ length: getNumPoles(currentStage) }).map((_, idx) => (
+                      <button
+                        key={idx}
+                        onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleLaneStep(idx); }}
                         style={{
-                          flex: 1,
-                          height: '70px',
-                          background: 'rgba(255,215,0,0.1)',
-                          border: '2px solid rgba(255,215,0,0.4)',
-                          borderRadius: '15px',
-                          color: '#ffd700',
-                          fontSize: '18px',
-                          fontWeight: 900,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 4px 0 rgba(0,0,0,0.3)'
+                          flex: 1, height: '45px', background: '#292524', color: 'white', 
+                          fontSize: '18px', fontWeight: '900', borderRadius: '12px', 
+                          border: '2px solid #b45309', cursor: 'pointer',
+                          boxShadow: '0 3px #1a1817',
+                          touchAction: 'none',
+                          userSelect: 'none',
+                          WebkitTapHighlightColor: 'transparent'
                         }}
                       >
-                        {game.footworkGame.laneCount === 2 
-                          ? (i === 0 ? "左" : "右") 
-                          : (game.footworkGame.laneCount === 3 
-                            ? (i === 0 ? "左" : (i === 1 ? "中" : "右"))
-                            : (i + 1))
-                        }
-                      </motion.button>
+                        {idx + 1}
+                      </button>
                     ))}
                   </div>
-
-                  <div style={{ fontSize: '12px', color: '#ffd700', fontWeight: 800, textShadow: '0 0 5px #000', marginTop: '5px' }}>
-                    가장 아래의 황금색 발판을 순서대로 밟으세요!
+                  <div style={{ fontSize: '11px', color: '#78716c', marginTop: '1px' }}>
+                    가장 아래의 황금색 발판 번호를 누르세요!
                   </div>
                 </div>
               )}
@@ -2972,11 +3012,13 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
           left: `${ft.x}%`,
           top: `${ft.y}%`,
           color: ft.color,
-          fontSize: 20,
+          fontSize: ft.text.startsWith('+') ? 34 : 22,
           fontWeight: 900,
           pointerEvents: "none",
-          animation: "floatUp 1s ease-out forwards",
-          textShadow: "0 0 10px rgba(0,0,0,0.5)"
+          animation: ft.text.startsWith('+') ? "mistFade 2.5s ease-out forwards" : "floatUp 1s ease-out forwards",
+          textShadow: ft.text.startsWith('+') ? "0 0 15px rgba(255,255,255,0.7)" : "0 0 10px rgba(0,0,0,0.5)",
+          zIndex: 9999,
+          whiteSpace: 'nowrap'
         }}>
           {ft.text}
         </div>
@@ -3121,6 +3163,12 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
         @keyframes floatUp {
           from { transform: translate(-50%, 0); opacity: 1; }
           to { transform: translate(-50%, -100px); opacity: 0; }
+        }
+        @keyframes mistFade {
+          0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; filter: blur(0px); }
+          15% { transform: translate(-50%, -60px) scale(1.2); opacity: 1; filter: blur(0px); }
+          80% { transform: translate(-50%, -70px) scale(1.3); opacity: 1; filter: blur(2px); }
+          100% { transform: translate(-50%, -120px) scale(2.5); opacity: 0; filter: blur(15px); }
         }
         @keyframes shrinkTimer {
           from { transform: scale(1.5); opacity: 0.3; }

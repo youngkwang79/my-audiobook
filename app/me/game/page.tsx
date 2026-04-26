@@ -25,6 +25,33 @@ export default function MeGamePage() {
       syncFromCloud();
     }
   }, [user]);
+  
+  // [시스템 삽입] 모바일에서 화면이 밀리는 현상(바운스/슬라이드) 방지를 위한 바디 고정
+  useEffect(() => {
+    const originalStyles = {
+      overflow: document.body.style.overflow,
+      overscrollBehavior: document.body.style.overscrollBehavior,
+      position: document.body.style.position,
+      width: document.body.style.width,
+      height: document.body.style.height,
+    };
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.height = "100%";
+
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = originalStyles.overflow;
+      document.body.style.overscrollBehavior = originalStyles.overscrollBehavior;
+      document.body.style.position = originalStyles.position;
+      document.body.style.width = originalStyles.width;
+      document.body.style.height = originalStyles.height;
+    };
+  }, []);
 
   const handleChangeHero = useCallback(
     (next: { name?: string; age?: number; height?: number }) => {
@@ -87,8 +114,10 @@ export default function MeGamePage() {
     return (
       <main
         style={{
-          minHeight: "100vh",
-          padding: "16px 12px",
+          position: "fixed",
+          inset: 0,
+          overflow: "hidden",
+          overscrollBehavior: "none",
           color: "white",
           background: "#05060b",
           display: "flex",
@@ -108,8 +137,10 @@ export default function MeGamePage() {
     return (
       <main
         style={{
-          minHeight: "100vh",
-          padding: "16px 12px",
+          position: "fixed",
+          inset: 0,
+          overflow: "hidden",
+          overscrollBehavior: "none",
           color: "white",
           background: "#05060b",
           display: "flex",
@@ -145,8 +176,10 @@ export default function MeGamePage() {
   return (
     <main
       style={{
-        minHeight: "100vh",
-        padding: "8px 8px 0",
+        position: "fixed",
+        inset: 0,
+        overflow: "hidden",
+        overscrollBehavior: "none",
         color: "white",
         background: "#05060b",
       }}

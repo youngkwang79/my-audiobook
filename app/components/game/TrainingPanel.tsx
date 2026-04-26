@@ -8,7 +8,16 @@ import GameStatusPanel from "./GameStatusPanel";
 
 
 export default function TrainingPanel() {
-  const { game, addExp, addCoins, breakthrough, getTotalCombatPower, clearLastReward } = useGameStore();
+  const { game, addExp, addCoins, breakthrough, getTotalCombatPower, clearLastReward, setInnVictoryEffect } = useGameStore() as any;
+
+  // Ensure victory effect is cleared on unmount to prevent repetition when switching tabs
+  useEffect(() => {
+    return () => {
+      if (useGameStore.getState().game.showInnVictoryEffect) {
+        useGameStore.setState((s: any) => ({ game: { ...s.game, showInnVictoryEffect: false } }));
+      }
+    };
+  }, []);
 
   const [damages, setDamages] = useState<
     { id: number; damage: number; x: number; y: number; isCritical: boolean; skillText?: string; isSkillProc?: boolean; isRainbow?: boolean; isCyan?: boolean }[]
@@ -1431,7 +1440,7 @@ export default function TrainingPanel() {
           justifyContent: "center",
           background: "rgba(0,0,0,0.3)",
           backdropFilter: "blur(4px)",
-          animation: "fadeIn 0.3s forwards"
+          animation: "victoryOverlayFade 3s forwards"
         }}>
           {/* 파팍 이펙트 레이어 */}
           {[...Array(12)].map((_, i) => (
@@ -1453,7 +1462,7 @@ export default function TrainingPanel() {
             fontWeight: 950,
             color: "#ff3333",
             textShadow: "0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #fff",
-            animation: "victoryFlash 2s ease-out forwards",
+            animation: "victoryFlash 3s ease-out forwards",
             letterSpacing: "8px"
           }}>
             무뢰배 격퇴!
@@ -1464,12 +1473,18 @@ export default function TrainingPanel() {
       <style jsx global>{`
           @import url('https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&display=swap');
 
+          @keyframes victoryOverlayFade {
+            0% { opacity: 0; backdrop-filter: blur(0px); background: rgba(0,0,0,0); }
+            10% { opacity: 1; backdrop-filter: blur(4px); background: rgba(0,0,0,0.3); }
+            80% { opacity: 1; backdrop-filter: blur(4px); background: rgba(0,0,0,0.3); }
+            100% { opacity: 0; backdrop-filter: blur(0px); background: rgba(0,0,0,0); }
+          }
           @keyframes victoryFlash {
             0% { transform: scale(0.5); opacity: 0; filter: brightness(3) blur(20px); }
             15% { transform: scale(1.3); opacity: 1; filter: brightness(1) blur(0); }
             30% { transform: scale(1); opacity: 1; }
             80% { transform: scale(1.1); opacity: 1; filter: brightness(1.2); }
-            100% { transform: scale(2); opacity: 0; filter: blur(30px); }
+            100% { transform: scale(3); opacity: 0; filter: blur(40px); }
           }
           @keyframes popPop {
             0% { transform: scale(0); opacity: 0; }

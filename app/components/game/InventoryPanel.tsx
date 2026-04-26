@@ -39,9 +39,6 @@ export default function InventoryPanel(props: Props) {
   } = useGameStore();
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const [swipeConsumableId, setSwipeConsumableId] = useState<ConsumableId | null>(null);
-  const [swipeConsumableOffset, setSwipeConsumableOffset] = useState(0);
-  const [consumableDragOrigin, setConsumableDragOrigin] = useState({ x: 0, y: 0 });
   const unlocked = game.unlockedTabs.includes("inventory");
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>("mainWeapon");
   const [popupItem, setPopupItem] = useState<OwnedWeapon | null>(null);
@@ -138,67 +135,45 @@ export default function InventoryPanel(props: Props) {
     setSwipeOffset(0);
   };
 
-  // 소비 아이템(행낭) 터치 핸들러
-  const onConsumableTouchStart = (e: React.TouchEvent, id: ConsumableId) => {
-    setSwipeConsumableId(id);
-    const touch = e.touches[0];
-    setConsumableDragOrigin({ x: touch.clientX, y: touch.clientY });
-    setSwipeConsumableOffset(0);
-  };
-
-  const onConsumableTouchMove = (e: React.TouchEvent) => {
-    if (!swipeConsumableId) return;
-    const touch = e.touches[0];
-    const diff = touch.clientX - consumableDragOrigin.x;
-    if (diff > 0) setSwipeConsumableOffset(diff); // Only right swipe
-  };
-
-  const onConsumableTouchEnd = (e: React.TouchEvent, id: ConsumableId) => {
-    if (!swipeConsumableId) return;
-    const dist = Math.sqrt(Math.pow(swipeConsumableOffset, 2));
-
-    if (swipeConsumableOffset > 100) {
-      // 판매 가격 계산
-      const prices: Record<string, number> = {
-        hp_small: 250, hp_medium: 1000, hp_large: 5000,
-        mp_small: 250, mp_medium: 1000, mp_large: 5000
-      };
-      const price = prices[id] || 500;
-      if (confirm(`정말 판매하시겠습니까?\n판매 가격: ${formatCompactNumber(price)}냥`)) {
-        useGameStore.getState().sellConsumable(id);
-      }
-    } else if (dist < 10) {
-      // It's a tap
-      setSelectedMedicineId(id);
-    }
-
-    setSwipeConsumableId(null);
-    setSwipeConsumableOffset(0);
-  };
-
   const onTouchStart = (e: React.TouchEvent, id: ConsumableId) => {
     setDraggedMedicineId(id);
+    setSwipeGearId(id as string); // Swipe logic reuse
     const touch = e.touches[0];
     setDragPos({ x: touch.clientX, y: touch.clientY });
     setDragOrigin({ x: touch.clientX, y: touch.clientY });
+    setSwipeOffset(0);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     if (!draggedMedicineId) return;
     const touch = e.touches[0];
     setDragPos({ x: touch.clientX, y: touch.clientY });
+    
+    // Swipe logic
+    const diff = touch.clientX - dragOrigin.x;
+    if (Math.abs(diff) > Math.abs(touch.clientY - dragOrigin.y)) {
+      if (diff > 0) setSwipeOffset(diff);
+    }
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
     if (!draggedMedicineId) return;
 
-    // Check if drop location is over a quick slot
-    // We can use document.elementFromPoint or a simpler rough coordinate check
     const dropX = dragPos.x;
     const dropY = dragPos.y;
 
-    // Quick Slots area is usually at the bottom of the panel
-    // For simplicity, we'll look for elements with data-slot-index
+    // Check for swipe-to-sell first
+    if (swipeOffset > 100) {
+      if (confirm(`해당 소모품을 모두 판매하시겠습니까? (구매가의 50% 환급)`)) {
+        (useGameStore.getState() as any).sellConsumable(draggedMedicineId);
+        setSelectedMedicineId(null);
+      }
+      setSwipeGearId(null);
+      setSwipeOffset(0);
+      setDraggedMedicineId(null);
+      return;
+    }
+
     const elem = document.elementFromPoint(dropX, dropY);
     const slotIdxAttr = elem?.closest("[data-slot-index]")?.getAttribute("data-slot-index");
 
@@ -206,7 +181,6 @@ export default function InventoryPanel(props: Props) {
       const idx = parseInt(slotIdxAttr);
       useGameStore.getState().setQuickSlot(idx, draggedMedicineId);
     } else {
-      // If moved very little, treat as a tap
       const dist = Math.sqrt(Math.pow(dragPos.x - dragOrigin.x, 2) + Math.pow(dragPos.y - dragOrigin.y, 2));
       if (dist < 10) {
         handleMedicineTap(draggedMedicineId);
@@ -214,6 +188,8 @@ export default function InventoryPanel(props: Props) {
     }
 
     setDraggedMedicineId(null);
+    setSwipeGearId(null);
+    setSwipeOffset(0);
   };
 
   return (
@@ -333,89 +309,70 @@ export default function InventoryPanel(props: Props) {
           }}
         >
           {isMedicineSelected ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
-              {/* 행낭 카드 그리드 */}
+            <div style={{
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              padding: 6,
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              overflowY: "hidden"
+            }}>
+              {/* 물약 세로 슬라이드 영역 */}
               <div style={{
                 display: "flex",
-                gap: 8,
-                overflowX: "auto",
-                overflowY: "hidden",
+                flexDirection: "column",
+                gap: 10,
+                overflowX: "hidden",
+                overflowY: "auto",
+                paddingRight: 2,
                 paddingBottom: 6,
                 flex: 1
               }}
               className="hide-scrollbar"
               >
                 {(Object.keys(game.consumables) as ConsumableId[]).filter(id => game.consumables[id] > 0).map(id => (
-                  <button
+                  <div
                     key={id}
-                    onTouchStart={(e) => onConsumableTouchStart(e, id)}
-                    onTouchMove={onConsumableTouchMove}
+                    onTouchStart={(e) => onTouchStart(e, id)}
+                    onTouchMove={onTouchMove}
                     onTouchEnd={(e) => {
                       e.preventDefault();
-                      onConsumableTouchEnd(e, id);
-                    }}
-                    onClick={() => {
-                      if (swipeConsumableOffset < 10) setSelectedMedicineId(id);
+                      onTouchEnd(e);
                     }}
                     style={{
-                      position: "relative",
-                      minWidth: 75,
-                      width: 75,
-                      height: 95,
+                      minHeight: 56,
+                      flex: "0 0 auto",
                       borderRadius: 12,
+                      background: "rgba(255,255,255,0.06)",
                       border: "1px solid rgba(255,255,255,0.1)",
-                      background: "rgba(255,255,255,0.03)",
                       display: "flex",
                       flexDirection: "column",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       justifyContent: "center",
                       gap: 4,
-                      padding: 6,
+                      padding: "8px 12px",
+                      opacity: draggedMedicineId === id ? 0.4 : 1,
                       cursor: "pointer",
-                      flex: "0 0 auto",
-                      transition: "all 0.2s ease",
-                      transform: swipeConsumableId === id ? `translateX(${swipeConsumableOffset}px)` : "none",
-                      opacity: swipeConsumableId === id ? 0.7 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as any).style.background = "rgba(255,215,120,0.08)";
-                      (e.currentTarget as any).style.borderColor = "rgba(255,215,120,0.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as any).style.background = "rgba(255,255,255,0.03)";
-                      (e.currentTarget as any).style.borderColor = "rgba(255,255,255,0.1)";
+                      width: "100%",
+                      position: "relative",
+                      transform: swipeGearId === id ? `translateX(${swipeOffset}px)` : "none",
+                      transition: swipeGearId === id ? "none" : "transform 0.2s ease-out"
                     }}
                   >
-                    <div style={{ fontSize: 28, userSelect: "none" }}>{getPotionIcon(id)}</div>
-                    <div style={{
-                      fontSize: 11,
-                      fontWeight: "bold",
-                      color: "#ffd778",
-                      textAlign: "center",
-                      lineHeight: 1.2,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      width: "100%"
-                    }}>
-                      {getPotionName(id).split("(")[0].trim()}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+                      <div style={{ fontSize: 22, userSelect: "none" }}>{getPotionIcon(id)}</div>
+                      <div style={{ flex: 1, userSelect: "none" }}>
+                        <div style={{ fontSize: 13, fontWeight: "900", color: "#ffd778" }}>{getPotionName(id)}</div>
+                        <div style={{ fontSize: 11, color: "#aaa" }}>수량: {game.consumables[id]}개</div>
+                      </div>
                     </div>
-                    <div style={{
-                      position: "absolute",
-                      bottom: 3,
-                      right: 3,
-                      fontSize: 10,
-                      fontWeight: 900,
-                      color: "#fff",
-                      background: "rgba(0,0,0,0.6)",
-                      padding: "1px 4px",
-                      borderRadius: 3
-                    }}>
-                      {game.consumables[id]}
-                    </div>
-                  </button>
+                  </div>
                 ))}
               </div>
+
               {Object.values(game.consumables).every(v => v === 0) && (
                 <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>보유 중인 영약이 없습니다.</div>
               )}
