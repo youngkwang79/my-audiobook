@@ -1918,7 +1918,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
         }}>
           {/* Faction Char vs Rival Vis */}
           {/* Faction Char vs Rival Vis */}
-          {isPlaying && currentMiniGame !== "yabawi" && (
+          {isPlaying && currentMiniGame !== "yabawi" && currentMiniGame !== "puzzle" && (
             <div
               style={{
                 position: "absolute",
@@ -2610,103 +2610,22 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                   flexDirection: "column",
                   gap: "0"
                 }}>
-                  {/* BATTLE HUD - TOP SECTION */}
-                  <div style={{
-                    width: "100%",
-                    height: "150px",
-                    position: "relative",
-                    overflow: "hidden",
-                    background: "rgba(0,0,0,0.3)",
-                    borderBottom: "1px solid rgba(255,215,0,0.1)"
-                  }}>
-                    {/* Character Portraits & HP Bars */}
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "10px 15px 0",
-                      position: "relative",
-                      zIndex: 10
-                    }}>
-                      {/* Player Side */}
-                      <div style={{ width: "45%", display: "flex", flexDirection: "column", gap: 8 }}>
-                        <div style={{ color: "#fff", fontWeight: 900, fontSize: 15, marginBottom: 4 }}>{game.name || "본인"}</div>
-                        <div style={{ height: 16, background: "rgba(0,0,0,0.5)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
-                          <motion.div
-                            animate={{ width: `${(mission.combatState?.playerHp || 0) / (mission.combatState?.playerMaxHp || 100) * 100}%` }}
-                            style={{ height: "100%", background: "linear-gradient(90deg, #4caf50, #81c784)", boxShadow: "0 0 10px rgba(76,175,80,0.5)" }}
-                          />
-                        </div>
-                        <div style={{ fontSize: 11, color: "#eee", textAlign: "left", fontWeight: "bold", marginTop: 4 }}>
-                          HP {Math.floor(mission.combatState?.playerHp || 0).toLocaleString()} / {Math.floor(mission.combatState?.playerMaxHp || 100).toLocaleString()}
-                        </div>
+                   {/* BATTLE HUD - TOP SECTION (Simplified for Puzzle) */}
+                   <div style={{
+                     width: "100%",
+                     height: "60px",
+                     position: "relative",
+                     overflow: "hidden",
+                     background: "rgba(0,0,0,0.5)",
+                     borderBottom: "1px solid rgba(255,215,0,0.1)",
+                     display: "flex",
+                     alignItems: "center",
+                     justifyContent: "center"
+                   }}>
+                      <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18, textShadow: "0 0 10px rgba(255,215,0,0.3)" }}>
+                        내공 정렬 수련
                       </div>
-
-                      {/* VS Indicator */}
-                      {!isPlaying && <div style={{ alignSelf: "center", fontSize: 24, fontWeight: 950, fontStyle: "italic", color: "#ff4d4d", textShadow: "0 0 10px rgba(0,0,0,0.8)" }}>VS</div>}
-
-                      {/* Enemy Side */}
-                      <div style={{ width: "45%", display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                        <div style={{ color: "#ff4d4d", fontWeight: 900, fontSize: 15, marginBottom: 4 }}>
-                          {mission.rivalName?.includes("무뢰배") ? "흑풍낭인 (7차)" : mission.rivalName}
-                        </div>
-                        <div style={{ width: "100%", height: 16, background: "rgba(0,0,0,0.5)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
-                          <motion.div
-                            animate={{ width: `${(mission.combatState?.enemyHp || 0) / (mission.combatState?.enemyMaxHp || 1000) * 100}%` }}
-                            style={{ height: "100%", background: "linear-gradient(90deg, #f44336, #e57373)", boxShadow: "0 0 10px rgba(244,67,54,0.5)" }}
-                          />
-                        </div>
-                        <div style={{ fontSize: 11, color: "#eee", textAlign: "right", fontWeight: "bold", marginTop: 4 }}>
-                          HP {Math.floor(mission.combatState?.enemyHp || 0).toLocaleString()} / {Math.floor(mission.combatState?.enemyMaxHp || 1000).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Combat Dialogue */}
-                    {mission.combatState?.dialogue && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        style={{
-                          position: "absolute",
-                          bottom: "40px",
-                          left: mission.combatState.dialogue.actor === "player" ? "10%" : "auto",
-                          right: mission.combatState.dialogue.actor === "enemy" ? "10%" : "auto",
-                          background: mission.combatState.dialogue.actor === "player" ? "rgba(255,255,255,0.95)" : "rgba(30,30,30,0.95)",
-                          color: mission.combatState.dialogue.actor === "player" ? "#000" : "#fff",
-                          padding: "10px 20px",
-                          borderRadius: "15px",
-                          fontSize: 13,
-                          fontWeight: 700,
-                          boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-                          zIndex: 50,
-                          maxWidth: "200px"
-                        }}
-                      >
-                        {mission.combatState.dialogue.text}
-                        <div style={{
-                          position: "absolute",
-                          bottom: -10,
-                          left: mission.combatState.dialogue.actor === "player" ? 20 : "auto",
-                          right: mission.combatState.dialogue.actor === "enemy" ? 20 : "auto",
-                          width: 0, height: 0,
-                          borderLeft: "10px solid transparent",
-                          borderRight: "10px solid transparent",
-                          borderTop: `10px solid ${mission.combatState.dialogue.actor === "player" ? "rgba(255,255,255,0.95)" : "rgba(30,30,30,0.95)"}`
-                        }} />
-                      </motion.div>
-                    )}
-
-                    {/* Status Icons Overlay */}
-                    <div style={{ position: "absolute", top: 100, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10 }}>
-                      {mission.combatState?.isBleeding && (
-                        <div style={{ background: "rgba(255,77,77,0.2)", color: "#ff4d4d", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 800, border: "1px solid #ff4d4d" }}>🩸 출혈 중</div>
-                      )}
-                      {mission.combatState?.isCounterDotActive && (
-                        <div style={{ background: "rgba(0,242,255,0.2)", color: "#00f2ff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 800, border: "1px solid #00f2ff" }}>⚡ 반격 노출</div>
-                      )}
-                    </div>
-                  </div>
+                   </div>
 
                   {/* PUZZLE AREA - BOTTOM SECTION */}
                   <div style={{
@@ -2747,7 +2666,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                     }}>
                       <div style={{
                         width: "100%",
-                        maxWidth: "320px", // 블록 사이즈 축소를 위해 너비 하향 조정 (하단 잘림 방지)
+                        maxWidth: "280px", // 블록 사이즈 축소를 위해 너비 하향 조정 (하단 잘림 방지)
                         aspectRatio: `${PUZZLE_COLS} / ${PUZZLE_ROWS}`,
                         background: "#1a1a1a",
                         borderRadius: 20,
@@ -2775,11 +2694,8 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                           {puzzleGrid.map((row, r) => row.map((cell, c) => (
                             <motion.div
                               key={cell.id}
-                              layout
-                              initial={{ scale: 0.8, opacity: 0 }}
-                              animate={{ scale: 1, opacity: cell.type === null ? 0 : 1 }}
-                              exit={{ scale: 1.2, opacity: 0 }}
-                              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                               animate={{ opacity: cell.type === null ? 0 : 1 }}
+                               transition={{ duration: 0.1 }}
                               onClick={() => handlePuzzleCellClick(r, c)}
                               onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
                               onTouchEnd={(e) => handlePuzzleTouchEnd(e)}

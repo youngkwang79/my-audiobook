@@ -138,13 +138,7 @@ export default function GameShell() {
         overflow: "hidden",
       }}
     >
-      <GameBottomNav
-        activeTab={activeTab as any}
-        unlockedTabs={game.unlockedTabs as any}
-        onChange={(tab) => setActiveTab(tab)}
-      />
-
-     {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
+      {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
 {!game.masterDuel.isPlaying && activeTab !== "master" && (
   <div style={{
     padding: "8px 12px",
@@ -212,6 +206,12 @@ export default function GameShell() {
           <DawnSettlement onClose={closeDawnSettlement} />
         )}
       </AnimatePresence>
+
+      <GameBottomNav
+        activeTab={activeTab as any}
+        unlockedTabs={game.unlockedTabs as any}
+        onChange={(tab) => setActiveTab(tab)}
+      />
 
 
 

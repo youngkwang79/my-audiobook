@@ -22,6 +22,7 @@ export default function GiruPanel() {
   const [showRewardPopup, setShowRewardPopup] = useState(false);
   const [rewardData, setRewardData] = useState<any>(null);
   const [currentIllustrationIndex, setCurrentIllustrationIndex] = useState(0);
+  const [showBuffs, setShowBuffs] = useState(false);
   const favor = (game.npcFavors && game.npcFavors[selectedNpc?.id || GIRU_NPCS[activeNpcIndex].id]) || 0;
 
   const ownedGifts = game.giruGifts || {};
@@ -393,6 +394,63 @@ export default function GiruPanel() {
                   </div>
                 </div>
               </motion.div>
+                {/* 적용 중인 효과 보기 버튼 */}
+                {game.nightBuffs && game.nightBuffs.length > 0 && (
+                  <button
+                    onClick={() => setShowBuffs(!showBuffs)}
+                    style={{
+                      width: "90%",
+                      padding: "8px",
+                      marginTop: "10px",
+                      background: "rgba(224, 195, 252, 0.1)",
+                      border: "1px solid rgba(224, 195, 252, 0.3)",
+                      borderRadius: "10px",
+                      color: "#e0c3fc",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    ✨ 적용 중인 효과 ({game.nightBuffs.length}) {showBuffs ? "▲" : "▼"}
+                  </button>
+                )}
+
+                <AnimatePresence>
+                  {showBuffs && game.nightBuffs && game.nightBuffs.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{
+                        width: "90%",
+                        overflow: "hidden",
+                        background: "rgba(0,0,0,0.3)",
+                        borderRadius: "10px",
+                        marginTop: "5px"
+                      }}
+                    >
+                      <div style={{ padding: "10px", display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "center" }}>
+                        {game.nightBuffs.map((buff: any, idx: number) => (
+                          <div key={idx} style={{
+                            fontSize: "10px",
+                            padding: "3px 10px",
+                            background: "rgba(224, 195, 252, 0.15)",
+                            border: "1px solid rgba(224, 195, 252, 0.4)",
+                            borderRadius: "12px",
+                            color: "#e0c3fc"
+                          }}>
+                            {buff.name}
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </AnimatePresence>
 
             {/* 인디케이터 */}
@@ -681,26 +739,7 @@ export default function GiruPanel() {
         )}
       </AnimatePresence>
 
-      {/* active buffs */}
-      {game.nightBuffs && game.nightBuffs.length > 0 && !selectedNpc && (
-        <div style={{ position: "absolute", bottom: "100px", left: "0", width: "100%", padding: "0 20px", zIndex: 5 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "center" }}>
-            {game.nightBuffs.map((buff: any, idx: number) => (
-              <div key={idx} style={{
-                fontSize: "10px",
-                padding: "3px 10px",
-                background: "rgba(224, 195, 252, 0.15)",
-                border: "1px solid rgba(224, 195, 252, 0.4)",
-                borderRadius: "12px",
-                color: "#e0c3fc",
-                backdropFilter: "blur(5px)"
-              }}>
-                {buff.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
       {/* 선물 선택 모달 */}
       <AnimatePresence>
         {showGiftModal && (
