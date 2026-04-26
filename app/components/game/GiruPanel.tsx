@@ -843,7 +843,7 @@ export default function GiruPanel() {
               <div style={{ fontSize: "40px", marginBottom: "15px" }}>🕯️</div>
               <h2 style={{ fontSize: "22px", fontWeight: 900, color: "#ffd700", marginBottom: "10px" }}>강호의 은밀한 정보</h2>
               <p style={{ fontSize: "14px", color: "#ccc", marginBottom: "25px", lineHeight: "1.6" }}>
-                연화가 특별한 정보를 입수했습니다.<br/>내일의 운명을 바꿀 정보를 선택하세요.
+                연화가 특별한 정보를 입수했습니다.<br />내일의 운명을 바꿀 정보를 선택하세요.
               </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -938,7 +938,7 @@ export default function GiruPanel() {
             >
               <div style={{ fontSize: "60px", marginBottom: "20px", animation: "bounce 2s infinite" }}>🎁</div>
               <h2 style={{ fontSize: "24px", fontWeight: 900, color: "#ffd700", marginBottom: "30px", textShadow: "0 0 10px rgba(255,215,0,0.5)" }}>임무 완수 보상!</h2>
-              
+
               <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "40px" }}>
                 {rewardData.gold > 0 && (
                   <div style={{ background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>

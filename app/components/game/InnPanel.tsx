@@ -294,10 +294,10 @@ export default function InnPanel({
 
   const TUTORIAL_INFO = {
     breath: {
-    title: "청운진기",
-    method: "무뢰배가 날리는 암기, 검격, 장법을 막아내고 반격하는 전투형 수련입니다.",
-    controls: "오른쪽에서 왼쪽으로 공격이 날아옵니다. 공격이 왼쪽 방어 구역에 닿을 때 같은 줄의 방어 박스를 터치하세요.",
-    goal: "공격을 막아 반격 게이지를 채우면 청운반격이 발동합니다. 무뢰배의 생명력을 0으로 만들면 다음 단계로 넘어갑니다."
+      title: "청운진기",
+      method: "무뢰배가 날리는 암기, 검격, 장법을 막아내고 반격하는 전투형 수련입니다.",
+      controls: "오른쪽에서 왼쪽으로 공격이 날아옵니다. 공격이 왼쪽 방어 구역에 닿을 때 같은 줄의 방어 박스를 터치하세요.",
+      goal: "공격을 막아 반격 게이지를 채우면 청운반격이 발동합니다. 무뢰배의 생명력을 0으로 만들면 다음 단계로 넘어갑니다."
     },
     dodge: {
       title: "梅화樁 보법수련",
@@ -326,20 +326,20 @@ export default function InnPanel({
   };
 
 
- // --- Cheongun Counter Battle States ---
-const [breathNotes, setBreathNotes] = useState<CounterProjectile[]>([]);
-const breathNoteIdRef = useRef(0);
-const [breathTimeLeft, setBreathTimeLeft] = useState(30.0);
-const [breathMissCount, setBreathMissCount] = useState(0);
-const breathMissCountRef = useRef(0);
+  // --- Cheongun Counter Battle States ---
+  const [breathNotes, setBreathNotes] = useState<CounterProjectile[]>([]);
+  const breathNoteIdRef = useRef(0);
+  const [breathTimeLeft, setBreathTimeLeft] = useState(30.0);
+  const [breathMissCount, setBreathMissCount] = useState(0);
+  const breathMissCountRef = useRef(0);
 
-const [counterPlayerHp, setCounterPlayerHp] = useState(7);
-const counterPlayerHpRef = useRef(7);
-const [counterEnemyHp, setCounterEnemyHp] = useState(100);
-const counterEnemyHpRef = useRef(100);
-const [counterGauge, setCounterGauge] = useState(0);
-const counterGaugeRef = useRef(0);
-const [counterSlashEffect, setCounterSlashEffect] = useState(false);
+  const [counterPlayerHp, setCounterPlayerHp] = useState(7);
+  const counterPlayerHpRef = useRef(7);
+  const [counterEnemyHp, setCounterEnemyHp] = useState(100);
+  const counterEnemyHpRef = useRef(100);
+  const [counterGauge, setCounterGauge] = useState(0);
+  const counterGaugeRef = useRef(0);
+  const [counterSlashEffect, setCounterSlashEffect] = useState(false);
 
   // --- Meihua Poles (Dodge) States ---
   const [poles, setPoles] = useState<number[]>([]);
@@ -509,10 +509,10 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
   const getPlayerImage = () => {
     // 게임마다 독립적으로 주인공 이미지를 배치할 수 있도록 설정
     if (currentMiniGame === "puzzle") {
-       return "/images/char_puzzle_ready.png";
+      return "/images/char_puzzle_ready.png";
     }
     if (currentMiniGame === "dodge") {
-       return "/images/char_dodge_ready.png";
+      return "/images/char_dodge_ready.png";
     }
 
     const faction = FACTIONS.find(f => f.name === game.faction);
@@ -568,17 +568,17 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
   const powerFactor = (1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 2) * (1 + prestigeBonus);
 
   const addFloatText = (text: string, color: string, x = 50, y = 50) => {
-  const id = Date.now() + Math.random();
+    const id = Date.now() + Math.random();
 
-  setFloatTexts((prev: FloatText[]) => [
-    ...prev,
-    { id, text, color, x, y, opacity: 1 },
-  ]);
+    setFloatTexts((prev: FloatText[]) => [
+      ...prev,
+      { id, text, color, x, y, opacity: 1 },
+    ]);
 
-  setTimeout(() => {
-    setFloatTexts((prev: FloatText[]) => prev.filter((t) => t.id !== id));
-  }, 1000);
-};
+    setTimeout(() => {
+      setFloatTexts((prev: FloatText[]) => prev.filter((t) => t.id !== id));
+    }, 1000);
+  };
   const closeSuccessAndExit = () => {
     setIsSuccessPopup(false);
     // Explicitly redirect to training after reward claimed
@@ -632,8 +632,8 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
         const q = s.game.activeQuests[qIdx];
         const nextCount = q.currentCount + 1;
         const nextQuests = [...s.game.activeQuests];
-        nextQuests[qIdx] = { 
-          ...q, 
+        nextQuests[qIdx] = {
+          ...q,
           currentCount: nextCount,
           status: nextCount >= q.targetCount ? "completed" : "active"
         };
@@ -726,8 +726,8 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
         const q = s.game.activeQuests[qIdx];
         const nextCount = q.currentCount + 1;
         const nextQuests = [...s.game.activeQuests];
-        nextQuests[qIdx] = { 
-          ...q, 
+        nextQuests[qIdx] = {
+          ...q,
           currentCount: nextCount,
           status: nextCount >= q.targetCount ? "completed" : "active"
         };
@@ -898,292 +898,292 @@ const [counterSlashEffect, setCounterSlashEffect] = useState(false);
 
   // 1. Breath (Rhythm) Logic
   const getCounterLaneCount = (stage: number) => {
-  if (stage <= 2) return 2;
-  if (stage <= 5) return 3;
-  if (stage <= 8) return 4;
-  return 5;
-};
-
-const getCounterAttackConfig = (stage: number) => {
-  const laneCount = getCounterLaneCount(stage);
-
-  const scoreScale = Math.max(1, powerFactor);
-  const baseHp = 1200 + stage * 900 + Math.floor(Math.pow(stage, 1.45) * 650);
-
-  return {
-    laneCount,
-    speed: 18 + stage * 3.2,
-    spawnRate: Math.min(0.12, 0.025 + stage * 0.006),
-    maxOnScreen: Math.min(12, 2 + Math.floor(stage / 2)),
-
-    enemyHp: Math.floor(baseHp * scoreScale * 0.75),
-
-    counterNeed: Math.min(10, 3 + Math.floor(stage / 2)),
-
-    counterDamage: Math.floor((220 + stage * 80) * scoreScale),
+    if (stage <= 2) return 2;
+    if (stage <= 5) return 3;
+    if (stage <= 8) return 4;
+    return 5;
   };
-};
 
-const getAttackData = (type: "dart" | "slash" | "palm") => {
-  if (type === "dart") {
-    return { icon: "🗡️", score: 45, damage: 1, speedMult: 1.25 };
-  }
+  const getCounterAttackConfig = (stage: number) => {
+    const laneCount = getCounterLaneCount(stage);
 
-  if (type === "slash") {
-    return { icon: "🌙", score: 75, damage: 1, speedMult: 1 };
-  }
+    const scoreScale = Math.max(1, powerFactor);
+    const baseHp = 1200 + stage * 900 + Math.floor(Math.pow(stage, 1.45) * 650);
 
-  return { icon: "✊", score: 120, damage: 2, speedMult: 0.8 };
-};
+    return {
+      laneCount,
+      speed: 18 + stage * 3.2,
+      spawnRate: Math.min(0.12, 0.025 + stage * 0.006),
+      maxOnScreen: Math.min(12, 2 + Math.floor(stage / 2)),
 
-const updateBreath = (dt: number) => {
-  const cfg = getCounterAttackConfig(currentStage);
+      enemyHp: Math.floor(baseHp * scoreScale * 0.75),
 
-  // 👉 이동 (x 기준으로 변경)
-  const moved = breathNotesRef.current.map((n) => ({
-    ...n,
-    x: n.x - n.speed * dt,
-  }));
+      counterNeed: Math.min(10, 3 + Math.floor(stage / 2)),
 
-  // 👉 MISS 판정
-  const missed = moved.filter((n) => n.x <= 5);
-
-  if (missed.length > 0) {
-  const remain = moved.filter((n) => n.x > 5);
-  breathNotesRef.current = remain;
-  setBreathNotes(remain);
-
-  const damage = missed.reduce((acc, n) => acc + getAttackData(n.type).damage, 0);
-  const nextHp = Math.max(0, counterPlayerHpRef.current - damage);
-  counterPlayerHpRef.current = nextHp;
-  setCounterPlayerHp(nextHp);
-
-  const newMiss = breathMissCountRef.current + missed.length;
-  breathMissCountRef.current = newMiss;
-  setBreathMissCount(newMiss);
-
-  // 🔥 피격 연출
-  addFloatText(`피격 -${damage} HP`, "#ff4d4d");
-  triggerShake();
-
-  // 🔥 게임오버 처리
-  if (nextHp <= 0) {
-    finishMission(
-      false,
-      "MISS",
-      playerScoreRef.current,
-      "공격을 막지 못해 무뢰배에게 패배했습니다."
-    );
-    return;
-  }
-
-  return;
-}
-
-  breathNotesRef.current = moved;
-  setBreathNotes(moved);
-
-  // 👉 생성
-  if (
-    Math.random() < cfg.spawnRate &&
-    breathNotesRef.current.length < cfg.maxOnScreen
-  ) {
-    const lane = Math.floor(Math.random() * cfg.laneCount);
-
-    const roll = Math.random();
-    const type: "dart" | "slash" | "palm" =
-      roll < 0.5 ? "dart" : roll < 0.8 ? "slash" : "palm";
-
-    const attack = getAttackData(type);
-
-    const newAttack = {
-      id: breathNoteIdRef.current++,
-      lane,
-      x: 95,
-      speed: cfg.speed * attack.speedMult,
-      type,
+      counterDamage: Math.floor((220 + stage * 80) * scoreScale),
     };
+  };
 
-    const next = [...breathNotesRef.current, newAttack];
-    breathNotesRef.current = next;
-    setBreathNotes(next);
-  }
-};
-
-const goNextCounterStage = () => {
-  const nextStage = currentStage + 1;
-
-  setCurrentStage(nextStage);
-  setResultText(`${currentStage}단계 무뢰배 제압!`);
-
-  setIsPlaying(false);
-  isPlayingRef.current = false;
-  setIsTransitioning(true);
-  setTransitionCountdown(3);
-
-  const countdownInterval = setInterval(() => {
-    setTransitionCountdown((prev) => {
-      if (prev <= 1) {
-        clearInterval(countdownInterval);
-        return 0;
-      }
-      return prev - 1;
-    });
-  }, 1000);
-
-  setTimeout(() => {
-    if (finishLockRef.current) return;
-
-    clearInterval(countdownInterval);
-    resetGameState("breath");
-
-
-    setBreathTimeLeft(30.0);
-    breathTimeLeftRef.current = 30.0;
-
-    lastSecondTickRef.current = 0;
-    lastScoreAtTickRef.current = playerScoreRef.current;
-    
-
-    setIsTransitioning(false);
-    setIsPlaying(true);
-    isPlayingRef.current = true;
-  }, 3000);
-};
-
-const fireCounterSlash = (damage: number) => {
-  setCounterSlashEffect(true);
-  playHitEffect();
-  triggerShake();
-
-  setTimeout(() => {
-    setCounterSlashEffect(false);
-  }, 1200);
-
-  const nextHp = Math.max(0, counterEnemyHpRef.current - damage);
-  counterEnemyHpRef.current = nextHp;
-  setCounterEnemyHp(nextHp);
-
-  addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 52);
-
-  if (nextHp <= 0) {
-  const stageBonus = 250 + currentStage * 80;
-  const nextScore = playerScoreRef.current + stageBonus;
-
-  playerScoreRef.current = nextScore;
-  setPlayerScore(nextScore);
-
-  addFloatText(`제압 보너스 +${stageBonus}`, "#ffd700");
-
-  goNextCounterStage();
-}
-};
-
- const handleBreathTap = (lane: number) => {
-  const now = Date.now();
-  const key = `counter_${lane}`;
-
-  if (now - (lastHitTimeRef.current[key] || 0) < 80) return;
-  lastHitTimeRef.current[key] = now;
-
-  if (!isPlaying || currentMiniGame !== "breath") return;
-
-  const candidates = breathNotesRef.current
-    .filter((n) => n.lane === lane && n.x <= 38)
-    .sort((a, b) => a.x - b.x);
-
-  const target = candidates[0];
-
-  if (!target) {
-  const nextHp = Math.max(0, counterPlayerHpRef.current - 1);
-  counterPlayerHpRef.current = nextHp;
-  setCounterPlayerHp(nextHp);
-
-  const nextMiss = breathMissCountRef.current + 1;
-  breathMissCountRef.current = nextMiss;
-  setBreathMissCount(nextMiss);
-
-  addFloatText(`허공 방어 -1 HP`, "#ff4d4d");
-  triggerShake();
-
-  if (nextHp <= 0) {
-    finishMission(false, "MISS", playerScoreRef.current, "방어가 흐트러져 무뢰배에게 패배했습니다.");
-  }
-
-  return;
-}
-
-  const diff = Math.abs(target.x - 16);
-
-  let grade: Grade = "MISS";
-  if (diff <= 4) grade = "PERFECT";
-  else if (diff <= 9) grade = "GREAT";
-  else if (diff <= 16) grade = "GOOD";
-
-  const nextNotes = breathNotesRef.current.filter((n) => n.id !== target.id);
-  breathNotesRef.current = nextNotes;
-  setBreathNotes(nextNotes);
-
-  if (grade === "MISS") {
-    const attackData = getAttackData(target.type);
-    const nextHp = Math.max(0, counterPlayerHpRef.current - attackData.damage);
-
-    counterPlayerHpRef.current = nextHp;
-    setCounterPlayerHp(nextHp);
-
-    comboRef.current = 0;
-    setCombo(0);
-
-    addFloatText("방어 실패", "#ff4d4d");
-    triggerShake();
-
-    if (nextHp <= 0) {
-      finishMission(false, "MISS", playerScoreRef.current, "방어가 무너져 무뢰배에게 패배했습니다.");
+  const getAttackData = (type: "dart" | "slash" | "palm") => {
+    if (type === "dart") {
+      return { icon: "🗡️", score: 45, damage: 1, speedMult: 1.25 };
     }
 
-    return;
-  }
+    if (type === "slash") {
+      return { icon: "🌙", score: 75, damage: 1, speedMult: 1 };
+    }
 
-  const attackData = getAttackData(target.type);
-  const gradeBonus = grade === "PERFECT" ? 1.45 : grade === "GREAT" ? 1.2 : 1;
-  const scoreGain = Math.floor(attackData.score * gradeBonus * powerFactor);
+    return { icon: "✊", score: 120, damage: 2, speedMult: 0.8 };
+  };
 
-  const nextScore = playerScoreRef.current + scoreGain;
-  playerScoreRef.current = nextScore;
-  setPlayerScore(nextScore);
+  const updateBreath = (dt: number) => {
+    const cfg = getCounterAttackConfig(currentStage);
 
-  const nextCombo = comboRef.current + 1;
-  comboRef.current = nextCombo;
-  setCombo(nextCombo);
-  incrementCombo();
+    // 👉 이동 (x 기준으로 변경)
+    const moved = breathNotesRef.current.map((n) => ({
+      ...n,
+      x: n.x - n.speed * dt,
+    }));
 
-  const gaugeGain = grade === "PERFECT" ? 2 : 1;
-  const nextGauge = counterGaugeRef.current + gaugeGain;
-  counterGaugeRef.current = nextGauge;
-  setCounterGauge(nextGauge);
+    // 👉 MISS 판정
+    const missed = moved.filter((n) => n.x <= 5);
 
-  addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade), 50, 58);
-  playHitEffect();
+    if (missed.length > 0) {
+      const remain = moved.filter((n) => n.x > 5);
+      breathNotesRef.current = remain;
+      setBreathNotes(remain);
 
-  if (nextCombo > 0 && nextCombo % 10 === 0) {
-    addFloatText(`${nextCombo} 연속 방어!`, "#ffd700");
-  }
+      const damage = missed.reduce((acc, n) => acc + getAttackData(n.type).damage, 0);
+      const nextHp = Math.max(0, counterPlayerHpRef.current - damage);
+      counterPlayerHpRef.current = nextHp;
+      setCounterPlayerHp(nextHp);
 
-  const cfg = getCounterAttackConfig(currentStage);
+      const newMiss = breathMissCountRef.current + missed.length;
+      breathMissCountRef.current = newMiss;
+      setBreathMissCount(newMiss);
 
-  if (nextGauge >= cfg.counterNeed) {
-    counterGaugeRef.current = 0;
-    setCounterGauge(0);
+      // 🔥 피격 연출
+      addFloatText(`피격 -${damage} HP`, "#ff4d4d");
+      triggerShake();
 
-    const perfectBonus = grade === "PERFECT" ? 1.25 : 1;
-    const comboBonus = nextCombo >= 10 ? 1.2 : 1;
-    const palmBonus = target.type === "palm" ? 1.15 : 1;
-    const damage = Math.floor(
-    cfg.counterDamage * perfectBonus * comboBonus * palmBonus
-    );
-    fireCounterSlash(damage);
-  }
-};
+      // 🔥 게임오버 처리
+      if (nextHp <= 0) {
+        finishMission(
+          false,
+          "MISS",
+          playerScoreRef.current,
+          "공격을 막지 못해 무뢰배에게 패배했습니다."
+        );
+        return;
+      }
+
+      return;
+    }
+
+    breathNotesRef.current = moved;
+    setBreathNotes(moved);
+
+    // 👉 생성
+    if (
+      Math.random() < cfg.spawnRate &&
+      breathNotesRef.current.length < cfg.maxOnScreen
+    ) {
+      const lane = Math.floor(Math.random() * cfg.laneCount);
+
+      const roll = Math.random();
+      const type: "dart" | "slash" | "palm" =
+        roll < 0.5 ? "dart" : roll < 0.8 ? "slash" : "palm";
+
+      const attack = getAttackData(type);
+
+      const newAttack = {
+        id: breathNoteIdRef.current++,
+        lane,
+        x: 95,
+        speed: cfg.speed * attack.speedMult,
+        type,
+      };
+
+      const next = [...breathNotesRef.current, newAttack];
+      breathNotesRef.current = next;
+      setBreathNotes(next);
+    }
+  };
+
+  const goNextCounterStage = () => {
+    const nextStage = currentStage + 1;
+
+    setCurrentStage(nextStage);
+    setResultText(`${currentStage}단계 무뢰배 제압!`);
+
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    setIsTransitioning(true);
+    setTransitionCountdown(3);
+
+    const countdownInterval = setInterval(() => {
+      setTransitionCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    setTimeout(() => {
+      if (finishLockRef.current) return;
+
+      clearInterval(countdownInterval);
+      resetGameState("breath");
+
+
+      setBreathTimeLeft(30.0);
+      breathTimeLeftRef.current = 30.0;
+
+      lastSecondTickRef.current = 0;
+      lastScoreAtTickRef.current = playerScoreRef.current;
+
+
+      setIsTransitioning(false);
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+    }, 3000);
+  };
+
+  const fireCounterSlash = (damage: number) => {
+    setCounterSlashEffect(true);
+    playHitEffect();
+    triggerShake();
+
+    setTimeout(() => {
+      setCounterSlashEffect(false);
+    }, 1200);
+
+    const nextHp = Math.max(0, counterEnemyHpRef.current - damage);
+    counterEnemyHpRef.current = nextHp;
+    setCounterEnemyHp(nextHp);
+
+    addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 52);
+
+    if (nextHp <= 0) {
+      const stageBonus = 250 + currentStage * 80;
+      const nextScore = playerScoreRef.current + stageBonus;
+
+      playerScoreRef.current = nextScore;
+      setPlayerScore(nextScore);
+
+      addFloatText(`제압 보너스 +${stageBonus}`, "#ffd700");
+
+      goNextCounterStage();
+    }
+  };
+
+  const handleBreathTap = (lane: number) => {
+    const now = Date.now();
+    const key = `counter_${lane}`;
+
+    if (now - (lastHitTimeRef.current[key] || 0) < 80) return;
+    lastHitTimeRef.current[key] = now;
+
+    if (!isPlaying || currentMiniGame !== "breath") return;
+
+    const candidates = breathNotesRef.current
+      .filter((n) => n.lane === lane && n.x <= 38)
+      .sort((a, b) => a.x - b.x);
+
+    const target = candidates[0];
+
+    if (!target) {
+      const nextHp = Math.max(0, counterPlayerHpRef.current - 1);
+      counterPlayerHpRef.current = nextHp;
+      setCounterPlayerHp(nextHp);
+
+      const nextMiss = breathMissCountRef.current + 1;
+      breathMissCountRef.current = nextMiss;
+      setBreathMissCount(nextMiss);
+
+      addFloatText(`허공 방어 -1 HP`, "#ff4d4d");
+      triggerShake();
+
+      if (nextHp <= 0) {
+        finishMission(false, "MISS", playerScoreRef.current, "방어가 흐트러져 무뢰배에게 패배했습니다.");
+      }
+
+      return;
+    }
+
+    const diff = Math.abs(target.x - 16);
+
+    let grade: Grade = "MISS";
+    if (diff <= 4) grade = "PERFECT";
+    else if (diff <= 9) grade = "GREAT";
+    else if (diff <= 16) grade = "GOOD";
+
+    const nextNotes = breathNotesRef.current.filter((n) => n.id !== target.id);
+    breathNotesRef.current = nextNotes;
+    setBreathNotes(nextNotes);
+
+    if (grade === "MISS") {
+      const attackData = getAttackData(target.type);
+      const nextHp = Math.max(0, counterPlayerHpRef.current - attackData.damage);
+
+      counterPlayerHpRef.current = nextHp;
+      setCounterPlayerHp(nextHp);
+
+      comboRef.current = 0;
+      setCombo(0);
+
+      addFloatText("방어 실패", "#ff4d4d");
+      triggerShake();
+
+      if (nextHp <= 0) {
+        finishMission(false, "MISS", playerScoreRef.current, "방어가 무너져 무뢰배에게 패배했습니다.");
+      }
+
+      return;
+    }
+
+    const attackData = getAttackData(target.type);
+    const gradeBonus = grade === "PERFECT" ? 1.45 : grade === "GREAT" ? 1.2 : 1;
+    const scoreGain = Math.floor(attackData.score * gradeBonus * powerFactor);
+
+    const nextScore = playerScoreRef.current + scoreGain;
+    playerScoreRef.current = nextScore;
+    setPlayerScore(nextScore);
+
+    const nextCombo = comboRef.current + 1;
+    comboRef.current = nextCombo;
+    setCombo(nextCombo);
+    incrementCombo();
+
+    const gaugeGain = grade === "PERFECT" ? 2 : 1;
+    const nextGauge = counterGaugeRef.current + gaugeGain;
+    counterGaugeRef.current = nextGauge;
+    setCounterGauge(nextGauge);
+
+    addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade), 50, 58);
+    playHitEffect();
+
+    if (nextCombo > 0 && nextCombo % 10 === 0) {
+      addFloatText(`${nextCombo} 연속 방어!`, "#ffd700");
+    }
+
+    const cfg = getCounterAttackConfig(currentStage);
+
+    if (nextGauge >= cfg.counterNeed) {
+      counterGaugeRef.current = 0;
+      setCounterGauge(0);
+
+      const perfectBonus = grade === "PERFECT" ? 1.25 : 1;
+      const comboBonus = nextCombo >= 10 ? 1.2 : 1;
+      const palmBonus = target.type === "palm" ? 1.15 : 1;
+      const damage = Math.floor(
+        cfg.counterDamage * perfectBonus * comboBonus * palmBonus
+      );
+      fireCounterSlash(damage);
+    }
+  };
 
   // 2. Meihua Poles (Dodge) Logic
   const getNumPoles = (stage: number) => {
@@ -1897,51 +1897,51 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
         }}>
           {/* Faction Char vs Rival Vis */}
           {/* Faction Char vs Rival Vis */}
-{isPlaying && currentMiniGame !== "yabawi" && (
-  <div
-    style={{
-      position: "absolute",
-      top: "110px",
-      left: 0,
-      width: "100%",
-      height: "330px",
-      pointerEvents: "none",
-      zIndex: 1, // 캐릭터 컨테이너를 낮게 설정
-      opacity: 0.8, // 배경 느낌을 위해 살짝 투명도 조절
-    }}
-  >
-    {/* Player */}
-    <img
-      src={getPlayerImage()}
-      style={{
-        position: "absolute",
-        top: "115px",
-        left: "-30%",
-        transform: "translateX(-50%)",
-        height: "585px",
-        zIndex: 3,
-        pointerEvents: "none",
-        filter: "drop-shadow(0 0 20px rgba(255,215,0,0.6))",
-        animation: "floatUpDown 3s ease-in-out infinite",
-      }}
-    />
+          {isPlaying && currentMiniGame !== "yabawi" && (
+            <div
+              style={{
+                position: "absolute",
+                top: "110px",
+                left: 0,
+                width: "100%",
+                height: "330px",
+                pointerEvents: "none",
+                zIndex: 1, // 캐릭터 컨테이너를 낮게 설정
+                opacity: 0.8, // 배경 느낌을 위해 살짝 투명도 조절
+              }}
+            >
+              {/* Player */}
+              <img
+                src={getPlayerImage()}
+                style={{
+                  position: "absolute",
+                  top: "115px",
+                  left: "-30%",
+                  transform: "translateX(-50%)",
+                  height: "585px",
+                  zIndex: 3,
+                  pointerEvents: "none",
+                  filter: "drop-shadow(0 0 20px rgba(255,215,0,0.6))",
+                  animation: "floatUpDown 3s ease-in-out infinite",
+                }}
+              />
 
-    {/* Rival */}
-    <img
-      src={getRivalImage()}
-      style={{
-        position: "absolute",
-        top: "115px",
-        right: "0%",
-        height: "185px",
-        zIndex: 34,
-        pointerEvents: "none",
-        filter: "drop-shadow(0 0 20px rgba(255,77,77,0.55))",
-        animation: "floatUpDown 3.5s ease-in-out infinite reverse",
-      }}
-    />
-  </div>
-)}
+              {/* Rival */}
+              <img
+                src={getRivalImage()}
+                style={{
+                  position: "absolute",
+                  top: "115px",
+                  right: "0%",
+                  height: "185px",
+                  zIndex: 34,
+                  pointerEvents: "none",
+                  filter: "drop-shadow(0 0 20px rgba(255,77,77,0.55))",
+                  animation: "floatUpDown 3.5s ease-in-out infinite reverse",
+                }}
+              />
+            </div>
+          )}
 
           {showTutorial && tutorialTarget ? (
             <div style={{
@@ -2046,186 +2046,185 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               {currentMiniGame !== "yabawi" && (
                 <div style={scoreBarContainer}>
                   <div style={scoreLabels}>
-  <span style={{ textAlign: "left" }}>
-    현재 점수: {playerScore.toLocaleString()}
-  </span>
+                    <span style={{ textAlign: "left" }}>
+                      현재 점수: {playerScore.toLocaleString()}
+                    </span>
 
-  <span
-    style={{
-      padding: "4px 12px",
-      borderRadius: "999px",
-      background: "rgba(0,0,0,0.45)",
-      border: "1px solid rgba(255,215,0,0.35)",
-      color: "#fff",
-      fontWeight: 900,
-    }}
-  >
-    {currentStage}단계
-  </span>
+                    <span
+                      style={{
+                        padding: "4px 12px",
+                        borderRadius: "999px",
+                        background: "rgba(0,0,0,0.45)",
+                        border: "1px solid rgba(255,215,0,0.35)",
+                        color: "#fff",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {currentStage}단계
+                    </span>
 
-  <span style={{ textAlign: "right", fontSize: 11, opacity: 0.85 }}>
-    목표: {currentMiniGame === "breath"
-      ? "무뢰배 제압"
-      : getTargetScore(currentStage).toLocaleString()}
-  </span>
-</div>
+                    <span style={{ textAlign: "right", fontSize: 11, opacity: 0.85 }}>
+                      목표: {currentMiniGame === "breath"
+                        ? "무뢰배 제압"
+                        : getTargetScore(currentStage).toLocaleString()}
+                    </span>
+                  </div>
                   <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginTop: 4 }}>
-                    <motion.div 
-                      animate={{ width: `${Math.min(100, (playerScore / getTargetScore(currentStage)) * 100)}%` }} 
-                      style={{ height: "100%", background: "#ffd700", boxShadow: "0 0 10px #ffd700" }} 
+                    <motion.div
+                      animate={{ width: `${Math.min(100, (playerScore / getTargetScore(currentStage)) * 100)}%` }}
+                      style={{ height: "100%", background: "#ffd700", boxShadow: "0 0 10px #ffd700" }}
                     />
                   </div>
                 </div>
               )}
 
-                {currentMiniGame !== "yabawi" && currentMiniGame !== "breath" && currentMiniGame !== "puzzle" && (
-  <div style={roundBadge}>Stage {currentStage}</div>
-)}
+              {currentMiniGame !== "yabawi" && currentMiniGame !== "breath" && currentMiniGame !== "puzzle" && (
+                <div style={roundBadge}>Stage {currentStage}</div>
+              )}
 
               {/* GAME RENDERERS */}
               {currentMiniGame === "breath" && (
                 <div style={{ ...breathArea, height: 540, padding: 0 }}>
                   {/* 청운진기 전투 HP UI */}
 
-                  
-<div
-  style={{
-    position: "absolute",
-    top: 46,
-    left: 12,
-    right: 12,
-    zIndex: 80,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    pointerEvents: "none",
-  }}
->
-  <div
-    style={{
-      padding: "7px 9px",
-      borderRadius: 12,
-      background: "rgba(0,0,0,0.62)",
-      border: "1px solid rgba(76,255,112,0.25)",
-    }}
-  >
-    <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>내 체력</div>
-    <div style={{ display: "flex", gap: 3 }}>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <span
-          key={i}
-          style={{
-            fontSize: 12,
-            filter: i < counterPlayerHp ? "drop-shadow(0 0 5px #4dff4d)" : "none",
-            opacity: i < counterPlayerHp ? 1 : 0.2,
-          }}
-        >
-          {i < counterPlayerHp ? "❤️" : "🖤"}
-        </span>
-      ))}
-    </div>
-  </div>
 
-  <div
-    style={{
-      padding: "7px 9px",
-      borderRadius: 12,
-      background: "rgba(0,0,0,0.62)",
-      border: "1px solid rgba(255,77,77,0.28)",
-    }}
-  >
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#aaa" }}>
-      <span>무뢰배 체력</span>
-      <span>
-        {Math.max(0, Math.floor(counterEnemyHp)).toLocaleString()} /{" "}
-        {getCounterAttackConfig(currentStage).enemyHp.toLocaleString()}
-      </span>
-    </div>
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 46,
+                      left: 12,
+                      right: 12,
+                      zIndex: 80,
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 10,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "7px 9px",
+                        borderRadius: 12,
+                        background: "rgba(0,0,0,0.62)",
+                        border: "1px solid rgba(76,255,112,0.25)",
+                      }}
+                    >
+                      <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>내 체력</div>
+                      <div style={{ display: "flex", gap: 3 }}>
+                        {Array.from({ length: 7 }).map((_, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 12,
+                              filter: i < counterPlayerHp ? "drop-shadow(0 0 5px #4dff4d)" : "none",
+                              opacity: i < counterPlayerHp ? 1 : 0.2,
+                            }}
+                          >
+                            {i < counterPlayerHp ? "❤️" : "🖤"}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
 
-    <div
-      style={{
-        height: 8,
-        marginTop: 5,
-        borderRadius: 999,
-        overflow: "hidden",
-        background: "rgba(255,255,255,0.12)",
-      }}
-    >
-      <motion.div
-        animate={{
-          width: `${Math.max(
-            0,
-            Math.min(
-              100,
-              (counterEnemyHp / getCounterAttackConfig(currentStage).enemyHp) * 100
-            )
-          )}%`,
-        }}
-        style={{
-          height: "100%",
-          background: "linear-gradient(90deg, #ff3030, #ff8c5a)",
-          boxShadow: "0 0 12px rgba(255,77,77,0.8)",
-        }}
-      />
-    </div>
-  </div>
-</div>
-                 
+                    <div
+                      style={{
+                        padding: "7px 9px",
+                        borderRadius: 12,
+                        background: "rgba(0,0,0,0.62)",
+                        border: "1px solid rgba(255,77,77,0.28)",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#aaa" }}>
+                        <span>무뢰배 체력</span>
+                        <span>
+                          {Math.max(0, Math.floor(counterEnemyHp)).toLocaleString()} /{" "}
+                          {getCounterAttackConfig(currentStage).enemyHp.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          height: 8,
+                          marginTop: 5,
+                          borderRadius: 999,
+                          overflow: "hidden",
+                          background: "rgba(255,255,255,0.12)",
+                        }}
+                      >
+                        <motion.div
+                          animate={{
+                            width: `${Math.max(
+                              0,
+                              Math.min(
+                                100,
+                                (counterEnemyHp / getCounterAttackConfig(currentStage).enemyHp) * 100
+                              )
+                            )}%`,
+                          }}
+                          style={{
+                            height: "100%",
+                            background: "linear-gradient(90deg, #ff3030, #ff8c5a)",
+                            boxShadow: "0 0 12px rgba(255,77,77,0.8)",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div style={{ display: "flex", height: "100%", position: "relative", touchAction: "none" }}>
-                   {/* 히트존: 공격이 이 선에 닿을 때 방어 */}
+                    {/* 히트존: 공격이 이 선에 닿을 때 방어 */}
 
 
-{Array.from({ length: getCounterAttackConfig(currentStage).laneCount }).map((_, lane) => {
-  const laneCount = getCounterAttackConfig(currentStage).laneCount;
-  const top = 90 + lane * (400 / laneCount);
-const height = 360 / laneCount; 
+                    {Array.from({ length: getCounterAttackConfig(currentStage).laneCount }).map((_, lane) => {
+                      const laneCount = getCounterAttackConfig(currentStage).laneCount;
+                      const top = 90 + lane * (400 / laneCount);
+                      const height = 360 / laneCount;
 
 
-  return (
-    <button
-      key={lane}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        handleBreathTap(lane);
-      }}
-      style={{
-        position: "absolute",
-        left: "8%",
-        top,
-        width: "22%",
-        height,
-        zIndex: 15,
-        borderRadius: "20px",
+                      return (
+                        <button
+                          key={lane}
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            handleBreathTap(lane);
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: "8%",
+                            top,
+                            width: "22%",
+                            height,
+                            zIndex: 15,
+                            borderRadius: "20px",
 
-        // 🔥 핵심: 진짜 방어존 느낌
-        background:
-          "linear-gradient(90deg, rgba(255,215,0,0.35), rgba(255,215,0,0.08))",
-        border: "2px solid rgba(255,215,0,0.7)",
-        boxShadow: "0 0 25px rgba(255,215,0,0.45)",
+                            // 🔥 핵심: 진짜 방어존 느낌
+                            background:
+                              "linear-gradient(90deg, rgba(255,215,0,0.35), rgba(255,215,0,0.08))",
+                            border: "2px solid rgba(255,215,0,0.7)",
+                            boxShadow: "0 0 25px rgba(255,215,0,0.45)",
 
-        color: "#ffd700",
-        fontSize: "13px",
-        fontWeight: 900,
-        cursor: "pointer",
-        touchAction: "manipulation",
-      }}
-    >
-      방어 {lane + 1}
-    </button>
-  );
-})}
+                            color: "#ffd700",
+                            fontSize: "13px",
+                            fontWeight: 900,
+                            cursor: "pointer",
+                            touchAction: "manipulation",
+                          }}
+                        >
+                          방어 {lane + 1}
+                        </button>
+                      );
+                    })}
                     {breathNotes.map(n => (
                       <div
                         key={n.id}
                         style={{
                           position: "absolute",
-                        top: `${
-  90 +
-  n.lane * (400 / getCounterAttackConfig(currentStage).laneCount) +
-  (360 / getCounterAttackConfig(currentStage).laneCount) / 2 -
-  16
-}px`,
-left: `${n.x}%`,
+                          top: `${90 +
+                            n.lane * (400 / getCounterAttackConfig(currentStage).laneCount) +
+                            (360 / getCounterAttackConfig(currentStage).laneCount) / 2 -
+                            16
+                            }px`,
+                          left: `${n.x}%`,
                           transform: "translateX(-50%)",
                           width: 32,
                           height: 32,
@@ -2445,21 +2444,21 @@ left: `${n.x}%`,
                           key={`${step}-${game.footworkGame.score + i}`}
                           layout
                           initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                          animate={{ 
-                            opacity: i === 0 ? 1 : 1 - (i * 0.15), 
+                          animate={{
+                            opacity: i === 0 ? 1 : 1 - (i * 0.15),
                             scale: i === 0 ? 1.2 : 1 - (i * 0.05),
-                            y: 0 
+                            y: 0
                           }}
                           style={{
                             width: '120px', height: '50px',
-                            background: i === 0 
-                              ? 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)' 
+                            background: i === 0
+                              ? 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)'
                               : 'rgba(255,255,255,0.1)',
                             borderRadius: '12px',
                             border: i === 0 ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
                             boxShadow: i === 0 ? '0 0 20px rgba(255,215,0,0.6)' : 'none',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: i === 0 ? '#000' : '#fff', 
+                            color: i === 0 ? '#000' : '#fff',
                             fontWeight: 900, fontSize: i === 0 ? '18px' : '14px'
                           }}
                         >
@@ -2485,12 +2484,12 @@ left: `${n.x}%`,
                         <FootworkButton label="右上" onClick={() => handlePolesStep("우상")} />
                       </div>
                     )}
-                    
+
                     {/* Middle Buttons */}
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <FootworkButton label="左" onClick={() => handlePolesStep("왼쪽")} />
                       {game.footworkGame.stage >= 2 && (
-                        <FootworkButton label="中" onClick={() => handlePolesStep("중앙")} 
+                        <FootworkButton label="中" onClick={() => handlePolesStep("중앙")}
                           style={{ background: 'rgba(255,215,0,0.1)' }} />
                       )}
                       <FootworkButton label="右" onClick={() => handlePolesStep("오른쪽")} />
@@ -2680,9 +2679,9 @@ left: `${n.x}%`,
                           WebkitUserSelect: "none",
                           userSelect: "none"
                         }}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onTouchEnd={(e) => e.stopPropagation()}
-                      >
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                        >
                           {puzzleGrid.map((row, r) => row.map((cell, c) => (
                             <motion.div
                               key={cell.id}
@@ -2902,7 +2901,7 @@ left: `${n.x}%`,
 
               {/* 3. 버튼 (하단 고정) */}
               <div style={{
-                position: "absolute", bottom: "25px", left: "50%", transform: "translateX(-50%)",
+                position: "absolute", bottom: "60px", left: "50%", transform: "translateX(-50%)",
                 width: "100%", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 20
               }}>
                 <div style={{ display: "flex", flexDirection: "column", width: "100%", gap: "8px", alignItems: "center" }}>
@@ -3299,7 +3298,7 @@ const scoreBarContainer: React.CSSProperties = {
 };
 
 const scoreLabels: React.CSSProperties = {
-  
+
   display: "grid",
   gridTemplateColumns: "1fr auto 1fr",
   alignItems: "center",

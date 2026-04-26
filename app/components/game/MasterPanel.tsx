@@ -1049,105 +1049,64 @@ export default function MasterPanel() {
           display: "flex",
           gap: 10,
           overflowX: "auto",
-          padding: "5px 2px 10px",
+          padding: "2px 2px 5px",
+          marginTop: "-10px",
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch"
         }} className="hide-scrollbar">
-          {/* 처단 규칙 박스 */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowRules(true); }}
             style={{
-              flex: "0 0 calc(50% - 5px)", minWidth: 160, scrollSnapAlign: "start",
+              flex: "0 0 calc(45% - 5px)", minWidth: 140, scrollSnapAlign: "start",
               position: "relative", overflow: "hidden",
               background: "linear-gradient(#1a0a0a, #1a0a0a) padding-box, linear-gradient(135deg, #ff4d4d, #990000) border-box",
-              borderRadius: 14, padding: "10px", border: "1.5px solid transparent",
+              borderRadius: 14, padding: "5px 8px", border: "1.5px solid transparent",
               boxShadow: "0 4px 15px rgba(0,0,0,0.5)", textAlign: "center", cursor: "pointer", color: "#eee",
-              transition: "transform 0.2s, box-shadow 0.2s",
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.02)";
-              e.currentTarget.style.boxShadow = "0 0 20px rgba(255,0,0,0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.5)";
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
             }}
           >
-            {/* Shine Effect */}
-            <div style={{
-              position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
-              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)",
-              animation: "shimmer 3s infinite ease-in-out", pointerEvents: "none"
-            }} />
-
-            <div style={{ fontSize: 13, fontWeight: 900, color: "#ff6b6b", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>☠️</span> 처단 규칙 <span style={{ fontSize: 10, opacity: 0.6 }}>▶</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+            <div style={{ writingMode: "vertical-rl", fontSize: 18, fontWeight: 950, color: "#ff6b6b", letterSpacing: "0px" }}>규칙</div>
+            <div style={{ display: "flex", gap: 10 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>🛡️</div>
-                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>입장 조건</div>
+                <div style={{ width: 34, height: 34, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🛡️</div>
+                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 4, fontWeight: 900 }}>입장조건</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 22 }}>⏱</div>
-                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>제한 시간</div>
+                <div style={{ width: 34, height: 34, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>⏱</div>
+                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 4, fontWeight: 900 }}>제한시간</div>
               </div>
             </div>
           </button>
 
-          {/* 처단 보상 박스 */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowReward(true); }}
             style={{
-              flex: "0 0 calc(50% - 5px)", minWidth: 160, scrollSnapAlign: "start",
+              flex: "1", minWidth: 160, scrollSnapAlign: "start",
               position: "relative", overflow: "hidden",
               background: "linear-gradient(#1a1a0a, #1a1a0a) padding-box, linear-gradient(135deg, #ffd700, #ff8c00) border-box",
-              borderRadius: 14, padding: "10px", border: "1.5px solid transparent",
+              borderRadius: 14, padding: "5px 8px", border: "1.5px solid transparent",
               boxShadow: "0 4px 15px rgba(0,0,0,0.5)", textAlign: "center", cursor: "pointer", color: "#eee",
-              transition: "transform 0.2s, box-shadow 0.2s",
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.02)";
-              e.currentTarget.style.boxShadow = "0 0 20px rgba(255,215,0,0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.5)";
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"
             }}
           >
-            {/* Shine Effect */}
-            <div style={{
-              position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
-              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
-              animation: "shimmer 3s infinite ease-in-out", pointerEvents: "none"
-            }} />
-
-            <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <span>🎁</span> 처단 보상 <span style={{ fontSize: 10, opacity: 0.6 }}>▶</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+            <div style={{ writingMode: "vertical-rl", fontSize: 18, fontWeight: 950, color: "#ffd700", letterSpacing: "0px" }}>보상</div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🩸</div>
-                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 6, fontWeight: 900 }}>징표</div>
+                <div style={{ width: 34, height: 34, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🩸</div>
+                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 4, fontWeight: 900 }}>징표</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🧪</div>
-                <div style={{ fontSize: 9, color: "#ffd700", marginTop: 6, fontWeight: 900 }}>전리품</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ width: 38, height: 38, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 20 }}>🛒</div>
-                <div style={{ fontSize: 9, color: "#ffd700", marginTop: 6, fontWeight: 900 }}>상점</div>
+                <div style={{ width: 34, height: 34, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🧪</div>
+                <div style={{ fontSize: 9, color: "#ffd700", marginTop: 4, fontWeight: 900 }}>전리품</div>
               </div>
             </div>
           </button>
         </div>
       )}
 
-      <div style={{ textAlign: "center", paddingBottom: 10 }}>
+      <div style={{ textAlign: "center", paddingBottom: 6 }}>
         {!masterDuel.isPlaying && (
-          <div style={{ width: "95%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ width: "95%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 5 }}>
             {/* 도전 조건 현황판 */}
             <div style={{
               background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "4px 8px",
@@ -1592,7 +1551,7 @@ export default function MasterPanel() {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontSize: 20 }}>📜</span>
-                      <span className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950 }}>처단 보상 안내</span>
+                      <span className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950 }}>보상 안내</span>
                     </div>
                     <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>대결 승리 시 획득 가능한 보상 목록</div>
                   </div>
@@ -1709,7 +1668,7 @@ export default function MasterPanel() {
               }}
             >
               <div className="gold-shimmer-content" style={{ padding: 24, display: "flex", flexDirection: "column", maxHeight: "inherit", height: "100%" }}>
-                <div className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950, marginBottom: 20, textAlign: "center" }}>☠️ 처단 규칙 안내</div>
+                <div className="premium-gold-text" style={{ fontSize: 18, fontWeight: 950, marginBottom: 20, textAlign: "center" }}>규칙 안내</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div style={{ display: "flex", gap: 12 }}>
                     <div style={{ fontSize: 24 }}>📜</div>
