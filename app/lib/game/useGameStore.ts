@@ -422,6 +422,7 @@ interface GameState {
   acceptQuest: (questId: string) => void;
   completeQuest: (questId: string) => void;
   buyGiruInformation: (type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE") => void;
+  triggerGodMode: () => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -3977,6 +3978,25 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     return { game: nextGame };
   }),
+  triggerGodMode: () => {
+    const trillion = 1000000000000;
+    const allTabs: any[] = ["training", "inn", "master", "library", "forge", "inventory", "upgrade", "tower", "giru", "gambling"];
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        coins: trillion,
+        reputation: trillion,
+        gamblingTokens: trillion,
+        bossTokens: trillion,
+        enhancementStones: trillion,
+        wisdom: trillion,
+        points: trillion,
+        unlockedTabs: allTabs,
+        isForgeFullUnlocked: true,
+      }
+    }));
+    get().triggerSave(true);
+  },
 }));
 
 export function shouldPauseHeavyLoop() {

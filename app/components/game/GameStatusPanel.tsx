@@ -12,7 +12,7 @@ export default function GameStatusPanel() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps } = useGameStore() as any;
+  const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps, triggerGodMode } = useGameStore() as any;
 
   // 데이터 유실 방지를 위한 초기화 및 매핑
   const safeGame: any = {
@@ -175,6 +175,31 @@ export default function GameStatusPanel() {
             }}
           >
             ⚙️
+          </button>
+          
+          <button
+            onClick={() => {
+              if (confirm("모든 재화를 1조로 설정하고 모든 탭을 활성화하시겠습니까?")) {
+                triggerGodMode();
+              }
+            }}
+            style={{
+              width: "12px",
+              height: "12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "8px",
+              background: "transparent",
+              border: "none",
+              color: "rgba(255,255,255,0.05)",
+              cursor: "pointer",
+              marginLeft: "4px",
+              padding: 0,
+              userSelect: "none"
+            }}
+          >
+            g
           </button>
         </div>
 
@@ -408,7 +433,32 @@ export default function GameStatusPanel() {
             display: "flex", flexDirection: "column", gap: 15, boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-              <div style={{ fontSize: 18, fontWeight: 950, color: "#ffd778" }}>⚙️ 환경 설정</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ fontSize: 18, fontWeight: 950, color: "#ffd778" }}>⚙️ 환경 설정</div>
+                <button
+                  onClick={() => {
+                    if (confirm("모든 재화를 1조로 설정하고 모든 탭을 활성화하시겠습니까?")) {
+                      triggerGodMode();
+                    }
+                  }}
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "8px",
+                    background: "transparent",
+                    border: "none",
+                    color: "rgba(255,255,255,0.05)",
+                    cursor: "pointer",
+                    padding: 0,
+                    userSelect: "none"
+                  }}
+                >
+                  g
+                </button>
+              </div>
               <button onClick={() => setIsSettingsOpen(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 20, cursor: "pointer" }}>&times;</button>
             </div>
 
