@@ -341,8 +341,14 @@ export function loadGame(): GameSaveData {
       if (!repairedTabs.includes("gambling")) repairedTabs.push("gambling");
     }
 
-    const realmIdx = REALM_ORDER.indexOf(v12Data.realm || "필부");
-    if (realmIdx >= 1 && !repairedTabs.includes("tower")) repairedTabs.push("tower");
+    if (v12Data.totalDummyKills >= 400 && !repairedTabs.includes("tower")) repairedTabs.push("tower");
+
+    const realmOrder = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+    const rIdx = realmOrder.indexOf(v12Data.realm || "필부");
+    if (rIdx >= 1) {
+      if (!repairedTabs.includes("giru")) repairedTabs.push("giru");
+      if (!repairedTabs.includes("gambling")) repairedTabs.push("gambling");
+    }
 
     // Migration: derive upgradeLevels from statUpgrades if missing
     const levels = v12Data.upgradeLevels || {};

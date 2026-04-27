@@ -1020,8 +1020,17 @@ export const useGameStore = create<GameState>((set, get) => ({
           cMT = "허수아비 누적 처치 300번\n[이벤트: 무뢰배]";
           uET = "[비급] 개방";
           uTabs = Array.from(new Set([...uTabs, "library"]));
-        } else if (qT >= 300) {
-          // 300킬 이후부터는 순환형 무뢰배 이벤트 모드
+        } else if (qT === 300) {
+          qT = 400;
+          cMT = "허수아비 누적 처치 400번\n[개방: 무한의 탑]";
+          uET = "무뢰배 격퇴 완료!";
+        } else if (qT === 400) {
+          qT = targetInterval;
+          cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
+          uET = "[무한의 탑] 개방";
+          uTabs = Array.from(new Set([...uTabs, "tower"]));
+        } else if (qT >= targetInterval) {
+          // 400킬 이후부터는 순환형 무뢰배 이벤트 모드
           qT = targetInterval; 
           cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
           uET = null;
@@ -1291,7 +1300,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (nxt) {
         const st = getDummyStats(nxt, 1);
         const nextTabs = [...game.unlockedTabs];
-        if (nxt === "삼류" && !nextTabs.includes("tower")) nextTabs.push("tower");
+        if (game.totalDummyKills >= 400 && !nextTabs.includes("tower")) nextTabs.push("tower");
+        if (nxt !== "필부" && !nextTabs.includes("giru")) nextTabs.push("giru");
+        if (nxt !== "필부" && !nextTabs.includes("gambling")) nextTabs.push("gambling");
 
         set((s: any) => ({
           game: {
@@ -2233,11 +2244,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rMult = rSettings.rewardMultiplier || 1;
     const starFactor = 1 + (game.star - 1) * 0.1;
 
-    const goldCost = Math.floor(5000 * rMult * starFactor * Math.pow(1.5, curLv));
-    const stoneScale = Math.pow(1.25, realmIdx);
-    const stoneCost = Math.round(5 * Math.pow(1.35, curLv) * stoneScale);
-    const repScale = Math.pow(1.8, realmIdx);
-    const repCost = Math.floor(20000 * repScale);
+    const itemPrice = item.price || 5000;
+    const growthFactor = Math.pow(1.15, curLv); // 레벨당 15%씩 증가 (기존 1.5배에서 완화)
+    
+    const goldCost = Math.floor(itemPrice * growthFactor);
+    const repCost = Math.floor(itemPrice * growthFactor);
+    const stoneCost = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv)));
 
     if (game.coins < goldCost) return { success: false, message: "금화가 부족합니다." };
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
@@ -3993,6 +4005,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         points: trillion,
         unlockedTabs: allTabs,
         isForgeFullUnlocked: true,
+        // 자동사냥 중단 방지: 현재 처치수와 동기화하고 차단 플래그 제거
+        lastInnEventKillCount: s.game.totalDummyKills,
+        pendingInnEntry: false,
+        timingMission: {
+          ...(s.game.timingMission || {}),
+          available: false
+        }
       }
     }));
     get().triggerSave(true);

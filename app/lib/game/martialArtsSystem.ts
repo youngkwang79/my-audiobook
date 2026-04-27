@@ -313,8 +313,13 @@ export function getRefineGoldCost(stars: number) {
  * 무공 최초 습득(도감 활성화) 비용 계산
  */
 export function getSkillStudyPrice(skill: CompendiumSkill) {
+  // 입문보법(Entry Footwork) 특수 가격 처리
+  if (skill.skillType === "movement" && skill.order === 100) {
+    return 30000;
+  }
+
   const basePrices: Record<SkillGrade, number> = {
-    common: 50000,       // 5만 (인하됨)
+    common: 3000,        // 3,000 (필부경지 인하)
     rare: 5000000,       // 500만
     epic: 50000000,      // 5,000만
     legendary: 500000000, // 5억

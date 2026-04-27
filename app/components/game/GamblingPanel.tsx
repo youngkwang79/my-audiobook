@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   useGameStore,
   formatCompactNumber,
+  REALM_ORDER
 } from "@/app/lib/game/useGameStore";
 import TujeonExchangePanel from "./TujeonExchangePanel";
 import YabawiGame from "./YabawiGame";
@@ -292,6 +293,11 @@ export default function GamblingPanel() {
     setIsProcessing(false);
     setYabawiSession(null);
   };
+
+  const realmIndex = REALM_ORDER.indexOf(game.realm || "필부");
+  const isRealmLocked = realmIndex < 1;
+  const isNight = game.timeState === "night";
+  const isDaytimeLocked = !isNight && !isRealmLocked;
 
   return (
     <div
@@ -799,9 +805,57 @@ export default function GamblingPanel() {
           </div>
         </div>
       )}
-      </div>
+
+      {/* Locked Overlay for Curiosity / Daytime */}
+      {(isRealmLocked || isDaytimeLocked) && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 100, 
+          background: isRealmLocked 
+            ? "linear-gradient(180deg, rgba(11,11,20,0.4) 0%, rgba(11,11,20,0.9) 100%)"
+            : "rgba(11,11,20,0.6)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "30px", textAlign: "center", pointerEvents: "all"
+        }}>
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            style={{ 
+              background: "rgba(20, 20, 35, 0.95)", border: `2px solid ${isRealmLocked ? "#ffd700" : "#4dff8a"}`, borderRadius: "24px",
+              padding: "26px", boxShadow: "0 0 50px rgba(0,0,0,0.9)",
+              maxWidth: "300px"
+            }}
+          >
+            <div style={{ fontSize: "44px", marginBottom: "14px" }}>{isRealmLocked ? "🔒" : "🏮"}</div>
+            <h3 style={{ fontSize: "20px", color: isRealmLocked ? "#ffd700" : "#4dff8a", fontWeight: 950, marginBottom: "12px" }}>
+              {isRealmLocked ? "출입 제한" : "준비 중"}
+            </h3>
+            <p style={{ fontSize: "14px", lineHeight: "1.7", color: "#ccc", wordBreak: "keep-all", margin: 0 }}>
+              {isRealmLocked ? (
+                <>
+                  "애송이는 가라. 이곳은 목숨을 건 승부사들이 모이는 곳.<br />
+                  최소한 <span style={{ color: "#ffd700", fontWeight: 900 }}>삼류(三流)의 실력</span>은 증명해야 판에 끼워줄 수 있겠군."
+                </>
+              ) : (
+                <>
+                  "투전판은 달이 머리 위로 솟아야 문을 연다네.<br />
+                  지금은 장부를 정리하는 시간이니,<br />
+                  <span style={{ color: "#4dff8a", fontWeight: 900 }}>밤(Night)</span>이 되면 다시 오게나."
+                </>
+              )}
+            </p>
+            <div style={{ marginTop: "22px", fontSize: "11px", color: "#888", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "15px" }}>
+              {isRealmLocked ? (
+                <>현재 실력: <span style={{ color: "#fff", fontWeight: 800 }}>{game.hero.realm}</span> (필요: 삼류 이상)</>
+              ) : (
+                <>현재는 <span style={{ color: "#ffd700" }}>낮(Day)</span> 시간입니다.</>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 }
 
 const gameCardStyle: React.CSSProperties = {

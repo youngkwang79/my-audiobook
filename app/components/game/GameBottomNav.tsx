@@ -39,7 +39,7 @@ export default function GameBottomNav({
       style={{
         position: "sticky",
         bottom: 0,
-        zIndex: 1000,
+        zIndex: 9999,
         display: "grid",
         gridTemplateColumns: "repeat(10, 1fr)",
         gap: 2,
@@ -58,7 +58,14 @@ export default function GameBottomNav({
           <button
             key={item.key}
             onClick={() => {
+              // [궁금증 유발] 기루와 도박은 잠금/시간 여부와 상관없이 무조건 입장 가능
+              if (item.key === "giru" || item.key === "gambling") {
+                onChange(item.key);
+                return;
+              }
+
               if (!unlocked) return;
+              
               if (isLockedByDay) {
                 alert("밤(Night)에만 입장할 수 있는 장소입니다.");
                 return;

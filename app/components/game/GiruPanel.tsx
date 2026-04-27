@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
+import { useGameStore, formatCompactNumber, REALM_ORDER } from "@/app/lib/game/useGameStore";
 import { GIRU_NPCS, GIRU_ACTIONS, GiruNPC, GiruEvent, GIRU_GIFT_ITEMS, GIRU_QUESTS } from "@/app/lib/game/nightSystem";
 import GiruPuzzleGame from "./GiruPuzzleGame";
 
@@ -123,6 +123,11 @@ export default function GiruPanel() {
       alert(res.message);
     }
   };
+
+  const realmIndex = REALM_ORDER.indexOf(game.realm || "필부");
+  const isRealmLocked = realmIndex < 1;
+  const isNight = game.timeState === "night";
+  const isDaytimeLocked = !isNight && !isRealmLocked;
 
   return (
     <div style={{
@@ -1057,6 +1062,55 @@ export default function GiruPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Locked Overlay for Curiosity / Daytime */}
+      {(isRealmLocked || isDaytimeLocked) && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 100, 
+          background: isRealmLocked 
+            ? "linear-gradient(180deg, rgba(5,5,16,0.3) 0%, rgba(5,5,16,0.8) 100%)"
+            : "rgba(5,5,16,0.5)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+          padding: "40px 30px 120px", textAlign: "center", pointerEvents: "all"
+        }}>
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            style={{ 
+              background: "rgba(10, 10, 25, 0.95)", border: `2px solid ${isRealmLocked ? "#ffd700" : "#e0c3fc"}`, borderRadius: "24px",
+              padding: "24px", boxShadow: "0 0 40px rgba(0,0,0,0.8)",
+              maxWidth: "320px"
+            }}
+          >
+            <div style={{ fontSize: "40px", marginBottom: "12px" }}>{isRealmLocked ? "🔒" : "☀️"}</div>
+            <h3 style={{ fontSize: "20px", color: isRealmLocked ? "#ffd700" : "#e0c3fc", fontWeight: 900, marginBottom: "10px" }}>
+              {isRealmLocked ? "출입 제한" : "준비 중"}
+            </h3>
+            <p style={{ fontSize: "14px", lineHeight: "1.6", color: "#eee", wordBreak: "keep-all", margin: 0 }}>
+              {isRealmLocked ? (
+                <>
+                  "아직은 자네가 발을 들일 곳이 아니네.<br />
+                  최소한 <span style={{ color: "#ffd700", fontWeight: 900 }}>삼류(三流)의 경지</span>에는 도달해야<br />
+                  이곳의 문턱을 넘을 자격이 주어질 것이야."
+                </>
+              ) : (
+                <>
+                  "월향루의 향기는 해가 저문 뒤에야 피어난다네.<br />
+                  지금은 아가씨들이 단장을 하는 시간이니,<br />
+                  <span style={{ color: "#e0c3fc", fontWeight: 900 }}>밤(Night)</span>이 되면 다시 찾아오게나."
+                </>
+              )}
+            </p>
+            <div style={{ marginTop: "20px", fontSize: "11px", color: "#888" }}>
+              {isRealmLocked ? (
+                <>현재: <span style={{ color: "#fff" }}>{game.hero.realm}</span> / 필요: 삼류 이상</>
+              ) : (
+                <>현재는 <span style={{ color: "#ffd700" }}>낮(Day)</span> 시간입니다.</>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
