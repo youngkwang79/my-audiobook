@@ -1556,9 +1556,17 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
     });
+    get().triggerSave(true);
   },
-  claimOfflineRewards: () => set((s: any) => ({ game: { ...s.game, lastOfflineRewards: null } })),
+  claimOfflineRewards: () => {
+    set((s: any) => ({ game: { ...s.game, lastOfflineRewards: null } }));
+    get().triggerSave(true);
+  },
   clearLastReward: () => set((s: any) => ({ game: { ...s.game, lastReward: null } })),
+  clearUnlockEffect: () => {
+    set((s: any) => ({ game: { ...s.game, unlockEffectText: null } }));
+    get().triggerSave(true);
+  },
   resolveTimingMission: (p: any) => {
     const { game } = get();
     if (p.success) {

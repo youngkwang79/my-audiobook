@@ -41,6 +41,7 @@ export default function GameShell() {
   const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
 
   const markInnEntryHandled = useGameStore((s: any) => s.markInnEntryHandled);
+  const clearUnlockEffect = useGameStore((s: any) => s.clearUnlockEffect);
   const syncFromCloud = useGameStore((s: any) => s.syncFromCloud);
   const syncToCloud = useGameStore((s: any) => s.syncToCloud);
   const closeDawnSettlement = useGameStore((s: any) => s.closeDawnSettlement);
@@ -50,11 +51,11 @@ export default function GameShell() {
   useEffect(() => {
     if (unlockEffectText) {
       const timer = setTimeout(() => {
-        useGameStore.setState((s: any) => ({ game: { ...s.game, unlockEffectText: null } }));
+        clearUnlockEffect();
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [unlockEffectText]);
+  }, [unlockEffectText, clearUnlockEffect]);
 
   useEffect(() => {
     if (yabawiActive) {
@@ -459,7 +460,7 @@ export default function GameShell() {
             animation: "popupFadeIn 0.4s ease-out forwards",
             cursor: "pointer"
           }}
-          onClick={() => useGameStore.setState((s: any) => ({ game: { ...s.game, unlockEffectText: null } }))}
+          onClick={() => clearUnlockEffect()}
         >
           <div
             style={{
