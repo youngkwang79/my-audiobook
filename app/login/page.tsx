@@ -5,36 +5,33 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
 import TopBar from "@/app/components/TopBar";
-import { loadGame, saveGame } from "@/lib/gameSave";
+import { loadGame } from "@/lib/gameSave";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 
-// 에러 메시지 한글 매핑
 function toKoreanAuthError(message?: string) {
   const msg = (message || "").toLowerCase();
 
   if (msg.includes("invalid login credentials")) return "로그인 정보가 올바르지 않습니다.";
-  if (msg.includes("email not confirmed")) return "이메일 인증이 필요합니다. 받은 메일함에서 인증을 완료해 주세요.";
+  if (msg.includes("email not confirmed")) return "이메일 인증이 필요합니다.";
   if (msg.includes("user already registered")) return "이미 가입된 이메일입니다.";
   if (msg.includes("password")) return "비밀번호 조건을 확인해 주세요.";
 
   return message || "오류가 발생했습니다.";
 }
 
-// 비밀번호 규칙: 8자 이상 + 영문 + 숫자 + 특수문자
 function validatePassword(pw: string) {
   const value = pw.trim();
 
-  const minLenOk = value.length >= 8;
-  const hasLetter = /[a-zA-Z]/.test(value);
-  const hasNumber = /[0-9]/.test(value);
-  const hasSpecial = /[!@#$%^&*()_\-+=\[\]{}|;:'",.<>\/?]/.test(value);
-
   return {
-    ok: minLenOk && hasLetter && hasNumber && hasSpecial,
-    minLenOk,
-    hasLetter,
-    hasNumber,
-    hasSpecial,
+    ok:
+      value.length >= 8 &&
+      /[a-zA-Z]/.test(value) &&
+      /[0-9]/.test(value) &&
+      /[!@#$%^&*()_\-+=\[\]{}|;:'",.<>\/?]/.test(value),
+    minLenOk: value.length >= 8,
+    hasLetter: /[a-zA-Z]/.test(value),
+    hasNumber: /[0-9]/.test(value),
+    hasSpecial: /[!@#$%^&*()_\-+=\[\]{}|;:'",.<>\/?]/.test(value),
   };
 }
 
@@ -49,17 +46,46 @@ function LoginPageInner() {
   const [capsOn, setCapsOn] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState<"google" | "kakao" | null>(null);
 
   const redirect = searchParams.get("redirect") || "/";
 
-  const emailOk = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()), [email]);
+  const emailOk = useMemo(
+    () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
+    [email]
+  );
+
   const pwCheck = useMemo(() => validatePassword(password), [password]);
 
-  const canSubmit = useMemo(() => !!supabase && emailOk && pwCheck.ok, [emailOk, pwCheck.ok]);
+  const canSubmit = useMemo(
+    () => !!supabase && emailOk && pwCheck.ok,
+    [emailOk, pwCheck.ok]
+  );
 
   useEffect(() => {
-    if (!loading && user) router.replace(redirect);
+    if (!loading && user) {
+      syncCloudSave(user.id).finally(() => {
+        router.replace(redirect);
+      });
+    }
   }, [loading, user, router, redirect]);
+
+  async function syncCloudSave(userId: string) {
+    try {
+      const cloudData = await loadGame(userId);
+
+      if (cloudData) {
+        const store = useGameStore.getState() as any;
+
+        if (typeof store.importGameData === "function") {
+          store.importGameData(cloudData);
+          console.log("Supabase 클라우드 데이터 동기화 완료");
+        }
+      }
+    } catch (e) {
+      console.error("클라우드 저장 데이터 동기화 실패:", e);
+    }
+  }
 
   async function signInWithProvider(provider: "google" | "kakao") {
     setMsg(null);
@@ -68,40 +94,36 @@ function LoginPageInner() {
       setMsg(
         [
           "로그인 설정이 아직 배포에 반영되지 않았습니다.",
-          "Vercel 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) 저장 후",
-          "반드시 Redeploy(재배포) 해주세요.",
+          "Vercel 환경변수 저장 후 반드시 Redeploy 해주세요.",
         ].join("\n")
       );
       return;
     }
 
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirect)}`
-        : undefined;
+    setOauthBusy(provider);
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-  provider,
-});
+    const origin = window.location.origin;
+    const redirectTo = `${origin}/login?redirect=${encodeURIComponent(
+      redirect
+    )}`;
 
-if (!error) {
-  // 로그인 성공 후 유저 가져오기
-  const { data: userData } = await supabase.auth.getUser();
-
-  const user = userData?.user;
-
-  if (user) {
-    // 🔥 Supabase 클라우드 저장 데이터 불러오기 및 동기화
-    const cloudData = await loadGame(user.id);
-    if (cloudData) {
-      const store = useGameStore.getState() as any;
-      store.importGameData(cloudData);
-      console.log("🔥 Supabase 클라우드 데이터 동기화 완료");
-    }
-  }
-}
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo,
+        skipBrowserRedirect: false,
+        queryParams:
+          provider === "google"
+            ? {
+                access_type: "offline",
+                prompt: "select_account",
+              }
+            : undefined,
+      },
+    });
 
     if (error) {
+      setOauthBusy(null);
       setMsg(toKoreanAuthError(error.message));
     }
   }
@@ -110,13 +132,7 @@ if (!error) {
     setMsg(null);
 
     if (!supabase) {
-      setMsg(
-        [
-          "로그인 설정이 아직 배포에 반영되지 않았습니다.",
-          "Vercel 환경변수(NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) 저장 후",
-          "반드시 Redeploy(재배포) 해주세요.",
-        ].join("\n")
-      );
+      setMsg("로그인 설정이 아직 배포에 반영되지 않았습니다.");
       return;
     }
 
@@ -124,7 +140,17 @@ if (!error) {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const origin = window.location.origin;
+        const emailRedirectTo = `${origin}/login?redirect=${encodeURIComponent(
+          redirect
+        )}`;
+
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo },
+        });
+
         if (error) throw error;
 
         setMsg(
@@ -135,9 +161,14 @@ if (!error) {
           ].join("\n")
         );
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
         if (error) throw error;
-        router.push(redirect);
+
+        router.replace(redirect);
       }
     } catch (e: any) {
       setMsg(toKoreanAuthError(e?.message));
@@ -147,10 +178,54 @@ if (!error) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0b12", color: "white", padding: "20px 16px" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#0b0b12",
+        color: "white",
+        padding: "20px 16px",
+      }}
+    >
+      {oauthBusy && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.72)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              padding: 22,
+              borderRadius: 18,
+              background: "rgba(15,15,22,0.96)",
+              border: "1px solid rgba(255,215,120,0.25)",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 22, fontWeight: 950 }}>
+              {oauthBusy === "google"
+                ? "구글 로그인으로 이동 중..."
+                : "카카오 로그인으로 이동 중..."}
+            </div>
+            <div style={{ marginTop: 10, opacity: 0.72 }}>
+              로그인 완료 후 무림북으로 돌아옵니다.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
         <TopBar />
       </div>
+
       <style>{`
         .btnBase {
           padding: 12px 12px;
@@ -158,7 +233,6 @@ if (!error) {
           border: 1px solid rgba(255,255,255,0.18);
           color: white;
           font-weight: 900;
-          transition: all 180ms ease;
         }
         .btnNormal {
           background: rgba(255,255,255,0.12);
@@ -182,11 +256,10 @@ if (!error) {
         }
         .hintGood { color: rgba(255,255,255,0.85); }
         .hintBad { color: rgba(255,160,160,0.95); }
-
         .socialBtn {
-          padding: 10px 12px;
+          padding: 12px;
           border-radius: 12px;
-          font-weight: 700;
+          font-weight: 900;
           font-size: 16px;
           cursor: pointer;
           border: none;
@@ -210,13 +283,6 @@ if (!error) {
           {mode === "login" ? "로그인" : "회원가입"}
         </h1>
 
-        {!supabase && (
-          <div className="helpBox" style={{ borderColor: "rgba(255,180,180,0.35)" }}>
-            현재 배포 환경에서 Supabase 설정이 감지되지 않았습니다.
-            {"\n"}Vercel 환경변수 저장 후 Redeploy를 해주세요.
-          </div>
-        )}
-
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button
             onClick={() => {
@@ -228,7 +294,10 @@ if (!error) {
               padding: "10px 12px",
               borderRadius: 12,
               border: "1px solid rgba(255,255,255,0.18)",
-              background: mode === "login" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
+              background:
+                mode === "login"
+                  ? "rgba(255,255,255,0.12)"
+                  : "rgba(255,255,255,0.06)",
               color: "white",
               fontWeight: 900,
               cursor: "pointer",
@@ -247,7 +316,10 @@ if (!error) {
               padding: "10px 12px",
               borderRadius: 12,
               border: "1px solid rgba(255,255,255,0.18)",
-              background: mode === "signup" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
+              background:
+                mode === "signup"
+                  ? "rgba(255,255,255,0.12)"
+                  : "rgba(255,255,255,0.06)",
               color: "white",
               fontWeight: 900,
               cursor: "pointer",
@@ -263,7 +335,7 @@ if (!error) {
             {"1. 이메일과 비밀번호를 입력해 주세요.\n"}
             {"2. 회원가입 버튼을 누르면 인증 메일이 발송됩니다.\n"}
             {"3. 메일함에서 인증을 완료한 뒤 로그인해 주세요.\n\n"}
-            {"비밀번호 안내(보안)\n"}
+            {"비밀번호 안내\n"}
             {"- 알파벳, 숫자, 특수문자를 조합하여 8자 이상으로 입력해 주세요.\n"}
             {"- 예시: Abcd1234#"}
           </div>
@@ -276,7 +348,7 @@ if (!error) {
             placeholder="이메일"
             type="email"
             style={{
-              padding: "12px 12px",
+              padding: "12px",
               borderRadius: 12,
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(255,255,255,0.06)",
@@ -284,6 +356,7 @@ if (!error) {
               outline: "none",
             }}
           />
+
           {!emailOk && email.trim().length > 0 && (
             <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>
           )}
@@ -291,12 +364,16 @@ if (!error) {
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => setCapsOn(e.getModifierState?.("CapsLock") ?? false)}
-            onKeyUp={(e) => setCapsOn(e.getModifierState?.("CapsLock") ?? false)}
+            onKeyDown={(e) =>
+              setCapsOn(e.getModifierState?.("CapsLock") ?? false)
+            }
+            onKeyUp={(e) =>
+              setCapsOn(e.getModifierState?.("CapsLock") ?? false)
+            }
             placeholder="비밀번호(8자 이상, 영문+숫자+특수문자 포함)"
             type="password"
             style={{
-              padding: "12px 12px",
+              padding: "12px",
               borderRadius: 12,
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(255,255,255,0.06)",
@@ -329,64 +406,59 @@ if (!error) {
             disabled={busy || !canSubmit}
             style={{
               padding: "12px",
-              borderRadius: "12px",
+              borderRadius: 12,
               border: "none",
               background: "#E6D3A3",
               color: "#111",
-              fontWeight: "900",
-              cursor: "pointer",
+              fontWeight: 900,
+              cursor: busy || !canSubmit ? "not-allowed" : "pointer",
+              opacity: busy || !canSubmit ? 0.55 : 1,
             }}
           >
-            {mode === "login" ? (busy ? "로그인 중..." : "로그인") : busy ? "가입 중..." : "회원가입"}
+            {mode === "login"
+              ? busy
+                ? "로그인 중..."
+                : "로그인"
+              : busy
+              ? "가입 중..."
+              : "회원가입"}
           </button>
 
           <button
             type="button"
             className="socialBtn"
+            disabled={!!oauthBusy}
             onClick={() => signInWithProvider("google")}
             style={{
               background: "#ffffff",
               color: "#111111",
+              opacity: oauthBusy ? 0.65 : 1,
             }}
           >
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                lineHeight: 1,
-              }}
-            >
-              <img
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                alt="google"
-                style={{
-                  width: 18,
-                  height: 18,
-                  display: "block",
-                  flexShrink: 0,
-                }}
-              />
-              <span>구글 로그인</span>
-            </span>
+            구글로 시작하기
           </button>
 
           <button
             type="button"
             className="socialBtn"
+            disabled={!!oauthBusy}
             onClick={() => signInWithProvider("kakao")}
             style={{
               background: "#FEE500",
               color: "#191919",
+              opacity: oauthBusy ? 0.65 : 1,
             }}
           >
-            카카오 로그인
+            카카오로 시작하기
           </button>
 
           {msg && <div className="helpBox">{msg}</div>}
 
-          <button className="btnBase btnNormal" onClick={() => router.push("/")} style={{ marginTop: 4 }}>
+          <button
+            className="btnBase btnNormal"
+            onClick={() => router.push("/")}
+            style={{ marginTop: 4 }}
+          >
             홈으로
           </button>
         </div>
@@ -397,7 +469,9 @@ if (!error) {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0b0b12" }} />}>
+    <Suspense
+      fallback={<div style={{ minHeight: "100vh", background: "#0b0b12" }} />}
+    >
       <LoginPageInner />
     </Suspense>
   );

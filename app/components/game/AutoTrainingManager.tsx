@@ -16,21 +16,21 @@ export default function AutoTrainingManager() {
 
   useEffect(() => {
     const lowPowerMode = useGameStore.getState().game.options?.lowPowerMode;
-    let intervalMs = getAutoTrainInterval(realm);
-    if (lowPowerMode) intervalMs *= 2.0; // 저사양 모드 시 추가 완화
-
+    // 3초에 15번 타격 (초당 5회 효율), 저사양 모드면 6초에 30번 타격
+    let tickMs = lowPowerMode ? 6000 : 3000;
+    
     const timer = setInterval(() => {
       const game = useGameStore.getState().game;
-      if (document.hidden || game.options?.lowPowerMode) return;
+      if (document.hidden) return;
 
-      // 200ms 기준 보상량을 intervalMs에 맞춰 배율로 보정 (예: 1000ms면 5배 보상)
-      autoTrain(intervalMs / 200);
+      // 200ms 기준 보상량을 tickMs에 맞춰 배율로 보정 (예: 3000ms면 15배 보상)
+      autoTrain(tickMs / 200);
 
       const isCombat = useGameStore.getState().game.masterDuel.isPlaying;
       if (updateBuffs && !isCombat) {
-        updateBuffs(intervalMs / 1000);
+        updateBuffs(tickMs / 1000);
       }
-    }, intervalMs);
+    }, tickMs);
 
     return () => clearInterval(timer);
   }, [autoTrain, updateBuffs, realm]);

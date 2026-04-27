@@ -117,7 +117,7 @@ export default function GameShell() {
   useEffect(() => {
     const ticker = setInterval(() => {
       const { updateTime, game } = useGameStore.getState() as any;
-      if (document.hidden || game.options?.lowPowerMode) return;
+      if (document.hidden) return;
       if (updateTime) updateTime(5);
     }, 5000);
     return () => clearInterval(ticker);
@@ -204,8 +204,26 @@ export default function GameShell() {
                 {timeState === "day" ? "낮 (수련)" : timeState === "dusk" ? "황혼 (정리)" : timeState === "night" ? "밤 (기루/도박)" : "새벽 (정산)"}
               </span>
             </div>
-            <div style={{ color: "#aaa" }}>
-              남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(timeRemaining)}초</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ color: "#aaa" }}>
+                남은 시간: <span style={{ color: "#ffcc00" }}>{Math.floor(timeRemaining)}초</span>
+              </div>
+              <button 
+                onClick={() => (useGameStore.getState() as any).setLowPowerMode(!lowPowerMode)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  background: lowPowerMode ? "rgba(0, 255, 100, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                  border: lowPowerMode ? "1px solid rgba(0, 255, 100, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                  color: lowPowerMode ? "#00ff66" : "#888",
+                  fontSize: "10px",
+                  fontWeight: "900",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                {lowPowerMode ? "🔋 절전 ON" : "⚡ 절전 OFF"}
+              </button>
             </div>
           </div>
         )}

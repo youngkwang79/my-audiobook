@@ -1,13 +1,39 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useGameStore, getTowerTheme } from "@/app/lib/game/useGameStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCompactNumber, shouldPauseHeavyLoop } from "@/app/lib/game/useGameStore";
+import DamageText from "./elements/DamageText";
+
+const TOWER_ANIM_CSS = `
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+`;
 
 export default function TowerPanel() {
-  const { game, stepTower, updateTower, leaveTower, selectTowerBuff, selectTowerArtifact, handleTowerEvent, startTower } = useGameStore();
+  const { 
+    game, 
+    updateTower, 
+    leaveTower, 
+    selectTowerBuff, 
+    selectTowerArtifact, 
+    handleTowerEvent, 
+    startTower,
+    tapTower
+  } = useGameStore();
+  
   const tower = game.tower;
   const theme = getTowerTheme(tower.currentFloor);
+  
+  const [dmgTexts, setDmgTexts] = useState<{ id: number; x: number; y: number; damage: number; isCritical: boolean }[]>([]);
+  const dmgIdCounter = useRef(0);
 
   // Combat loop
   useEffect(() => {
@@ -15,9 +41,7 @@ export default function TowerPanel() {
     const intervalMs = game.options?.lowPowerMode ? 3000 : 500;
 
     const interval = setInterval(() => {
-      const { game: sGame } = useGameStore.getState();
       if (shouldPauseHeavyLoop()) return;
-      // intervalMs를 초 단위로 변환하여 넘겨줌 (예: 3초면 3.0)
       updateTower(intervalMs / 1000);
     }, intervalMs);
     return () => clearInterval(interval);
@@ -29,7 +53,7 @@ export default function TowerPanel() {
         <h2 className="text-3xl font-bold mb-2 text-yellow-500">천극무한탑 (天極無限塔)</h2>
         <p className="text-slate-400 mb-6 text-center">
           무림의 끝에 닿으려는 자들이 오르는 끝없는 시련의 탑.<br/>
-          리드미컬하게 계단을 밟고 올라가 적을 제압하십시오.
+          강력한 적들을 물리치고 무한한 공력을 증명하십시오.
         </p>
         <div className="bg-slate-800/50 p-4 rounded-xl mb-8 w-full max-w-xs border border-white/5">
           <div className="flex justify-between mb-2">
@@ -56,8 +80,28 @@ export default function TowerPanel() {
   const mpRate = (tower.mp / tower.maxMp) * 100;
   const enemyHpRate = enemy ? (enemy.hp / enemy.maxHp) * 100 : 0;
 
+  const handleAttack = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!enemy) return;
+    
+    tapTower();
+
+    // Damage Text (Fixed center for Brawl feel)
+    const id = ++dmgIdCounter.current;
+    setDmgTexts(prev => [...prev, {
+      id,
+      x: 45 + Math.random() * 10,
+      y: 40 + Math.random() * 10,
+      damage: 160, // Fixed baseline damage for display
+      isCritical: Math.random() > 0.8
+    }]);
+    setTimeout(() => {
+      setDmgTexts(prev => prev.filter(t => t.id !== id));
+    }, 800);
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden flex flex-col font-sans select-none" onContextMenu={(e) => e.preventDefault()}>
+      <style>{TOWER_ANIM_CSS}</style>
       {/* Background with Tower Atmosphere */}
       <div className="absolute inset-0 bg-[#0f172a] overflow-hidden pointer-events-none transition-colors duration-1000" style={{ backgroundColor: theme.color + '22' }}>
         <div 
@@ -103,145 +147,120 @@ export default function TowerPanel() {
         </button>
       </div>
 
-      {/* Main Game Area */}
-      <div className="relative flex-1 flex flex-col">
+      {/* Combat Arena */}
+      <div className="relative flex-1 flex flex-col pt-4">
         
-        {/* Enemy Info at Top */}
-        <div className="w-full px-6 flex flex-col items-center mt-2 z-20">
-           <AnimatePresence mode="wait">
-            {enemy && (
-              <motion.div 
-                key={enemy.name}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-xs flex flex-col items-center"
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${enemy.name}`} className="w-10 h-10 rounded-lg bg-red-900/20 border border-red-500/30" alt="boss" />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-end mb-1">
-                       <span className="text-[10px] text-red-500 font-black tracking-tight">{enemy.name}</span>
-                       <span className="text-[9px] text-slate-400">{formatCompactNumber(enemy.hp)} / {formatCompactNumber(enemy.maxHp)}</span>
-                    </div>
-                    <div className="h-1.5 bg-black/60 rounded-full border border-white/10 overflow-hidden">
-                       <motion.div 
-                        animate={{ width: `${enemyHpRate}%` }}
-                        className="h-full bg-gradient-to-r from-red-600 to-orange-500"
-                       />
-                    </div>
-                  </div>
-                </div>
-                {game.options?.lowPowerMode && (
-                  <div className="mt-2 text-[10px] text-yellow-500/80 font-bold animate-pulse">
-                    ⚡ 절전 전투 진행 중 (3초 간격 업데이트)
-                  </div>
-                )}
-              </motion.div>
-            )}
-           </AnimatePresence>
+        {/* Enemy Stats */}
+        <div className="w-full px-8 mb-4">
+          <div className="flex justify-between items-end mb-1">
+             <span className="text-sm font-black text-red-500 drop-shadow-md">{enemy?.name}</span>
+             <span className="text-[10px] text-slate-400 font-mono">HP {formatCompactNumber(enemy?.hp || 0)}</span>
+          </div>
+          <div className="h-2.5 bg-black/60 rounded-full border border-white/10 overflow-hidden">
+             <motion.div 
+              animate={{ width: `${enemyHpRate}%` }}
+              className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-red-600 bg-[length:200%_100%] animate-gradient"
+             />
+          </div>
         </div>
 
-        {/* Rhythmic Stair Area */}
-        <div className="flex-1 relative flex justify-center items-center overflow-hidden py-10">
-           {/* Visual Guides */}
-           <div className="absolute inset-0 flex justify-center gap-2 px-10">
-              <div className="flex-1 border-x border-white/5 bg-white/2" />
-              <div className="flex-1 border-x border-white/5 bg-white/2" />
-              <div className="flex-1 border-x border-white/5 bg-white/2" />
-           </div>
+        {/* Main Brawling Area */}
+        <div 
+          className="flex-1 relative cursor-pointer active:scale-[0.99] transition-transform"
+          onMouseDown={handleAttack}
+        >
+          {/* Central Combat Visuals */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+               {/* Enemy Avatar */}
+               <AnimatePresence mode="wait">
+                 {enemy && (
+                   <motion.div
+                     key={enemy.name}
+                     initial={{ opacity: 0, scale: 0.8, x: 100 }}
+                     animate={{ opacity: 1, scale: 1, x: 0 }}
+                     exit={{ opacity: 0, scale: 1.2, x: -100 }}
+                     className="absolute"
+                   >
+                     <img 
+                       src={`https://api.dicebear.com/7.x/bottts/svg?seed=${enemy.name}`} 
+                       className="w-48 h-48 drop-shadow-[0_0_30px_rgba(255,0,0,0.4)] opacity-80" 
+                       alt="enemy" 
+                     />
+                   </motion.div>
+                 )}
+               </AnimatePresence>
 
-           {/* Stairs */}
-           <div className="relative w-full max-w-sm h-full flex flex-col-reverse items-center">
-              {tower.stairs.map((laneIdx: number, stepIdx: number) => (
-                <motion.div
-                  key={`${stepIdx}-${laneIdx}`}
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ 
-                    opacity: stepIdx === 0 ? 1 : 0.8 - stepIdx * 0.15,
-                    y: stepIdx * 60,
-                    scale: 1 - stepIdx * 0.08,
-                    filter: stepIdx === 0 ? "none" : "blur(1px)"
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute bottom-0 w-full flex"
-                  style={{ zIndex: 10 - stepIdx }}
-                >
-                  <div className="flex-1 px-4">
-                    <div className="relative w-full h-10 flex items-center justify-center">
-                      {laneIdx === 0 && <StairBlock active={stepIdx === 0} />}
-                    </div>
-                  </div>
-                  <div className="flex-1 px-4">
-                    <div className="relative w-full h-10 flex items-center justify-center">
-                      {laneIdx === 1 && <StairBlock active={stepIdx === 0} />}
-                    </div>
-                  </div>
-                  <div className="flex-1 px-4">
-                    <div className="relative w-full h-10 flex items-center justify-center">
-                      {laneIdx === 2 && <StairBlock active={stepIdx === 0} />}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-           </div>
+               {/* Hit Visuals (Flashes) */}
+               <motion.div 
+                 initial={false}
+                 animate={{ opacity: [0, 0.4, 0] }}
+                 key={tower.lastTapTime}
+                 className="absolute inset-0 bg-white pointer-events-none z-30"
+               />
 
-           {/* Combo Counter */}
-           {tower.combo > 1 && (
-            <motion.div
-              key={tower.combo}
-              initial={{ scale: 1.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl font-black text-yellow-500 italic drop-shadow-[0_0_20px_rgba(255,215,0,0.5)] z-30 pointer-events-none"
-            >
-              {tower.combo}<span className="text-xl ml-1">COMBO</span>
-            </motion.div>
-          )}
+               {/* Combo UI Overlay */}
+               {tower.combo > 0 && (
+                 <motion.div
+                   key={tower.combo}
+                   initial={{ scale: 2, opacity: 0 }}
+                   animate={{ scale: 1, opacity: 1 }}
+                   className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40"
+                 >
+                   <div className="text-7xl font-black italic text-yellow-500 drop-shadow-[0_0_20px_rgba(255,165,0,0.6)]">
+                     {tower.combo}<span className="text-2xl ml-2">COMBO</span>
+                   </div>
+                 </motion.div>
+               )}
+            </div>
+          </div>
+
+          {/* Large Tap Hint */}
+          <div className="absolute bottom-10 left-0 w-full text-center pointer-events-none">
+             <p className="text-white/20 font-black text-4xl uppercase tracking-[0.5em] animate-pulse">
+               TAP TO FIGHT
+             </p>
+          </div>
         </div>
 
-        {/* Control & Player HUD */}
-        <div className="bg-black/60 backdrop-blur-xl border-t border-white/10 p-6 flex flex-col gap-6">
+        {/* Player Status & HUD */}
+        <div className="bg-black/60 backdrop-blur-xl border-t border-white/10 p-6 flex flex-col gap-4">
            {/* Player HP */}
            <div className="w-full">
               <div className="flex justify-between items-center mb-1.5 px-1">
-                 <span className="text-[10px] text-blue-400 font-black tracking-widest uppercase">My Vitality</span>
-                 <span className="text-xs text-white font-bold">{Math.floor(tower.hp)} / {Math.floor(tower.maxHp)}</span>
+                 <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                   <span className="text-[10px] text-blue-400 font-black tracking-widest uppercase">Player Vitality</span>
+                 </div>
+                 <span className="text-xs text-white font-mono font-bold">{Math.floor(tower.hp)} / {Math.floor(tower.maxHp)}</span>
               </div>
-              <div className="h-2 bg-black/80 rounded-full border border-white/5 overflow-hidden shadow-inner">
+              <div className="h-3 bg-black/80 rounded-full border border-white/5 overflow-hidden shadow-inner p-[1px]">
                  <motion.div 
                   animate={{ width: `${hpRate}%` }}
-                  className={`h-full bg-gradient-to-r transition-all duration-300 ${hpRate < 30 ? 'from-red-600 to-red-400' : 'from-blue-600 to-cyan-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`}
+                  className={`h-full rounded-full bg-gradient-to-r transition-all duration-300 ${hpRate < 30 ? 'from-red-600 to-red-400' : 'from-blue-600 to-cyan-400'}`}
                  />
               </div>
            </div>
 
-           {/* 3 Lane Buttons */}
-           <div className="grid grid-cols-3 gap-4 h-24">
-                {[0, 1, 2].map((lane) => (
-                <button
-                  key={lane}
-                  onPointerDown={() => stepTower(lane)}
-                  className="relative group overflow-hidden rounded-2xl bg-white/5 border border-white/10 active:scale-95 transition-all shadow-xl"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-active:opacity-100 transition-opacity" />
-                  <span className="text-2xl font-black text-white/20 group-active:text-yellow-500 transition-colors">
-                    {lane === 0 ? "左" : lane === 1 ? "中" : "右"}
-                  </span>
-                  {tower.stairs[0] === lane && !game.options?.lowPowerMode && (
-                    <motion.div 
-                      layoutId="stairTarget"
-                      className="absolute inset-0 border-2 border-yellow-500/50 rounded-2xl animate-pulse"
-                    />
-                  )}
-                  {tower.stairs[0] === lane && game.options?.lowPowerMode && (
-                    <div className="absolute inset-0 border-2 border-yellow-500/50 rounded-2xl" />
-                  )}
-                </button>
-              ))}
+           {/* Quick Stats */}
+           <div className="flex justify-between items-center text-[10px] text-slate-500 px-1 font-bold">
+              <div className="flex gap-4">
+                <span>⚔️ ATTACK: {2500 + tower.currentFloor * 200}</span>
+                <span>🛡️ DEFENSE: {formatCompactNumber(game.statUpgrades.def * 10)}</span>
+              </div>
+              <div className="flex items-center gap-1 text-yellow-500/50">
+                {game.options?.lowPowerMode ? "⚡ LOW POWER ACTIVE" : "🔥 MAX PERFORMANCE"}
+              </div>
            </div>
         </div>
       </div>
 
-      {/* Overlays */}
+      {/* Damage Texts */}
+      {dmgTexts.map(t => (
+        <DamageText key={t.id} {...t} />
+      ))}
+
+      {/* Overlays (Buffs, Artifacts, Events) */}
       <AnimatePresence>
         {/* Buff Choices */}
         {tower.pendingBuffChoices && (
@@ -251,19 +270,17 @@ export default function TowerPanel() {
             className="absolute inset-0 z-50 bg-black/95 backdrop-blur-lg flex flex-col items-center justify-center p-6"
           >
             <h3 className="text-2xl font-black text-yellow-500 mb-2">기연의 선택</h3>
-            <p className="text-slate-400 mb-8 text-center text-sm">앞으로의 시련을 이겨내기 위한<br/>일시적인 기운을 선택하십시오.</p>
+            <p className="text-slate-400 mb-8 text-center text-sm">일시적인 무학의 조예를 선택하십시오.</p>
             <div className="grid gap-3 w-full max-w-sm">
               {tower.pendingBuffChoices.map((buff: any) => (
-                <motion.div
+                <div
                   key={buff.id}
-                  whileHover={{ scale: 1.02, backgroundColor: "rgba(234, 179, 8, 0.1)" }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => selectTowerBuff(buff)}
-                  className="bg-slate-900 border border-yellow-500/20 p-4 rounded-xl cursor-pointer hover:border-yellow-500/60 group transition-all"
+                  className="bg-slate-900 border border-yellow-500/20 p-4 rounded-xl cursor-pointer hover:bg-yellow-500/10 transition-colors"
                 >
-                  <div className="text-lg font-bold text-yellow-500 mb-1 group-hover:text-yellow-400">{buff.name}</div>
+                  <div className="text-lg font-bold text-yellow-500 mb-1">{buff.name}</div>
                   <div className="text-xs text-slate-400 leading-relaxed">{buff.description}</div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -277,31 +294,22 @@ export default function TowerPanel() {
             className="absolute inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6"
           >
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-black text-blue-400 mb-2 tracking-tighter">영물 획득 (靈物)</h3>
-              <p className="text-slate-400 text-sm">탑의 깊은 곳에서 고대 무인의 유물을 발견했습니다.</p>
+              <h3 className="text-3xl font-black text-blue-400 mb-2 tracking-tighter italic">고대의 영물 (靈物)</h3>
+              <p className="text-slate-400 text-sm">탑의 수호자가 남긴 전설적인 유물입니다.</p>
             </div>
             <div className="grid gap-4 w-full max-w-sm">
               {tower.pendingArtifactChoices.map((art: any) => (
-                <motion.div
+                <div
                   key={art.id}
-                  whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(59, 130, 246, 0.5)" }}
                   onClick={() => selectTowerArtifact(art)}
-                  className="relative overflow-hidden bg-slate-900 border border-blue-500/30 p-5 rounded-2xl cursor-pointer group transition-all"
+                  className="bg-slate-900 border border-blue-500/30 p-5 rounded-2xl cursor-pointer hover:border-blue-400 transition-all group"
                 >
-                  <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-opacity">
-                    <span className="text-4xl">💎</span>
-                  </div>
                   <div className="flex justify-between items-center mb-2">
                     <div className="text-xl font-bold text-blue-400">{art.name}</div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-                      art.tier === 'LEGENDARY' ? 'bg-orange-500 text-white' : 
-                      art.tier === 'RARE' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'
-                    }`}>
-                      {art.tier}
-                    </span>
+                    <span className="text-[10px] px-2 py-0.5 bg-blue-600 rounded text-white font-black">{art.tier}</span>
                   </div>
-                  <div className="text-sm text-slate-300 font-medium leading-relaxed">{art.description}</div>
-                </motion.div>
+                  <div className="text-sm text-slate-300 leading-relaxed">{art.description}</div>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -315,44 +323,45 @@ export default function TowerPanel() {
             className="absolute inset-0 z-50 bg-black/95 backdrop-blur-lg flex flex-col items-center justify-center p-6"
           >
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-white mb-2">기연의 공간</h3>
-              <p className="text-slate-400">탑을 오르는 도중 조우한 의외의 장소입니다.</p>
+              <h3 className="text-3xl font-bold text-white mb-2 italic">기연의 공간</h3>
+              <p className="text-slate-400">시련의 탑 도중 마주친 예기치 못한 공간입니다.</p>
             </div>
             
             <div className="grid gap-4 w-full max-w-sm">
               {tower.eventRoom === "REST" && (
-                <div onClick={() => handleTowerEvent("REST")} className="flex items-center gap-4 bg-green-900/20 border border-green-500/30 p-5 rounded-2xl cursor-pointer hover:bg-green-900/40 transition-all group">
-                  <div className="text-4xl group-hover:scale-110 transition-transform">🕯️</div>
+                <div onClick={() => handleTowerEvent("REST")} className="flex items-center gap-4 bg-green-900/20 border border-green-500/30 p-5 rounded-2xl cursor-pointer hover:bg-green-900/40 transition-all">
+                  <div className="text-4xl">🕯️</div>
                   <div className="text-left">
                     <div className="text-lg font-bold text-white">운기조식</div>
-                    <p className="text-xs text-slate-400">내공을 정리하고 체력을 30% 회복합니다.</p>
+                    <p className="text-xs text-slate-400">내공을 가다듬어 체력을 30% 회복합니다.</p>
                   </div>
                 </div>
               )}
               {tower.eventRoom === "BUFF" && (
-                <div onClick={() => handleTowerEvent("BUFF")} className="flex items-center gap-4 bg-blue-900/20 border border-blue-500/30 p-5 rounded-2xl cursor-pointer hover:bg-blue-900/40 transition-all group">
-                  <div className="text-4xl group-hover:scale-110 transition-transform">📜</div>
+                <div onClick={() => handleTowerEvent("BUFF")} className="flex items-center gap-4 bg-blue-900/20 border border-blue-500/30 p-5 rounded-2xl cursor-pointer hover:bg-blue-900/40 transition-all">
+                  <div className="text-4xl">📜</div>
                   <div className="text-left">
-                    <div className="text-lg font-bold text-white">심독 수련</div>
-                    <p className="text-xs text-slate-400">벽에 적힌 비급을 읽고 공력을 높입니다.</p>
+                    <div className="text-lg font-bold text-white">무학 비급</div>
+                    <p className="text-xs text-slate-400">벽에 적힌 비급을 읽고 공력을 영구히 높입니다.</p>
                   </div>
                 </div>
               )}
+              {/* ... other events ... */}
               {tower.eventRoom === "DANGER" && (
-                <div onClick={() => handleTowerEvent("DANGER")} className="flex items-center gap-4 bg-red-900/20 border border-red-500/30 p-5 rounded-2xl cursor-pointer hover:bg-red-900/40 transition-all group">
-                  <div className="text-4xl group-hover:scale-110 transition-transform">⚠️</div>
+                <div onClick={() => handleTowerEvent("DANGER")} className="flex items-center gap-4 bg-red-900/20 border border-red-500/30 p-5 rounded-2xl cursor-pointer hover:bg-red-900/40 transition-all">
+                  <div className="text-4xl">⚠️</div>
                   <div className="text-left">
                     <div className="text-lg font-bold text-white">심마의 미궁</div>
-                    <p className="text-xs text-slate-400">정신을 잃을 뻔 했지만 무언가 깨달았습니다.</p>
+                    <p className="text-xs text-slate-400">정신적인 시련을 이겨내고 무언가 깨달았습니다.</p>
                   </div>
                 </div>
               )}
               {tower.eventRoom === "MERCHANT" && (
-                <div onClick={() => handleTowerEvent("MERCHANT")} className="flex items-center gap-4 bg-yellow-900/20 border border-yellow-500/30 p-5 rounded-2xl cursor-pointer hover:bg-yellow-900/40 transition-all group">
-                  <div className="text-4xl group-hover:scale-110 transition-transform">💰</div>
+                <div onClick={() => handleTowerEvent("MERCHANT")} className="flex items-center gap-4 bg-yellow-900/20 border border-yellow-500/30 p-5 rounded-2xl cursor-pointer hover:bg-yellow-900/40 transition-all">
+                  <div className="text-4xl">💰</div>
                   <div className="text-left">
-                    <div className="text-lg font-bold text-white">비밀 상인 조우</div>
-                    <p className="text-xs text-slate-400">상인이 건넨 영약을 마시고 모든 체력을 회복합니다.</p>
+                    <div className="text-lg font-bold text-white">비밀 상인</div>
+                    <p className="text-xs text-slate-400">영약을 마시고 체력을 완전히 회복합니다.</p>
                   </div>
                 </div>
               )}
@@ -361,39 +370,21 @@ export default function TowerPanel() {
         )}
       </AnimatePresence>
 
-      {/* Feedback text */}
+      {/* Floating Reward/Feedback */}
       <AnimatePresence>
         {tower.lastReward && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 0 }}
-            animate={{ opacity: 1, scale: 1, y: -50 }}
-            exit={{ opacity: 0 }}
-            className="absolute bottom-40 left-0 w-full text-center z-50 pointer-events-none"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute bottom-44 left-0 w-full text-center z-50 pointer-events-none"
           >
-            <span className="bg-red-500/40 text-white px-6 py-2 rounded-full border border-red-500/50 text-xs font-black backdrop-blur-md shadow-2xl uppercase tracking-tighter">
+            <span className="bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black shadow-lg uppercase">
               {tower.lastReward}
             </span>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function StairBlock({ active }: { active: boolean }) {
-  return (
-    <motion.div
-      animate={{ 
-        boxShadow: active ? "0 0 30px rgba(234, 179, 8, 0.4)" : "0 5px 15px rgba(0,0,0,0.5)",
-        y: active ? -5 : 0
-      }}
-      className={`w-full h-4 rounded-lg border-x-4 border-b-8 transition-colors ${
-        active 
-          ? "bg-gradient-to-b from-yellow-400 to-orange-500 border-orange-700" 
-          : "bg-gradient-to-b from-slate-600 to-slate-800 border-slate-900"
-      }`}
-    >
-      <div className="w-full h-full bg-white/10 rounded-sm" />
-    </motion.div>
   );
 }

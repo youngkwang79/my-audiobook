@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useGameStore, REALM_SETTINGS, REALM_ORDER, formatCompactNumber } from "@/app/lib/game/useGameStore";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { useRouter } from "next/navigation";
 import CharacterModal from "./CharacterModal";
 
 export default function GameStatusPanel() {
   const game = useGameStore((s: any) => s.game);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const router = useRouter();
   const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps } = useGameStore() as any;
 
   // 데이터 유실 방지를 위한 초기화 및 매핑
@@ -480,14 +484,51 @@ export default function GameStatusPanel() {
                 </button>
               </div>
 
+              {/* 로그아웃 (로그인 시에만 노출) */}
+              {user && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div>
+                    <div style={{ fontSize: 13, color: "#eee", fontWeight: "bold" }}>👤 계정 접속</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>{user.email}</div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm("로그아웃 하시겠습니까?")) {
+                        await signOut();
+                        router.replace("/");
+                      }
+                    }}
+                    style={{
+                      padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                      background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer"
+                    }}
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              )}
+
               {/* 초기화 버튼 */}
               <div style={{ marginTop: 10, padding: "12px", background: "rgba(255,77,77,0.05)", borderRadius: 12, border: "1px solid rgba(255,77,77,0.2)" }}>
                 <div style={{ fontSize: 11, color: "#ff8c8c", marginBottom: 8, textAlign: "center" }}>
                   ⚠️ 모든 게임 데이터가 영구적으로 삭제됩니다.
                 </div>
                 <button
-                  onClick={() => {
-                    if (confirm("정말 모든 데이터를 초기화하고 처음부터 다시 시작하시겠습니까?")) {
+                  onClick={async () => {
+                    if (confirm("정말 모든 데이터를 초기화하고 처음부터 다시 시작하시겠습니까?\n(클라우드에 저장된 데이터도 모두 삭제됩니다.)")) {
+                      // 1. 클라우드 세이브 초기화 (로그인 상태인 경우) - 삭제 대신 덮어쓰기
+                      if (user) {
+                        try {
+                          const { saveGame } = await import("@/lib/gameSave");
+                          const { defaultGameData } = await import("@/app/lib/game/storage");
+                          await saveGame(user.id, defaultGameData);
+                          console.log("Cloud save reset to default");
+                        } catch (e) {
+                          console.error("Cloud reset failed:", e);
+                        }
+                      }
+                      
+                      // 2. 로컬 세이브 초기화 및 페이지 새로고침
                       resetGame();
                       setIsSettingsOpen(false);
                     }

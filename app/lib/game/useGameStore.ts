@@ -158,7 +158,7 @@ export function generateTowerEnemy(floor: number) {
   let lifeSteal = floor > 60 ? 10 : 0;
   let ignoreEva = floor > 80 ? 30 : 0;
 
-  const hp = Math.floor(baseStats.hp * 5 * hpMult);
+  const hp = Math.floor(baseStats.hp * 2.5 * hpMult);
   const atk = Math.floor(baseStats.atk * 0.5 * atkMult);
   const def = Math.floor(baseStats.def * 0.3 * defMult);
 
@@ -402,7 +402,6 @@ interface GameState {
   startTower: () => void;
   updateTower: (dt: number) => void;
   tapTower: (bonusDmg?: number, isWeakness?: boolean) => void;
-  stepTower: (lane: number) => void;
   selectTowerBuff: (buff: any) => void;
   selectTowerArtifact: (art: any) => void;
   handleTowerEvent: (type: "REST" | "BUFF" | "DANGER" | "MERCHANT") => void;
@@ -852,7 +851,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   getTotalCombatPower: () => Math.floor((get().getTotalAttack() * 2 + get().getTotalHp() / 10 + get().getTotalDefense() * 5) * (1 + get().getTotalCritRate() / 100)),
 
   addExp: (amount: number, isAuto = false, manualDamage?: number) => {
-    const { game } = get(); if (game.pendingInnEntry || game.timingMission.available) return;
+    const { game } = get();
+    // 사용자 요청에 따라 무뢰배 대기 중에는 수련 중단
+    if (game.pendingInnEntry || game.timingMission.available) return;
+    // 전투 중이거나 탑 내부일 때 중단
+    if (game.masterDuel.isPlaying || game.tower?.isInside) return;
+    
     if (!isAuto && Math.random() < 0.001 && !game.yabawiEvent?.active) {
       get().triggerYabawiEvent();
     }
@@ -887,17 +891,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       let finalDamageToDummy = 0;
       if (manualDamage !== undefined) {
-        // UI에서 계산된 실제 데미지 사용 (이미 치명타, 무공 등이 포함됨)
         finalDamageToDummy = manualDamage;
       } else {
-        // 자동 수련 또는 수치 누락 시: 기대 데미지 계산
         const critRate = get().getTotalCritRate() / 100;
         const critDmg = get().getTotalCritDmg() / 100;
         const avgCritMult = 1 + critRate * (critDmg - 1);
-
-        // 무공 보너스 간략화 (평균 1.2배 상정)
         const skillBonus = s.game.learnedSkills.length > 0 ? 1.2 : 1.0;
-
         const baseDmg = isDodged ? 0 : Math.max(1, totalAtk - stats.def);
         finalDamageToDummy = baseDmg * avgCritMult * skillBonus * amount;
       }
@@ -915,36 +914,28 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       if (dHp <= 0) {
         tKills += 1;
-        // 다음 더미 체력 결정
         dHp = stats.hp;
         const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
         const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
         let kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
         if (isTreasureForecast) {
-          kG *= 3; // 보물 예보 시 골드 3배
+          kG *= 3;
           lastR = "💰 TREASURE!";
         }
         eGold += kG;
-        // [수정] 중요 팝업(개방, 진입 등)이 다음 타격에 의해 즉시 사라지는 현상 방지
         const isImportantMsg = typeof lastR === 'string' && (lastR.includes("개방") || lastR.includes("진입") || lastR.includes("발견") || lastR.includes("획득"));
         if (isDodged) {
           lastR = "빗나감!";
         } else if (!isImportantMsg) {
           lastR = null;
         }
-        // [수정됨] 무뢰배 출현 로직 (순환 주기: 300, 400, 500, 600, 700, 800, 900, 1000)
+        
         let nTM = { ...s.game.timingMission };
-
         if (killGap >= targetInterval && !nTM.available) {
           const miniGames = ["breath", "dodge", "puzzle", "pulse"];
           const gameIdx = (s.game.innEventVersion || 0) % 4;
           const selectedGame = miniGames[gameIdx];
-
-          const RIVAL_NAMES = [
-            "흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배",
-            "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸",
-            "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"
-          ];
+          const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
           const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
 
           pIE = true;
@@ -959,23 +950,15 @@ export const useGameStore = create<GameState>((set, get) => ({
             currentStage: 1,
             unlocked: true,
           };
-
-          // 다음 이벤트를 위한 상태 업데이트
           s.game.lastInnEventKillCount = tKills;
           s.game.innEventIndex = (currentIdx + 1) % 8;
-
-          // 객잔으로 자동 이동 유도
           setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 1000);
-
           s.game.timingMission = nTM;
         }
       }
 
-      if (isDodged) {
-        get().triggerMovementBuff();
-      }
+      if (isDodged) get().triggerMovementBuff();
 
-      // 신법(보법) 특수 효능: 피흡/회복
       if (s.game.movementBuff) {
         if (s.game.movementBuff.data.lifeSteal) {
           const lsRatio = s.game.movementBuff.data.lifeSteal / 100;
@@ -986,18 +969,13 @@ export const useGameStore = create<GameState>((set, get) => ({
           const healAmt = get().getTotalHp() * (s.game.movementBuff.data.healPerTouch / 100);
           get().heal(healAmt);
         }
-        // 유광보(청성파) 배율 소모
         if (s.game.movementBuff.data.nextHit && s.game.nextHitMultiplier > 1) {
-          // 일시적으로 1로 되돌림 (다음 타격 위해)
           setTimeout(() => set((p: any) => ({ game: { ...p.game, nextHitMultiplier: 1 } })), 0);
         }
       }
 
-
       rep += eGold;
-
       const currentMaxHp = stats.hp;
-
       let qT = s.game.questTarget;
       let cMT = s.game.currentMissionTitle;
       let uTabs = [...s.game.unlockedTabs];
@@ -1007,7 +985,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       let aB = s.game.activeBuff;
 
 
-      // 누적 처치(tKills) 기반 임무 판정
+      // 누적 처치(tKills) 기반 임무 판정 - 단일 달성으로 원복
       if (tKills >= qT) {
         if (qT === 10) {
           qT = 30;
@@ -1030,7 +1008,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           uET = "[객잔] 개방";
           uTabs = Array.from(new Set([...uTabs, "inn"]));
           pIE = false;
-          // 객잔 개방 시 한 번 반환
         } else if (qT === 150) {
           qT = 200;
           cMT = "허수아비 누적 처치 200번\n[개방: 비급]";
@@ -1043,7 +1020,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           uTabs = Array.from(new Set([...uTabs, "library"]));
         } else if (qT >= 300) {
           // 300킬 이후부터는 순환형 무뢰배 이벤트 모드
-          qT = targetInterval;
+          qT = targetInterval; 
           cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
           uET = null;
         }
@@ -1068,8 +1045,8 @@ export const useGameStore = create<GameState>((set, get) => ({
             const q = s.game.activeQuests[qIdx];
             const nextCount = q.currentCount + 1;
             const nextQuests = [...s.game.activeQuests];
-            nextQuests[qIdx] = { 
-              ...q, 
+            nextQuests[qIdx] = {
+              ...q,
               currentCount: nextCount,
               status: nextCount >= q.targetCount ? "completed" : "active"
             };
@@ -1663,7 +1640,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   startMasterDuel: (isSpecialBoss = false) => {
     const { game } = get();
     if (game.masterDuel.challengeTickets <= 0 && !isSpecialBoss) return;
-    
+
     let e: any;
     if (isSpecialBoss && game.nextDayEvent?.type === "BOSS_RAID_CLUE") {
       const baseEnemy = generateEnemy(game.masterDuel.selectedLevel + 20);
@@ -3044,10 +3021,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   }, resetGame: () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("murimbook-game-save-v12");
-      localStorage.removeItem("murimbook-game-save-v11");
-      localStorage.removeItem("murimbook-game-save-v10");
-      window.location.reload();
+      // 1. 메모리 상태 초기화 (자동 저장 방지)
+      set({ game: { ...defaultGameData, isInitialized: true } });
+
+      // 2. 모든 버전의 세이브 키 삭제
+      for (let i = 1; i <= 20; i++) {
+        localStorage.removeItem(`murimbook-game-save-v${i}`);
+      }
+      localStorage.removeItem("murimbook-game-save");
+
+      // 3. 약간의 지연 후 새로고침 (저장 로직이 빈 데이터를 덮어쓰도록 유도)
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     }
   },
 
@@ -3167,7 +3153,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           eventRoom: null,
           pendingBuffChoices: null,
           pendingArtifactChoices: null,
-          stairs: Array.from({ length: 5 }, () => Math.floor(Math.random() * 3)),
           startTime: Date.now()
         }
       }
@@ -3204,10 +3189,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 콤보 로직 (1.5초 이내 탭 시 콤보 유지)
       let nextCombo = (now - t.lastTapTime < 1500) ? t.combo + 1 : 1;
 
-      // 무한탑 능력치 정상화: 외부 강화 수치를 무시하고 기본값(Baseline) 사용
-      let atk = 160;
-      let critRate = 10;
-      let critDmg = 1.5;
+      // 무한탑 능력치 정상화: Baseline에 현재 층수 가중치 부여
+      let atk = 2500 + (t.currentFloor * 200);
+      let critRate = 15;
+      let critDmg = 2.0;
       let vamp = 0;
       let mpRecover = 0;
 
@@ -3332,43 +3317,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
     });
-  },
-  stepTower: (lane: number) => {
-    const { game, tapTower } = get();
-    const tower = game.tower;
-    if (!tower.stairs || tower.stairs.length === 0 || !tower.isInside) return;
-
-    const correct = tower.stairs[0] === lane;
-
-    if (correct) {
-      // 공격 실행
-      tapTower();
-      
-      // 계단 업데이트
-      set((s: any) => ({
-        game: {
-          ...s.game,
-          tower: {
-            ...s.game.tower,
-            stairs: [
-              Math.floor(Math.random() * 3),
-              ...s.game.tower.stairs.slice(0, -1),
-            ],
-          }
-        }
-      }));
-    } else {
-      set((s: any) => ({
-        game: {
-          ...s.game,
-          tower: {
-            ...s.game.tower,
-            combo: 0,
-            hp: Math.max(0, s.game.tower.hp - s.game.tower.maxHp * 0.1),
-          }
-        }
-      }));
-    }
   },
   updateTower: (dt: number) => {
     const { game } = get();
@@ -3560,12 +3508,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string }) => {
     const { game } = get();
-    
+
     // --- Gift Action Special Handling ---
     if (actionId === "gift") {
       const giftId = extra?.giftId;
       if (!giftId) return { success: false, message: "선물을 선택해주세요." };
-      
+
       const giftItem = GIRU_GIFT_ITEMS.find(g => g.id === giftId);
       if (!giftItem) return { success: false, message: "존재하지 않는 선물입니다." };
 
@@ -3599,9 +3547,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
 
       get().triggerSave(true);
-      return { 
-        success: true, 
-        message: isPreferred 
+      return {
+        success: true,
+        message: isPreferred
           ? `${npcData?.name}님이 선물을 매우 기뻐하며 받습니다! (호감도 +${favorGain})`
           : `${npcData?.name}님에게 선물을 주었습니다. (호감도 +${favorGain})`
       };
@@ -3609,10 +3557,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const action = GIRU_ACTIONS.find(a => a.id === actionId);
     if (!action) return { success: false, message: "잘못된 요청입니다." };
-    
+
     // 밤 행동 제한 체크
     const limits = game.nightLimits || { giluActionLeft: 5, npcTalkCount: {}, infoTradeUsed: false };
-    
+
     if (limits.giluActionLeft <= 0) {
       return { success: false, message: "오늘 밤에는 더 이상 월향루에서 시간을 보낼 수 없습니다." };
     }
@@ -3640,7 +3588,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       set((s: any) => {
         const nextFavors = { ...s.game.npcFavors };
         nextFavors[npcId] = (nextFavors[npcId] || 0) + (action.favor || 0);
-        
+
         const nextLimits = {
           ...s.game.nightLimits,
           giluActionLeft: s.game.nightLimits.giluActionLeft - 1,
@@ -3720,7 +3668,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { success: true, message: event.text, event };
   },
 
-  setLowPowerMode: (enabled: boolean) =>
+  setLowPowerMode: (enabled: boolean) => {
     set((s: any) => ({
       game: {
         ...s.game,
@@ -3729,7 +3677,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           lowPowerMode: enabled,
         },
       },
-    })),
+    }));
+    get().triggerSave(true);
+  },
 
   setAutoFps: (enabled: boolean) =>
     set((s: any) => ({
@@ -3956,10 +3906,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   closeDawnSettlement: () => set((s: any) => ({ game: { ...s.game, showDawnSettlement: false } })),
-  
+
   buyGiruInformation: (type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE") => set((s: any) => {
     if (s.game.coins < 100000) return s; // 기본 비용 10만 금화
-    
+
     let nextEvent: NextDayEvent;
     if (type === "TREASURE_FORECAST") {
       const areas = ["낙양", "장안", "항주", "성도"];
@@ -4006,35 +3956,34 @@ export const useGameStore = create<GameState>((set, get) => ({
     const quests = [...(s.game.activeQuests || [])];
     const idx = quests.findIndex(q => q.id === questId);
     if (idx === -1 || quests[idx].status !== "completed") return s;
-    
+
     const q = quests[idx];
     const reward = q.reward;
-    
+
     quests[idx].status = "rewarded";
-    
-    const nextGame = { 
-      ...s.game, 
+
+    const nextGame = {
+      ...s.game,
       activeQuests: quests,
       coins: s.game.coins + (reward.gold || 0),
       exp: s.game.exp + (reward.exp || 0),
       gamblingTokens: (s.game.gamblingTokens || 0) + (reward.token || 0),
-      npcFavors: { 
-        ...(s.game.npcFavors || {}), 
-        [q.npcId]: Math.min(100, (s.game.npcFavors?.[q.npcId] || 0) + (reward.favor || 0)) 
+      npcFavors: {
+        ...(s.game.npcFavors || {}),
+        [q.npcId]: Math.min(100, (s.game.npcFavors?.[q.npcId] || 0) + (reward.favor || 0))
       }
     };
-    
+
     return { game: nextGame };
   }),
 }));
 
 export function shouldPauseHeavyLoop() {
   if (typeof document === 'undefined') return false;
-  const game = useGameStore.getState().game;
-  return document.hidden || game.options?.lowPowerMode;
+  return document.hidden;
 }
 
 export function getBatteryInterval(normal: number, low: number) {
   const game = useGameStore.getState().game;
   return game.options?.lowPowerMode ? low : normal;
-}
+}
