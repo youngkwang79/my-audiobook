@@ -870,7 +870,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nightTouchMult = nightBuffs.touch;
 
     const finalExp = amount * nightExpMult * eq.reduce((a, i) => a * (i.expMultiplier || 1), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0) / 100) * expB * (1 + innBonus.exp) * (1 + get().getOptionSum("exp_pct") / 100);
-    const finalGoldB = goldB * (1 + innBonus.gold) * nightGoldMult;
+    const factionCoinBonus = (FACTIONS.find(f => f.name === game.faction)?.coinBonus || 0) / 100;
+    const finalGoldB = goldB * (1 + innBonus.gold) * nightGoldMult * (1 + factionCoinBonus);
 
     set((s: any) => {
       const now = Date.now();
