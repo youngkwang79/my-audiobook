@@ -1,14 +1,13 @@
 "use client";
 
 import TopBar from "@/app/components/TopBar";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { works } from "@/app/data/works";
 import { getEpisodesByWork } from "@/app/data/episodes";
 
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, loginWithGoogle } from "@/lib/supabaseClient";
 
 export default function WorkDetailPage() {
   const params = useParams();
@@ -40,18 +39,21 @@ export default function WorkDetailPage() {
     if (loading) return;
 
     if (user) {
-      const sb = supabase;
-      if (!sb) {
-        router.push("/login");
-        return;
-      }
-
-      await sb.auth.signOut();
+      await supabase.auth.signOut();
       router.refresh();
       return;
     }
 
-    router.push("/login");
+    await loginWithGoogle(`/works/${workId}`);
+  };
+
+  const goEpisode = async (href: string) => {
+    if (user) {
+      router.push(href);
+      return;
+    }
+
+    await loginWithGoogle(href);
   };
 
   if (!work) {
@@ -155,11 +157,11 @@ export default function WorkDetailPage() {
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
-  onClick={() => {
-    const firstEpisode = episodes[0];
-    if (!firstEpisode) return;
-    router.push(`/episode/${work.id}/${firstEpisode.id}?part=1&autoplay=1`);
-  }}
+            onClick={() => {
+              const firstEpisode = episodes[0];
+              if (!firstEpisode) return;
+              goEpisode(`/episode/${work.id}/${firstEpisode.id}?part=1&autoplay=1`);
+            }}
             style={{
               background:
                 "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
@@ -205,17 +207,22 @@ export default function WorkDetailPage() {
         {episodes.map((ep) => {
           const episodeNo = String(ep.id);
           const isLocked = ep.locked;
+          const href = `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`;
 
           return (
-            <Link
-  key={episodeNo}
-  href={
-    user
-      ? `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`
-      : `/login?redirect=${encodeURIComponent(`/episode/${work.id}/${episodeNo}?part=1&autoplay=1`)}`
-  }
-  style={{ textDecoration: "none", color: "inherit" }}
->
+            <button
+              key={episodeNo}
+              onClick={() => goEpisode(href)}
+              style={{
+                textDecoration: "none",
+                color: "inherit",
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
               <div
                 style={{
                   background: "rgba(255,255,255,0.05)",
@@ -241,7 +248,7 @@ export default function WorkDetailPage() {
                   {isLocked ? "잠금" : "열림"}
                 </div>
               </div>
-            </Link>
+            </button>
           );
         })}
       </div>

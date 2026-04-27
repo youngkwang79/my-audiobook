@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
 import TopBar from "@/app/components/TopBar";
-import { loadGameFromFirebase } from "@/lib/gameSave";
+import { loadGame, saveGame } from "@/lib/gameSave";
+import { useGameStore } from "@/app/lib/game/useGameStore";
 
 // 에러 메시지 한글 매핑
 function toKoreanAuthError(message?: string) {
@@ -90,8 +91,13 @@ if (!error) {
   const user = userData?.user;
 
   if (user) {
-    // 🔥 Firebase 저장/불러오기
-    await loadGameFromFirebase(user.id);
+    // 🔥 Supabase 클라우드 저장 데이터 불러오기 및 동기화
+    const cloudData = await loadGame(user.id);
+    if (cloudData) {
+      const store = useGameStore.getState() as any;
+      store.importGameData(cloudData);
+      console.log("🔥 Supabase 클라우드 데이터 동기화 완료");
+    }
   }
 }
 

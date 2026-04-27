@@ -250,13 +250,14 @@ export default function InventoryPanel(props: Props) {
     <section
       style={{
         position: "relative",
-        overflow: "hidden",
+        overflow: "visible",
         borderRadius: "0 0 20px 20px",
         border: "1px solid rgba(255,215,120,0.16)",
         borderTop: "none",
         marginTop: "-1px",
         background: "rgba(10,12,20,0.9)",
         height: "100%",
+        minHeight: 0,
         padding: "10px",
         boxSizing: "border-box",
         display: "flex",
@@ -368,7 +369,7 @@ export default function InventoryPanel(props: Props) {
             <div style={{
               height: "100%",
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(65px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(55px, 1fr))",
               gap: 8,
               alignContent: "start",
               overflowY: "auto",
@@ -400,7 +401,7 @@ export default function InventoryPanel(props: Props) {
                     transition: "all 0.2s"
                   }}
                 >
-                  <div style={{ fontSize: 24, marginBottom: 2 }}>{getPotionIcon(id)}</div>
+                  <div style={{ fontSize: 20, marginBottom: 2 }}>{getPotionIcon(id)}</div>
                   <div style={{ fontSize: 9, fontWeight: "900", color: "#ffd778", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>
                     {getPotionName(id).split(' ')[0]}
                   </div>
@@ -418,7 +419,7 @@ export default function InventoryPanel(props: Props) {
               style={{
                 height: "100%",
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(65px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(55px, 1fr))",
                 gap: 8,
                 alignContent: "start",
                 overflowY: "auto",

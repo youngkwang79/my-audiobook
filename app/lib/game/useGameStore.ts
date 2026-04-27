@@ -166,6 +166,8 @@ export function generateTowerEnemy(floor: number) {
     name: isBoss ? `[층 보스] ${floor}층 ${theme.name} 수호자` : `${floor}층 시험자`,
     maxHp: hp,
     hp: hp,
+    maxMp: 100,
+    mp: 100,
     atk: atk,
     def: def,
     eva,
@@ -318,6 +320,7 @@ interface GameState {
   addExp: (amount: number, isAuto?: boolean, manualDamage?: number) => void;
   addCoins: (amount: number) => void;
   triggerSave: (immediate?: boolean) => void;
+  importGameData: (data: any) => void;
   autoTrain: (multiplier?: number) => void;
   takeDamage: (damage: number) => void;
   heal: (amount: number) => void;
@@ -1262,6 +1265,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   triggerSave: (i = false) => { if (i) { if (debounceTimer) clearTimeout(debounceTimer); saveGame({ ...get().game, lastSaveTime: Date.now() }); debounceTimer = null; return; } if (!debounceTimer) debounceTimer = setTimeout(() => { saveGame({ ...get().game, lastSaveTime: Date.now() }); debounceTimer = null; }, 10000); },
+  importGameData: (data: any) => {
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        ...data,
+        tower: { ...s.game.tower, ...(data.tower || {}) }
+      }
+    }));
+    get().triggerSave(true);
+  },
 
   upgradeStat: (k: keyof GameSaveData["statUpgrades"]) => { const s = get(); s.upgradeStatMulti(k, 1, 'gold'); },
   getUpgradeCost: (k: keyof GameSaveData["statUpgrades"]) => { const cL = (get().game.upgradeLevels as any)[k] || 0; return (cL + 1) * (STAT_UPGRADE_BASES[k]?.gold || 1500); },
@@ -3144,6 +3157,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           currentFloor: floor,
           hp: maxHp,
           maxHp: maxHp,
+          mp: 100,
+          maxMp: 100,
           activeBuffs: [],
           artifacts: [],
           combo: 0,
@@ -3152,6 +3167,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           eventRoom: null,
           pendingBuffChoices: null,
           pendingArtifactChoices: null,
+          stairs: Array.from({ length: 5 }, () => Math.floor(Math.random() * 3)),
           startTime: Date.now()
         }
       }
@@ -3318,40 +3334,41 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   stepTower: (lane: number) => {
-    set((state: any) => {
-      const tower = state.game.tower;
+    const { game, tapTower } = get();
+    const tower = game.tower;
+    if (!tower.stairs || tower.stairs.length === 0 || !tower.isInside) return;
 
-      if (!tower.stairs || tower.stairs.length === 0) return state;
+    const correct = tower.stairs[0] === lane;
 
-      const correct = tower.stairs[0] === lane;
-
-      if (correct) {
-        return {
-          game: {
-            ...state.game,
-            tower: {
-              ...tower,
-              combo: (tower.combo || 0) + 1,
-              stairs: [
-                Math.floor(Math.random() * 3),
-                ...tower.stairs.slice(0, -1),
-              ],
-            },
-          },
-        };
-      } else {
-        return {
-          game: {
-            ...state.game,
-            tower: {
-              ...tower,
-              combo: 0,
-              hp: tower.hp - tower.maxHp * 0.1,
-            },
-          },
-        };
-      }
-    });
+    if (correct) {
+      // 공격 실행
+      tapTower();
+      
+      // 계단 업데이트
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          tower: {
+            ...s.game.tower,
+            stairs: [
+              Math.floor(Math.random() * 3),
+              ...s.game.tower.stairs.slice(0, -1),
+            ],
+          }
+        }
+      }));
+    } else {
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          tower: {
+            ...s.game.tower,
+            combo: 0,
+            hp: Math.max(0, s.game.tower.hp - s.game.tower.maxHp * 0.1),
+          }
+        }
+      }));
+    }
   },
   updateTower: (dt: number) => {
     const { game } = get();

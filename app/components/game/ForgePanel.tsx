@@ -35,14 +35,14 @@ function PotionItem({ p, playerRealm, buyPotion, unlocked, currentCoins }: any) 
 
   return (
     <div style={{
-      borderRadius: 12, border: "1px solid rgba(0,242,255,0.2)", background: "rgba(0,242,255,0.05)",
-      padding: "10px 14px", display: "flex", alignItems: "center", gap: 12
+      borderRadius: 10, border: "1px solid rgba(0,242,255,0.2)", background: "rgba(0,242,255,0.05)",
+      padding: "6px 10px", display: "flex", alignItems: "center", gap: 8
     }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(0,242,255,0.1)", display: "grid", placeItems: "center", fontSize: 20 }}>{p.icon}</div>
+      <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(0,242,255,0.1)", display: "grid", placeItems: "center", fontSize: 18 }}>{p.icon}</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>{p.name}</div>
+        <div style={{ fontSize: 12, fontWeight: 900, color: "#fff" }}>{p.name}</div>
         <div style={{ fontSize: 10, color: "#00f2ff", opacity: 0.8 }}>{p.desc}</div>
-        <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold" }}>가격: {cost.toLocaleString()} 냥</div>
+        <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold" }}>{cost.toLocaleString()} 냥</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid #444", background: "#222", color: "#fff", cursor: "pointer" }}>-</button>
@@ -266,9 +266,10 @@ export default function ForgePanel(props: Props) {
         background: "rgba(10,12,20,0.95)",
         padding: "10px",
         position: "relative",
-        overflow: "hidden",
+        overflow: "visible",
         touchAction: "pan-y",
         height: "100%",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box"
@@ -344,7 +345,7 @@ export default function ForgePanel(props: Props) {
 
 
       {/* 메인 콘텐츠 (스크롤 영역) */}
-      <div style={{ flex: 1, overflowY: "auto", position: "relative" }} className="hide-scrollbar">
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative", paddingBottom: 100 }} className="hide-scrollbar">
         {!unlocked && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 20, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 24, borderRadius: 20 }}>
             <div style={{ fontSize: 42, marginBottom: 12 }}>🔒</div>
@@ -401,11 +402,11 @@ export default function ForgePanel(props: Props) {
                 ) : (
                   <>
                     {filteredItems.map((item: any) => (
-                      <div key={item.id} style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", fontSize: 20 }}>{item.icon}</div>
+                      <div key={item.id} style={{ borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", fontSize: 18 }}>{item.icon}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: "#ffe08a" }}>{item.name}</div>
-                          <div style={{ fontSize: 10, color: "#aaa" }}>{item.description}</div>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "#ffe08a" }}>{item.name}</div>
+                          <div style={{ fontSize: 10, color: "#aaa", lineHeight: 1.1 }}>{item.description}</div>
                           <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold" }}>{item.price.toLocaleString()} 냥</div>
                         </div>
                         <button onClick={() => handleBuy(item.id)} disabled={currentCoins < item.price} style={{ ...goldBtn }}>
@@ -549,7 +550,7 @@ export default function ForgePanel(props: Props) {
                         key={slot.s}
                         onClick={() => item && setSelectedEnhanceItem(item.id)}
                         style={{
-                          height: 46,
+                          height: 40,
                           borderRadius: 10,
                           background: isSelected
                             ? "rgba(255,77,77,0.16)"
@@ -581,7 +582,7 @@ export default function ForgePanel(props: Props) {
                           {slot.l}
                         </span>
 
-                        <span style={{ fontSize: 18, marginTop: 5 }}>{item?.icon || ""}</span>
+                        <span style={{ fontSize: 16, marginTop: 4 }}>{item?.icon || ""}</span>
 
                         {item && (
                           <span
@@ -606,8 +607,8 @@ export default function ForgePanel(props: Props) {
             {/* 강화 정보 박스 */}
             <div
               style={{
-                padding: 9,
-                borderRadius: 15,
+                padding: 6,
+                borderRadius: 12,
                 background: "rgba(0,0,0,0.28)",
                 border: "1px solid rgba(255,255,255,0.08)"
               }}

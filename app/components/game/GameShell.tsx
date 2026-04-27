@@ -221,7 +221,7 @@ export default function GameShell() {
         ) : (
           <>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 {activeTab === "training" && <TrainingPanel />}
                 {activeTab === "inn" && <InnPanel />}
                 {activeTab === "master" && <MasterPanel />}

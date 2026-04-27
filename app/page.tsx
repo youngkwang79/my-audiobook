@@ -1,14 +1,13 @@
 "use client";
 
 import TopBar from "@/app/components/TopBar";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { works } from "./data/works";
 import WorkCard from "@/app/components/work/WorkCard";
 
 import { useAuth } from "@/app/providers/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, loginWithGoogle } from "@/lib/supabaseClient";
 
 type LastPlayed = {
   workId: string;
@@ -16,6 +15,7 @@ type LastPlayed = {
   part: number;
   updatedAt?: number;
 };
+
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -25,56 +25,58 @@ export default function Home() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loginHover, setLoginHover] = useState(false);
 
-  // ✅ 이어듣기 정보
   const [lastPlayed, setLastPlayed] = useState<LastPlayed | null>(null);
 
   useEffect(() => {
-  try {
-    const raw = localStorage.getItem("lastPlayed");
-    if (!raw) return;
+    try {
+      const raw = localStorage.getItem("lastPlayed");
+      if (!raw) return;
 
-    const parsed = JSON.parse(raw);
-    if (!parsed?.workId || !parsed?.episodeId || !parsed?.part) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.workId || !parsed?.episodeId || !parsed?.part) return;
 
-    setLastPlayed({
-      workId: String(parsed.workId),
-      episodeId: String(parsed.episodeId),
-      part: Number(parsed.part),
-      updatedAt: parsed.updatedAt ? Number(parsed.updatedAt) : undefined,
-    });
-  } catch {
-    // 무시
-  }
-}, []);
+      setLastPlayed({
+        workId: String(parsed.workId),
+        episodeId: String(parsed.episodeId),
+        part: Number(parsed.part),
+        updatedAt: parsed.updatedAt ? Number(parsed.updatedAt) : undefined,
+      });
+    } catch {
+      // 무시
+    }
+  }, []);
 
-  // ✅ 이어듣기 링크
   const continueHref = useMemo(() => {
-  if (!lastPlayed) return "";
-  return `/episode/${lastPlayed.workId}/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
-}, [lastPlayed]);
-const lastPlayedWorkTitle = useMemo(() => {
-  if (!lastPlayed?.workId) return "";
-  return works.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
-}, [lastPlayed]);
+    if (!lastPlayed) return "";
+    return `/episode/${lastPlayed.workId}/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
+  }, [lastPlayed]);
+
+  const lastPlayedWorkTitle = useMemo(() => {
+    if (!lastPlayed?.workId) return "";
+    return works.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
+  }, [lastPlayed]);
+
   const handleAuthClick = async () => {
     if (loading) return;
 
     if (user) {
-      const sb = supabase;
-      if (!sb) {
-        alert(
-          "Supabase 설정이 아직 적용되지 않았습니다.\nVercel 환경변수 저장 후 재배포(Redeploy) 해주세요."
-        );
-        router.push("/login");
-        return;
-      }
-
-      await sb.auth.signOut();
+      await supabase.auth.signOut();
       router.refresh();
       return;
     }
 
-    router.push("/login");
+    await loginWithGoogle("/");
+  };
+
+  const handleContinueClick = async () => {
+    if (!continueHref) return;
+
+    if (user) {
+      router.push(continueHref);
+      return;
+    }
+
+    await loginWithGoogle(continueHref);
   };
 
   return (
@@ -93,7 +95,6 @@ const lastPlayedWorkTitle = useMemo(() => {
     >
       <TopBar />
 
-      {/* ✅ 공통 스타일 (모바일 대응 포함) */}
       <style>{`
         @keyframes lightSweep {
           0% { transform: translateX(-120%); }
@@ -130,7 +131,6 @@ const lastPlayedWorkTitle = useMemo(() => {
           text-align: left;
         }
 
-        /* ✅ 작품 카드: 모바일에서는 세로로 쌓이게 */
         @media (max-width: 640px) {
           .workCard {
             flex-direction: column !important;
@@ -176,52 +176,68 @@ const lastPlayedWorkTitle = useMemo(() => {
         }
       `}</style>
 
-      {/* ✅ 홈 소개 박스: 왼쪽 정렬 + 오른쪽 무협 절경 배경 */}
       <div
-  style={{
-    maxWidth: 900,
-    margin: "0 auto 28px",
-    padding: "31px 17px",
-    borderRadius: 28,
-    background:
-      "linear-gradient(135deg, rgba(7,10,22,0.58) 0%, rgba(8,11,24,0.46) 45%, rgba(10,13,26,0.34) 100%)",
-    border: "1px solid rgba(255,215,120,0.22)",
-    boxShadow:
-      "0 0 14px rgba(255,215,120,0.18), 0 0 28px rgba(255,215,120,0.010), 0 12px 40px rgba(0,0,0,0.024)",
-    animation: "goldBreath 3.2s ease-in-out infinite",
-    backdropFilter: "blur(0px)",
-  }}
->
-  <div
-    style={{
-      marginTop: -15,
-      fontSize: 24,
-      fontWeight: 900,
-      lineHeight: 1.2,
-      color: "rgba(255,255,255,0.95)",
-    }}
-  >
-    검과 강호의 이야기를
-    <br />
-    이제 귀로 감상
-  </div>
+        style={{
+          maxWidth: 900,
+          margin: "0 auto 28px",
+          padding: "31px 17px",
+          borderRadius: 28,
+          background:
+            "linear-gradient(135deg, rgba(7,10,22,0.58) 0%, rgba(8,11,24,0.46) 45%, rgba(10,13,26,0.34) 100%)",
+          border: "1px solid rgba(255,215,120,0.22)",
+          boxShadow:
+            "0 0 14px rgba(255,215,120,0.18), 0 0 28px rgba(255,215,120,0.010), 0 12px 40px rgba(0,0,0,0.024)",
+          animation: "goldBreath 3.2s ease-in-out infinite",
+          backdropFilter: "blur(0px)",
+        }}
+      >
+        <div
+          style={{
+            marginTop: -15,
+            fontSize: 24,
+            fontWeight: 900,
+            lineHeight: 1.2,
+            color: "rgba(255,255,255,0.95)",
+          }}
+        >
+          검과 강호의 이야기를
+          <br />
+          이제 귀로 감상
+        </div>
 
-  <p
-    style={{
-      marginTop: 10,
-      maxWidth: 680,
-      fontSize: 14,
-      lineHeight: 1.5,
-      color: "rgba(255,255,255,0.78)",
-    }}
-  >
-    무림북은 창작 무협 소설과 오디오 스토리를 중심으로,
-    에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다.
-    강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
-  </p>
-</div>
+        <p
+          style={{
+            marginTop: 10,
+            maxWidth: 680,
+            fontSize: 14,
+            lineHeight: 1.5,
+            color: "rgba(255,255,255,0.78)",
+          }}
+        >
+          무림북은 창작 무협 소설과 오디오 스토리를 중심으로,
+          에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다.
+          강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
+        </p>
 
-      {/* 이어듣기 카드 */}
+        <button
+          onClick={handleAuthClick}
+          style={{
+            marginTop: 14,
+            background: user
+              ? "rgba(0,0,0,0.35)"
+              : "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+            color: user ? "white" : "#2b1d00",
+            border: "1px solid rgba(255,215,120,0.65)",
+            padding: "10px 16px",
+            borderRadius: 14,
+            fontWeight: 900,
+            cursor: "pointer",
+          }}
+        >
+          {user ? "로그아웃" : "구글 로그인"}
+        </button>
+      </div>
+
       {lastPlayed && (
         <div
           style={{
@@ -254,51 +270,43 @@ const lastPlayedWorkTitle = useMemo(() => {
             {lastPlayedWorkTitle} · {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
           </div>
 
-          <Link
-  href={
-    user
-      ? continueHref
-      : `/login?redirect=${encodeURIComponent(continueHref)}`
-  }
-  style={{ textDecoration: "none" }}
->
-            <div
+          <button
+            onClick={handleContinueClick}
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              width: "fit-content",
+              padding: "9px 14px",
+              borderRadius: 999,
+              fontWeight: 950,
+              fontSize: 14,
+              letterSpacing: "-0.2px",
+              color: "#2b1d00",
+              background:
+                "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+              border: "1px solid rgba(255,215,120,0.65)",
+              boxShadow: "0 0 14px rgba(255,215,120,0.35)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            ▶ 이어서 듣기
+            <span
               style={{
-                position: "relative",
-                overflow: "hidden",
-                width: "fit-content",
-                padding: "9px 14px",
-                borderRadius: 999,
-                fontWeight: 950,
-                fontSize: 14,
-                letterSpacing: "-0.2px",
-                color: "#2b1d00",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "60%",
+                height: "100%",
                 background:
-                  "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-                border: "1px solid rgba(255,215,120,0.65)",
-                boxShadow: "0 0 14px rgba(255,215,120,0.35)",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
+                  "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
+                transform: "translateX(-120%)",
+                animation: "lightSweep 1.2s ease infinite",
+                pointerEvents: "none",
               }}
-            >
-              ▶ 이어서 듣기
-              <span
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "60%",
-                  height: "100%",
-                  background:
-                    "linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-                  transform: "translateX(-120%)",
-                  animation: "lightSweep 1.2s ease infinite",
-                  pointerEvents: "none",
-                }}
-              />
-            </div>
-          </Link>
+            />
+          </button>
         </div>
       )}
 
@@ -345,7 +353,6 @@ const lastPlayedWorkTitle = useMemo(() => {
         </button>
       </div>
 
-      {/* 작품 카드 */}
       <div style={{ display: "grid", gap: 24 }}>
         {featuredWorks.map((work) => (
           <WorkCard key={work.id} work={work} />
