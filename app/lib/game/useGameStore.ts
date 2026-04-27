@@ -4000,7 +4000,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   triggerGodMode: () => {
     const trillion = 1000000000000;
-    const allTabs: any[] = ["training", "inn", "master", "library", "forge", "inventory", "upgrade", "tower", "giru", "gambling"];
     set((s: any) => ({
       game: {
         ...s.game,
@@ -4011,8 +4010,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         enhancementStones: trillion,
         wisdom: trillion,
         points: trillion,
-        unlockedTabs: allTabs,
-        isForgeFullUnlocked: true,
+        // 하단탭 전체개방 기능 제거 (사용자 요청)
         // 자동사냥 중단 방지: 현재 처치수와 동기화하고 차단 플래그 제거
         lastInnEventKillCount: s.game.totalDummyKills,
         pendingInnEntry: false,

@@ -263,21 +263,20 @@ export default function GameShell() {
                 {activeTab === "giru" && <GiruPanel />}
                 {activeTab === "gambling" && <GamblingPanel />}
               </div>
+              <GameBottomNav
+                activeTab={activeTab as any}
+                unlockedTabs={unlockedTabs as any}
+                onChange={(tab) => setActiveTab(tab)}
+              />
             </div>
+
+            <AnimatePresence>
+              {showDawnSettlement && (
+                <DawnSettlement onClose={closeDawnSettlement} />
+              )}
+            </AnimatePresence>
           </>
         )}
-
-        <AnimatePresence>
-          {showDawnSettlement && (
-            <DawnSettlement onClose={closeDawnSettlement} />
-          )}
-        </AnimatePresence>
-
-        <GameBottomNav
-          activeTab={activeTab as any}
-          unlockedTabs={unlockedTabs as any}
-          onChange={(tab) => setActiveTab(tab)}
-        />
 
 
 
