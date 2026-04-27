@@ -57,7 +57,7 @@ export default function MePage() {
     try {
       const element = document.documentElement;
       if (element.requestFullscreen) {
-        element.requestFullscreen().catch(() => {});
+        element.requestFullscreen().catch(() => { });
       } else if ((element as any).webkitRequestFullscreen) {
         (element as any).webkitRequestFullscreen();
       } else if ((element as any).msRequestFullscreen) {
@@ -71,7 +71,7 @@ export default function MePage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: "100vh", padding: "24px 16px", color: "white" }}>
+      <main style={{ minHeight: "100dvh", padding: "24px 16px", color: "white" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           <div style={{ ...cardStyle, textAlign: "center" }}>불러오는 중...</div>
         </div>
@@ -81,7 +81,7 @@ export default function MePage() {
 
   if (!user) {
     return (
-      <main style={{ minHeight: "100vh", padding: "24px 16px", color: "white" }}>
+      <main style={{ minHeight: "100dvh", padding: "24px 16px", color: "white" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           <div style={{ ...cardStyle, textAlign: "center" }}>
             <h1 style={{ fontSize: 30, fontWeight: 900, marginBottom: 12 }}>내정보</h1>
@@ -100,7 +100,7 @@ export default function MePage() {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: `
           linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)),
           url("/background.jpg") center / cover no-repeat fixed
@@ -198,7 +198,7 @@ export default function MePage() {
                   border: "1px solid rgba(255,255,255,0.2)",
                   color: "white",
                 }}
-                onClick={() => {}}
+                onClick={() => { }}
               >
                 2단계 인증 설정 (OTP)
               </button>
@@ -245,7 +245,7 @@ export default function MePage() {
 
                 <button
                   style={{ ...dangerButtonStyle, flex: 1 }}
-                  onClick={() => {}}
+                  onClick={() => { }}
                 >
                   전체 기기 로그아웃
                 </button>

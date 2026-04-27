@@ -120,7 +120,7 @@ export default function FAQPage() {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: "#0b0b12",
         color: "white",
         padding: 20,

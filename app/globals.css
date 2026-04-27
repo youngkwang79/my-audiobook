@@ -19,6 +19,7 @@
   }
 }
 
+/* 🔥 핵심 추가 (여기부터 중요) */
 html,
 body {
   background: #0b0b12;
@@ -26,15 +27,40 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
   padding: 0;
-  min-height: 100%;
   width: 100%;
-  /* Remove position: fixed and overflow: hidden that were blocking swipe */
+
+  /* 🔥 iOS 대응 핵심 */
+  min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
+
   -webkit-overflow-scrolling: touch;
-  touch-action: auto; /* Ensure default browser swipe/scroll is enabled */
+  touch-action: auto;
+
+  /* 🔥 노치/홈바 대응 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* 🔥 추가: 전체 화면 안정화 */
+.appScreen {
+  min-height: 100dvh;
+  min-height: 100svh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* 🔥 추가: 상단/하단 안전 영역 */
+.safeTop {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safeBottom {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+/* 🔥 여기까지 추가 */
+
+/* 기존 코드 유지 */
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -76,7 +102,8 @@ main {
     overflow-x: hidden;
   }
 }
-/* app/globals.css 맨 아래에 추가 */
+
+/* 애니메이션 */
 @keyframes damageFloat {
   0% { transform: translateY(0) scale(0.5); opacity: 0; }
   20% { transform: translateY(-25px) scale(1.3); opacity: 1; }
@@ -89,11 +116,9 @@ main {
   100% { opacity: 0.3; }
 }
 
-/* 전체화면일 때 하단 정보 숨기기 */
+/* fullscreen 대응 */
 :fullscreen footer,
 :fullscreen .hide-in-fullscreen,
-:-webkit-full-screen footer,
-:-webkit-full-screen .hide-in-fullscreen,
 :-webkit-full-screen footer,
 :-webkit-full-screen .hide-in-fullscreen,
 :-moz-full-screen footer,
@@ -103,18 +128,18 @@ main {
   display: none !important;
 }
 
-/* 홈 화면에 추가(PWA)로 실행될 때 하단 정보 숨기기 (아이폰 등) */
+/* PWA 모드 */
 @media (display-mode: standalone) {
-  footer, 
+  footer,
   .hide-in-fullscreen {
     display: none !important;
   }
 }
 
-/* Premium Gold Shimmer Border Effect */
+/* Gold UI */
 .gold-shimmer-container {
   position: relative;
-  padding: 3px; /* Border thickness */
+  padding: 3px;
   background: linear-gradient(135deg, #ffd700, #b8860b, #ffd700, #f0e68c);
   background-size: 300% 300%;
   animation: goldGradientFlow 4s ease infinite;
@@ -140,8 +165,8 @@ main {
   width: 200%;
   height: 200%;
   background: conic-gradient(
-    transparent, 
-    rgba(255, 255, 255, 0.2), 
+    transparent,
+    rgba(255, 255, 255, 0.2),
     transparent 30%
   );
   animation: rotateShimmer 6s linear infinite;

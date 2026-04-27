@@ -115,9 +115,9 @@ function LoginPageInner() {
         queryParams:
           provider === "google"
             ? {
-                access_type: "offline",
-                prompt: "select_account",
-              }
+              access_type: "offline",
+              prompt: "select_account",
+            }
             : undefined,
       },
     });
@@ -180,7 +180,7 @@ function LoginPageInner() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: "#0b0b12",
         color: "white",
         padding: "20px 16px",
@@ -420,8 +420,8 @@ function LoginPageInner() {
                 ? "로그인 중..."
                 : "로그인"
               : busy
-              ? "가입 중..."
-              : "회원가입"}
+                ? "가입 중..."
+                : "회원가입"}
           </button>
 
           <button
@@ -470,7 +470,7 @@ function LoginPageInner() {
 export default function LoginPage() {
   return (
     <Suspense
-      fallback={<div style={{ minHeight: "100vh", background: "#0b0b12" }} />}
+      fallback={<div style={{ minHeight: "100dvh", background: "#0b0b12" }} />}
     >
       <LoginPageInner />
     </Suspense>

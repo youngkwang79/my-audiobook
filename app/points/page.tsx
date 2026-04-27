@@ -129,7 +129,7 @@ export default function PointsPage() {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: `
           linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)),
           url("/background.jpg") center / cover no-repeat fixed
@@ -169,20 +169,20 @@ export default function PointsPage() {
           </div>
 
           <button
-  onClick={() => router.push("/")}
-  style={{
-    background:
-      "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
-    color: "#2b1d00",
-    border: "1px solid rgba(255,215,120,0.65)",
-    padding: "10px 14px",
-    borderRadius: 14,
-    cursor: "pointer",
-    fontWeight: 900,
-  }}
->
-  홈으로
-</button>
+            onClick={() => router.push("/")}
+            style={{
+              background:
+                "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
+              color: "#2b1d00",
+              border: "1px solid rgba(255,215,120,0.65)",
+              padding: "10px 14px",
+              borderRadius: 14,
+              cursor: "pointer",
+              fontWeight: 900,
+            }}
+          >
+            홈으로
+          </button>
         </div>
 
         <div style={{ height: 14 }} />

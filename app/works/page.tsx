@@ -6,7 +6,7 @@ export default function WorksPage() {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: `
           linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)),
           url("/background.jpg") center / cover no-repeat fixed

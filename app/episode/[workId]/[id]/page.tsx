@@ -282,7 +282,7 @@ export default function EpisodePage() {
           updatedAt: Date.now(),
         })
       );
-    } catch {}
+    } catch { }
   }, [workId, episodeKey, part]);
 
   useEffect(() => {
@@ -373,7 +373,7 @@ export default function EpisodePage() {
         const parsed = parseSegmentsFromSavedJson(r2.data);
         setSegments(parsed);
         const current = audioRef.current?.currentTime ?? 0;
-updateCaptionByTime(current);
+        updateCaptionByTime(current);
         setCaptionStatus(parsed.length ? "" : "자막 데이터가 비어있어요");
         return;
       }
@@ -402,14 +402,14 @@ updateCaptionByTime(current);
 
       const parsed2 = parseSegmentsFromSavedJson(r2b.data);
       if (parsed2.length) {
-  setSegments(parsed2);
-  const current = audioRef.current?.currentTime ?? 0;
-updateCaptionByTime(current);
-  setCaptionStatus(""); // 성공 시 아무것도 안 보여줌
-} else {
-  setSegments([]);
-  setCaptionStatus("자막 데이터가 비어있어요");
-}
+        setSegments(parsed2);
+        const current = audioRef.current?.currentTime ?? 0;
+        updateCaptionByTime(current);
+        setCaptionStatus(""); // 성공 시 아무것도 안 보여줌
+      } else {
+        setSegments([]);
+        setCaptionStatus("자막 데이터가 비어있어요");
+      }
     }
 
     loadCaptions().catch((error) => {
@@ -424,47 +424,47 @@ updateCaptionByTime(current);
   }, [episodeKey, part, locked, workId]);
 
   const updateCaptionByTime = (t: number) => {
-  const segs = segments;
-  if (!segs.length) {
-    setCaption("");
-    return;
-  }
+    const segs = segments;
+    if (!segs.length) {
+      setCaption("");
+      return;
+    }
 
-  const EARLY_SWITCH = 0.15; // 추천값: 0.12 ~ 0.18
+    const EARLY_SWITCH = 0.15; // 추천값: 0.12 ~ 0.18
 
-  let i = segIndexRef.current;
-  i = Math.max(0, Math.min(i, segs.length - 1));
+    let i = segIndexRef.current;
+    i = Math.max(0, Math.min(i, segs.length - 1));
 
-  while (i < segs.length - 1 && t > segs[i].end) i++;
-  while (i > 0 && t < segs[i].start) i--;
+    while (i < segs.length - 1 && t > segs[i].end) i++;
+    while (i > 0 && t < segs[i].start) i--;
 
-  const current = segs[i];
-  const next = segs[i + 1];
+    const current = segs[i];
+    const next = segs[i + 1];
 
-  // 다음 자막 시작 직전이면 살짝 미리 교체
-  if (next && t >= next.start - EARLY_SWITCH && t < next.start) {
-    segIndexRef.current = i + 1;
-    setCaption(String(next.text || "").trim());
-    return;
-  }
+    // 다음 자막 시작 직전이면 살짝 미리 교체
+    if (next && t >= next.start - EARLY_SWITCH && t < next.start) {
+      segIndexRef.current = i + 1;
+      setCaption(String(next.text || "").trim());
+      return;
+    }
 
-  // 현재 자막 구간이면 현재 자막 표시
-  if (t >= current.start && t <= current.end) {
+    // 현재 자막 구간이면 현재 자막 표시
+    if (t >= current.start && t <= current.end) {
+      segIndexRef.current = i;
+      setCaption(String(current.text || "").trim());
+      return;
+    }
+
+    // 다음 자막도 없고 현재 자막이 끝났으면 비움
+    if (!next && t > current.end) {
+      setCaption("");
+      return;
+    }
+
+    // 그 외에는 현재 자막 유지
     segIndexRef.current = i;
     setCaption(String(current.text || "").trim());
-    return;
-  }
-
-  // 다음 자막도 없고 현재 자막이 끝났으면 비움
-  if (!next && t > current.end) {
-    setCaption("");
-    return;
-  }
-
-  // 그 외에는 현재 자막 유지
-  segIndexRef.current = i;
-  setCaption(String(current.text || "").trim());
-};
+  };
 
   const onTimeUpdate = () => {
     const a = audioRef.current;
@@ -533,9 +533,9 @@ updateCaptionByTime(current);
           pendingAutoplayRef.current = false;
 
           if (!autoEnteredCinema) {
-  setAutoEnteredCinema(true);
-  await enterCinemaMode();
-}
+            setAutoEnteredCinema(true);
+            await enterCinemaMode();
+          }
         })
         .catch(() => {
           setIsPlaying(false);
@@ -554,7 +554,7 @@ updateCaptionByTime(current);
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen();
       }
-    } catch {}
+    } catch { }
   };
 
   const exitCinemaMode = async () => {
@@ -567,7 +567,7 @@ updateCaptionByTime(current);
       if (document.fullscreenElement && document.exitFullscreen) {
         await document.exitFullscreen();
       }
-    } catch {}
+    } catch { }
   };
 
   const toggleLandscapePlayer = async () => {
@@ -594,14 +594,14 @@ updateCaptionByTime(current);
         setIsPlaying(true);
 
         if (!autoEnteredCinema) {
-  setAutoEnteredCinema(true);
-  await enterCinemaMode();
-}
+          setAutoEnteredCinema(true);
+          await enterCinemaMode();
+        }
       } else {
         a.pause();
         setIsPlaying(false);
       }
-    } catch {}
+    } catch { }
 
     resetHideTimer();
   };
@@ -719,7 +719,7 @@ updateCaptionByTime(current);
 
           try {
             localStorage.setItem("points", String(nextPointBalance));
-          } catch {}
+          } catch { }
 
           window.dispatchEvent(new Event("wallet-updated"));
           pendingAutoplayRef.current = true;
@@ -790,7 +790,7 @@ updateCaptionByTime(current);
 
       try {
         localStorage.setItem("points", String(nextPoints));
-      } catch {}
+      } catch { }
 
       window.dispatchEvent(new Event("wallet-updated"));
       router.replace(`/episode/${workId}/${episodeKey}?part=${targetPart}&autoplay=1`);
@@ -872,7 +872,7 @@ updateCaptionByTime(current);
     return (
       <main
         style={{
-          minHeight: "100vh",
+          minHeight: "100dvh",
           background: "#0b0b12",
           color: "white",
           padding: 20,
@@ -887,7 +887,7 @@ updateCaptionByTime(current);
     <main
       className="episodeMain"
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: "#0b0b12",
         color: "white",
         padding: 20,
@@ -1013,7 +1013,7 @@ updateCaptionByTime(current);
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
                 color: "rgba(255,255,255,0.92)",
-                
+
               }}
             >
               {caption || " "}
@@ -1098,18 +1098,18 @@ updateCaptionByTime(current);
               style={
                 playerLandscapeMode
                   ? {
-                      position: "fixed",
-                      width: 1,
-                      height: 1,
-                      opacity: 0,
-                      pointerEvents: "none",
-                      left: -9999,
-                      top: -9999,
-                    }
+                    position: "fixed",
+                    width: 1,
+                    height: 1,
+                    opacity: 0,
+                    pointerEvents: "none",
+                    left: -9999,
+                    top: -9999,
+                  }
                   : {
-                      width: "100%",
-                      marginBottom: 16,
-                    }
+                    width: "100%",
+                    marginBottom: 16,
+                  }
               }
               onLoadedMetadata={() => {
                 const a = audioRef.current;
@@ -1133,9 +1133,9 @@ updateCaptionByTime(current);
                     pendingAutoplayRef.current = false;
 
                     if (!autoEnteredCinema) {
-  setAutoEnteredCinema(true);
-  await enterCinemaMode();
-}
+                      setAutoEnteredCinema(true);
+                      await enterCinemaMode();
+                    }
                   })
                   .catch(() => {
                     setIsPlaying(false);
@@ -1212,7 +1212,7 @@ updateCaptionByTime(current);
             </div>
           )}
 
-          
+
 
           {!locked && status && (
             <div

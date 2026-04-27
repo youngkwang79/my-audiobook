@@ -2,7 +2,8 @@
 
 import { FACTIONS } from "@/app/lib/game/factions";
 import type { FactionType, HeroProfile } from "@/app/lib/game/types";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Props = {
   hero: HeroProfile;
@@ -28,10 +29,10 @@ const goldButtonStyle: React.CSSProperties = {
     "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)",
   color: "#2b1d00",
   border: "1px solid rgba(255,215,120,0.7)",
-  padding: "14px 18px",
-  borderRadius: 18,
+  padding: "16px 18px",
+  borderRadius: 20,
   fontWeight: 900,
-  fontSize: 18,
+  fontSize: 20,
   cursor: "pointer",
   transition: "all 0.2s ease",
 };
@@ -49,247 +50,254 @@ export default function GameIntroPanel({
   }, [faction]);
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-
-  // 🔥 핵심 수정: 현재 슬라이드된 문파를 부모 상태에 자동으로 동기화합니다.
-  // 사용자가 "이 문파 선택"을 굳이 누르지 않아도 현재 보이는 문파로 설정되게 합니다.
-  useEffect(() => {
-    const selected = FACTIONS[currentIndex].name as Exclude<FactionType, null>;
-    onSelectFaction(selected);
-  }, [currentIndex, onSelectFaction]);
-
-  // 이미지 프리로딩
-  useEffect(() => {
-    FACTIONS.forEach(f => {
-      if (f.characterImages?.ready) {
-        const img = new Image();
-        img.src = f.characterImages.ready;
-      }
-    });
-  }, []);
-
   const currentFaction = FACTIONS[currentIndex];
-  
-  // 시작 가능 조건 확인
-  const canStart =
-    hero.name.trim() !== "" &&
-    hero.age > 0 &&
-    hero.height > 0 &&
-    !!faction;
+
+  const canStart = hero.name.trim() !== "";
 
   const previewImage = currentFaction.characterImages?.ready || "/warrior.png";
 
   return (
-    <section
-      style={{
-        border: "1px solid rgba(255,215,120,0.18)",
-        borderRadius: 24,
-        background: "rgba(12,12,18,0.62)",
-        padding: 20,
-        display: "grid",
-        gap: 18,
-        maxWidth: 500,
-        margin: "0 auto",
-      }}
-    >
-      <div>
-        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8, color: "#f3c969" }}>
-          무림 입문
-        </div>
-        <div style={{ fontSize: 15, opacity: 0.82, lineHeight: 1.7, color: "white" }}>
-          주인공 정보를 정하고 문파를 선택하면 본격적인 수련이 시작됩니다.
-        </div>
-      </div>
-
-      {/* 정보 입력부 */}
-      <div style={{ display: "grid", gap: 12 }}>
-        <input
-          style={inputStyle}
-          placeholder="무림을 제패할 이름을 정해주십시요"
-          value={hero.name}
-          onFocus={(e) => {
-            if (hero.name === "무명협객") {
-              onChangeHero({ ...hero, name: "" });
-            }
-          }}
-          onChange={(e) => onChangeHero({ ...hero, name: e.target.value })}
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <input
-            style={inputStyle}
-            placeholder="나이는?"
-            type="number"
-            value={hero.age || ""}
-            onFocus={(e) => {
-              if (hero.age === 17) {
-                onChangeHero({ ...hero, age: 0 });
-              }
-            }}
-            onChange={(e) => onChangeHero({ ...hero, age: e.target.value ? Number(e.target.value) : 0 })}
-          />
-          <input
-            style={inputStyle}
-            placeholder="신장은?"
-            type="number"
-            value={hero.height || ""}
-            onFocus={(e) => {
-              if (hero.height === 175) {
-                onChangeHero({ ...hero, height: 0 });
-              }
-            }}
-            onChange={(e) => onChangeHero({ ...hero, height: e.target.value ? Number(e.target.value) : 0 })}
-          />
-        </div>
-      </div>
-
-      {/* 문파 선택 카드 */}
-      <div
-        style={{
-          borderRadius: 24,
-          border: `2px solid ${currentFaction.theme.accent}`,
-          background: "rgba(255,255,255,0.03)",
-          padding: 18,
-          display: "grid",
-          gap: 16,
-          boxShadow: `0 0 20px ${currentFaction.theme.glow}`,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: "white" }}>{currentFaction.name}</div>
-            <div style={{ fontSize: 15, opacity: 0.76, marginTop: 6, color: currentFaction.theme.accent }}>
-              {currentFaction.group} · {currentFaction.style}
-            </div>
-          </div>
-          <div style={{ fontSize: 14, opacity: 0.5, color: "white" }}>
-            {currentIndex + 1} / {FACTIONS.length}
-          </div>
-        </div>
-
-        <div
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      background: "#05050a",
+      zIndex: 2000,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      overflow: "hidden",
+      color: "white"
+    }}>
+      {/* 배경 글로우 (캐릭터 뒤에 배치) */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.15 }}
+          exit={{ opacity: 0 }}
           style={{
-            display: "grid",
-            gridTemplateColumns: "120px 1fr",
-            gap: 16,
-            alignItems: "center",
+            position: "absolute",
+            top: "40%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "150%",
+            height: "150%",
+            background: `radial-gradient(circle at center, ${currentFaction.theme.glow} 0%, transparent 70%)`,
+            pointerEvents: "none",
+            zIndex: 0
           }}
+        />
+      </AnimatePresence>
+
+      {/* 헤더: 이름 입력 및 타이틀 */}
+      <div style={{
+        position: "relative",
+        zIndex: 10,
+        padding: "30px 20px 0px",
+        textAlign: "center",
+        width: "100%",
+        background: "linear-gradient(to bottom, rgba(5,5,16,0.9), transparent)",
+        marginTop: "-36px" // 아주 조금만 내림 (4px 차이)
+      }}>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
         >
-          {/* 캐릭터 프리뷰 */}
-          <div
+          <h2 style={{
+            fontSize: "28px",
+            margin: "0",
+            color: "#f3c969",
+            textShadow: "0 0 15px rgba(243,201,105,0.4)",
+            fontWeight: 900,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px"
+          }}>
+            ⚔️ 무림 입문 (武林 入門)
+          </h2>
+          <p style={{ fontSize: "11px", opacity: 0.6, letterSpacing: "2px", marginTop: "4px" }}>자신만의 전설을 써 내려갈 준비를 하십시오</p>
+        </motion.div>
+
+        {/* 이름 입력창 (상단에 세련되게 배치) */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{ marginTop: 20, maxWidth: 300, margin: "20px auto 0" }}
+        >
+          <input
             style={{
-              borderRadius: 20,
-              overflow: "hidden",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              aspectRatio: "3 / 4",
+              ...inputStyle,
+              textAlign: "center",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,215,105,0.2)",
+              fontSize: "14px",
+              padding: "10px 16px"
+            }}
+            placeholder="강호에 이름을 알리십시오 (성함)"
+            value={hero.name}
+            onFocus={() => hero.name === "무명협객" && onChangeHero({ ...hero, name: "" })}
+            onChange={(e) => onChangeHero({ ...hero, name: e.target.value })}
+          />
+        </motion.div>
+      </div>
+
+      {/* 메인 캐릭터 스와이프 영역 */}
+      <div style={{ flex: 1, width: "100%", position: "relative", zIndex: 1, display: "flex", alignItems: "stretch" }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, x: 100, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -100, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 260, damping: 25 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            onDragEnd={(_, { offset }) => {
+              if (offset.x < -60) setCurrentIndex((prev) => (prev + 1) % FACTIONS.length);
+              else if (offset.x > 60) setCurrentIndex((prev) => (prev === 0 ? FACTIONS.length - 1 : prev - 1));
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "flex-end", // center에서 flex-end로 변경하여 marginBottom이 작동하게 함
+              cursor: "grab",
+              touchAction: "none"
+            }}
+          >
+            {/* 캐릭터 이미지 (카드 컨테이너 없이 자유롭게 부유) */}
+            <div style={{
+              flex: 1,
+              width: "100%",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-            }}
-          >
-            <img
-              src={previewImage}
-              alt={currentFaction.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              onError={(e) => {
-                e.currentTarget.src = "https://via.placeholder.com/120x160?text=武";
-              }}
-            />
-          </div>
-
-          <div style={{ display: "grid", gap: 8, color: "white" }}>
-            <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.9 }}>{currentFaction.summary}</div>
-            
-            <div style={{ display: "flex", gap: 6 }}>
-              <div style={{ fontSize: 12, color: "#f3c969", border: "1px solid rgba(243,201,105,0.3)", padding: "2px 8px", borderRadius: 6 }}>
-                ⚔️ {currentFaction.martial["삼류"].name}
-              </div>
-              <div style={{ fontSize: 12, color: "#bde7ff", border: "1px solid rgba(189,231,255,0.3)", padding: "2px 8px", borderRadius: 6 }}>
-                👟 {currentFaction.movement?.entry || "-"}
-              </div>
-            </div>
-
-            <div style={{ 
-              background: "rgba(243,201,105,0.06)", 
-              border: "1px solid rgba(243,201,105,0.25)", 
-              borderRadius: 12, 
-              padding: "10px",
-              display: "grid",
-              gap: 4
+              position: "relative",
             }}>
-              <div style={{ fontSize: 11, color: "#f3c969", fontWeight: 900, marginBottom: 4 }}>문파 전용 시스템 보너스</div>
-              <div style={{ display: "flex", gap: "6px 10px", flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "#a8ff7e" }}>EXP +{currentFaction.expBonus}</span>
-                <span style={{ fontSize: 11, color: "#ffd700" }}>Coin +{currentFaction.coinBonus}</span>
-                {Object.entries(currentFaction.bonusStats).map(([k, v]) => {
-                  const label = {
-                    atk: "공격", def: "방어", hp: "체력", critRate: "치명", critDmg: "치피", eva: "회피", speed: "속도"
-                  }[k] || k;
-                  return (
-                    <span key={k} style={{ fontSize: 11, color: "#eee", background: "rgba(255,255,255,0.08)", padding: "1px 4px", borderRadius: 3 }}>
-                      {label} +{v}%
-                    </span>
-                  );
-                })}
+              <motion.img
+                src={previewImage}
+                alt={currentFaction.name}
+                style={{
+                  height: "100%",
+                  maxHeight: "450px",
+                  objectFit: "contain",
+                  filter: `drop-shadow(0 0 30px ${currentFaction.theme.glow}44)`
+                }}
+                animate={{
+                  y: [0, -10, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+            </div>
+
+            {/* 하단 정보 패널 (월향루 스타일) */}
+            <div style={{
+              background: "rgba(10, 10, 25, 0.8)",
+              backdropFilter: "blur(12px)",
+              padding: "10px 24px",
+              borderRadius: "24px",
+              border: `1px solid ${currentFaction.theme.accent}44`,
+              textAlign: "center",
+              width: "90%",
+              maxWidth: "400px",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
+              zIndex: 10,
+              marginBottom: "170px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px"
+            }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "baseline", gap: "8px" }}>
+                <span style={{ fontSize: "24px", fontWeight: 950, color: "#fff" }}>
+                  {currentFaction.name}
+                </span>
+                <span style={{ fontSize: "13px", color: currentFaction.theme.accent, fontWeight: 700, opacity: 0.8 }}>
+                  {currentFaction.group}
+                </span>
+              </div>
+
+              <div style={{ fontSize: "14px", color: "#ccc", lineHeight: 1.6, opacity: 0.9 }}>
+                {currentFaction.summary}
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                {/* 보너스 표시 (왼쪽 2개) */}
+                <div style={{
+                  flex: 1,
+                  fontSize: "11px",
+                  padding: "8px",
+                  borderRadius: "12px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  gap: "2px"
+                }}>
+                  <div style={{ color: "#a8ff7e" }}>EXP +{currentFaction.expBonus}%</div>
+                  <div style={{ color: "#ffd700" }}>Coin +{currentFaction.coinBonus}%</div>
+                </div>
+
+                {/* 시작 버튼 (오른쪽 1개, 크게) */}
+                <button
+                  onClick={() => {
+                    if (!canStart) return;
+                    onSelectFaction(currentFaction.name as any);
+                    onStart();
+                  }}
+                  disabled={!canStart}
+                  style={{
+                    flex: 1.5,
+                    padding: "12px 0",
+                    borderRadius: "14px",
+                    background: canStart ? "linear-gradient(135deg, #f3c969, #d4a23c)" : "rgba(255,255,255,0.1)",
+                    border: "none",
+                    color: canStart ? "#2b1d00" : "#666",
+                    fontSize: "16px",
+                    fontWeight: 900,
+                    cursor: canStart ? "pointer" : "not-allowed",
+                    boxShadow: canStart ? "0 4px 15px rgba(212, 162, 60, 0.4)" : "none",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {canStart ? "여정 시작하기" : "존함을 알려주세요"}
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* 좌우 조절 버튼 */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-          }}
-        >
-          <button
-            onClick={() => setCurrentIndex((prev) => (prev === 0 ? FACTIONS.length - 1 : prev - 1))}
-            style={{
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.1)",
-              color: "white",
-              padding: "12px",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            ◀ 이전 문파
-          </button>
-
-          <button
-            onClick={() => setCurrentIndex((prev) => (prev === FACTIONS.length - 1 ? 0 : prev + 1))}
-            style={{
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.1)",
-              color: "white",
-              padding: "12px",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            다음 문파 ▶
-          </button>
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* 최종 시작 버튼 */}
-      <button
-        onClick={onStart}
-        disabled={!canStart}
-        style={{
-          ...goldButtonStyle,
-          width: "100%",
-          marginTop: 10,
-          opacity: canStart ? 1 : 0.3,
-          filter: canStart ? "none" : "grayscale(100%)",
-          cursor: canStart ? "pointer" : "not-allowed",
-        }}
-      >
-        {canStart ? `${hero.name}님, 여정을 시작합니다` : "정보를 모두 입력해주세요"}
-      </button>
-    </section>
+      {/* 하단 인디케이터 */}
+      <div style={{
+        position: "absolute",
+        bottom: "30px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        gap: "10px",
+        zIndex: 10
+      }}>
+        {FACTIONS.map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: i === currentIndex ? "24px" : "8px",
+              height: "8px",
+              borderRadius: "4px",
+              background: i === currentIndex ? "#f3c969" : "rgba(255,255,255,0.2)",
+              transition: "all 0.3s ease"
+            }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

@@ -20,6 +20,7 @@ import TowerPanel from "./TowerPanel";
 import GiruPanel from "./GiruPanel";
 import GamblingPanel from "./GamblingPanel";
 import DawnSettlement from "./DawnSettlement";
+import GameIntroPanel from "./GameIntroPanel";
 
 export default function GameShell() {
   const activeTab = useGameStore((s: any) => s.game.activeTab || "training");
@@ -231,10 +232,14 @@ export default function GameShell() {
         <AutoTrainingManager />
 
         {!faction ? (
-          <FactionSelectPanel
-            faction={null}
-            factionLocked={false}
-            onSelect={handleSetFaction}
+          <GameIntroPanel
+            hero={useGameStore((s: any) => s.game.hero)}
+            faction={useGameStore((s: any) => s.game.faction)}
+            onChangeHero={(next) => useGameStore.setState((s: any) => ({ game: { ...s.game, hero: next } }))}
+            onSelectFaction={handleSetFaction}
+            onStart={() => {
+              // 시작 버튼 클릭 시의 추가 처리 (현재는 팩션 세팅만으로 충분하지만 추후 확장 가능)
+            }}
           />
         ) : (
           <>

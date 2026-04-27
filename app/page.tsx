@@ -29,33 +29,33 @@ export default function Home() {
   const [lastPlayed, setLastPlayed] = useState<LastPlayed | null>(null);
 
   useEffect(() => {
-  try {
-    const raw = localStorage.getItem("lastPlayed");
-    if (!raw) return;
+    try {
+      const raw = localStorage.getItem("lastPlayed");
+      if (!raw) return;
 
-    const parsed = JSON.parse(raw);
-    if (!parsed?.workId || !parsed?.episodeId || !parsed?.part) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.workId || !parsed?.episodeId || !parsed?.part) return;
 
-    setLastPlayed({
-      workId: String(parsed.workId),
-      episodeId: String(parsed.episodeId),
-      part: Number(parsed.part),
-      updatedAt: parsed.updatedAt ? Number(parsed.updatedAt) : undefined,
-    });
-  } catch {
-    // 무시
-  }
-}, []);
+      setLastPlayed({
+        workId: String(parsed.workId),
+        episodeId: String(parsed.episodeId),
+        part: Number(parsed.part),
+        updatedAt: parsed.updatedAt ? Number(parsed.updatedAt) : undefined,
+      });
+    } catch {
+      // 무시
+    }
+  }, []);
 
   // ✅ 이어듣기 링크
   const continueHref = useMemo(() => {
-  if (!lastPlayed) return "";
-  return `/episode/${lastPlayed.workId}/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
-}, [lastPlayed]);
-const lastPlayedWorkTitle = useMemo(() => {
-  if (!lastPlayed?.workId) return "";
-  return works.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
-}, [lastPlayed]);
+    if (!lastPlayed) return "";
+    return `/episode/${lastPlayed.workId}/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
+  }, [lastPlayed]);
+  const lastPlayedWorkTitle = useMemo(() => {
+    if (!lastPlayed?.workId) return "";
+    return works.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
+  }, [lastPlayed]);
   const handleAuthClick = async () => {
     if (loading) return;
 
@@ -80,7 +80,7 @@ const lastPlayedWorkTitle = useMemo(() => {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: `
   linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)),
   url("/background.jpg") center / cover no-repeat
@@ -178,48 +178,48 @@ const lastPlayedWorkTitle = useMemo(() => {
 
       {/* ✅ 홈 소개 박스: 왼쪽 정렬 + 오른쪽 무협 절경 배경 */}
       <div
-  style={{
-    maxWidth: 900,
-    margin: "0 auto 28px",
-    padding: "31px 17px",
-    borderRadius: 28,
-    background:
-      "linear-gradient(135deg, rgba(7,10,22,0.58) 0%, rgba(8,11,24,0.46) 45%, rgba(10,13,26,0.34) 100%)",
-    border: "1px solid rgba(255,215,120,0.22)",
-    boxShadow:
-      "0 0 14px rgba(255,215,120,0.18), 0 0 28px rgba(255,215,120,0.010), 0 12px 40px rgba(0,0,0,0.024)",
-    animation: "goldBreath 3.2s ease-in-out infinite",
-    backdropFilter: "blur(0px)",
-  }}
->
-  <div
-    style={{
-      marginTop: -15,
-      fontSize: 24,
-      fontWeight: 900,
-      lineHeight: 1.2,
-      color: "rgba(255,255,255,0.95)",
-    }}
-  >
-    검과 강호의 이야기를
-    <br />
-    이제 귀로 감상
-  </div>
+        style={{
+          maxWidth: 900,
+          margin: "0 auto 28px",
+          padding: "31px 17px",
+          borderRadius: 28,
+          background:
+            "linear-gradient(135deg, rgba(7,10,22,0.58) 0%, rgba(8,11,24,0.46) 45%, rgba(10,13,26,0.34) 100%)",
+          border: "1px solid rgba(255,215,120,0.22)",
+          boxShadow:
+            "0 0 14px rgba(255,215,120,0.18), 0 0 28px rgba(255,215,120,0.010), 0 12px 40px rgba(0,0,0,0.024)",
+          animation: "goldBreath 3.2s ease-in-out infinite",
+          backdropFilter: "blur(0px)",
+        }}
+      >
+        <div
+          style={{
+            marginTop: -15,
+            fontSize: 24,
+            fontWeight: 900,
+            lineHeight: 1.2,
+            color: "rgba(255,255,255,0.95)",
+          }}
+        >
+          검과 강호의 이야기를
+          <br />
+          이제 귀로 감상
+        </div>
 
-  <p
-    style={{
-      marginTop: 10,
-      maxWidth: 680,
-      fontSize: 14,
-      lineHeight: 1.5,
-      color: "rgba(255,255,255,0.78)",
-    }}
-  >
-    무림북은 창작 무협 소설과 오디오 스토리를 중심으로,
-    에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다.
-    강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
-  </p>
-</div>
+        <p
+          style={{
+            marginTop: 10,
+            maxWidth: 680,
+            fontSize: 14,
+            lineHeight: 1.5,
+            color: "rgba(255,255,255,0.78)",
+          }}
+        >
+          무림북은 창작 무협 소설과 오디오 스토리를 중심으로,
+          에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다.
+          강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
+        </p>
+      </div>
 
       {/* 이어듣기 카드 */}
       {lastPlayed && (
@@ -255,13 +255,13 @@ const lastPlayedWorkTitle = useMemo(() => {
           </div>
 
           <Link
-  href={
-    user
-      ? continueHref
-      : `/login?redirect=${encodeURIComponent(continueHref)}`
-  }
-  style={{ textDecoration: "none" }}
->
+            href={
+              user
+                ? continueHref
+                : `/login?redirect=${encodeURIComponent(continueHref)}`
+            }
+            style={{ textDecoration: "none" }}
+          >
             <div
               style={{
                 position: "relative",

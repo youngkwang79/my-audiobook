@@ -282,7 +282,7 @@ export default function MeGamePage() {
       {!game.isInitialized ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "center",
