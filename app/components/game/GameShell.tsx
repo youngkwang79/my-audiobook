@@ -35,6 +35,7 @@ export default function GameShell() {
   const timeState = useGameStore((s: any) => s.game.timeState);
   const timeRemaining = useGameStore((s: any) => s.game.timeRemaining);
   const faction = useGameStore((s: any) => s.game.faction);
+  const hero = useGameStore((s: any) => s.game.hero);
   const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
   const gamblingTokens = useGameStore((s: any) => s.game.gamblingTokens);
   const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
@@ -233,19 +234,19 @@ export default function GameShell() {
 
         {!faction ? (
           <GameIntroPanel
-  hero={useGameStore((s: any) => s.game.hero)}
-  faction={useGameStore((s: any) => s.game.faction)}
-  onChangeHero={(next) =>
-    useGameStore.setState((s: any) => ({
-      game: {
-        ...useGameStore.getState().game,
-        hero: next,
-      },
-    }))
-  }
-  onSelectFaction={handleSetFaction}
-  onStart={() => {}}
-/>
+            hero={hero}
+            faction={faction}
+            onChangeHero={(next) =>
+              useGameStore.setState((s: any) => ({
+                game: {
+                  ...useGameStore.getState().game,
+                  hero: next,
+                },
+              }))
+            }
+            onSelectFaction={handleSetFaction}
+            onStart={() => {}}
+          />
         ) : (
           <>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
