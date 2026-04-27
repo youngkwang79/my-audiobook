@@ -233,14 +233,19 @@ export default function GameShell() {
 
         {!faction ? (
           <GameIntroPanel
-            hero={useGameStore((s: any) => s.game.hero)}
-            faction={useGameStore((s: any) => s.game.faction)}
-            onChangeHero={(next) => useGameStore.setState((s: any) => ({ game: { ...s.game, hero: next } }))}
-            onSelectFaction={handleSetFaction}
-            onStart={() => {
-              // 시작 버튼 클릭 시의 추가 처리 (현재는 팩션 세팅만으로 충분하지만 추후 확장 가능)
-            }}
-          />
+  hero={useGameStore((s: any) => s.game.hero)}
+  faction={useGameStore((s: any) => s.game.faction)}
+  onChangeHero={(next) =>
+    useGameStore.setState((s: any) => ({
+      game: {
+        ...useGameStore.getState().game,
+        hero: next,
+      },
+    }))
+  }
+  onSelectFaction={handleSetFaction}
+  onStart={() => {}}
+/>
         ) : (
           <>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
