@@ -80,7 +80,7 @@ export default function TrainingPanel() {
   const dismissedStarRef = useRef<number | null>(null);
   const currentTouchGoalRef = useRef<number | null>(null);
   const lastHitTimeRef = useRef<number>(0);
-
+  const attackComboRef = useRef<number>(0);
   const realmKeys = Object.keys(REALM_SETTINGS);
   const currentRealmIndex = realmKeys.indexOf(realm);
   const currentRealmName = currentRealmIndex >= 0 ? realmKeys[currentRealmIndex] : "필부";
@@ -354,7 +354,14 @@ export default function TrainingPanel() {
     let martialSkillDamage = 0;
     let martialSkillName = "";
 
-    if (skillRoll < 0.1) {
+    attackComboRef.current += 1;
+    let triggerSkill = false;
+    if (attackComboRef.current >= 7) {
+      triggerSkill = true;
+      attackComboRef.current = 0;
+    }
+
+    if (triggerSkill) {
       if (skillWeapons.length > 0) {
         equipmentSkillProc = true;
         const bestEqSkill = skillWeapons.sort((a: any, b: any) => b.equipmentSkill!.multiplier - a.equipmentSkill!.multiplier)[0].equipmentSkill!;

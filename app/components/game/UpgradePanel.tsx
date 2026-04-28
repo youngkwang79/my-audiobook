@@ -21,7 +21,7 @@ export default function UpgradePanel() {
   const enhancementStones = useGameStore((s: any) => s.game.enhancementStones);
   const wisdom = useGameStore((s: any) => s.game.wisdom);
   const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
-  const statUpgrades = useGameStore((s: any) => s.game.statUpgrades);
+  const getStatUpgradeBonus = useGameStore((s: any) => s.getStatUpgradeBonus);
   const factionName = useGameStore((s: any) => s.game.faction);
 
   const getTotalAttack = useGameStore((s: any) => s.getTotalAttack);
@@ -87,13 +87,13 @@ export default function UpgradePanel() {
       displayName = faction.specialTraining.name;
       const type = faction.specialTraining.type;
       if (type === 'vitality') {
-        displayDesc = `${faction.specialTraining.desc} [레벨당 최대 생명력 +0.1%,\n 초당 생명력 회복 +100]`;
+        displayDesc = `${faction.specialTraining.desc} [레벨당 최대 생명력 +8%,\n 초당 생명력 회복 +10]`;
       } else if (type === 'armor') {
-        displayDesc = `${faction.specialTraining.desc} [레벨당 방어력 +0.5%]`;
+        displayDesc = `${faction.specialTraining.desc} [레벨당 방어력 +8%]`;
       } else if (type === 'aura') {
         displayDesc = `${faction.specialTraining.desc} [레벨당 공격력 +0.2%, 치명타 피해 +1%]`;
       } else if (type === 'dodge') {
-        displayDesc = `${faction.specialTraining.desc} [레벨당 회피율 +0.2%]`;
+        displayDesc = `${faction.specialTraining.desc} [레벨당 회피율 +0.3%]`;
       } else {
         displayDesc = faction.specialTraining.desc;
       }
@@ -117,7 +117,7 @@ export default function UpgradePanel() {
       ...defaultData,
       displayName,
       level: (upgradeLevels as any)[id] || 0,
-      currentValue: (statUpgrades as any)[id] || 0,
+      currentValue: getStatUpgradeBonus(id),
       desc: displayDesc
     };
   });

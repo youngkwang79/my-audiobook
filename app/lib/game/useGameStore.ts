@@ -272,7 +272,7 @@ function generateEnemy(level: number) {
 
 
 
-function getDummyStats(realm: string, star: number) {
+function getDummyStats(realm: string, star: number, totalAtk: number = 10) {
   const realms = Object.keys(REALM_SETTINGS);
   const currentRealmIndex = realms.indexOf(realm);
 
@@ -297,9 +297,17 @@ function getDummyStats(realm: string, star: number) {
     evaBase = 12 + level * 0.5;
   }
 
-  const hp = Math.floor(baseHp * Math.pow(1.5, star - 1));
+  let hp = Math.floor(baseHp * Math.pow(1.5, star - 1));
   const def = Math.floor(defBase * (1 + (star - 1) * 0.15));
   const eva = Math.min(25, evaBase + (star - 1) * 0.2); // 최대 25% 제한
+
+  // 유저의 실제 전투력을 반영한 동적 스케일링 (한방컷 방지)
+  // 유저 공격력이 상승하면 악적의 최소 HP도 비례하여 상승 (최소 6~10타 버티도록)
+  const expectedHitSurvive = 8;
+  const minimumHp = totalAtk * expectedHitSurvive;
+  if (hp < minimumHp) {
+      hp = Math.floor(minimumHp);
+  }
 
   return { hp, def, eva, atk: Math.floor(atkBase * (1 + star * 0.2)) };
 }
@@ -423,6 +431,7 @@ interface GameState {
   completeQuest: (questId: string) => void;
   buyGiruInformation: (type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE") => void;
   triggerGodMode: () => void;
+  getStatUpgradeBonus: (k: string) => number;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -549,7 +558,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     const gearAtk = eq.reduce((s, i) => s + (i.attackBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     const realmMult = REALM_SETTINGS[game.realm]?.bonus || 1;
-    const upgradeAtk = (game.upgradeLevels?.atk || 0) * 250;
+    
+    // [재설계] 단계별 공격력 성장 공식 적용
+    let upgradeAtk = get().getStatUpgradeBonus("atk");
+
     const mWeapon = game.ownedWeapons.find(w => w.id === (game.equippedGear?.mainWeapon || game.equippedWeaponId));
     const innBonus = get().getInnBonus();
     // 아이템 공격력% 보너스 (상한 200%)
@@ -606,7 +618,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   getStableAttack: () => {
     const { game } = get(); const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
-    const gAtk = eq.reduce((s, i) => s + (i.attackBonus || 0), 0); const uAtk = (game.upgradeLevels?.atk || 0) * 250;
+    const gAtk = eq.reduce((s, i) => s + (i.attackBonus || 0), 0); const uAtk = get().getStatUpgradeBonus("atk");
     return Math.floor((game.baseAttack + gAtk + uAtk) * (REALM_SETTINGS[game.realm]?.bonus || 1));
   },
   getTotalCritRate: () => {
@@ -629,7 +641,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     const nightBuffs = get().getNightBuffs();
-    let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.critRate || 0) * 0.1 + get().getOptionSum("crit_rate") + skillBonus + setCrit + nightBuffs.crit;
+    let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critRate") + get().getOptionSum("crit_rate") + skillBonus + setCrit + nightBuffs.crit;
 
     // 옵션 중복 패널티 적용
     const critOptionCount = get().getOptionCount("crit_rate");
@@ -655,7 +667,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get();
     let moveMult = 1;
     if (game.movementBuff && game.movementBuff.data.critDmgMult) moveMult = game.movementBuff.data.critDmgMult;
-    const base = 150 + game.ownedWeapons.filter((w: any) => Object.values(game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.critDmg || 0) + (get().getInnBonus().critDmg) + get().getOptionSum("crit_dmg");
+    const base = 150 + game.ownedWeapons.filter((w: any) => Object.values(game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critDmg") + (get().getInnBonus().critDmg) + get().getOptionSum("crit_dmg");
 
     let bonus = 0;
     if (game.movementBuff && game.movementBuff.data.critDmg) bonus = game.movementBuff.data.critDmg;
@@ -691,6 +703,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const maxHp = get().getTotalHp();
     const baseRegen = Math.max(1, Math.floor(maxHp * 0.01));
 
+    // [재설계] 단계당 +10 고정 회복 추가
+    const upgradeRegen = get().getStatUpgradeBonus("hpRec");
+
     let specBonus = 0;
     const faction = FACTIONS.find(f => f.name === game.faction);
     if (faction?.specialTraining?.type === 'vitality') {
@@ -698,12 +713,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       specBonus = specLevel * 100; // +100 per level
     }
 
-    return baseRegen + specBonus;
+    return baseRegen + upgradeRegen + specBonus;
   },
   getTotalMpRecovery: () => {
     const { game } = get();
     const maxMp = get().getTotalMp();
-    return Math.max(1, Math.floor(maxMp * 0.01));
+    return Math.max(1, Math.floor(maxMp * 0.01)) + get().getStatUpgradeBonus("mpRec");
   },
   getTotalDefense: () => {
     const { game } = get(); const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
@@ -719,7 +734,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const faction = FACTIONS.find(f => f.name === game.faction);
     const optionDefPct = Math.min(180, get().getOptionSum("def_pct"));
 
-    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.def || 0) * 250) * (1 + (faction?.bonusStats?.def || 0) / 100) * moveMult * setDefMult * (1 + optionDefPct / 100);
+    // [재설계] 방어력 성장 공식
+    const defUpgradeBonus = get().getStatUpgradeBonus("def");
+
+    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + defUpgradeBonus) * (1 + (faction?.bonusStats?.def || 0) / 100) * moveMult * setDefMult * (1 + optionDefPct / 100);
 
     // Special Training: Armor Type (Def Bonus)
     if (faction?.specialTraining?.type === 'armor') {
@@ -740,7 +758,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (syn && count >= 5 && syn[5]?.allStat) setHpMult *= (1 + syn[5].allStat);
     });
 
-    let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.hpRec || 0) * 2500 + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0) / 100) * setHpMult;
+    // [재설계] HP 성장 공식
+    const hpUpgradeBonus = get().getStatUpgradeBonus("hpRec");
+
+    let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + hpUpgradeBonus + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0) / 100) * setHpMult;
 
     const faction = FACTIONS.find(f => f.name === game.faction);
     const optionHpPct = Math.min(220, get().getOptionSum("hp_pct"));
@@ -755,14 +776,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   getTotalEvasion: () => {
     const { game } = get();
     const faction = FACTIONS.find(f => f.name === game.faction);
-    let evaBonusPerLevel = 0.1;
-    if (faction?.specialTraining?.type === 'dodge') {
-      evaBonusPerLevel = 0.2; // 2x for dodge type
-    } else if (faction?.specialTraining) {
-      evaBonusPerLevel = 0; // Other special types don't give evasion
-    }
-
-    let eva = (game.eva || 0) + (game.upgradeLevels?.eva || 0) * evaBonusPerLevel + get().getOptionSum("eva");
+    const evaBonusPerLevel = 0.3; // 0.3% per level
+    let eva = (game.eva || 0) + get().getStatUpgradeBonus("eva") + get().getOptionSum("eva");
 
     const setCounts = get().getSetCounts();
     Object.entries(setCounts).forEach(([setName, count]) => {
@@ -795,7 +810,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return Math.min(cap, eva);
   }, getTotalLuck: () => {
     const { game } = get();
-    let luck = (game.upgradeLevels?.luck || 0);
+    let luck = get().getStatUpgradeBonus("luck");
     if (game.oilBuffs?.oil_luck_3 > 0) luck *= 3;
     return luck;
   }, getTotalSpeed: () => {
@@ -833,7 +848,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     const optionMpPct = Math.min(200, get().getOptionSum("mp_pct"));
-    let baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + (game.upgradeLevels?.mpRec || 0) * 1000 + get().getOptionSum("mp")) * setMpMult;
+    let baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("mpRec") + get().getOptionSum("mp")) * setMpMult;
     return Math.floor(baseTotal * (1 + optionMpPct / 100));
   },
   getInnBonus: () => {
@@ -883,7 +898,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       let lastR = s.game.lastReward;
       const nTouches = s.game.touches + (nightTouchMult + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0)) * amount;
 
-      const stats = getDummyStats(s.game.realm, s.game.star);
+      const stats = getDummyStats(s.game.realm, s.game.star, totalAtk);
 
       let pIE = s.game.pendingInnEntry;
       let iEV = s.game.innEventVersion || 0;
@@ -906,6 +921,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           const skillBonus = (s.game.learnedSkills || []).length > 0 ? 1.2 : 1.0;
           const baseDmg = isHitDodged ? 0 : Math.max(1, totalAtk - stats.def);
           dmg = baseDmg * avgCritMult * skillBonus;
+        }
+
+        // 피해 감쇠 시스템 (한방컷 방지 및 타격감 유지)
+        const softCap = stats.hp * 0.15; // 한 타격당 최대 체력의 15%를 기준으로 감쇠
+        if (dmg > softCap) {
+           dmg = softCap + (dmg - softCap) * 0.1;
         }
 
         totalDamageDealt += dmg;
@@ -1282,27 +1303,65 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   upgradeStat: (k: keyof GameSaveData["statUpgrades"]) => { const s = get(); s.upgradeStatMulti(k, 1, 'gold'); },
-  getUpgradeCost: (k: keyof GameSaveData["statUpgrades"]) => { const cL = (get().game.upgradeLevels as any)[k] || 0; return (cL + 1) * (STAT_UPGRADE_BASES[k]?.gold || 1500); },
-  getReputationCost: (k: keyof GameSaveData["statUpgrades"]) => { const cL = (get().game.upgradeLevels as any)[k] || 0; return (cL + 1) * (STAT_UPGRADE_BASES[k]?.rep || 400); },
+  getUpgradeCost: (k: keyof GameSaveData["statUpgrades"]) => {
+    const cL = (get().game.upgradeLevels as any)[k] || 0;
+    const base = STAT_UPGRADE_BASES[k]?.gold || 1500;
+    return Math.floor(base * Math.pow(1.28, cL));
+  },
+  getReputationCost: (k: keyof GameSaveData["statUpgrades"]) => {
+    const cL = (get().game.upgradeLevels as any)[k] || 0;
+    const base = STAT_UPGRADE_BASES[k]?.rep || 400;
+    return Math.floor(base * Math.pow(1.28, cL));
+  },
   spendPoints: (k: keyof GameSaveData["statUpgrades"]) => { },
   getMultiUpgradeCost: (k: string, c: number, m: string) => {
     const cL = (get().game.upgradeLevels as any)[k] || 0;
     const base = m === 'gold' ? (STAT_UPGRADE_BASES[k]?.gold || 1500) : (STAT_UPGRADE_BASES[k]?.rep || 400);
-    return Math.floor((c * ((cL + 1) * base + (cL + c) * base)) / 2);
+    // 등비수열의 합 공식: a * (r^n - 1) / (r - 1)
+    const r = 1.28;
+    const a = base * Math.pow(r, cL);
+    return Math.floor(a * (Math.pow(r, c) - 1) / (r - 1));
   },
   upgradeStatMulti: (k: string, c: number, m: string) => {
-    const s = get(); const cL = (s.game.upgradeLevels as any)[k] || 0;
-    const base = m === 'gold' ? (STAT_UPGRADE_BASES[k]?.gold || 1500) : (STAT_UPGRADE_BASES[k]?.rep || 400);
-    const cost = Math.floor((c * ((cL + 1) * base + (cL + c) * base)) / 2);
+    const s = get();
+    const cost = s.getMultiUpgradeCost(k, c, m as any);
     if ((m === 'gold' ? s.game.coins : s.game.reputation) < cost) return;
     set((s: any) => {
-      const n = { ...s.game }; if (m === 'gold') n.coins -= cost; else n.reputation -= cost;
+      const n = { ...s.game };
+      if (m === 'gold') n.coins -= cost; else n.reputation -= cost;
       n.upgradeLevels = { ...n.upgradeLevels, [k]: (n.upgradeLevels[k] || 0) + c };
-      const inc = STAT_INCREMENTS[k] || 250;
-      n.statUpgrades = { ...n.statUpgrades, [k]: (n.statUpgrades[k] || 0) + inc * c };
       return { game: n };
     });
     get().triggerSave(true);
+  },
+
+  getStatUpgradeBonus: (k: string) => {
+    const { game } = get();
+    const level = (game.upgradeLevels as any)[k] || 0;
+    if (level <= 0) return 0;
+
+    if (k === 'atk') {
+      let tempAtk = game.baseAttack;
+      for (let i = 1; i <= level; i++) {
+        if (i <= 10) tempAtk += 2;
+        else if (i <= 30) tempAtk = tempAtk * 1.04 + 2;
+        else tempAtk *= 1.06;
+      }
+      return tempAtk - game.baseAttack;
+    }
+    if (k === 'hpRec') {
+      return game.maxHp * (Math.pow(1.08, level) - 1);
+    }
+    if (k === 'def') {
+      return 50 * (Math.pow(1.08, level) - 1);
+    }
+    if (k === 'mpRec') return level * 100;
+    if (k === 'critRate') return level * 0.3;
+    if (k === 'critDmg') return level * 3;
+    if (k === 'eva') return level * 0.3;
+    
+    const inc = STAT_INCREMENTS[k] || 0;
+    return level * inc;
   },
 
   breakthrough: () => {
@@ -1893,8 +1952,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       // 2. 기본 대미지 및 방어력 적용 (사용자 기획 ✅ 3)
-      const defenseMultiplier = 100 / (100 + rivalDef);
-      let baseDamage = Math.floor(playerAtk * defenseMultiplier);
+      // [재설계] 방어력 공식: 피해 감소 = 방어력 / (방어력 + 1000)
+      const damageReduction = rivalDef / (rivalDef + 1000);
+      let baseDamage = Math.floor(playerAtk * (1 - damageReduction));
 
       // 3. 치명타 판정 (사용자 기획 ✅ 4)
       let isCrit = false;
@@ -1955,6 +2015,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       totalDamage += bonusFlatDamage;
       totalDamage *= damageMultiplier;
       totalDamage = Math.max(totalDamage, playerAtk * 0.05);
+
+      // 보스 피해 감쇠 (한방컷 방지 및 타격감 유지)
+      const bossMaxHp = masterDuel.rivalMaxHp || rivalHp;
+      const bossSoftCap = bossMaxHp * 0.15; // 1타격당 보스 체력의 15%까지만 정상 데미지
+      if (totalDamage > bossSoftCap) {
+        totalDamage = bossSoftCap + (totalDamage - bossSoftCap) * 0.1;
+      }
 
       const finalOilRes = oilRes || get().triggerOilEffects();
       const nextMD = { ...masterDuel };
@@ -2283,8 +2350,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0) return { success: false, message: "천운의 부적이 부족합니다." };
 
     const successRates: Record<number, number> = {
-      0: 100, 1: 100, 2: 100, 3: 90, 4: 80, 5: 70, 6: 60, 7: 50, 8: 40, 9: 30,
-      10: 20, 11: 10, 12: 9, 13: 8, 14: 7, 15: 6, 16: 5, 17: 4, 18: 3, 19: 1
+      0: 100, 1: 100, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100,
+      10: 100, 
+      11: 45, 12: 45, 13: 45, 14: 45, 15: 45,
+      16: 25, 17: 25, 18: 25, 19: 25, 20: 25,
+      21: 10, 22: 10, 23: 10, 24: 10, 25: 10,
+      26: 3, 27: 3, 28: 3, 29: 3, 30: 3,
     };
     const baseRate = successRates[curLv] ?? 1;
     let totalRate = baseRate;
@@ -2303,7 +2374,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           let nextLv = curLv;
           if (success) {
             nextLv = curLv + 1;
-          } else if (curLv >= 11 && !useHeavenlyTalisman) {
+          } else if (curLv >= 21 && !useHeavenlyTalisman) {
             nextLv = curLv - 1;
           }
           return { ...w, enhancement: nextLv };
