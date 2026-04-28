@@ -6,6 +6,8 @@ import { useGameStore, REALM_SETTINGS, getInnStageConfig } from "@/app/lib/game/
 import { FACTIONS } from "@/app/lib/game/factions";
 import YabawiGame from "./YabawiGame";
 import { BreathGame } from "./panels/BreathGame";
+import QiCondenseGame from "./panels/QiCondenseGame";
+import { PuzzleGame } from "./panels/PuzzleGame";
 
 type Grade = "PERFECT" | "GREAT" | "GOOD" | "MISS";
 type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse" | "yabawi";
@@ -265,15 +267,11 @@ export default function InnPanel({
   const mission = timingMission;
 
   const getTargetScore = (s: number) => {
-    const scores = [
-      0, 1500, 5000, 10000, 16000, 20000, 25000, 30000, 36000, 43000, 50000,
-      58000, 67000, 77000, 88000, 100000, 113000, 127000, 142000, 158000, 200000
-    ];
-
-    const baseScore = s <= 20 ? scores[s] : 200000 + (s - 20) * 50000;
+    // Exponential growth for wider gaps at higher stages
+    // Stage 1: 1500, Stage 10: ~57,000, Stage 20: ~3.3M
+    const baseScore = Math.floor(1500 * Math.pow(1.5, s - 1));
 
     const atk = typeof getTotalAttack === "function" ? getTotalAttack() : 100;
-    // 배율 영향도를 2 -> 1.5로 하향하여 목표 점수를 현실적으로 조정
     const attackScale = Math.max(1, Math.log10(Math.max(1, atk / 100)) * 1.5);
 
     return Math.floor(baseScore * attackScale);
@@ -303,7 +301,6 @@ export default function InnPanel({
   const [transitionCountdown, setTransitionCountdown] = useState(3);
   const [victoryRewards, setVictoryRewards] = useState<{ gold: number, rep: number, stones: number, item: string | null, wisdom: number, repPenalty: number, isPerfect: boolean }>({ gold: 0, rep: 0, stones: 0, item: null, wisdom: 0, repPenalty: 0, isPerfect: true });
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [pulseTargets, setPulseTargets] = useState<{ id: number; x: number; y: number; progress: number }[]>([]);
   const [failReason, setFailReason] = useState("");
   const [localFailCount, setLocalFailCount] = useState(0);
   const [showTierList, setShowTierList] = useState(false);
@@ -359,50 +356,12 @@ export default function InnPanel({
   const [combo, setCombo] = useState(0);
   const [dodgeTimeLeft, setDodgeTimeLeft] = useState(30.0);
 
-  // --- Naegong Puzzle (Explosion) States ---
-  const [puzzleGrid, setPuzzleGrid] = useState<any[][]>([]);
-  const [puzzleDantian, setPuzzleDantian] = useState(0);
-  const [puzzleSelected, setPuzzleSelected] = useState<[number, number] | null>(null);
-  const [puzzleTimeLeft, setPuzzleTimeLeft] = useState(45.0);
-  const [puzzleIsProcessing, setPuzzleIsProcessing] = useState(false);
-  const [puzzleCombo, setPuzzleCombo] = useState(0);
-  const [puzzleSwipeStart, setPuzzleSwipeStart] = useState<{ r: number, c: number, x: number, y: number } | null>(null);
-  const [puzzleEffects, setPuzzleEffects] = useState<{ id: number; r: number; c: number; color: string }[]>([]);
-  const [pulseLives, setPulseLives] = useState(7);
-  const pulseLivesRef = useRef(7);
-  const pulseIdRef = useRef(0);
 
   // --- REFS for Stale Closure Prevention ---
   const polesRef = useRef<number[]>([]);
-  const puzzleGridRef = useRef<any[][]>([]);
-  const puzzleDantianRef = useRef(0);
-  const puzzleTimeLeftRef = useRef(45.0);
   const touchStartRef = useRef({ x: 0, y: 0 });
-  const pulseTargetsRef = useRef<{ id: number; x: number; y: number; progress: number }[]>([]);
   const currentMiniGameRef = useRef<MiniGameType>("breath");
   const roundRef = useRef(1);
-
-  const initPuzzleGrid = useCallback(() => {
-    const rows = PUZZLE_ROWS;
-    const cols = PUZZLE_COLS;
-    const types = ["fire", "water", "wind", "thunder"];
-    const newGrid: any[][] = [];
-    for (let r = 0; r < rows; r++) {
-      const row: any[] = [];
-      for (let c = 0; c < cols; c++) {
-        let t;
-        do {
-          t = types[Math.floor(Math.random() * types.length)];
-        } while (
-          (r >= 2 && newGrid[r - 1][c]?.type === t && newGrid[r - 2][c]?.type === t) ||
-          (c >= 2 && row[c - 1]?.type === t && row[c - 2]?.type === t)
-        );
-        row.push({ id: Math.random(), type: t });
-      }
-      newGrid.push(row);
-    }
-    return newGrid;
-  }, []);
 
   const resetGameState = useCallback((type: MiniGameType) => {
     setCurrentMiniGame(type);
@@ -424,31 +383,11 @@ export default function InnPanel({
       setCombo(0);
       comboRef.current = 0;
     }
-
-    const initialGrid = initPuzzleGrid();
-    setPuzzleGrid(initialGrid);
-    puzzleGridRef.current = initialGrid;
-    setPuzzleDantian(10);
-    puzzleDantianRef.current = 10;
-    setPuzzleSelected(null);
-    setPuzzleTimeLeft(30.0);
-    puzzleTimeLeftRef.current = 30.0;
-    setPuzzleCombo(0);
-    setPuzzleIsProcessing(false);
-    totalNotesSpawnedRef.current = 0;
-
     setIsFailPopup(false);
-    setCurrentProgress(0);
-    currentProgressRef.current = 0;
-    setPulseTargets([]);
-    pulseTargetsRef.current = [];
-    setPulseLives(7);
-    pulseLivesRef.current = 7;
-  }, [currentStage, initPuzzleGrid]);
+  }, [currentStage]);
   const successHitsRef = useRef(0);
   const currentProgressRef = useRef(0);
   const dodgeTimeLeftRef = useRef(30.0);
-  const puzzleTimeLeftRefVal = useRef(45.0);
   const comboRef = useRef(0);
   const dodgeHpRef = useRef(3);
   const playerScoreRef = useRef(0);
@@ -513,9 +452,6 @@ export default function InnPanel({
     // 게임마다 독립적으로 주인공 이미지를 배치할 수 있도록 설정
     if (currentMiniGame === "puzzle") {
       return "/images/char_puzzle_ready.png";
-    }
-    if (currentMiniGame === "dodge") {
-      return "/images/char_dodge_ready.png";
     }
 
     const factionObj = FACTIONS.find(f => f.name === faction);
@@ -629,12 +565,10 @@ export default function InnPanel({
     setIsTransitioning(false);
     setShowTutorial(false);
     setIsHitFlash(false);
-    
+
     // Clear all states immediately
     polesRef.current = [];
     setPoles([]);
-    setPulseTargets([]);
-    pulseTargetsRef.current = [];
 
     try {
       if (typeof document !== "undefined" && document.fullscreenElement && document.exitFullscreen) {
@@ -785,15 +719,17 @@ export default function InnPanel({
     }
   };
 
-  const handleRoundSuccess = (grade: Grade, scoreGain: number, msg: string) => {
+  const handleRoundSuccess = (grade: Grade, scoreGain: number, msg: string, forceStageClear = false) => {
     const nextScore = playerScoreRef.current + scoreGain;
     playerScoreRef.current = nextScore;
-    addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
-    playHitEffect();
+    if (scoreGain > 0) {
+      addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
+      playHitEffect();
+    }
 
     const targetScore = getTargetScore(currentStage);
 
-    if (nextScore >= targetScore) {
+    if (nextScore >= targetScore || forceStageClear) {
       // Stage Clear! Moving to next stage
       const nextStage = currentStage + 1;
       setCurrentStage(nextStage);
@@ -859,7 +795,7 @@ export default function InnPanel({
 
     // Mark as handled to remove the overlay from TrainingPanel
     markInnEntryHandled();
-    
+
     // Enter Fullscreen
     enterFullScreen();
 
@@ -924,10 +860,6 @@ export default function InnPanel({
 
       if (currentMiniGameRef.current === "dodge") {
         updateDodge(dt);
-      } else if (currentMiniGameRef.current === "puzzle") {
-        updatePuzzle(dt);
-      } else if (currentMiniGameRef.current === "pulse") {
-        updatePulse(dt);
       }
 
       gameLoopRef.current = requestAnimationFrame(loop);
@@ -994,8 +926,8 @@ export default function InnPanel({
 
     let timeScale = 1 + (currentStage - 1) * 0.15;
     if (currentStage >= 16) {
-       // Extreme speed mode for Stage 16+
-       timeScale = 1.8 + (currentStage - 16) * 0.35;
+      // Extreme speed mode for Stage 16+
+      timeScale = 1.8 + (currentStage - 16) * 0.35;
     }
 
     const nextTime = Math.max(0, dodgeTimeLeftRef.current - dt * timeScale);
@@ -1025,7 +957,7 @@ export default function InnPanel({
       const nextScore = playerScoreRef.current + gain;
       playerScoreRef.current = nextScore;
       setPlayerScore(nextScore);
-      
+
       const nextCombo = comboRef.current + 1;
       comboRef.current = nextCombo;
       setCombo(nextCombo);
@@ -1033,9 +965,9 @@ export default function InnPanel({
 
       if (nextCombo > 0 && (nextCombo % 10 === 0 || nextCombo === 100 || nextCombo === 200)) {
         let bonusPercent = 0;
-        if (nextCombo === 200) bonusPercent = 2.0;
-        else if (nextCombo >= 100) bonusPercent = 1.0;
-        else if (nextCombo % 10 === 0) bonusPercent = nextCombo / 100;
+        if (nextCombo === 200) bonusPercent = 0.2; // 20% instead of 200%
+        else if (nextCombo >= 100) bonusPercent = 0.1; // 10% instead of 100%
+        else if (nextCombo % 10 === 0) bonusPercent = nextCombo / 1000; // 1% per 10 combo instead of 10%
 
         if (bonusPercent > 0) {
           const bonusScore = Math.floor(playerScoreRef.current * bonusPercent);
@@ -1055,27 +987,27 @@ export default function InnPanel({
         setDodgeTimeLeft(dodgeTimeLeftRef.current);
         addFloatText(`+${bonus}s`, "#e0f2fe", 50, 45); // Misty light blue
       }
-      
+
       const nPoles = getNumPoles(currentStage);
       const nextPoles = [...polesRef.current.slice(1), Math.floor(Math.random() * nPoles)];
       polesRef.current = nextPoles;
       setPoles(nextPoles);
-      
+
       playHitEffect();
       // 'SUCCESS' text removed
-      
+
       // Real-time Success Check
       const targetScore = getTargetScore(currentStage);
       if (nextScore >= targetScore) {
         handleRoundSuccess("PERFECT", 200, "보법 수련 스테이지 돌파!");
       }
     } else {
-      // Miss Step - Harsher penalty from Stage 3 onwards
-      const penaltyHp = currentStage >= 3 ? 2 : 1;
+      // Miss Step - Penalty remains 1 heart as requested
+      const penaltyHp = 1;
       const nextHp = Math.max(0, dodgeHpRef.current - penaltyHp);
       dodgeHpRef.current = nextHp;
       setDodgeHp(nextHp);
-      
+
       comboRef.current = 0;
       setCombo(0);
       triggerShake();
@@ -1087,512 +1019,7 @@ export default function InnPanel({
     }
   };
 
-  // 3. Naegong Puzzle Logic
-  const updatePuzzle = (dt: number) => {
-    if (!isPlaying || currentMiniGameRef.current !== "puzzle" || puzzleIsProcessing) return;
-
-    const combat = mission.combatState;
-    if (combat) {
-      updateInnCombat(dt, playerScoreRef.current);
-
-      const nextTime = Math.max(0, puzzleTimeLeftRef.current - dt);
-      puzzleTimeLeftRef.current = nextTime;
-      setPuzzleTimeLeft(nextTime);
-
-      // Second tick logic for counter tracking
-      lastSecondTickRef.current = (lastSecondTickRef.current || 0) + dt;
-      if (lastSecondTickRef.current >= 1.0) {
-        const scoreGained = playerScoreRef.current - (lastScoreAtTickRef.current || 0);
-        handleInnSecondTick(scoreGained);
-        lastSecondTickRef.current -= 1.0;
-        lastScoreAtTickRef.current = playerScoreRef.current;
-      }
-
-      if (combat.playerHp <= 0) {
-        finishMission(false, "MISS", playerScoreRef.current, "기력이 다하여 무뢰배에게 패배했습니다...");
-        return;
-      }
-      // Force clear removed as requested
-
-      if (nextTime <= 0) {
-        const targetScore = getTargetScore(currentStage);
-        if (playerScoreRef.current >= targetScore) {
-          handleRoundSuccess("PERFECT", 240, `Stage ${currentStage} 성공!`);
-        } else {
-          finishMission(false, "MISS", playerScoreRef.current, `시간 내에 무뢰배를 제압하지 못했습니다.`);
-        }
-        return;
-      }
-    } else {
-      // Legacy fallback
-      const nextTime = Math.max(0, puzzleTimeLeftRef.current - dt);
-      puzzleTimeLeftRef.current = nextTime;
-      setPuzzleTimeLeft(nextTime);
-
-      const nextDantian = Math.max(0, puzzleDantianRef.current - dt * 2.5);
-      puzzleDantianRef.current = nextDantian;
-      setPuzzleDantian(nextDantian);
-
-      if (nextDantian >= 100) {
-        finishMission(false, "MISS", playerScoreRef.current, "단전이 폭주했습니다!");
-        return;
-      }
-
-      if (nextTime <= 0) {
-        const targetScore = getTargetScore(currentStage);
-        if (playerScoreRef.current >= targetScore) {
-          handleRoundSuccess("PERFECT", 240, `Stage ${currentStage} 성공!`);
-        } else {
-          finishMission(false, "MISS", playerScoreRef.current, `기맥 정렬이 부족합니다.`);
-        }
-      }
-    }
-  };
-
-  const findMatches = (grid: any[][]) => {
-    const horizontalItems: Map<string, Set<string>> = new Map();
-    const verticalItems: Map<string, Set<string>> = new Map();
-
-    // Horizontal Scanning
-    for (let r = 0; r < PUZZLE_ROWS; r++) {
-      let count = 1;
-      let startC = 0;
-      for (let c = 1; c <= PUZZLE_COLS; c++) {
-        if (c < PUZZLE_COLS && grid[r][c].type && grid[r][c].type === grid[r][c - 1].type) {
-          count++;
-        } else {
-          if (count >= 3) {
-            const matchSet = new Set<string>();
-            for (let i = startC; i < c; i++) matchSet.add(`${r},${i}`);
-            horizontalItems.set(`${r},${startC}-${count}`, matchSet);
-          }
-          startC = c;
-          count = 1;
-        }
-      }
-    }
-
-    // Vertical Scanning
-    for (let c = 0; c < PUZZLE_COLS; c++) {
-      let count = 1;
-      let startR = 0;
-      for (let r = 1; r <= PUZZLE_ROWS; r++) {
-        if (r < PUZZLE_ROWS && grid[r][c].type && grid[r][c].type === grid[r - 1][c].type) {
-          count++;
-        } else {
-          if (count >= 3) {
-            const matchSet = new Set<string>();
-            for (let i = startR; i < r; i++) matchSet.add(`${i},${c}`);
-            verticalItems.set(`${startR}-${count},${c}`, matchSet);
-          }
-          startR = r;
-          count = 1;
-        }
-      }
-    }
-
-    const allMatches: { coords: [number, number][], type: string, direction: 'h' | 'v' | 'both' }[] = [];
-
-    // Convert to structured match data
-    horizontalItems.forEach((set, key) => {
-      const [r, range] = key.split(',');
-      const [start, len] = range.split('-').map(Number);
-      const coords = Array.from(set).map(s => s.split(',').map(Number) as [number, number]);
-      allMatches.push({ coords, type: grid[Number(r)][start].type, direction: 'h' });
-    });
-    verticalItems.forEach((set, key) => {
-      const [range, c] = key.split(',');
-      const [start, len] = range.split('-').map(Number);
-      const coords = Array.from(set).map(s => s.split(',').map(Number) as [number, number]);
-      allMatches.push({ coords, type: grid[start][Number(c)].type, direction: 'v' });
-    });
-
-    return allMatches;
-  };
-
-  const resolveMatches = async () => {
-    setPuzzleIsProcessing(true);
-    let totalScoreGain = 0;
-    let currentCombo = 0;
-
-    let hasMatches = true;
-    while (hasMatches && isPlayingRef.current) {
-      const rawGroups = findMatches(puzzleGridRef.current);
-      if (rawGroups.length === 0) {
-        hasMatches = false;
-        break;
-      }
-
-      currentCombo++;
-      setPuzzleCombo(currentCombo);
-      incrementCombo();
-      playPopSFX();
-
-      if (currentCombo > 0 && (currentCombo % 10 === 0 || currentCombo === 100 || currentCombo === 200)) {
-        let bonusPercent = 0;
-        if (currentCombo === 200) bonusPercent = 2.0;
-        else if (currentCombo >= 100) bonusPercent = 1.0;
-        else if (currentCombo % 10 === 0) bonusPercent = currentCombo / 100;
-
-        if (bonusPercent > 0) {
-          const bonusScore = Math.floor(playerScoreRef.current * bonusPercent);
-          if (bonusScore > 0) {
-            playerScoreRef.current += bonusScore;
-            setPlayerScore(Math.floor(playerScoreRef.current));
-            addFloatText(`연쇄 보너스! +${bonusScore} (${Math.round(bonusPercent * 100)}%)`, "#ffd700", 50, 40);
-          }
-        }
-      }
-
-      const newGrid = puzzleGridRef.current.map(r => r.map(c => ({ ...c })));
-
-      // 1. 매칭 그룹 병합 (ㄱ, ㄴ, T자 처리용)
-      const mergedGroups: { coords: [number, number][], type: string }[] = [];
-      const usedRawIndices = new Set<number>();
-
-      for (let i = 0; i < rawGroups.length; i++) {
-        if (usedRawIndices.has(i)) continue;
-
-        const currentGroupCoords = [...rawGroups[i].coords];
-        const currentType = rawGroups[i].type;
-        usedRawIndices.add(i);
-
-        // 연결된 다른 그룹 찾기
-        let foundMore = true;
-        while (foundMore) {
-          foundMore = false;
-          for (let j = 0; j < rawGroups.length; j++) {
-            if (usedRawIndices.has(j)) continue;
-            if (rawGroups[j].type !== currentType) continue;
-
-            // 보조 함수: 두 좌표 목록이 겹치는지 확인
-            const isOverlapping = rawGroups[j].coords.some(([r1, c1]) =>
-              currentGroupCoords.some(([r2, c2]) => r1 === r2 && c1 === c2)
-            );
-
-            if (isOverlapping) {
-              // 합치기 (중복 제거)
-              rawGroups[j].coords.forEach(([r, c]) => {
-                if (!currentGroupCoords.some(([cr, cc]) => cr === r && cc === c)) {
-                  currentGroupCoords.push([r, c]);
-                }
-              });
-              usedRawIndices.add(j);
-              foundMore = true;
-            }
-          }
-        }
-        mergedGroups.push({ coords: currentGroupCoords, type: currentType });
-      }
-
-      const cellsToDestroy: Set<string> = new Set();
-      const specialBlockToCreateArray: { r: number, c: number, type: string, special: string }[] = [];
-
-      // 2. 특수 블록 생성 위치 결정 및 매칭된 셀 추가
-      mergedGroups.forEach(group => {
-        const len = group.coords.length;
-        // 가장 중앙에 가까운 위치를 피벗으로 (가운데 설치 선호)
-        const pivot = group.coords[Math.floor(group.coords.length / 2)];
-
-        let specialType = null;
-        // ㄱ, ㄴ, T자 등 꺾인 형태 확인 (가로 세로가 섞인 경우)
-        const isLOrT = rawGroups.filter((rg, idx) => {
-          // 이 병합 그룹에 속한 원본 그룹들 중 방향이 다른 게 있는지
-          return group.coords.some(([gr, gc]) => rg.coords.some(([rr, rc]) => rr === gr && rc === gc));
-        }).some((rg, _, arr) => arr.some(other => rg.direction !== other.direction));
-
-        if (len >= 5) {
-          specialType = isLOrT ? 'area_clear' : 'cross_clear'; // 5개 이상 꺾였으면 4x4, 일직선이면 십자
-          if (len >= 6) specialType = 'cross_clear'; // 6개 이상은 무조건 십자
-        } else if (len === 4) {
-          // 4개 매칭 (일직선 방향 찾기)
-          const rg = rawGroups.find(r => r.coords.every(([rr, rc]) => group.coords.some(([gr, gc]) => rr === gr && rc === gc)));
-          specialType = rg?.direction === 'h' ? 'row_clear' : 'col_clear';
-        }
-
-        if (specialType) {
-          specialBlockToCreateArray.push({ r: pivot[0], c: pivot[1], type: group.type, special: specialType });
-        }
-
-        group.coords.forEach(([r, c]) => cellsToDestroy.add(`${r},${c}`));
-      });
-
-      // 3. 재귀적 연쇄 폭발 (특수 블록 트리거)
-      const processQueue = Array.from(cellsToDestroy);
-      let head = 0;
-      while (head < processQueue.length) {
-        const coord = processQueue[head++];
-        const [r, c] = coord.split(',').map(Number);
-
-        const cell = newGrid[r][c];
-        if (cell.special) {
-          const s = cell.special;
-          const affected: string[] = [];
-
-          if (s === 'row_clear') for (let i = 0; i < PUZZLE_COLS; i++) affected.push(`${r},${i}`);
-          else if (s === 'col_clear') for (let i = 0; i < PUZZLE_ROWS; i++) affected.push(`${i},${c}`);
-          else if (s === 'area_clear' || s === 'cross_clear') {
-            const radius = s === 'area_clear' ? 2 : 1; // 5x5 (radius 2)
-            if (s === 'area_clear') {
-              for (let dr = -radius; dr <= radius; dr++) for (let dc = -radius; dc <= radius; dc++) {
-                const nr = r + dr, nc = c + dc; if (nr >= 0 && nr < PUZZLE_ROWS && nc >= 0 && nc < PUZZLE_COLS) affected.push(`${nr},${nc}`);
-              }
-            } else {
-              // cross_clear: 십자(전체줄) + 주변 3x3
-              for (let i = 0; i < PUZZLE_COLS; i++) affected.push(`${r},${i}`);
-              for (let i = 0; i < PUZZLE_ROWS; i++) affected.push(`${i},${c}`);
-              if (r > 0) for (let i = 0; i < PUZZLE_COLS; i++) affected.push(`${r - 1},${i}`);
-              if (r < PUZZLE_ROWS - 1) for (let i = 0; i < PUZZLE_COLS; i++) affected.push(`${r + 1},${i}`);
-              if (c > 0) for (let i = 0; i < PUZZLE_ROWS; i++) affected.push(`${i},${c - 1}`);
-              if (c < PUZZLE_COLS - 1) for (let i = 0; i < PUZZLE_ROWS; i++) affected.push(`${i},${c + 1}`);
-            }
-          }
-
-          affected.forEach(a => {
-            if (!cellsToDestroy.has(a)) {
-              cellsToDestroy.add(a);
-              processQueue.push(a); // 새로 휘말린 셀도 큐에 추가하여 특수 효과 검사
-            }
-          });
-        }
-      }
-
-      // 셀당 점수를 5 -> 15로 대폭 상향 (9000점 달성을 수월하게 함)
-      const scoreGain = Math.floor(cellsToDestroy.size * 15 * (1 + currentCombo * 0.3) * powerFactor);
-      totalScoreGain += scoreGain;
-
-      // Update Dantian overload significantly
-      const nextDantian = Math.min(100, puzzleDantianRef.current + cellsToDestroy.size * 1.5);
-      puzzleDantianRef.current = nextDantian;
-      setPuzzleDantian(nextDantian);
-
-      const newEffects: { id: number, r: number, c: number, color: string }[] = [];
-      cellsToDestroy.forEach(coord => {
-        const [r, c] = coord.split(',').map(Number);
-        const blockType = newGrid[r][c].type;
-        newGrid[r][c].type = null;
-        newGrid[r][c].special = null;
-
-        const blockColor = (() => {
-          switch (blockType) {
-            case 'fire': return '#ff6b6b';
-            case 'water': return '#4dabf7';
-            case 'wind': return '#63e6be';
-            case 'thunder': return '#ffe066';
-            case 'poison': return '#e599f7';
-            default: return '#fff';
-          }
-        })();
-        newEffects.push({ id: Math.random(), r, c, color: blockColor });
-      });
-
-      if (newEffects.length > 0) {
-        setPuzzleEffects(prev => [...prev, ...newEffects]);
-        const idsToRemove = newEffects.map(e => e.id);
-        setTimeout(() => setPuzzleEffects(prev => prev.filter(e => !idsToRemove.includes(e.id))), 500);
-      }
-
-      // Spawn special blocks at pivots
-      specialBlockToCreateArray.forEach(sb => {
-        newGrid[sb.r][sb.c] = { id: Math.random(), type: sb.type, special: sb.special };
-      });
-
-      puzzleGridRef.current = newGrid;
-      setPuzzleGrid(newGrid);
-      await new Promise(res => setTimeout(res, 300));
-
-      const types = ["fire", "water", "wind", "thunder"];
-      for (let c = 0; c < PUZZLE_COLS; c++) {
-        let emptySpaces = 0;
-        for (let r = PUZZLE_ROWS - 1; r >= 0; r--) {
-          if (newGrid[r][c].type === null) emptySpaces++;
-          else if (emptySpaces > 0) {
-            newGrid[r + emptySpaces][c] = newGrid[r][c];
-            newGrid[r][c] = { id: Math.random(), type: null, special: null };
-          }
-        }
-        for (let r = 0; r < emptySpaces; r++) {
-          newGrid[r][c] = { id: Math.random(), type: types[Math.floor(Math.random() * types.length)], special: null };
-        }
-      }
-      puzzleGridRef.current = newGrid;
-      setPuzzleGrid(newGrid);
-      await new Promise(res => setTimeout(res, 250));
-    }
-    if (totalScoreGain > 0) {
-      playerScoreRef.current += totalScoreGain;
-      setPlayerScore(Math.floor(playerScoreRef.current));
-      addFloatText(`+${Math.floor(totalScoreGain)}`, "#ffd700");
-      if (currentMiniGameRef.current === "puzzle") {
-        applyInnPuzzleScore(totalScoreGain);
-      }
-    }
-    setPuzzleCombo(0);
-    setPuzzleIsProcessing(false);
-  };
-
-  const executePuzzleSwap = (r1: number, c1: number, r2: number, c2: number) => {
-    if (!isPlaying || puzzleIsProcessing) return;
-
-    const newGrid = puzzleGrid.map(row => row.map(cell => ({ ...cell })));
-    const temp = newGrid[r1][c1];
-    newGrid[r1][c1] = newGrid[r2][c2];
-    newGrid[r2][c2] = temp;
-
-    const matches = findMatches(newGrid);
-    if (matches.length > 0) {
-      puzzleGridRef.current = newGrid;
-      setPuzzleGrid(newGrid);
-      setPuzzleSelected(null);
-      resolveMatches();
-    } else {
-      // Visual feedback for invalid swap
-      addFloatText("기맥 불일치", "#aaa");
-      setPuzzleSelected(null);
-    }
-  };
-
-  const handlePuzzleCellClick = (r: number, c: number) => {
-    if (!isPlaying || puzzleIsProcessing) return;
-
-    if (!puzzleSelected) {
-      setPuzzleSelected([r, c]);
-    } else {
-      const [sr, sc] = puzzleSelected;
-      const isAdjacent = (Math.abs(r - sr) === 1 && c === sc) || (Math.abs(c - sc) === 1 && r === sr);
-
-      if (isAdjacent) {
-        executePuzzleSwap(sr, sc, r, c);
-      } else {
-        setPuzzleSelected([r, c]);
-      }
-    }
-  };
-
-  const handlePuzzleTouchStart = (e: React.TouchEvent, r: number, c: number) => {
-    if (!isPlaying || puzzleIsProcessing) return;
-    const touch = e.touches[0];
-    setPuzzleSwipeStart({ r, c, x: touch.clientX, y: touch.clientY });
-  };
-
-  const handlePuzzleTouchEnd = (e: React.TouchEvent) => {
-    if (!isPlaying || puzzleIsProcessing || !puzzleSwipeStart) return;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - puzzleSwipeStart.x;
-    const dy = touch.clientY - puzzleSwipeStart.y;
-
-    // Small movement is treated as a click/select
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
-      handlePuzzleCellClick(puzzleSwipeStart.r, puzzleSwipeStart.c);
-      setPuzzleSwipeStart(null);
-      return;
-    }
-
-    let tr = puzzleSwipeStart.r;
-    let tc = puzzleSwipeStart.c;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      tc += dx > 0 ? 1 : -1;
-    } else {
-      tr += dy > 0 ? 1 : -1;
-    }
-
-    if (tr >= 0 && tr < PUZZLE_ROWS && tc >= 0 && tc < PUZZLE_COLS) {
-      executePuzzleSwap(puzzleSwipeStart.r, puzzleSwipeStart.c, tr, tc);
-    }
-    setPuzzleSwipeStart(null);
-  };
-
-  // 5. Pulse Logic
-  const updatePulse = (dt: number) => {
-    // [기운응축 속도 밸런싱] 완만한 곡선으로 수정
-    // [기운응축 속도 밸런싱] 더욱 완만한 곡선으로 수정
-    let baseSpeedFactor = 3.0;
-    if (currentStage <= 3) baseSpeedFactor = 3.0;
-    else if (currentStage <= 6) baseSpeedFactor = 4.5;
-    else if (currentStage <= 10) baseSpeedFactor = 6.5;
-    else baseSpeedFactor = 5.0 + currentStage * 0.2;
-
-    const speedFactor = (baseSpeedFactor + (currentProgressRef.current * 0.4)) * 2.2;
-    const moved = pulseTargetsRef.current.map(t => ({
-      ...t,
-      progress: t.progress + speedFactor * dt * 1.2
-    }));
-    pulseTargetsRef.current = moved;
-    setPulseTargets(moved);
-
-    if (moved.some(t => t.progress > 100)) {
-      const nextLives = pulseLivesRef.current - 1;
-      pulseLivesRef.current = nextLives;
-      setPulseLives(nextLives);
-      triggerShake();
-      addFloatText("기운 폭주 -1 HP", "#ff4d4d");
-
-      if (nextLives <= 0) {
-        finishMission(false, "MISS", playerScoreRef.current, "내공의 기운이 폭발하여 수련에 실패했습니다.");
-      } else {
-        pulseTargetsRef.current = pulseTargetsRef.current.filter(t => t.progress <= 100);
-      }
-      return;
-    }
-
-    if (moved.length === 0 && Math.random() < 0.04) {
-      const newTarget = {
-        id: pulseIdRef.current++,
-        x: 20 + Math.random() * 60,
-        y: 20 + Math.random() * 60,
-        progress: 0
-      };
-      pulseTargetsRef.current = [newTarget];
-      setPulseTargets([newTarget]);
-    }
-  };
-
-  const handlePulseTap = (id: number) => {
-    const now = Date.now();
-    const key = `pulse_${id}`; // 펄스는 객체별 ID로 중복 방지
-    if (now - (lastHitTimeRef.current[key] || 0) < 250) return; // 중복 터치 방지 상향
-    lastHitTimeRef.current[key] = now;
-
-    const target = pulseTargetsRef.current.find(t => t.id === id);
-    if (!target) return;
-
-    const grade = target.progress > 20 ? (target.progress > 64 ? "PERFECT" : "GREAT") : (target.progress > 0 ? "GOOD" : "MISS");
-
-    if (grade === "MISS") {
-      const nextLives = pulseLivesRef.current - 1;
-      pulseLivesRef.current = nextLives;
-      setPulseLives(nextLives);
-      triggerShake();
-      addFloatText("응축 실패 -1 HP", "#ff4d4d");
-
-      if (nextLives <= 0) {
-        finishMission(false, "MISS", playerScoreRef.current, "내공이 어지러워져 수련에 실패했습니다.");
-      }
-    } else {
-      const nextTargets = pulseTargetsRef.current.filter(t => t.id !== id);
-      pulseTargetsRef.current = nextTargets;
-      setPulseTargets(nextTargets);
-
-      const nextProg = currentProgressRef.current + 1;
-      currentProgressRef.current = nextProg;
-      setCurrentProgress(nextProg);
-      incrementCombo();
-
-      const targetForRound = 4 + (currentStage - 1) * 2;
-
-      const scoreGain = Math.floor(getGradeScore(grade) * powerFactor * 1.5);
-      playerScoreRef.current += scoreGain;
-      setPlayerScore(Math.floor(playerScoreRef.current));
-
-      addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
-      playHitEffect();
-
-      if (nextProg >= targetForRound) {
-        handleRoundSuccess(grade, 0, "기운 응축 완료!");
-      }
-    }
-  };
+  // handleBreathTap moved to BreathGame.tsx
 
   // Mission finish handling
   useEffect(() => {
@@ -1776,7 +1203,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
         }}>
           {/* Faction Char vs Rival Vis */}
           {/* Faction Char vs Rival Vis */}
-          {isPlaying && currentMiniGame !== "yabawi" && currentMiniGame !== "puzzle" && (
+          {isPlaying && currentMiniGame !== "yabawi" && currentMiniGame !== "puzzle" && currentMiniGame !== "dodge" && (
             <div
               style={{
                 position: "absolute",
@@ -1993,78 +1420,27 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               )}
 
               {currentMiniGame === "pulse" && (
-                <div 
-                  onClick={() => {
-                    const nextLives = pulseLivesRef.current - 1;
-                    pulseLivesRef.current = nextLives;
-                    setPulseLives(nextLives);
-                    triggerShake();
-                    addFloatText("허공 타격 -1 HP", "#ff4d4d");
-                    if (nextLives <= 0) {
-                      finishMission(false, "MISS", playerScoreRef.current, "기맥이 뒤틀려 수련에 실패했습니다.");
-                    }
+                <QiCondenseGame
+                  stage={currentStage}
+                  powerFactor={powerFactor}
+                  isPlaying={isPlaying}
+                  onStageClear={(bonus) => {
+                    const nextScore = playerScoreRef.current + bonus;
+                    playerScoreRef.current = nextScore;
+                    setPlayerScore(nextScore);
+                    addFloatText(`응축 보너스 +${bonus}`, "#ffd700");
+                    handleRoundSuccess("PERFECT", 0, "기운 응축 완료!", true);
                   }}
-                  style={{ ...reflectArea, position: "relative", cursor: 'crosshair' }}
-                >
-                  <div style={{
-                    position: "absolute", top: "15px", left: "20px", display: "flex", gap: "5px", zIndex: 10
-                  }}>
-                    {Array.from({ length: 7 }).map((_, i) => (
-                      <motion.span
-                        key={i}
-                        animate={{ 
-                          scale: i < pulseLives ? [1, 1.2, 1] : 1,
-                          opacity: i < pulseLives ? 1 : 0.3,
-                          filter: i < pulseLives ? "drop-shadow(0 0 5px #ff4d4d)" : "grayscale(1)"
-                        }}
-                        transition={{ repeat: i < pulseLives ? Infinity : 0, duration: 2, delay: i * 0.2 }}
-                        style={{ fontSize: "20px", color: i < pulseLives ? "#ff4d4d" : "#666" }}
-                      >
-                        ❤️
-                      </motion.span>
-                    ))}
-                  </div>
-
-                  {pulseTargets.map(t => (
-                    <div
-                      key={t.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePulseTap(t.id);
-                      }}
-                      style={{
-                        position: "absolute",
-                        left: `${t.x}%`,
-                        top: `${t.y}%`,
-                        width: 110,
-                        height: 110,
-                        transform: "translate(-50%, -50%)",
-                        cursor: "pointer"
-                      }}
-                    >
-                      <div style={{
-                        position: "absolute",
-                        inset: 0,
-                        borderRadius: "50%",
-                        border: "4px solid #00f2ff",
-                        transform: `scale(${t.progress / 100})`,
-                        opacity: 1 - (t.progress / 100)
-                      }} />
-                      <div style={{
-                        position: "absolute",
-                        inset: "10%",
-                        borderRadius: "50%",
-                        border: "2px solid rgba(255,215,0,0.5)",
-                        background: t.progress > 20 ? "rgba(0,242,255,0.2)" : "transparent"
-                      }} />
-                      <div style={{ 
-                        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#00f2ff', fontSize: 14, fontWeight: 900, textShadow: '0 0 5px #000'
-                      }}>응축</div>
-                    </div>
-                  ))}
-                  <div style={gameTip}>기운이 가득 찼을 때 탭하세요! ({currentProgress}/{4 + (currentStage - 1) * 2})</div>
-                </div>
+                  onFail={(score, reason) => {
+                    finishMission(false, "MISS", score, reason);
+                  }}
+                  addFloatText={addFloatText}
+                  triggerShake={triggerShake}
+                  playHitEffect={playHitEffect}
+                  incrementCombo={incrementCombo}
+                  playerScore={playerScore}
+                  setPlayerScore={setPlayerScore}
+                />
               )}
 
               {/* 5. 객잔 투전판 (Yabawi) */}
@@ -2124,9 +1500,9 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
 
               {/* 3. Meihua Poles Minigame (Dodge) */}
               {currentMiniGame === "dodge" && (
-                <div style={{ 
-                  background: '#0a0a0a', color: 'white', padding: '20px', borderRadius: '30px', 
-                  textAlign: 'center', width: '100%', maxWidth: '360px', margin: '0 auto', 
+                <div style={{
+                  background: '#0a0a0a', color: 'white', padding: '20px', borderRadius: '30px',
+                  textAlign: 'center', width: '100%', maxWidth: '360px', margin: '0 auto',
                   border: '2px solid #b45309', boxShadow: '0 0 30px rgba(180, 83, 9, 0.4)',
                   display: 'flex', flexDirection: 'column', gap: '15px'
                 }}>
@@ -2145,82 +1521,82 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                       <div style={{ fontSize: '11px', color: '#78716c' }}>Time: {dodgeTimeLeft.toFixed(1)}s</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                       <div style={{ fontSize: '18px' }}>{'❤️'.repeat(dodgeHp)}</div>
-                       <div style={{ fontSize: '11px', color: '#78716c' }}>Combo: {combo}</div>
+                      <div style={{ fontSize: '18px' }}>{'❤️'.repeat(dodgeHp)}</div>
+                      <div style={{ fontSize: '11px', color: '#78716c' }}>Combo: {combo}</div>
                     </div>
                   </div>
 
                   {/* Platforms Area - Tightened spacing */}
                   <div style={{ background: '#000', height: '240px', position: 'relative', borderRadius: '20px', overflow: 'hidden', border: '1px solid #292524' }}>
                     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                       {(poles || []).slice(0, 6).map((side: number, i: number) => {
-                         const nP = getNumPoles(currentStage);
-                         const laneWidth = 100 / nP;
-                         const isCurrent = i === 0;
-                         return (
-                           <div key={`${i}-${playerScore}-${side}`} style={{
-                             position: 'absolute', bottom: `${i * 28 + 35}px`,
-                             left: `${side * laneWidth + (laneWidth * 0.15)}%`,
-                             width: `${laneWidth * 0.7}%`, height: '18px', 
-                             background: isCurrent 
-                               ? 'linear-gradient(to right, #fbbf24, #d97706)' 
-                               : 'rgba(120, 113, 108, 0.5)',
-                             borderRadius: '6px', 
-                             opacity: isCurrent ? 1 : 1 / (i * 0.5 + 1),
-                             transform: isCurrent ? 'scale(1.1)' : 'scale(1)',
-                             display: 'flex', justifyContent: 'center', alignItems: 'center',
-                             boxShadow: isCurrent ? '0 0 15px #fbbf24, inset 0 0 5px #fff' : 'none',
-                             transition: 'all 0.1s ease-out',
-                             zIndex: 10 - i,
-                             border: isCurrent ? '2px solid #fff' : '1px solid rgba(251, 191, 36, 0.4)'
-                           }}>
-                             <span style={{ 
-                               fontSize: isCurrent ? '12px' : '10px', 
-                               fontWeight: 'bold', 
-                               color: isCurrent ? '#fff' : '#fbbf24',
-                               textShadow: isCurrent ? '0 1px 2px #000' : 'none'
-                             }}>{side + 1}</span>
-                           </div>
-                         );
-                       })}
+                      {(poles || []).slice(0, 6).map((side: number, i: number) => {
+                        const nP = getNumPoles(currentStage);
+                        const laneWidth = 100 / nP;
+                        const isCurrent = i === 0;
+                        return (
+                          <div key={`${i}-${playerScore}-${side}`} style={{
+                            position: 'absolute', bottom: `${i * 28 + 35}px`,
+                            left: `${side * laneWidth + (laneWidth * 0.15)}%`,
+                            width: `${laneWidth * 0.7}%`, height: '18px',
+                            background: isCurrent
+                              ? 'linear-gradient(to right, #fbbf24, #d97706)'
+                              : 'rgba(120, 113, 108, 0.5)',
+                            borderRadius: '6px',
+                            opacity: isCurrent ? 1 : 1 / (i * 0.5 + 1),
+                            transform: isCurrent ? 'scale(1.1)' : 'scale(1)',
+                            display: 'flex', justifyContent: 'center', alignItems: 'center',
+                            boxShadow: isCurrent ? '0 0 15px #fbbf24, inset 0 0 5px #fff' : 'none',
+                            transition: 'all 0.1s ease-out',
+                            zIndex: 10 - i,
+                            border: isCurrent ? '2px solid #fff' : '1px solid rgba(251, 191, 36, 0.4)'
+                          }}>
+                            <span style={{
+                              fontSize: isCurrent ? '12px' : '10px',
+                              fontWeight: 'bold',
+                              color: isCurrent ? '#fff' : '#fbbf24',
+                              textShadow: isCurrent ? '0 1px 2px #000' : 'none'
+                            }}>{side + 1}</span>
+                          </div>
+                        );
+                      })}
 
-                       {/* 7s Countdown Overlay */}
-                       <AnimatePresence>
-                         {dodgeTimeLeft > 0 && dodgeTimeLeft <= 7.1 && (
-                           <motion.div
-                             key={Math.ceil(dodgeTimeLeft)}
-                             initial={{ scale: 2.5, opacity: 0 }}
-                             animate={{ scale: 1, opacity: 1 }}
-                             exit={{ scale: 0.5, opacity: 0 }}
-                             transition={{ duration: 0.4 }}
-                             style={{
-                               position: 'absolute', inset: 0,
-                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                               fontSize: '80px', fontWeight: 900, color: '#ff4d4d',
-                               textShadow: '0 0 20px rgba(255, 77, 77, 0.6), 0 0 40px rgba(0,0,0,0.8)',
-                               pointerEvents: 'none', zIndex: 100
-                             }}
-                           >
-                             {Math.ceil(dodgeTimeLeft)}
-                           </motion.div>
-                         )}
-                         {dodgeTimeLeft <= 0 && isPlaying && currentMiniGame === "dodge" && (
-                           <motion.div
-                             initial={{ scale: 0.5, opacity: 0 }}
-                             animate={{ scale: 1.2, opacity: 1 }}
-                             style={{
-                               position: 'absolute', inset: 0,
-                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                               fontSize: '44px', fontWeight: 900, color: '#ff4d4d',
-                               textShadow: '0 0 20px #000',
-                               pointerEvents: 'none', zIndex: 100,
-                               letterSpacing: '-2px'
-                             }}
-                           >
-                             GAME OVER
-                           </motion.div>
-                         )}
-                       </AnimatePresence>
+                      {/* 7s Countdown Overlay */}
+                      <AnimatePresence>
+                        {dodgeTimeLeft > 0 && dodgeTimeLeft <= 7.1 && (
+                          <motion.div
+                            key={Math.ceil(dodgeTimeLeft)}
+                            initial={{ scale: 2.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.5, opacity: 0 }}
+                            transition={{ duration: 0.4 }}
+                            style={{
+                              position: 'absolute', inset: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '80px', fontWeight: 900, color: '#ff4d4d',
+                              textShadow: '0 0 20px rgba(255, 77, 77, 0.6), 0 0 40px rgba(0,0,0,0.8)',
+                              pointerEvents: 'none', zIndex: 100
+                            }}
+                          >
+                            {Math.ceil(dodgeTimeLeft)}
+                          </motion.div>
+                        )}
+                        {dodgeTimeLeft <= 0 && isPlaying && currentMiniGame === "dodge" && (
+                          <motion.div
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1.2, opacity: 1 }}
+                            style={{
+                              position: 'absolute', inset: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '44px', fontWeight: 900, color: '#ff4d4d',
+                              textShadow: '0 0 20px #000',
+                              pointerEvents: 'none', zIndex: 100,
+                              letterSpacing: '-2px'
+                            }}
+                          >
+                            GAME OVER
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
 
@@ -2230,8 +1606,8 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                         key={idx}
                         onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleLaneStep(idx); }}
                         style={{
-                          flex: 1, height: '45px', background: '#292524', color: 'white', 
-                          fontSize: '18px', fontWeight: '900', borderRadius: '12px', 
+                          flex: 1, height: '45px', background: '#292524', color: 'white',
+                          fontSize: '18px', fontWeight: '900', borderRadius: '12px',
                           border: '2px solid #b45309', cursor: 'pointer',
                           boxShadow: '0 3px #1a1817',
                           touchAction: 'none',
@@ -2251,210 +1627,25 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
 
               {/* 3. 내공폭주 (Puzzle) */}
               {currentMiniGame === "puzzle" && (
-                <div style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0"
-                }}>
-                   {/* BATTLE HUD - TOP SECTION (Simplified for Puzzle) */}
-                   <div style={{
-                     width: "100%",
-                     height: "60px",
-                     position: "relative",
-                     overflow: "hidden",
-                     background: "rgba(0,0,0,0.5)",
-                     borderBottom: "1px solid rgba(255,215,0,0.1)",
-                     display: "flex",
-                     alignItems: "center",
-                     justifyContent: "center"
-                   }}>
-                      <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18, textShadow: "0 0 10px rgba(255,215,0,0.3)" }}>
-                        내공 정렬 수련
-                      </div>
-                   </div>
-
-                  {/* PUZZLE AREA - BOTTOM SECTION */}
-                  <div style={{
-                    flex: 1,
-                    background: "rgba(10,10,10,0.9)",
-                    padding: "4px 12px 4px",
-                    display: "flex",
-                    flexDirection: "column",
-                    position: "relative"
-                  }}>
-                    {/* Dantian instability logic replaced with Combat phase or just removed */}
-                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", position: "relative", marginBottom: 4 }}>
-                      <div style={{ position: "absolute", left: 0, fontSize: 14, color: "#ffd700", fontWeight: 900, textShadow: "0 0 5px rgba(0,0,0,0.5)" }}>
-                        {mission.combatState?.phase === 'finisher' ? '⚡ 필살기 발동!' : (mission.combatState?.phase === 'counter' ? '⚠️ 적의 반격!' : '기맥 정렬 중')}
-                      </div>
-                      {currentMiniGame === "puzzle" && (
-                        <div style={{
-                          fontSize: 22,
-                          fontWeight: 950,
-                          color: puzzleTimeLeft < 10 ? "#ff4d4d" : "#ffd700",
-                          textShadow: "0 0 10px rgba(0,0,0,0.8)",
-                          background: "rgba(0,0,0,0.4)",
-                          padding: "2px 15px",
-                          borderRadius: "10px",
-                          border: "1px solid rgba(255,215,0,0.2)"
-                        }}>
-                          {puzzleTimeLeft.toFixed(1)}s
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: "100%",
-                      height: "100%"
-                    }}>
-                      <div style={{
-                        width: "100%",
-                        maxWidth: "280px", // 블록 사이즈 축소를 위해 너비 하향 조정 (하단 잘림 방지)
-                        aspectRatio: `${PUZZLE_COLS} / ${PUZZLE_ROWS}`,
-                        background: "#1a1a1a",
-                        borderRadius: 20,
-                        border: "2px solid #333",
-                        padding: "6px",
-                        position: "relative",
-                        overflow: "hidden",
-                        boxSizing: "border-box",
-                        boxShadow: mission.combatState?.phase === 'finisher' ? "0 0 30px rgba(255,215,0,0.4)" : "none"
-                      }}>
-                        <div style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "grid",
-                          gridTemplateColumns: `repeat(${PUZZLE_COLS}, 1fr)`,
-                          gridTemplateRows: `repeat(${PUZZLE_ROWS}, 1fr)`,
-                          gap: "3px",
-                          touchAction: "none",
-                          WebkitUserSelect: "none",
-                          userSelect: "none"
-                        }}
-                          onTouchStart={(e) => e.stopPropagation()}
-                          onTouchEnd={(e) => e.stopPropagation()}
-                        >
-                          {puzzleGrid.map((row, r) => row.map((cell, c) => (
-                            <motion.div
-                              key={cell.id}
-                               animate={{ opacity: cell.type === null ? 0 : 1 }}
-                               transition={{ duration: 0.1 }}
-                              onClick={() => handlePuzzleCellClick(r, c)}
-                              onTouchStart={(e) => handlePuzzleTouchStart(e, r, c)}
-                              onTouchEnd={(e) => handlePuzzleTouchEnd(e)}
-                              style={{
-                                width: "100%",
-                                aspectRatio: "1/1",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                cursor: "pointer",
-                                zIndex: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? 10 : 1
-                              }}
-                            >
-                              <div style={{
-                                width: "94%",
-                                height: "94%",
-                                borderRadius: "12px",
-                                background: (() => {
-                                  switch (cell.type) {
-                                    case 'fire': return 'radial-gradient(circle at 35% 35%, #ff0000, #4d0000)';
-                                    case 'water': return 'radial-gradient(circle at 35% 35%, #0000ff, #00004d)';
-                                    case 'wind': return 'radial-gradient(circle at 35% 35%, #00dd00 0%, #008800 50%, #003300 100%)';
-                                    case 'thunder': return 'radial-gradient(circle at 35% 35%, #ffff77 0%, #ffff00 45%, #4d4d00 100%)';
-                                    case 'poison': return 'radial-gradient(circle at 35% 35%, #ff00ff, #4d004d)';
-                                    default: return 'transparent';
-                                  }
-                                })(),
-                                position: "relative",
-                                overflow: "hidden",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                border: "1px solid rgba(255,255,255,0.4)",
-                                boxShadow: "inset 0 4px 6px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.5)",
-                                transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.15)" : "scale(1)",
-                                filter: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "brightness(1.2) drop-shadow(0 0 10px #fff)" : "none",
-                                transition: "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
-                              }}>
-                                {/* Glossy Highlight Overlay */}
-                                <div style={{
-                                  position: "absolute",
-                                  top: "5%", left: "5%",
-                                  width: "40%", height: "40%",
-                                  background: "rgba(255,255,255,0.45)",
-                                  borderRadius: "50%",
-                                  filter: "blur(2px)",
-                                  pointerEvents: "none"
-                                }} />
-
-                                {/* Special Block Indicators */}
-                                {cell.special && (
-                                  <div style={{
-                                    fontSize: "26px",
-                                    zIndex: 2,
-                                    filter: "drop-shadow(0 0 12px #fff)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "#fff",
-                                    fontWeight: "bold",
-                                    animation: "pulse 1.5s infinite"
-                                  }}>
-                                    {cell.special === 'row_clear' && <span>↔️</span>}
-                                    {cell.special === 'col_clear' && <span>↕️</span>}
-                                    {cell.special === 'area_clear' && <span>💣</span>}
-                                    {cell.special === 'cross_clear' && <span>💠</span>}
-                                  </div>
-                                )}
-
-                                {/* Block ID label removed for polish, but added subtle inner border */}
-                                <div style={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  borderRadius: "11px",
-                                  border: "1px solid rgba(255,255,255,0.1)",
-                                  pointerEvents: "none"
-                                }} />
-                              </div>
-                            </motion.div>
-                          )))}
-                        </div>
-
-                        {/* Puzzle Burst Effects Layer */}
-                        <AnimatePresence>
-                          {puzzleEffects.map(eff => (
-                            <motion.div
-                              key={eff.id}
-                              initial={{ scale: 0, opacity: 1 }}
-                              animate={{ scale: 3, opacity: 0 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.5, ease: "easeOut" }}
-                              style={{
-                                position: "absolute",
-                                left: `${(eff.c / PUZZLE_COLS) * 100}%`,
-                                top: `${(eff.r / PUZZLE_ROWS) * 100}%`,
-                                width: `${(1 / PUZZLE_COLS) * 100}%`,
-                                height: `${(1 / PUZZLE_COLS) * 100}%`,
-                                background: `radial-gradient(circle, ${eff.color}, transparent)`,
-                                borderRadius: "50%",
-                                zIndex: 15,
-                                pointerEvents: "none",
-                                boxShadow: "0 0 15px #fff"
-                              }}
-                            />
-                          ))}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <PuzzleGame
+                  stage={currentStage}
+                  powerFactor={powerFactor}
+                  isPlaying={isPlaying}
+                  onStageClear={handleRoundSuccess}
+                  onFail={(score, reason) => {
+                    finishMission(false, "MISS", score, reason);
+                  }}
+                  addFloatText={addFloatText}
+                  triggerShake={triggerShake}
+                  playHitEffect={playHitEffect}
+                  incrementCombo={incrementCombo}
+                  playerScore={playerScore}
+                  setPlayerScore={setPlayerScore}
+                  applyInnPuzzleScore={applyInnPuzzleScore}
+                  updateInnCombat={updateInnCombat}
+                  mission={mission}
+                  getTargetScore={getTargetScore}
+                />
               )}
             </div>
           ) : (

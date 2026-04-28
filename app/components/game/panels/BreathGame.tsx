@@ -130,16 +130,15 @@ export const BreathGame = React.memo(({
 
     const loop = (time: number) => {
       const lowPower = useGameStore.getState().game.options?.lowPowerMode;
-      const fps = lowPower ? 15 : 30;
+      const fps = lowPower ? 30 : 60; // Increased from 15/30 to 30/60
       const frame = 1000 / fps;
 
-      // Simple manual FPS limiter to match original logic
       if (time - lastTime < frame) {
         gameLoop = requestAnimationFrame(loop);
         return;
       }
 
-      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      const dt = (time - lastTime) / 1000;
       lastTime = time;
 
       if (!document.hidden) {
@@ -181,8 +180,12 @@ export const BreathGame = React.memo(({
       setBreathNotes(moved);
 
       // 3. Spawn
+      const latestX = breathNotesRef.current.length > 0 
+        ? Math.max(...breathNotesRef.current.map(n => n.x)) 
+        : -1;
+
       if (
-        Math.random() < config.spawnRate &&
+        (latestX < 75 || Math.random() < config.spawnRate) &&
         breathNotesRef.current.length < config.maxOnScreen
       ) {
         const lane = Math.floor(Math.random() * config.laneCount);
@@ -316,7 +319,7 @@ export const BreathGame = React.memo(({
           const nextScore = playerScoreRef.current + bonusScore;
           playerScoreRef.current = nextScore;
           setPlayerScore(nextScore);
-          addFloatText(`연격 +${Math.round(bonusPercent * 100)}%`, "#ffd700", 50, 40);
+          addFloatText(`연격 +${Math.round(bonusPercent * 100)}%`, "#ffd700", 50, 50);
         }
       }
       
@@ -399,90 +402,33 @@ export const BreathGame = React.memo(({
             <motion.div
               key={n.id}
               initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ 
-                scale: [0.8, 1.1, 1],
-                opacity: 1,
-                rotate: (n.type === "dart" && !lowPower) ? 360 : 0 
-              }}
-              transition={{ 
-                rotate: { repeat: Infinity, duration: 2.5, ease: "linear" },
-                scale: { duration: 0.2 }
-              }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.2 }}
               style={{
                 position: "absolute",
                 top: `${90 + n.lane * (400 / config.laneCount) + (360 / config.laneCount) / 2 - 20}px`,
                 left: `${n.x}%`,
-                transform: "translateX(-50%)",
+                transform: "translateZ(0)", // Force GPU layer
                 width: 40, height: 40,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                pointerEvents: "none", zIndex: 5,
+                pointerEvents: "none", 
+                zIndex: 5,
                 willChange: "transform"
               }}
             >
-              {/* Type-specific shapes */}
-              {n.type === "dart" && (
-                <div style={{ fontSize: "26px", filter: `drop-shadow(0 0 10px ${getNoteColor(n.type)})`, textShadow: `0 0 12px ${getNoteColor(n.type)}` }}>
-                  🗡️
-                </div>
-              )}
-              
-              {n.type === "slash" && (
-                <div style={{
-                  width: "32px",
-                  height: "4px",
-                  background: "#fff",
-                  borderRadius: "2px",
-                  transform: "rotate(-45deg)",
-                  boxShadow: lowPower ? "none" : `0 0 15px ${getNoteColor(n.type)}, 0 0 5px #fff`,
-                  filter: lowPower ? "none" : `drop-shadow(0 0 5px ${getNoteColor(n.type)})`
-                }} />
-              )}
-
-              {n.type === "palm" && (
-                <motion.div 
-                  animate={lowPower ? {} : { 
-                    scale: [1, 1.1, 1],
-                    borderRadius: ["50% 50% 50% 50%", "40% 60% 50% 70%", "60% 40% 70% 50%", "50% 50% 50% 50%"]
-                  }}
-                  transition={{ 
-                    duration: 1.2, 
-                    repeat: Infinity,
-                    borderRadius: { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
-                  }}
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    background: "radial-gradient(circle, #fff 0%, #ff4d4d 40%, #4d0000 100%)",
-                    boxShadow: lowPower ? "none" : `0 0 15px #ff4d4d, 0 0 30px rgba(255,0,0,0.3)`,
-                    border: "1px solid rgba(255,255,255,0.3)",
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    willChange: "transform, border-radius"
-                  }} 
-                >
-                  {/* Organic Spikes - Hidden in low power mode */}
-                  {!lowPower && Array.from({ length: 8 }).map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ height: [4, 12, 4], opacity: [0.5, 0.9, 0.5] }}
-                      transition={{ repeat: Infinity, duration: 0.7, delay: i * 0.1 }}
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        width: "2px",
-                        background: "linear-gradient(to top, #ff4d4d, transparent)",
-                        transformOrigin: "bottom center",
-                        transform: `translate(-50%, -100%) rotate(${i * 45}deg) translateY(-10px)`,
-                      }}
-                    />
-                  ))}
-                </motion.div>
-              )}
+              {/* Custom Image Rendering */}
+              <img 
+                src={`/images/wepon/${n.type}.png`}
+                alt={n.type}
+                style={{
+                  width: n.type === "palm" ? "44px" : "40px",
+                  height: n.type === "palm" ? "44px" : "40px",
+                  filter: `drop-shadow(0 0 8px ${getNoteColor(n.type)})`,
+                  objectFit: "contain"
+                }}
+              />
             </motion.div>
           );
         })}
