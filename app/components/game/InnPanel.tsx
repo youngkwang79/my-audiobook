@@ -953,7 +953,7 @@ export default function InnPanel({
 
     if (polesRef.current[0] === side) {
       // Success Step - Using the user's specific gain formula
-      const gain = Math.floor((20 + Math.min(comboRef.current, 10)) * (1 + Math.log10(Math.max(1, currentTotalAtk / 1000)) * 0.5)) * 3.6;
+      const gain = Math.floor((20 + Math.min(comboRef.current, 10)) * (1 + Math.log10(Math.max(1, currentTotalAtk / 1000)) * 0.5)) * 0.9;
       const nextScore = playerScoreRef.current + gain;
       playerScoreRef.current = nextScore;
       setPlayerScore(nextScore);
