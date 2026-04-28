@@ -134,7 +134,7 @@ export const FACTIONS: FactionInfo[] = [
     touchFlavor: "잔상이 남는 빠른 검격이 스쳐 지나갑니다.",
     theme: { glow: "rgba(180,255,180,0.18)", accent: "#c8f7c8" },
     bonusStats: { critRate: 40, eva: 15, speed: 15 },
-    characterImages: { ready: "/images/char_cheongseong_ready.png", attack: "/images/char_cheongseong_attack.png" },
+    characterImages: { ready: "/images/char_cheongseong_ready.webp", attack: "/images/char_cheongseong_attack.webp" },
     specialAdvantage: "전투 시작 후 첫 공격 필살급 강화, 회피 성공 후 치명타 확률 폭증, 5% 확률로 10배 피해(약점간파)",
     martial: {
       필부: { name: "기초검", innerPower: "-", stats: { critRate: 3 } },
@@ -406,7 +406,7 @@ export const FACTIONS: FactionInfo[] = [
     touchFlavor: "독이 스며들며 피해가 누적됩니다.",
     theme: { glow: "rgba(120,255,170,0.18)", accent: "#baf7c7" },
     bonusStats: { critRate: 25, eva: 25, atk: 20 },
-    characterImages: { ready: "/images/char_dang_ready.png", attack: "/images/char_dang_attack.png" },
+    characterImages: { ready: "/images/char_dang_ready.png", attack: "/images/char_dang_attack.webp" },
     specialAdvantage: "일반 공격 시 5% 확률 랜덤 중독, 독 걸린 적에게 추가 피해, 치명타 시 중독 대미지 2배",
     martial: {
       필부: { name: "암기투척", innerPower: "-", stats: { critRate: 2, atk: 3 } },

@@ -47,7 +47,7 @@ const BACK_IMAGES: Record<string, string> = {
   "소림": "/images/char_shaolin_back.png",
   "무당": "/images/char_wudang_back.png",
   "개방": "/images/char_gaebang_back.png",
-  "청성파": "/images/char_cheongseong_back.png",
+  "청성파": "/images/char_cheongseong_back.webp",
   "점창파": "/images/char_jeomchang_back.png",
   "공동파": "/images/char_gongdong_back.png",
   "아미파": "/images/char_emei_back.png",
@@ -56,7 +56,7 @@ const BACK_IMAGES: Record<string, string> = {
   "제갈세가": "/images/char_zhuge_back.png",
   "사마세가": "/images/char_sama_back.png",
   "하북팽가": "/images/char_paeng_back.png",
-  "사천당가": "/images/char_dang_back.png",
+  "사천당가": "/images/char_dang_back.webp",
   "일월신교": "/images/char_sunmoon_back.png",
   "천마신교": "/images/char_heavenly_back.png",
 };

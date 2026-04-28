@@ -1710,7 +1710,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
         .duel-bg {
           position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
-          background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('/images/bg_inn_duel.png');
+          background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('/images/bg_inn_duel.webp');
           background-size: cover;
           background-position: center;
           animation: bgMotion 20s ease-in-out infinite;

@@ -386,21 +386,106 @@ export const BreathGame = React.memo(({
         ))}
 
         {/* Notes */}
-        {breathNotes.map(n => (
-          <div
-            key={n.id}
-            style={{
-              position: "absolute",
-              top: `${90 + n.lane * (400 / config.laneCount) + (360 / config.laneCount) / 2 - 16}px`,
-              left: `${n.x}%`,
-              transform: "translateX(-50%)",
-              width: 32, height: 32, borderRadius: "50%",
-              background: "radial-gradient(circle, #ffd700, #ff8c00)",
-              boxShadow: "0 0 12px rgba(255, 215, 0, 0.6)",
-              pointerEvents: "none", zIndex: 5
-            }}
-          />
-        ))}
+        {breathNotes.map(n => {
+          const lowPower = useGameStore.getState().game.options?.lowPowerMode;
+          const attack = getAttackData(n.type);
+          const getNoteColor = (type: string) => {
+            if (type === "dart") return "#ffd700";
+            if (type === "slash") return "#00f2ff";
+            return "#ff4d4d";
+          };
+
+          return (
+            <motion.div
+              key={n.id}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ 
+                scale: [0.8, 1.1, 1],
+                opacity: 1,
+                rotate: (n.type === "dart" && !lowPower) ? 360 : 0 
+              }}
+              transition={{ 
+                rotate: { repeat: Infinity, duration: 2.5, ease: "linear" },
+                scale: { duration: 0.2 }
+              }}
+              style={{
+                position: "absolute",
+                top: `${90 + n.lane * (400 / config.laneCount) + (360 / config.laneCount) / 2 - 20}px`,
+                left: `${n.x}%`,
+                transform: "translateX(-50%)",
+                width: 40, height: 40,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none", zIndex: 5,
+                willChange: "transform"
+              }}
+            >
+              {/* Type-specific shapes */}
+              {n.type === "dart" && (
+                <div style={{ fontSize: "26px", filter: `drop-shadow(0 0 10px ${getNoteColor(n.type)})`, textShadow: `0 0 12px ${getNoteColor(n.type)}` }}>
+                  🗡️
+                </div>
+              )}
+              
+              {n.type === "slash" && (
+                <div style={{
+                  width: "32px",
+                  height: "4px",
+                  background: "#fff",
+                  borderRadius: "2px",
+                  transform: "rotate(-45deg)",
+                  boxShadow: lowPower ? "none" : `0 0 15px ${getNoteColor(n.type)}, 0 0 5px #fff`,
+                  filter: lowPower ? "none" : `drop-shadow(0 0 5px ${getNoteColor(n.type)})`
+                }} />
+              )}
+
+              {n.type === "palm" && (
+                <motion.div 
+                  animate={lowPower ? {} : { 
+                    scale: [1, 1.1, 1],
+                    borderRadius: ["50% 50% 50% 50%", "40% 60% 50% 70%", "60% 40% 70% 50%", "50% 50% 50% 50%"]
+                  }}
+                  transition={{ 
+                    duration: 1.2, 
+                    repeat: Infinity,
+                    borderRadius: { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
+                  }}
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    background: "radial-gradient(circle, #fff 0%, #ff4d4d 40%, #4d0000 100%)",
+                    boxShadow: lowPower ? "none" : `0 0 15px #ff4d4d, 0 0 30px rgba(255,0,0,0.3)`,
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    willChange: "transform, border-radius"
+                  }} 
+                >
+                  {/* Organic Spikes - Hidden in low power mode */}
+                  {!lowPower && Array.from({ length: 8 }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ height: [4, 12, 4], opacity: [0.5, 0.9, 0.5] }}
+                      transition={{ repeat: Infinity, duration: 0.7, delay: i * 0.1 }}
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        width: "2px",
+                        background: "linear-gradient(to top, #ff4d4d, transparent)",
+                        transformOrigin: "bottom center",
+                        transform: `translate(-50%, -100%) rotate(${i * 45}deg) translateY(-10px)`,
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        })}
 
         {/* Combo */}
         {combo > 0 && (
