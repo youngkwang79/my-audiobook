@@ -267,9 +267,12 @@ export default function InnPanel({
   const mission = timingMission;
 
   const getTargetScore = (s: number) => {
-    // Exponential growth for wider gaps at higher stages
-    // Stage 1: 1500, Stage 10: ~57,000, Stage 20: ~3.3M
-    const baseScore = Math.floor(1500 * Math.pow(1.5, s - 1));
+    // Cumulative geometric series for target scores
+    // Each stage requires 150% of the previous stage's increment.
+    // S1: 3000, S2: 3000 + 4500 = 7500, S3: 7500 + 6750 = 14250...
+    const baseIncrement = 3000;
+    const ratio = 1.5;
+    const baseScore = Math.floor(baseIncrement * (Math.pow(ratio, s) - 1) / (ratio - 1));
 
     const atk = typeof getTotalAttack === "function" ? getTotalAttack() : 100;
     const attackScale = Math.max(1, Math.log10(Math.max(1, atk / 100)) * 1.5);
