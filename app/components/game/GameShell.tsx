@@ -240,13 +240,22 @@ export default function GameShell() {
             onChangeHero={(next) =>
               useGameStore.setState((s: any) => ({
                 game: {
-                  ...useGameStore.getState().game,
+                  ...s.game,
                   hero: next,
+                  name: next.name // Sync main name with hero name
                 },
               }))
             }
             onSelectFaction={handleSetFaction}
-            onStart={() => {}}
+            onStart={() => {
+              useGameStore.setState((s: any) => ({
+                game: {
+                  ...s.game,
+                  isInitialized: true,
+                  hasStarted: true
+                }
+              }));
+            }}
           />
         ) : (
           <>

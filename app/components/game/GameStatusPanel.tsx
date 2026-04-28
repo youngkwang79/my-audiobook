@@ -357,54 +357,30 @@ export default function GameStatusPanel() {
           </div>
         </div>
 
-        {/* 5. 활성화된 버프 (신법/물약 등) */}
-        {(safeGame.movementBuff || safeGame.activeBuff) && (
+        {/* 5. 활성화된 버프 (신법 등) */}
+        {safeGame.movementBuff && (
           <div style={{ display: "flex", gap: "6px", marginTop: "2px", flexWrap: "wrap" }}>
-            {safeGame.movementBuff && (
-              <div
-                style={{
-                  flex: 1,
-                  background: "linear-gradient(90deg, rgba(85,170,255,0.2), rgba(85,170,255,0.1))",
-                  border: "1px solid rgba(85,170,255,0.3)",
-                  borderRadius: "6px",
-                  padding: "3px 8px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  boxShadow: "0 0 10px rgba(85,170,255,0.1)",
-                  animation: "pulse 2s infinite"
-                }}
-              >
-                <div style={{ fontSize: "10px", color: "#8ccfff", fontWeight: "bold" }}>
-                  ⚡ {safeGame.movementBuff.name}
-                </div>
-                <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
-                  {safeGame.movementBuff.timeLeft.toFixed(1)}s
-                </div>
+            <div
+              style={{
+                flex: 1,
+                background: "linear-gradient(90deg, rgba(85,170,255,0.2), rgba(85,170,255,0.1))",
+                border: "1px solid rgba(85,170,255,0.3)",
+                borderRadius: "6px",
+                padding: "3px 8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                boxShadow: "0 0 10px rgba(85,170,255,0.1)",
+                animation: "pulse 2s infinite"
+              }}
+            >
+              <div style={{ fontSize: "10px", color: "#8ccfff", fontWeight: "bold" }}>
+                ⚡ {safeGame.movementBuff.name}
               </div>
-            )}
-            {safeGame.activeBuff && (
-              <div
-                style={{
-                  flex: 1,
-                  background: "linear-gradient(90deg, rgba(255,215,120,0.2), rgba(255,215,120,0.1))",
-                  border: "1px solid rgba(255,215,120,0.3)",
-                  borderRadius: "6px",
-                  padding: "3px 8px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  animation: "pulse 2s infinite"
-                }}
-              >
-                <div style={{ fontSize: "10px", color: "#ffd778", fontWeight: "bold" }}>
-                  🔥 {safeGame.activeBuff}
-                </div>
-                <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
-                  {safeGame.buffTimeLeft.toFixed(1)}s
-                </div>
+              <div style={{ fontSize: "10px", color: "#fff", fontFamily: "monospace" }}>
+                {safeGame.movementBuff.timeLeft.toFixed(1)}s
               </div>
-            )}
+            </div>
           </div>
         )}
 

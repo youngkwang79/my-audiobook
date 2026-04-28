@@ -853,11 +853,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addExp: (amount: number, isAuto = false, manualDamage?: number) => {
     const { game } = get();
-    // 사용자 요청에 따라 무뢰배 대기 중에는 수련 중단
+    // 사용자 요청에 따라 무뢰배 이벤트 대기 중에는 모든 수련(터치 포함) 중단
     if (game.pendingInnEntry || game.timingMission.available) return;
     // 전투 중이거나 탑 내부일 때 중단
     if (game.masterDuel.isPlaying || game.tower?.isInside) return;
-    
+
     if (!isAuto && Math.random() < 0.001 && !game.yabawiEvent?.active) {
       get().triggerYabawiEvent();
     }
@@ -886,93 +886,88 @@ export const useGameStore = create<GameState>((set, get) => ({
       const stats = getDummyStats(s.game.realm, s.game.star);
 
       let pIE = s.game.pendingInnEntry;
-      let iEV = s.game.innEventVersion;
+      let iEV = s.game.innEventVersion || 0;
+      let currentIdx = s.game.innEventIndex || 0;
 
-      // 더미 방어력 및 회피 계산
-      let isDodged = Math.random() < stats.eva / 100;
+      const hitCount = Math.max(1, Math.floor(amount));
+      const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
+      let currentDummyHp = s.game.dummyHp;
+      let totalDamageDealt = 0;
 
-      let finalDamageToDummy = 0;
-      if (manualDamage !== undefined) {
-        finalDamageToDummy = manualDamage;
-      } else {
-        const critRate = get().getTotalCritRate() / 100;
-        const critDmg = get().getTotalCritDmg() / 100;
-        const avgCritMult = 1 + critRate * (critDmg - 1);
-        const skillBonus = s.game.learnedSkills.length > 0 ? 1.2 : 1.0;
-        const baseDmg = isDodged ? 0 : Math.max(1, totalAtk - stats.def);
-        finalDamageToDummy = baseDmg * avgCritMult * skillBonus * amount;
+      for (let i = 0; i < hitCount; i++) {
+        let isHitDodged = Math.random() < stats.eva / 100;
+        let dmg = 0;
+        if (manualDamage !== undefined) {
+          dmg = manualDamage;
+        } else {
+          const critRate = get().getTotalCritRate() / 100;
+          const critDmg = get().getTotalCritDmg() / 100;
+          const avgCritMult = 1 + critRate * (critDmg - 1);
+          const skillBonus = (s.game.learnedSkills || []).length > 0 ? 1.2 : 1.0;
+          const baseDmg = isHitDodged ? 0 : Math.max(1, totalAtk - stats.def);
+          dmg = baseDmg * avgCritMult * skillBonus;
+        }
+
+        totalDamageDealt += dmg;
+        currentDummyHp -= dmg;
+        if (currentDummyHp <= 0) {
+          tKills += 1;
+          const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
+          let kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
+          if (isTreasureForecast) {
+            kG *= 3;
+            lastR = "💰 TREASURE!";
+          }
+          eGold += kG;
+          currentDummyHp = stats.hp;
+        }
+        if (isHitDodged) lastR = "빗나감!";
       }
 
-      let dHp = s.game.dummyHp - finalDamageToDummy;
-
-      if (Math.random() < 0.03) eGold += 1 * (REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1) * finalGoldB;
-
       const intervals = [300, 400, 500, 600, 700, 800, 900, 1000];
-      const currentIdx = s.game.innEventIndex || 0;
       const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
       const spawnBonus = isTreasureForecast ? 1.5 : 0;
       const targetInterval = Math.floor(intervals[currentIdx % 8] / (nightBuffs.mobSpawn + spawnBonus));
       const killGap = tKills - (s.game.lastInnEventKillCount || 0);
 
-      if (dHp <= 0) {
-        tKills += 1;
-        dHp = stats.hp;
-        const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
-        const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
-        let kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
-        if (isTreasureForecast) {
-          kG *= 3;
-          lastR = "💰 TREASURE!";
-        }
-        eGold += kG;
-        const isImportantMsg = typeof lastR === 'string' && (lastR.includes("개방") || lastR.includes("진입") || lastR.includes("발견") || lastR.includes("획득"));
-        if (isDodged) {
-          lastR = "빗나감!";
-        } else if (!isImportantMsg) {
-          lastR = null;
-        }
-        
-        let nTM = { ...s.game.timingMission };
-        if (killGap >= targetInterval && !nTM.available) {
-          const miniGames = ["breath", "dodge", "puzzle", "pulse"];
-          const gameIdx = (s.game.innEventVersion || 0) % 4;
-          const selectedGame = miniGames[gameIdx];
-          const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
-          const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
+      let nTM = { ...s.game.timingMission };
+      if (killGap >= targetInterval && !nTM.available) {
+        const miniGames = ["breath", "dodge", "puzzle", "pulse"];
+        const gameIdx = iEV % 4;
+        const selectedGame = miniGames[gameIdx];
+        const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
+        const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
 
-          pIE = true;
-          iEV = (s.game.innEventVersion || 0) + 1;
-          nTM = {
-            ...nTM,
-            available: true,
-            selectedGameType: selectedGame as any,
-            rivalName: `${randomRivalName} (${iEV}차)`,
-            requiredHits: 1,
-            isPractice: false,
-            currentStage: 1,
-            unlocked: true,
-          };
-          s.game.lastInnEventKillCount = tKills;
-          s.game.innEventIndex = (currentIdx + 1) % 8;
-          setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 1000);
-          s.game.timingMission = nTM;
-        }
+        pIE = true;
+        iEV += 1;
+        nTM = {
+          ...nTM,
+          available: true,
+          selectedGameType: selectedGame as any,
+          rivalName: `${randomRivalName} (${iEV}차)`,
+          requiredHits: 1,
+          isPractice: false,
+          currentStage: 1,
+          unlocked: true,
+        };
+        currentIdx = (currentIdx + 1) % 8;
+        setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 1000);
       }
 
-      if (isDodged) get().triggerMovementBuff();
+      if (hitCount > 0) {
+        const firstHitDodged = Math.random() < stats.eva / 100;
+        if (firstHitDodged) get().triggerMovementBuff();
 
-      if (s.game.movementBuff) {
-        if (s.game.movementBuff.data.lifeSteal) {
-          const lsRatio = s.game.movementBuff.data.lifeSteal / 100;
-          const healAmt = finalDamageToDummy * lsRatio;
-          if (healAmt > 0) get().heal(healAmt);
-        }
-        if (s.game.movementBuff.data.healPerTouch) {
-          const healAmt = get().getTotalHp() * (s.game.movementBuff.data.healPerTouch / 100);
-          get().heal(healAmt);
-        }
-        if (s.game.movementBuff.data.nextHit && s.game.nextHitMultiplier > 1) {
-          setTimeout(() => set((p: any) => ({ game: { ...p.game, nextHitMultiplier: 1 } })), 0);
+        if (s.game.movementBuff) {
+          if (s.game.movementBuff.data.lifeSteal) {
+            const lsRatio = s.game.movementBuff.data.lifeSteal / 100;
+            const healAmt = totalDamageDealt * lsRatio;
+            if (healAmt > 0) get().heal(healAmt);
+          }
+          if (s.game.movementBuff.data.healPerTouch) {
+            const healAmt = get().getTotalHp() * (s.game.movementBuff.data.healPerTouch / 100) * hitCount;
+            get().heal(healAmt);
+          }
         }
       }
 
@@ -980,14 +975,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       const currentMaxHp = stats.hp;
       let qT = s.game.questTarget;
       let cMT = s.game.currentMissionTitle;
-      let uTabs = [...s.game.unlockedTabs];
+      let uTabs = [...(s.game.unlockedTabs || [])];
       let uET = s.game.unlockEffectText;
       let aM = s.game.attackMultiplier;
       let bTL = s.game.buffTimeLeft;
       let aB = s.game.activeBuff;
 
-
-      // 누적 처치(tKills) 기반 임무 판정 - 단일 달성으로 원복
       if (tKills >= qT) {
         if (qT === 10) {
           qT = 30;
@@ -1012,33 +1005,37 @@ export const useGameStore = create<GameState>((set, get) => ({
           pIE = false;
         } else if (qT === 150) {
           qT = 200;
-          cMT = "허수아비 누적 처치 200번\n[개방: 비급]";
+          cMT = "허수아비 누적 처치 200번\n[이벤트: 무뢰배]";
           uET = "[대결] 개방";
           uTabs = Array.from(new Set([...uTabs, "master"]));
         } else if (qT === 200) {
           qT = 300;
           cMT = "허수아비 누적 처치 300번\n[이벤트: 무뢰배]";
-          uET = "[비급] 개방";
-          uTabs = Array.from(new Set([...uTabs, "library"]));
+          uET = "무뢰배의 기운이 느껴집니다...";
         } else if (qT === 300) {
+          qT = 350;
+          cMT = "허수아비 누적 처치 350번\n[개방: 비급]";
+          uET = "무뢰배들이 몰려옵니다!";
+        } else if (qT === 350) {
           qT = 400;
           cMT = "허수아비 누적 처치 400번\n[개방: 무한의 탑]";
-          uET = "무뢰배 격퇴 완료!";
+          uET = "[비급] 개방";
+          uTabs = Array.from(new Set([...uTabs, "library"]));
         } else if (qT === 400) {
           qT = targetInterval;
           cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
-          uET = "[무한의 탑] 개방";
+          if (!uTabs.includes("tower")) {
+            uET = "[무한의 탑] 개방";
+          }
           uTabs = Array.from(new Set([...uTabs, "tower"]));
         } else if (qT >= targetInterval) {
-          // 400킬 이후부터는 순환형 무뢰배 이벤트 모드
-          qT = targetInterval; 
+          qT = targetInterval;
           cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
           uET = null;
         }
         if (uET) lastR = uET;
       }
 
-      let nTM = s.game.timingMission;
       return {
         game: {
           ...s.game,
@@ -1046,7 +1043,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           coins: s.game.coins + eGold,
           reputation: rep,
           exp: s.game.exp + finalExp,
-          dummyHp: dHp,
+          dummyHp: currentDummyHp,
           maxDummyHp: currentMaxHp,
           totalDummyKills: tKills,
           activeQuests: (() => {
@@ -1074,6 +1071,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           activeBuff: aB,
           pendingInnEntry: pIE,
           innEventVersion: iEV,
+          innEventIndex: currentIdx,
+          lastInnEventKillCount: (killGap >= targetInterval) ? tKills : s.game.lastInnEventKillCount,
           touches: nTouches,
           comboCount: combo,
           lastAttackTime: now,
@@ -2254,7 +2253,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const itemPrice = item.price || 5000;
     const growthFactor = Math.pow(1.15, curLv); // 레벨당 15%씩 증가 (기존 1.5배에서 완화)
-    
+
     const goldCost = Math.floor(itemPrice * growthFactor);
     const repCost = Math.floor(itemPrice * growthFactor);
     const stoneCost = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv)));
@@ -4010,13 +4009,25 @@ export const useGameStore = create<GameState>((set, get) => ({
         enhancementStones: trillion,
         wisdom: trillion,
         points: trillion,
-        // 하단탭 전체개방 기능 제거 (사용자 요청)
-        // 자동사냥 중단 방지: 현재 처치수와 동기화하고 차단 플래그 제거
+        hp: 1000000,
+        maxHp: 1000000,
+        mp: 1000000,
+        maxMp: 1000000,
+        unlockedTabs: Array.from(new Set([...s.game.unlockedTabs, "upgrade", "forge", "inventory", "inn", "master", "library", "tower", "giru", "gambling"])),
         lastInnEventKillCount: s.game.totalDummyKills,
         pendingInnEntry: false,
         timingMission: {
           ...(s.game.timingMission || {}),
-          available: false
+          available: false,
+          combatState: null
+        },
+        masterDuel: {
+          ...(s.game.masterDuel || {}),
+          isPlaying: false
+        },
+        tower: {
+          ...(s.game.tower || {}),
+          isInside: false
         }
       }
     }));

@@ -64,6 +64,7 @@ export const BreathGame = React.memo(({
   const [counterEnemyHp, setCounterEnemyHp] = useState(100);
   const [counterGauge, setCounterGauge] = useState(0);
   const [counterSlashEffect, setCounterSlashEffect] = useState(false);
+  const [lastCounterDamage, setLastCounterDamage] = useState(0);
   const [combo, setCombo] = useState(0);
   const comboRef = useRef(0);
 
@@ -210,6 +211,7 @@ export const BreathGame = React.memo(({
   // --- Interaction ---
   const fireCounterSlash = (damage: number) => {
     setCounterSlashEffect(true);
+    setLastCounterDamage(damage);
     playHitEffect();
     triggerShake();
 
@@ -219,7 +221,7 @@ export const BreathGame = React.memo(({
     counterEnemyHpRef.current = nextHp;
     setCounterEnemyHp(nextHp);
 
-    addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 52);
+    // addFloatText(`청운진기 반격 -${damage}`, "#ffd700", 50, 52); // Redundant with large effect, removed per request
 
     if (nextHp <= 0) {
       breathNotesRef.current = [];
@@ -314,11 +316,11 @@ export const BreathGame = React.memo(({
           const nextScore = playerScoreRef.current + bonusScore;
           playerScoreRef.current = nextScore;
           setPlayerScore(nextScore);
-          addFloatText(`콤보 보너스! +${bonusScore} (${Math.round(bonusPercent * 100)}%)`, "#ffd700", 50, 40);
+          addFloatText(`연격 +${Math.round(bonusPercent * 100)}%`, "#ffd700", 50, 40);
         }
       }
       
-      addFloatText(`${nextCombo} 연속 방어!`, "#ffd700");
+      // addFloatText(`${nextCombo} 연속 방어!`, "#ffd700"); // Combined into the percent text or just removed for brevity
     }
 
     if (nextGauge >= config.counterNeed) {
@@ -428,7 +430,10 @@ export const BreathGame = React.memo(({
               <div style={{ fontSize: 21, fontWeight: 950, color: "#00f2ff", textShadow: "0 0 6px rgba(0, 242, 255, 0.8), 0 0 3px #fff", letterSpacing: 2, fontStyle: "italic" }}>
                 청운진기 반격!
               </div>
-              <div style={{ fontSize: 8, color: "#fff", fontWeight: 800, marginTop: -2, opacity: 0.9, textShadow: "0 0 5px #00f2ff", letterSpacing: 1 }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: "#ff3030", textShadow: "0 0 10px rgba(255,48,48,0.5), 0 0 5px #fff", marginTop: 2 }}>
+                -{lastCounterDamage.toLocaleString()}
+              </div>
+              <div style={{ fontSize: 8, color: "#fff", fontWeight: 800, marginTop: 2, opacity: 0.9, textShadow: "0 0 5px #00f2ff", letterSpacing: 1 }}>
                 CHEONGUN COUNTER
               </div>
             </motion.div>

@@ -2469,7 +2469,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 maskImage: "radial-gradient(ellipse at center, black 30%, transparent 95%)"
               }}>
                 <img
-                  src="/images/inn_bg.png"
+                  src="/images/inn_bg.jpg"
                   alt="Inn Background"
                   style={{
                     width: "100%", height: "140%",
@@ -2506,7 +2506,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                   src="/images/inn_chair.png"
                   alt="Inn Chair"
                   style={{
-                    position: "absolute", bottom: "160px", left: "35%", height: "220px",
+                    position: "absolute", bottom: "160px", left: "55%", height: "160px",
                     objectFit: "contain", zIndex: 11, opacity: 1,
                     filter: "drop-shadow(0 0 15px rgba(0,0,0,0.6))",
                     pointerEvents: "none"
@@ -2518,7 +2518,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                   src="/images/inn_woman.png"
                   alt="Inn Woman"
                   style={{
-                    position: "absolute", bottom: "290px", left: "59%", height: "300px",
+                    position: "absolute", bottom: "240px", left: "59%", height: "260px",
                     objectFit: "contain", zIndex: 3, opacity: 0.9,
                     filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))",
                     pointerEvents: "none"
@@ -2530,7 +2530,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                   src="/images/inn_thug.png"
                   alt="Inn Thug"
                   style={{
-                    position: "absolute", bottom: "260px", left: "55%", height: "320px",
+                    position: "absolute", bottom: "280px", left: "55%", height: "260px",
                     objectFit: "contain", zIndex: 2, opacity: 1,
                     animation: "character3DPanDarkMild 6.5s ease-in-out infinite alternate", // 움직임 절반으로 감소, 노란빛 제거
                     animationDelay: "-2s",

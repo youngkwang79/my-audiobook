@@ -14,7 +14,7 @@ export const FACTIONS: FactionInfo[] = [
     touchFlavor: "매화 잎처럼 빠른 검격으로 허수아비를 연속 타격합니다.",
     theme: { glow: "rgba(255,120,120,0.22)", accent: "#ffb3b3" },
     bonusStats: { atk: 15, critRate: 15, critDmg: 15, speed: 10 },
-    characterImages: { ready: "/images/char_hwasan_ready.png", attack: "/images/char_hwasan_attack.png" },
+    characterImages: { ready: "/images/char_hwasan_ready.webp", attack: "/images/char_hwasan_attack.webp" },
     specialAdvantage: "치명타 시 추가 검기 발동, 3연타 시 4번째 공격 2배 위력",
     martial: {
       필부: { name: "기초검식", innerPower: "-", stats: { atk: 5 } },

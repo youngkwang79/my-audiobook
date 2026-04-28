@@ -103,7 +103,6 @@ main {
   }
 }
 
-/* 애니메이션 */
 @keyframes damageFloat {
   0% { transform: translateY(0) scale(0.5); opacity: 0; }
   20% { transform: translateY(-25px) scale(1.3); opacity: 1; }
@@ -114,6 +113,27 @@ main {
   0% { opacity: 0.3; }
   50% { opacity: 0.6; }
   100% { opacity: 0.3; }
+}
+
+@keyframes loadingBar {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+@keyframes thugLoadingBar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes character3DPanDarkMild {
+  0% { transform: translateX(-50%) rotateY(-5deg) scale(1); }
+  50% { transform: translateX(-50%) rotateY(5deg) scale(1.02); }
+  100% { transform: translateX(-50%) rotateY(-5deg) scale(1); }
 }
 
 /* fullscreen 대응 */

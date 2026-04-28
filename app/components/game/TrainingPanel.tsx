@@ -34,6 +34,8 @@ export default function TrainingPanel() {
   const maxDummyHp = useGameStore((s: any) => s.game.maxDummyHp);
   const timingMission = useGameStore((s: any) => s.game.timingMission);
 
+  const userName = useGameStore((s: any) => s.game.name);
+
   const addExp = useGameStore((s: any) => s.addExp);
   const addCoins = useGameStore((s: any) => s.addCoins);
   const breakthrough = useGameStore((s: any) => s.breakthrough);
@@ -317,7 +319,8 @@ export default function TrainingPanel() {
 
     setLastTouchTime(now);
     setShowPrompt(false);
-    if (showBreakthroughPopup) return;
+    const { pendingInnEntry, timingMission } = useGameStore.getState().game;
+    if (showBreakthroughPopup || pendingInnEntry || timingMission?.available) return;
 
     const totalCritRate = useGameStore.getState().getTotalCritRate ? useGameStore.getState().getTotalCritRate() : 5;
     const isCritical = Math.random() < totalCritRate / 100;
@@ -520,7 +523,7 @@ export default function TrainingPanel() {
 
 
   const handleConfirmBreakthrough = () => {
-    const targetRealm = nextRealmName;
+    const targetRealm = isRealmBreakthrough ? nextRealmName : `${realm} ${star + 1}성`;
 
     setShowBreakthroughPopup(false);
     dismissedRealmRef.current = realm;
@@ -817,19 +820,20 @@ export default function TrainingPanel() {
         </div>
       )}
 
-      {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 */}
-      {pendingInnEntry && (
+      {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 - available일 때도 표시하여 수련장 진입 원천 차단 */}
+      {(pendingInnEntry || timingMission?.available) && (
         <div
+          id="thug-invasion-overlay"
           style={{
             position: "absolute",
             inset: 0,
-            zIndex: 3000,
+            zIndex: 5000, // 가장 높은 우선순위
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(10px)",
+            background: "rgba(0,0,0,0.9)",
+            backdropFilter: "blur(12px)",
             animation: "fadeIn 0.5s ease-out forwards",
           }}
         >
@@ -839,16 +843,17 @@ export default function TrainingPanel() {
               fontWeight: 900,
               color: "#ff3333",
               textShadow: "0 0 20px #ff0000",
-              marginBottom: "20px"
+              marginBottom: "20px",
+              letterSpacing: "-1px"
             }}>
               🚨 무뢰배 난입! 🚨
             </div>
 
             {/* 객잔 배경 & 무뢰배 이미지 */}
-            <div style={{ position: "relative", height: "300px", width: "100%", overflow: "hidden", marginBottom: "20px" }}>
+            <div style={{ position: "relative", height: "300px", width: "100%", overflow: "hidden", marginBottom: "20px", borderRadius: "20px", border: "1px solid rgba(255,51,51,0.3)" }}>
               <img
-                src="/images/inn_bg.png"
-                style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, filter: "brightness(0.5) contrast(1.2)" }}
+                src="/images/inn_bg.jpg"
+                style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6, filter: "brightness(0.6) contrast(1.2) grayscale(0.3)" }}
                 alt="Inn Background"
               />
               <img
@@ -858,20 +863,60 @@ export default function TrainingPanel() {
                   bottom: "10%",
                   left: "50%",
                   transform: "translateX(-50%)",
-                  height: "80%",
+                  height: "85%",
+                  filter: "drop-shadow(0 0 15px rgba(0,0,0,0.8))",
                   animation: "character3DPanDarkMild 3s infinite"
                 }}
                 alt="Inn Thug"
               />
+              
+              {/* 긴장감 넘치는 비네팅 효과 */}
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle, transparent 30%, rgba(0,0,0,0.8) 100%)" }} />
             </div>
 
-            <div style={{ color: "#fff", fontSize: "18px", fontWeight: "bold", padding: "0 20px" }}>
-              객잔에서 소란을 피우는 무뢰배들을 참교육하러 이동합니다...
+            <div style={{ color: "#fff", fontSize: "20px", fontWeight: "bold", padding: "0 20px", textShadow: "0 2px 8px rgba(255,0,0,0.5)", lineHeight: "1.5" }}>
+              객잔에 무뢰배가 난입했습니다.<br />
+              {userName || "협객"}님, 무뢰배로 부터 백성을 구해주십시요.
             </div>
 
-            <div style={{ marginTop: "30px", width: "200px", height: "4px", background: "#333", borderRadius: "2px", margin: "30px auto" }}>
-              <div style={{ height: "100%", background: "#ff3333", borderRadius: "2px", animation: "loadingBar 1s linear forwards" }} />
+            {/* 빨간 게이지 - 무한 루프 애니메이션으로 긴박함 표현 */}
+            <div style={{ 
+              marginTop: "40px", 
+              width: "280px", 
+              height: "10px", 
+              background: "rgba(51,51,51,0.8)", 
+              borderRadius: "5px", 
+              margin: "40px auto",
+              overflow: "hidden",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 0 15px rgba(255,51,51,0.3)"
+            }}>
+              <div style={{ 
+                height: "100%", 
+                background: "linear-gradient(90deg, #ff0000, #ff6666, #ff0000)", 
+                borderRadius: "5px", 
+                width: "100%",
+                animation: "thugLoadingBar 1.5s infinite linear" 
+              }} />
             </div>
+            
+            <button 
+              onClick={() => useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "inn" } }))}
+              style={{
+                background: "linear-gradient(135deg, #ff3333 0%, #990000 100%)",
+                color: "white",
+                border: "none",
+                padding: "12px 30px",
+                borderRadius: "30px",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
+                marginTop: "10px"
+              }}
+            >
+              객잔으로 즉시 향함
+            </button>
           </div>
         </div>
       )}
