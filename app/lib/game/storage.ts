@@ -343,16 +343,15 @@ export function loadGame(): GameSaveData {
       if (!repairedTabs.includes("forge")) repairedTabs.push("forge");
       if (!repairedTabs.includes("inventory")) repairedTabs.push("inventory");
     }
-    if (kills >= 100 && !repairedTabs.includes("upgrade")) repairedTabs.push("upgrade");
-    if (kills >= 150 && !repairedTabs.includes("master")) repairedTabs.push("master");
-    if (kills >= 200 && !repairedTabs.includes("library")) repairedTabs.push("library");
-    if (kills >= 300) {
-      if (!repairedTabs.includes("inn")) repairedTabs.push("inn");
+    if (kills >= 50 && !repairedTabs.includes("upgrade")) repairedTabs.push("upgrade");
+    if (kills >= 80) {
+      if (!repairedTabs.includes("library")) repairedTabs.push("library");
       if (!repairedTabs.includes("giru")) repairedTabs.push("giru");
       if (!repairedTabs.includes("gambling")) repairedTabs.push("gambling");
     }
-
-    if (v12Data.totalDummyKills >= 400 && !repairedTabs.includes("tower")) repairedTabs.push("tower");
+    if (kills >= 100 && !repairedTabs.includes("tower")) repairedTabs.push("tower");
+    if (kills >= 150 && !repairedTabs.includes("master")) repairedTabs.push("master");
+    if (kills >= 290 && !repairedTabs.includes("inn")) repairedTabs.push("inn");
 
     const realmOrder = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
     const rIdx = realmOrder.indexOf(v12Data.realm || "필부");

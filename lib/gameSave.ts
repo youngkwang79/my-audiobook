@@ -1,13 +1,16 @@
 // lib/gameSave.ts
 import { supabase } from "@/lib/supabaseClient";
+import { db } from "./firebase";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
 export type GameSaveData = {
   user_id: string;
   last_played?: any;
   game_data?: any;
-  updated_at?: string;
+  updated_at?: any;
 };
 
+// --- Supabase Implementation ---
 export async function saveGame(userId: string, gameData: any) {
   const { error } = await supabase.from("game_saves").upsert(
     {
@@ -21,7 +24,7 @@ export async function saveGame(userId: string, gameData: any) {
   );
 
   if (error) {
-    console.error("게임 저장 실패:", error.message);
+    console.error("Supabase 게임 저장 실패:", error.message);
     throw error;
   }
 }
@@ -34,11 +37,41 @@ export async function loadGame(userId: string) {
     .maybeSingle();
 
   if (error) {
-    console.error("게임 불러오기 실패:", error.message);
+    console.error("Supabase 게임 불러오기 실패:", error.message);
     return null;
   }
 
   return data?.game_data ?? null;
+}
+
+// --- Firebase Implementation ---
+export async function saveGameToFirebase(userId: string, gameData: any) {
+  try {
+    const docRef = doc(db, "gameSaves", userId);
+    await setDoc(docRef, {
+      game_data: gameData,
+      updated_at: serverTimestamp(),
+      user_id: userId
+    }, { merge: true });
+    console.log("Firebase 클라우드 저장 성공");
+  } catch (error: any) {
+    console.error("Firebase 게임 저장 실패:", error.message);
+    throw error;
+  }
+}
+
+export async function loadGameFromFirebase(userId: string) {
+  try {
+    const docRef = doc(db, "gameSaves", userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().game_data;
+    }
+    return null;
+  } catch (error: any) {
+    console.error("Firebase 게임 불러오기 실패:", error.message);
+    return null;
+  }
 }
 
 export async function saveLastPlayed(userId: string, lastPlayed: any) {

@@ -51,8 +51,7 @@ export default function GameBottomNav({
     >
       {items.map((item) => {
         const isGiruOrGambling = item.key === "giru" || item.key === "gambling";
-        // 기루와 도박장은 첫 밤을 보낸 이후에만 해금
-        const unlocked = isGiruOrGambling ? hasSeenFirstNight : unlockedTabs.includes(item.key);
+        const unlocked = unlockedTabs.includes(item.key);
         const active = activeTab === item.key;
         const isLockedByDay = false; // 출입제한(밤에만 가능) 삭제
 
@@ -60,10 +59,7 @@ export default function GameBottomNav({
           <button
             key={item.key}
             onClick={() => {
-              if (isGiruOrGambling && !hasSeenFirstNight) {
-                alert("해가 지고 어두운 밤이 찾아와야 비밀스러운 장소가 열립니다.");
-                return;
-              }
+
 
               if (!unlocked) return;
               
@@ -98,7 +94,7 @@ export default function GameBottomNav({
             }}
           >
             <span style={{ fontSize: 13 }}>{item.label}</span>
-            {!unlocked && (
+            {!unlocked ? (
               <span style={{
                 position: "absolute",
                 top: "2px",
@@ -107,6 +103,19 @@ export default function GameBottomNav({
               }}>
                 🔒
               </span>
+            ) : (
+              isGiruOrGambling && (
+                <span style={{
+                  position: "absolute",
+                  top: "2px",
+                  right: "4px",
+                  fontSize: "9px",
+                  color: "#ffd778",
+                  opacity: 0.8
+                }}>
+                  🌙
+                </span>
+              )
             )}
           </button>
         );

@@ -1103,20 +1103,18 @@ export default function GiruPanel() {
       {/* Locked Overlay for Curiosity / Daytime */}
       {(isRealmLocked || isDaytimeLocked) && (
         <div style={{
-          position: "absolute", inset: 0, zIndex: 100, 
-          background: isRealmLocked 
-            ? "linear-gradient(180deg, rgba(5,5,16,0.3) 0%, rgba(5,5,16,0.8) 100%)"
-            : "rgba(5,5,16,0.5)",
+          position: "absolute", inset: 0, zIndex: 1000, 
+          background: "rgba(0,0,0,0.7)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
-          padding: "40px 30px 120px", textAlign: "center", pointerEvents: "all"
+          padding: "0 20px 100px", textAlign: "center", pointerEvents: "all"
         }}>
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             style={{ 
-              background: "rgba(10, 10, 25, 0.95)", border: `2px solid ${isRealmLocked ? "#ffd700" : "#e0c3fc"}`, borderRadius: "24px",
-              padding: "24px", boxShadow: "0 0 40px rgba(0,0,0,0.8)",
-              maxWidth: "320px"
+              background: "rgba(15, 15, 30, 0.98)", border: `1px solid ${isRealmLocked ? "#ffd700" : "#e0c3fc"}`, borderRadius: "20px",
+              padding: "16px 20px", boxShadow: "0 10px 30px rgba(0,0,0,0.8)",
+              maxWidth: "300px"
             }}
           >
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>{isRealmLocked ? "🔒" : "☀️"}</div>
@@ -1140,7 +1138,7 @@ export default function GiruPanel() {
             </p>
             <div style={{ marginTop: "20px", fontSize: "11px", color: "#888" }}>
               {isRealmLocked ? (
-                <>현재: <span style={{ color: "#fff" }}>{game.hero.realm}</span> / 필요: 삼류 이상</>
+                <>현재: <span style={{ color: "#fff" }}>{game.realm}</span> / 필요: 삼류 이상</>
               ) : (
                 <>현재는 <span style={{ color: "#ffd700" }}>낮</span> 시간입니다.</>
               )}

@@ -16,6 +16,9 @@ import {
   getRefineBonusMultiplier
 } from "./martialArtsSystem";
 import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
+import { saveGameToFirebase, loadGameFromFirebase } from "@/lib/gameSave";
+import { supabase } from "@/lib/supabaseClient";
+
 
 export function formatCompactNumber(num: number): string {
   if (num < 0) return "0";
@@ -872,10 +875,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (game.pendingInnEntry || game.timingMission.available) return;
     // 전투 중이거나 탑 내부일 때 중단
     if (game.masterDuel.isPlaying || game.tower?.isInside) return;
-
-    if (!isAuto && Math.random() < 0.001 && !game.yabawiEvent?.active) {
-      get().triggerYabawiEvent();
-    }
     const totalAtk = get().getTotalAttack(); const autoLv = game.upgradeLevels.autoGain || 0;
     const expB = 1 + (autoLv * 0.0003); const goldB = 1 + (autoLv * 0.0005);
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
@@ -1014,41 +1013,31 @@ export const useGameStore = create<GameState>((set, get) => ({
           uET = "[대장간] 개방";
           uTabs = Array.from(new Set([...uTabs, "forge", "inventory"]));
         } else if (qT === 50) {
-          qT = 100;
-          cMT = "허수아비 누적 처치 100번\n[개방: 객잔]";
+          qT = 80;
+          cMT = "허수아비 누적 처치 80번\n[개방: 비급/기루/도박]";
           uET = "[강화] 개방";
           uTabs = Array.from(new Set([...uTabs, "upgrade"]));
+        } else if (qT === 80) {
+          qT = 100;
+          cMT = "허수아비 누적 처치 100번\n[개방: 무한의 탑]";
+          uET = "[비급/기루/도박] 개방";
+          uTabs = Array.from(new Set([...uTabs, "library", "giru", "gambling"]));
         } else if (qT === 100) {
           qT = 150;
           cMT = "허수아비 누적 처치 150번\n[개방: 대결]";
+          uET = "[무한의 탑] 개방";
+          uTabs = Array.from(new Set([...uTabs, "tower"]));
+        } else if (qT === 150) {
+          qT = 290;
+          cMT = "허수아비 누적 처치 290번\n[개방: 객잔]";
+          uET = "[대결] 개방";
+          uTabs = Array.from(new Set([...uTabs, "master"]));
+        } else if (qT === 290) {
+          qT = targetInterval;
+          cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
           uET = "[객잔] 개방";
           uTabs = Array.from(new Set([...uTabs, "inn"]));
           pIE = false;
-        } else if (qT === 150) {
-          qT = 200;
-          cMT = "허수아비 누적 처치 200번\n[이벤트: 무뢰배]";
-          uET = "[대결] 개방";
-          uTabs = Array.from(new Set([...uTabs, "master"]));
-        } else if (qT === 200) {
-          qT = 300;
-          cMT = "허수아비 누적 처치 300번\n[이벤트: 무뢰배]";
-          uET = "무뢰배의 기운이 느껴집니다...";
-        } else if (qT === 300) {
-          qT = 350;
-          cMT = "허수아비 누적 처치 350번\n[개방: 비급]";
-          uET = "무뢰배들이 몰려옵니다!";
-        } else if (qT === 350) {
-          qT = 400;
-          cMT = "허수아비 누적 처치 400번\n[개방: 무한의 탑]";
-          uET = "[비급] 개방";
-          uTabs = Array.from(new Set([...uTabs, "library"]));
-        } else if (qT === 400) {
-          qT = targetInterval;
-          cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
-          if (!uTabs.includes("tower")) {
-            uET = "[무한의 탑] 개방";
-          }
-          uTabs = Array.from(new Set([...uTabs, "tower"]));
         } else if (qT >= targetInterval) {
           qT = targetInterval;
           cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
@@ -1356,9 +1345,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       return 50 * (Math.pow(1.08, level) - 1);
     }
     if (k === 'mpRec') return level * 100;
-    if (k === 'critRate') return level * 0.3;
-    if (k === 'critDmg') return level * 3;
-    if (k === 'eva') return level * 0.3;
+    if (k === 'critRate') return level * 0.05;
+    if (k === 'critDmg') return level * 0.5;
+    if (k === 'eva') return level * 0.05;
     
     const inc = STAT_INCREMENTS[k] || 0;
     return level * inc;
@@ -3076,56 +3065,34 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   syncToCloud: async () => {
     const { isSyncingFromCloud } = get();
-    if (isSyncingFromCloud) {
-      console.warn("데이터 불러오기 중에는 클라우드 저장을 차단합니다.");
-      return;
-    }
+    if (isSyncingFromCloud) return;
+
     try {
-      const response = await fetch("/api/game/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(get().game)
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      // throw 대신 return으로 조용히 종료
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.warn("클라우드 저장 실패: 로그인이 필요하거나 세션이 만료되었습니다.");
-        } else {
-          console.error(`서버 저장 실패: 응답 코드 ${response.status}`);
-        }
-        return;
-      }
-
-      console.log("클라우드 동기화 성공");
+      // Firebase Firestore에 직접 저장
+      await saveGameToFirebase(user.id, get().game);
+      console.log("클라우드(Firebase) 동기화 성공");
     } catch (e) {
-      if (e instanceof TypeError && e.message === "Failed to fetch") {
-        console.warn("클라우드 동기화 실패: 네트워크 연결이 원활하지 않거나 서버가 응답하지 않습니다.");
-      } else {
-        console.warn("클라우드 동기화 중 에러 발생:", e);
-      }
+      console.warn("클라우드 동기화 중 에러 발생:", e);
       get().triggerSave(true); // 실패 시 로컬에라도 저장
     }
   },
   syncFromCloud: async () => {
     set({ isSyncingFromCloud: true });
     try {
-      const res = await fetch("/api/game/sync");
-      if (res.ok) {
-        const cloudData = await res.json();
-        // 데이터가 존재하고 유효한 경우에만 로컬 데이터를 교체
-        if (cloudData && cloudData.realm) {
-          set((s: any) => ({ game: { ...s.game, ...cloudData, isInitialized: true } }));
-          // 클라우드 데이터를 로컬 스토리지에도 즉시 반영
-          saveGame(get().game);
-        }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const cloudData = await loadGameFromFirebase(user.id);
+      if (cloudData && cloudData.realm) {
+        set((s: any) => ({ game: { ...s.game, ...cloudData, isInitialized: true } }));
+        saveGame(get().game);
+        console.log("클라우드(Firebase) 데이터 로드 성공");
       }
     } catch (e) {
-      if (e instanceof TypeError && e.message === "Failed to fetch") {
-        console.warn("데이터 불러오기 실패: 네트워크 연결이 원활하지 않습니다.");
-      } else {
-        console.warn("데이터 불러오기 중 에러 발생:", e);
-      }
+      console.warn("데이터 불러오기 중 에러 발생:", e);
     } finally {
       set({ isSyncingFromCloud: false });
     }

@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const PUZZLE_ROWS = 7;
-const PUZZLE_COLS = 7;
+const PUZZLE_ROWS = 9;
+const PUZZLE_COLS = 9;
 
 type PuzzleGameProps = {
   stage: number;
@@ -514,7 +514,7 @@ export function PuzzleGame({
               display: "grid",
               gridTemplateColumns: `repeat(${PUZZLE_COLS}, 1fr)`,
               gridTemplateRows: `repeat(${PUZZLE_ROWS}, 1fr)`,
-              gap: "4px", // Increased gap
+              gap: "2px", // Reduced gap for 9x9 grid
               touchAction: "none",
               WebkitUserSelect: "none",
               userSelect: "none"
@@ -541,9 +541,9 @@ export function PuzzleGame({
                   }}
                 >
                   <div style={{
-                    width: "94%",
-                    height: "94%",
-                    borderRadius: "12px",
+                    width: "90%",
+                    height: "90%",
+                    borderRadius: "6px",
                     background: (() => {
                       switch (cell.type) {
                         case 'fire': return 'radial-gradient(circle at 35% 35%, #ff0000, #4d0000)';
@@ -577,7 +577,7 @@ export function PuzzleGame({
                     }} />
                     {cell.special && (
                       <div style={{
-                        fontSize: "26px",
+                        fontSize: "18px",
                         zIndex: 2,
                         filter: "drop-shadow(0 0 12px #fff)",
                         display: "flex",

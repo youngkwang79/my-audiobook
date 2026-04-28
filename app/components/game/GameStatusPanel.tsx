@@ -10,6 +10,8 @@ export default function GameStatusPanel() {
   const game = useGameStore((s: any) => s.game);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyProgress, setApplyProgress] = useState(0);
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps, triggerGodMode } = useGameStore() as any;
@@ -71,6 +73,28 @@ export default function GameStatusPanel() {
 
   const hpPercent = totalHp > 0 ? Math.min((safeGame.hp / totalHp) * 100, 100) : 0;
   const mpPercent = totalMp > 0 ? Math.min((safeGame.mp / totalMp) * 100, 100) : 0;
+
+  useEffect(() => {
+    if (isApplying) {
+      const startTime = Date.now();
+      const duration = 3000;
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min((elapsed / duration) * 100, 100);
+        setApplyProgress(progress);
+        if (progress >= 100) {
+          clearInterval(interval);
+          window.location.reload();
+        }
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [isApplying]);
+
+  const handleApplyChanges = () => {
+    triggerSave(true);
+    setIsApplying(true);
+  };
 
   return (
     <>
@@ -137,6 +161,23 @@ export default function GameStatusPanel() {
             >
               홈
             </button>
+
+            <button
+              onClick={handleApplyChanges}
+              style={{
+                padding: "2px 8px",
+                fontSize: "11px",
+                background: "linear-gradient(180deg, #444, #222)",
+                border: "1px solid rgba(255,215,120,0.4)",
+                borderRadius: "6px",
+                color: "#ffd778",
+                cursor: "pointer",
+                fontWeight: "bold",
+                marginLeft: "4px"
+              }}
+            >
+              적용
+            </button>
           </div>
 
           <button
@@ -177,30 +218,7 @@ export default function GameStatusPanel() {
             ⚙️
           </button>
           
-          <button
-            onClick={() => {
-              if (confirm("모든 재화를 1조로 설정하고 모든 탭을 활성화하시겠습니까?")) {
-                triggerGodMode();
-              }
-            }}
-            style={{
-              width: "12px",
-              height: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "8px",
-              background: "transparent",
-              border: "none",
-              color: "rgba(255,255,255,0.05)",
-              cursor: "pointer",
-              marginLeft: "4px",
-              padding: 0,
-              userSelect: "none"
-            }}
-          >
-            g
-          </button>
+
         </div>
 
         {/* 2. 게이지 영역 (HP/MP) */}
@@ -411,29 +429,7 @@ export default function GameStatusPanel() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <div style={{ fontSize: 18, fontWeight: 950, color: "#ffd778" }}>⚙️ 환경 설정</div>
-                <button
-                  onClick={() => {
-                    if (confirm("모든 재화를 1조로 설정하고 모든 탭을 활성화하시겠습니까?")) {
-                      triggerGodMode();
-                    }
-                  }}
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "8px",
-                    background: "transparent",
-                    border: "none",
-                    color: "rgba(255,255,255,0.05)",
-                    cursor: "pointer",
-                    padding: 0,
-                    userSelect: "none"
-                  }}
-                >
-                  g
-                </button>
+
               </div>
               <button onClick={() => setIsSettingsOpen(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 20, cursor: "pointer" }}>&times;</button>
             </div>
@@ -571,6 +567,42 @@ export default function GameStatusPanel() {
 
             <div style={{ textAlign: "center", fontSize: 10, color: "#555", marginTop: 5 }}>v1.4.2 Settings Menu</div>
           </div>
+        </div>
+      )}
+      {isApplying && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 10000,
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          color: "#fff", gap: 20
+        }}>
+          <div style={{ 
+            fontSize: 18, 
+            fontWeight: 900, 
+            textAlign: "center",
+            color: "#ffd778",
+            textShadow: "0 0 10px rgba(255,215,120,0.3)"
+          }}>
+            데이터 유지하면서 변경사항 적용중...
+          </div>
+          <div style={{ 
+            width: "240px", 
+            height: "10px", 
+            background: "rgba(255,255,255,0.05)", 
+            borderRadius: 5, 
+            overflow: "hidden", 
+            border: "1px solid rgba(255,215,120,0.2)",
+            boxShadow: "0 0 15px rgba(0,0,0,0.5)"
+          }}>
+            <div style={{ 
+              width: `${applyProgress}%`, 
+              height: "100%", 
+              background: "linear-gradient(90deg, #f3c969, #d4a23c)", 
+              transition: "width 0.1s linear",
+              boxShadow: "0 0 10px rgba(212,162,60,0.5)"
+            }} />
+          </div>
+          <div style={{ fontSize: 12, color: "#888", marginTop: 5 }}>잠시만 기다려주세요</div>
         </div>
       )}
     </>

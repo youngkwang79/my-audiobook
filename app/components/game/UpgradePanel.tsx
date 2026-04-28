@@ -23,6 +23,7 @@ export default function UpgradePanel() {
   const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
   const getStatUpgradeBonus = useGameStore((s: any) => s.getStatUpgradeBonus);
   const factionName = useGameStore((s: any) => s.game.faction);
+  const game = useGameStore((s: any) => s.game);
 
   const getTotalAttack = useGameStore((s: any) => s.getTotalAttack);
   const getTotalDefense = useGameStore((s: any) => s.getTotalDefense);
@@ -123,8 +124,9 @@ export default function UpgradePanel() {
   });
 
   const formatStatValue = (id: string, val: number) => {
-    if (id === 'critDmg') return `${val.toFixed(2)}%`;
-    if (['critRate', 'eva', 'autoGain', 'offlineLimit'].includes(id)) return `+${(val * 100).toFixed(2)}%`;
+    if (id === 'critDmg') return `+${val.toFixed(2)}%`;
+    if (['autoGain', 'offlineLimit'].includes(id)) return `+${(val * 100).toFixed(2)}%`;
+    if (['critRate', 'eva'].includes(id)) return `+${val.toFixed(2)}%`;
     if (id === 'luck') return `${(val * 100).toFixed(4)}%`;
     return Math.floor(val).toLocaleString();
   };
@@ -222,20 +224,21 @@ export default function UpgradePanel() {
         </div>
         <div style={summaryItem}>
           <span style={{ opacity: 0.6 }}>회피</span>
-          <span style={{ color: "#ffd700", fontWeight: 900 }}>{Math.floor(getTotalEvasion())}%</span>
+          <span style={{ color: "#ffd700", fontWeight: 900 }}>{getTotalEvasion().toFixed(1)}%</span>
         </div>
         <div style={summaryItem}>
           <span style={{ opacity: 0.6 }}>치명</span>
-          <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{Math.floor(getTotalCritRate())}%</span>
+          <span style={{ color: "#ff4d4d", fontWeight: 900 }}>{getTotalCritRate().toFixed(1)}%</span>
         </div>
-        {statUpgrades.damageReduction > 0 && (
-          <div style={summaryItem}>
-            <span style={{ opacity: 0.6 }}>피감</span>
-            <span style={{ color: "#bde7ff", fontWeight: 900 }}>{statUpgrades.damageReduction}%</span>
-          </div>
-        )}
+        {(game.statUpgrades?.damageReduction || 0) > 0 && (
+       <div style={summaryItem}>
+         <span style={{ opacity: 0.6 }}>피감</span>
+         <span style={{ color: "#bde7ff", fontWeight: 900 }}>
+         {game.statUpgrades?.damageReduction || 0}%
+        </span>
       </div>
-
+           )}
+</div>
       {/* 3. Global Multiplier Selector */}
       <div style={multiplierGroupStyle}>
         {MULTIPLIERS.map(m => (

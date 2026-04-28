@@ -296,11 +296,11 @@ export default function CharacterModal({
             />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
                 <StatRow label="방어력" value={formatCompactNumber(totalDefense)} color="#8ecbff" />
-                <StatRow label="회피율" value={`${totalEvasion}%`} color="#7fffd4" />
-                <StatRow label="치명타" value={`${totalCritRate}%`} color="#ffcc00" />
+                <StatRow label="회피율" value={`${totalEvasion.toFixed(1)}%`} color="#7fffd4" />
+                <StatRow label="치명타" value={`${totalCritRate.toFixed(1)}%`} color="#ffcc00" />
                 <StatRow label="치피" value={`${totalCritDmg}%`} color="#ff7e4d" />
             </div>
-            <StatRow label="신법 (속도)" value={`${totalSpeed}%`} color="#a8ff7e" />
+            <StatRow label="신법 (속도)" value={`${totalSpeed.toFixed(1)}%`} color="#a8ff7e" />
 
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginTop: "4px" }}>
               <span style={{ color: "#888" }}>장착 무기</span>

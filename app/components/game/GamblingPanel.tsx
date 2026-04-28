@@ -107,18 +107,17 @@ export default function GamblingPanel() {
       {!isNight && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 1000, 
-          background: "rgba(5,5,16,0.6)",
-          backdropFilter: "blur(4px)",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "20px", textAlign: "center", pointerEvents: "all"
+          background: "rgba(0,0,0,0.7)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+          padding: "0 20px 100px", textAlign: "center", pointerEvents: "all"
         }}>
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             style={{ 
-              background: "rgba(10, 10, 25, 0.95)", border: "2px solid #e0c3fc", borderRadius: "24px",
-              padding: "24px", boxShadow: "0 0 40px rgba(0,0,0,0.8)",
-              maxWidth: "320px"
+              background: "rgba(15, 15, 30, 0.98)", border: "1px solid #e0c3fc", borderRadius: "20px",
+              padding: "16px 20px", boxShadow: "0 10px 30px rgba(0,0,0,0.8)",
+              maxWidth: "300px"
             }}
           >
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>☀️</div>
