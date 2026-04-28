@@ -329,11 +329,11 @@ export function PuzzleGame({
         const blockColor = (() => {
           switch (blockType) {
             case 'fire': return '#ff6b6b';
-            case 'water': return '#4dabf7';
+            case 'water': return '#2595f0ff';
             case 'wind': return '#63e6be';
-            case 'thunder': return '#ffe066';
+            case 'thunder': return '#ffeda7ff';
             case 'poison': return '#e599f7';
-            case 'gold': return '#fd7e14';
+            case 'gold': return '#ff260046';
             default: return '#fff';
           }
         })();
@@ -495,13 +495,14 @@ export function PuzzleGame({
           height: "100%"
         }}>
           <div style={{
+            marginBottom: "62px",
             width: "100%",
             maxWidth: "340px", // Increased from 280px to fix cut-off
             aspectRatio: `${PUZZLE_COLS} / ${PUZZLE_ROWS}`,
             background: "#1a1a1a",
             borderRadius: 20,
             border: "2px solid #333",
-            padding: "8px", // Increased padding
+            padding: "10px", // Increased padding to prevent sticking out
             position: "relative",
             overflow: "visible", // Changed from hidden to avoid clipping special effects
             boxSizing: "border-box",
@@ -548,9 +549,9 @@ export function PuzzleGame({
                         case 'fire': return 'radial-gradient(circle at 35% 35%, #ff0000, #4d0000)';
                         case 'water': return 'radial-gradient(circle at 35% 35%, #0000ff, #00004d)';
                         case 'wind': return 'radial-gradient(circle at 35% 35%, #00dd00 0%, #008800 50%, #003300 100%)';
-                        case 'thunder': return 'radial-gradient(circle at 35% 35%, #ffff77 0%, #ffff00 45%, #4d4d00 100%)';
+                        case 'thunder': return 'radial-gradient(circle at 35% 35%, #f7f72bff 0%, #ffff00 45%, #867a07ff 100%)';
                         case 'poison': return 'radial-gradient(circle at 35% 35%, #ff00ff, #4d004d)';
-                        case 'gold': return 'radial-gradient(circle at 35% 35%, #ff922b, #862e00)';
+                        case 'gold': return 'radial-gradient(circle at 35% 35%, #ffcc33 0%, #ff9500 50%, #ff6a00 100%)';
                         default: return 'transparent';
                       }
                     })(),

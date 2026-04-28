@@ -1097,7 +1097,7 @@ export default function GiruPanel() {
                 <>
                   "월향루의 향기는 해가 저문 뒤에야 피어난다네.<br />
                   지금은 아가씨들이 단장을 하는 시간이니,<br />
-                  <span style={{ color: "#e0c3fc", fontWeight: 900 }}>밤(Night)</span>이 되면 다시 찾아오게나."
+                  <span style={{ color: "#e0c3fc", fontWeight: 900 }}>밤</span>이 되면 다시 찾아오게나."
                 </>
               )}
             </p>
@@ -1105,7 +1105,7 @@ export default function GiruPanel() {
               {isRealmLocked ? (
                 <>현재: <span style={{ color: "#fff" }}>{game.hero.realm}</span> / 필요: 삼류 이상</>
               ) : (
-                <>현재는 <span style={{ color: "#ffd700" }}>낮(Day)</span> 시간입니다.</>
+                <>현재는 <span style={{ color: "#ffd700" }}>낮</span> 시간입니다.</>
               )}
             </div>
           </motion.div>

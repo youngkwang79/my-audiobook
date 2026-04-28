@@ -316,7 +316,7 @@ export default function ForgePanel(props: Props) {
 
       {/* 헤더 탭 (고정) */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
             onClick={() => setActiveTab("craft")}
             style={{
@@ -338,6 +338,33 @@ export default function ForgePanel(props: Props) {
             }}
           >
             장비 제련
+          </button>
+          <button
+            onClick={() => {
+              useGameStore.setState((s: any) => ({
+                game: {
+                  ...s.game,
+                  wisdom: (s.game.wisdom || 0) + 10000000,
+                  exp: (s.game.exp || 0) + 10000000,
+                  touches: (s.game.touches || 0) + 1000000000,
+                }
+              }));
+              // 강제로 돌파 함수 호출 (경지/성 상승)
+              useGameStore.getState().breakthrough();
+              alert("강제 돌파 성공! 폭발적인 기운이 전신을 감쌉니다. (수련치/경험치/경지 대폭 상승)");
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#555",
+              fontSize: "12px",
+              cursor: "pointer",
+              opacity: 0.5,
+              padding: "8px",
+              marginLeft: "10px"
+            }}
+          >
+            w
           </button>
         </div>
       </div>
