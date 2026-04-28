@@ -538,20 +538,7 @@ export default function GameStatusPanel() {
                 <button
                   onClick={async () => {
                     if (confirm("정말 모든 데이터를 초기화하고 처음부터 다시 시작하시겠습니까?\n(클라우드에 저장된 데이터도 모두 삭제됩니다.)")) {
-                      // 1. 클라우드 세이브 초기화 (로그인 상태인 경우) - 삭제 대신 덮어쓰기
-                      if (user) {
-                        try {
-                          const { saveGame } = await import("@/lib/gameSave");
-                          const { defaultGameData } = await import("@/app/lib/game/storage");
-                          await saveGame(user.id, defaultGameData);
-                          console.log("Cloud save reset to default");
-                        } catch (e) {
-                          console.error("Cloud reset failed:", e);
-                        }
-                      }
-                      
-                      // 2. 로컬 세이브 초기화 및 페이지 새로고침
-                      resetGame();
+                      await resetGame();
                       setIsSettingsOpen(false);
                     }
                   }}

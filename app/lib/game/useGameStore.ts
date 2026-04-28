@@ -3096,21 +3096,32 @@ export const useGameStore = create<GameState>((set, get) => ({
     } finally {
       set({ isSyncingFromCloud: false });
     }
-  }, resetGame: () => {
+  }, resetGame: async () => {
     if (typeof window !== "undefined") {
-      // 1. 메모리 상태 초기화 (자동 저장 방지)
+      // 1. 클라우드 데이터 초기화 시도
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await saveGameToFirebase(user.id, defaultGameData);
+          console.log("클라우드 데이터 초기화 성공");
+        }
+      } catch (e) {
+        console.error("클라우드 초기화 실패:", e);
+      }
+
+      // 2. 메모리 상태 초기화
       set({ game: { ...defaultGameData, isInitialized: true } });
 
-      // 2. 모든 버전의 세이브 키 삭제
+      // 3. 모든 버전의 세이브 키 삭제
       for (let i = 1; i <= 20; i++) {
         localStorage.removeItem(`murimbook-game-save-v${i}`);
       }
       localStorage.removeItem("murimbook-game-save");
 
-      // 3. 약간의 지연 후 새로고침 (저장 로직이 빈 데이터를 덮어쓰도록 유도)
+      // 4. 페이지 새로고침
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 300);
     }
   },
 

@@ -87,14 +87,14 @@ export default function GameShell() {
     const store: any = useGameStore.getState();
     if (store.checkOfflineRewards) store.checkOfflineRewards();
 
-    // Autosave interval every 120 seconds
+    // Autosave interval every 60 seconds
     const interval = setInterval(() => {
       if (document.hidden) return;
       const { triggerSave, syncToCloud, isSyncingFromCloud } = useGameStore.getState() as any;
       if (isSyncingFromCloud) return; // Syncing in progress, skip auto-save
       if (triggerSave) triggerSave(true);
       if (user && syncToCloud) syncToCloud();
-    }, 120000);
+    }, 60000);
 
     // Handle mobile backgrounding / tab closing
     const handleVisibilityChange = () => {
