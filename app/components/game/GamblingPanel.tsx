@@ -61,17 +61,7 @@ export default function GamblingPanel() {
   };
 
   const getYabawiMultiplier = (stage: number) => {
-    const multipliers: Record<number, number> = {
-      1: 1.5,
-      2: 2.0,
-      3: 2.5,
-      4: 3.0,
-      5: 4.0,
-      6: 5.0,
-      7: 6.0,
-      8: 7.0
-    };
-    return multipliers[stage] || 7.0;
+    return 2.0;
   };
 
   const handleYabawiResult = (win: boolean, bet: bigint) => {

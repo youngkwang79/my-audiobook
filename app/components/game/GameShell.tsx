@@ -46,6 +46,8 @@ export default function GameShell() {
   const syncToCloud = useGameStore((s: any) => s.syncToCloud);
   const closeDawnSettlement = useGameStore((s: any) => s.closeDawnSettlement);
   const setActiveTab = useGameStore((s: any) => s.setActiveTab);
+  const showFirstNightPopup = useGameStore((s: any) => s.game.showFirstNightPopup);
+  const dismissFirstNightPopup = useGameStore((s: any) => s.dismissFirstNightPopup);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -512,6 +514,76 @@ export default function GameShell() {
             @keyframes popupFadeIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes contentScaleUp { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
           `}</style>
+        </div>
+      )}
+
+      {showFirstNightPopup && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(8px)",
+            animation: "popupFadeIn 0.4s ease-out forwards",
+          }}
+        >
+          <div
+            style={{
+              padding: "40px 30px",
+              borderRadius: "24px",
+              background: "linear-gradient(145deg, #1a1a2e 0%, #0f0f1a 100%)",
+              border: "2px solid #8e44ad",
+              boxShadow: "0 0 50px rgba(142, 68, 173, 0.4), inset 0 0 20px rgba(142, 68, 173, 0.2)",
+              textAlign: "center",
+              width: "85%",
+              maxWidth: "340px",
+              animation: "contentScaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards",
+              position: "relative",
+              overflow: "hidden"
+            }}
+          >
+            <div style={{
+              position: "absolute",
+              top: "-20px", left: "-20px", right: "-20px", height: "100px",
+              background: "radial-gradient(ellipse at top, rgba(142,68,173,0.3) 0%, transparent 70%)",
+              pointerEvents: "none"
+            }} />
+            
+            <div style={{ fontSize: 48, marginBottom: 15, filter: "drop-shadow(0 0 15px #9b59b6)" }}>🌙</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#d2b4de", marginBottom: 10, textShadow: "0 2px 5px #000" }}>
+              첫 번째 밤이 찾아왔습니다
+            </div>
+            
+            <div style={{ height: "2px", background: "linear-gradient(90deg, transparent, #8e44ad, transparent)", margin: "15px 0" }} />
+            
+            <p style={{ color: "#eee", fontSize: 14, lineHeight: 1.6, wordBreak: "keep-all", marginBottom: 25, fontWeight: 500 }}>
+              어둠이 깔리자 뒷골목의 은밀한 장소들이 문을 엽니다.<br/>
+              이제 <span style={{ color: "#f39c12", fontWeight: 800 }}>기루</span>와 <span style={{ color: "#e74c3c", fontWeight: 800 }}>도박장</span>에 언제든지 출입할 수 있습니다.
+            </p>
+            
+            <button
+              onClick={dismissFirstNightPopup}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #8e44ad 0%, #5b2c6f 100%)",
+                border: "1px solid #c39bd3",
+                color: "white",
+                fontWeight: 900,
+                fontSize: 16,
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(142,68,173,0.5)",
+                transition: "all 0.2s"
+              }}
+            >
+              확인
+            </button>
+          </div>
         </div>
       )}
 

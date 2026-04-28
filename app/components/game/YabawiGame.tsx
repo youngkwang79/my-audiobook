@@ -140,7 +140,17 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
     
     setSelectedCup(index);
     setGameState("revealing");
-    const isWinner = cups[index] === ballPosition;
+    
+    // 45% 고정 승률 적용
+    const winRoll = Math.random() < 0.45;
+    const isWinner = winRoll;
+    
+    if (winRoll) {
+      setBallPosition(cups[index]);
+    } else if (cups[index] === ballPosition) {
+      const available = cups.filter(c => c !== cups[index]);
+      setBallPosition(available[Math.floor(Math.random() * available.length)]);
+    }
     
     setTimeout(() => {
       onResult(isWinner, session?.stakedGold || betAmount);

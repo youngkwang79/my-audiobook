@@ -357,7 +357,7 @@ interface GameState {
   syncToCloud: () => Promise<void>;
   syncFromCloud: () => Promise<void>;
   isSyncingFromCloud: boolean;
-  learnSkill: (skill: any, price: number) => void;
+  learnSkill: (skill: any, priceOrReqs: number | any) => void;
   refineSkill: (skillId: string) => void;
   synthesizeSkill: (recipeId: string) => void;
   upgradeStat: (statKey: keyof GameSaveData["statUpgrades"]) => void;
@@ -1092,7 +1092,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().triggerSave(true);
   },
 
-  learnSkill: (skill: any, price: number) => {
+  learnSkill: (skill: any, priceOrReqs: any) => {
     set((s: any) => {
       const nextMartial = ensureLearnedSkill(s.game.martialArtsSkills || [], skill.id || skill.name);
       const equipped = s.game.masterDuel.equippedSkillIds || [];
@@ -1100,14 +1100,32 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? [...equipped, skill.name]
         : equipped;
 
+      let nextGame = { ...s.game };
+      if (typeof priceOrReqs === 'number') {
+         nextGame.coins -= priceOrReqs;
+      } else if (priceOrReqs && typeof priceOrReqs === 'object') {
+         nextGame.coins -= (priceOrReqs.goldCost || 0);
+         if (priceOrReqs.requiredFragments > 0) {
+            nextGame.manualFragments = { ...nextGame.manualFragments, [priceOrReqs.fragmentId]: (nextGame.manualFragments?.[priceOrReqs.fragmentId] || 0) - priceOrReqs.requiredFragments };
+         }
+         if (priceOrReqs.requiredAdvancedMaterials > 0) {
+            nextGame.advancedMaterials = (nextGame.advancedMaterials || 0) - priceOrReqs.requiredAdvancedMaterials;
+         }
+         if (priceOrReqs.requiredLegendaryGearFragments > 0) {
+            nextGame.legendaryGearFragments = (nextGame.legendaryGearFragments || 0) - priceOrReqs.requiredLegendaryGearFragments;
+         }
+         if (priceOrReqs.requiredBonds > 0) {
+            nextGame.bonds = { ...nextGame.bonds, [priceOrReqs.bondId]: (nextGame.bonds?.[priceOrReqs.bondId] || 0) - priceOrReqs.requiredBonds };
+         }
+      }
+
       return {
         game: {
-          ...s.game,
-          coins: s.game.coins - price,
-          learnedSkills: [...s.game.learnedSkills, skill],
+          ...nextGame,
+          learnedSkills: [...nextGame.learnedSkills, skill],
           martialArtsSkills: nextMartial,
           masterDuel: {
-            ...s.game.masterDuel,
+            ...nextGame.masterDuel,
             equippedSkillIds: nextEquipped
           }
         }

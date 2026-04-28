@@ -45,6 +45,8 @@ export const defaultGameData: GameSaveData = {
     height: 0,
   },
   hasStarted: false,
+  hasSeenFirstNight: false,
+  showFirstNightPopup: false,
   upgradeLevels: {
     hpRec: 0, mpRec: 0, atk: 0, def: 0, critRate: 0, critDmg: 0, eva: 0, luck: 0, autoGain: 0, offlineLimit: 0
   },
@@ -60,6 +62,12 @@ export const defaultGameData: GameSaveData = {
   hasBreakthrough: false,
   coinDrops: [],
   baseAttack: 10,
+  
+  manualFragments: {},
+  advancedMaterials: 0,
+  legendaryGearFragments: 0,
+  divineWeaponShards: 0,
+  factionBonds: {},
 
   reputation: 0,
 
@@ -95,6 +103,9 @@ export const defaultGameData: GameSaveData = {
   unlockEffectText: null,
   activeTab: "training",
   showInnVictoryEffect: false,
+  giruLevel: 1,
+  giruInvestment: 0,
+  npcFavor: { yeonhwa: 0, seolmae: 0, chowoon: 0, hongryeon: 0, sohee: 0, oldman: 0 },
   innHighScore: 0,
   lastInnScore: 0,
   innBuffEndTime: 0,

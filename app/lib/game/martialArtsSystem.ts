@@ -309,15 +309,10 @@ export function getRefineGoldCost(stars: number) {
   return 1000000 + stars * 5000000; // 단위 현실화 (100만 ~ )
 }
 
-/**
- * 무공 최초 습득(도감 활성화) 비용 계산
- */
-export function getSkillStudyPrice(skill: CompendiumSkill) {
-  // 입문보법(Entry Footwork) 특수 가격 처리
+export function getBaseSkillPrice(skill: CompendiumSkill) {
   if (skill.skillType === "movement" && skill.order === 100) {
     return 30000;
   }
-
   const basePrices: Record<SkillGrade, number> = {
     common: 3000,        // 3,000 (필부경지 인하)
     rare: 5000000,       // 500만
@@ -326,6 +321,56 @@ export function getSkillStudyPrice(skill: CompendiumSkill) {
     mythic: 5000000000,   // 50억
   };
   return basePrices[skill.grade] || 500000;
+}
+
+export function getCraftingRequirements(skill: CompendiumSkill) {
+  const order = skill.order || 0;
+  let requiredFragments = 0;
+  let requiredAdvancedMaterials = 0;
+  let requiredBonds = 0;
+  let requiredLegendaryGearFragments = 0;
+  let priceMultiplier = 0.2;
+
+  switch (skill.grade) {
+    case "common":
+      requiredFragments = 10 + order * 10;
+      requiredAdvancedMaterials = 2 + order * 2;
+      requiredBonds = 1;
+      priceMultiplier = 0.2;
+      break;
+    case "rare":
+    case "epic":
+      requiredFragments = 20 + order * 15;
+      requiredAdvancedMaterials = 5 + order * 3;
+      requiredBonds = 2;
+      priceMultiplier = 0.25;
+      break;
+    case "legendary":
+    case "mythic":
+      requiredFragments = 50 + order * 20;
+      requiredAdvancedMaterials = 20;
+      requiredLegendaryGearFragments = 5;
+      requiredBonds = 5;
+      priceMultiplier = 0.3;
+      break;
+  }
+
+  const basePrice = getBaseSkillPrice(skill);
+  const goldCost = Math.floor(basePrice * priceMultiplier);
+
+  return {
+    fragmentId: `${skill.id}_조각`,
+    requiredFragments,
+    requiredAdvancedMaterials,
+    requiredLegendaryGearFragments,
+    bondId: `${skill.factionName}_인연`,
+    requiredBonds,
+    goldCost
+  };
+}
+
+export function getSkillStudyPrice(skill: CompendiumSkill) {
+  return getCraftingRequirements(skill).goldCost;
 }
 
 export function getRefineBonusMultiplier(stars: number) {

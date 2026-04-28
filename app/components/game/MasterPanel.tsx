@@ -243,6 +243,7 @@ const BOX_ANIM_CSS = `
 
 export default function MasterPanel() {
   const masterDuel = useGameStore((s: any) => s.game.masterDuel);
+  const playerRealm = useGameStore((s: any) => s.game.realm);
   const options = useGameStore((s: any) => s.game.options);
   const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
   const hp = useGameStore((s: any) => s.game.hp);
@@ -1230,7 +1231,14 @@ export default function MasterPanel() {
                   animation: "hpPulse 1.5s infinite"
                 }}
               >
-                🔥 특수 보스 레이드 도전!
+                🔥 특수 보스 레이드 도전! (비용: {formatCompactNumber((() => {
+                  const bossFeeMap: Record<string, number> = {
+                    "필부": 1500, "삼류": 4800, "이류": 15000, "일류": 48000,
+                    "절정": 150000, "초절정": 480000, "화경": 1500000,
+                    "현경": 4500000, "생사경": 12900000, "신화경": 39000000, "천인합일": 120000000
+                  };
+                  return bossFeeMap[playerRealm || "필부"] || 1500;
+                })())} 냥)
               </button>
             )}
 

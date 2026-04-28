@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, formatCompactNumber, REALM_ORDER } from "@/app/lib/game/useGameStore";
-import { GIRU_NPCS, GIRU_ACTIONS, GiruNPC, GiruEvent, GIRU_GIFT_ITEMS, GIRU_QUESTS } from "@/app/lib/game/nightSystem";
+import { GIRU_NPCS, GIRU_ACTIONS, GiruNPC, GiruEvent, GIRU_GIFT_ITEMS, GIRU_QUESTS, getGiruInvestmentBonus, getFavorDiscount, GIRU_INVEST_COSTS, SEOLMAE_BUFFS, INFO_TIER_CONFIG, REALM_BONUS_CONFIG } from "@/app/lib/game/nightSystem";
 import GiruPuzzleGame from "./GiruPuzzleGame";
 
 export default function GiruPanel() {
@@ -18,6 +18,8 @@ export default function GiruPanel() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [showSecretRoom, setShowSecretRoom] = useState(false);
+  const [showSeolmaeBuffModal, setShowSeolmaeBuffModal] = useState(false);
+  const [showInvestmentModal, setShowInvestmentModal] = useState(false);
   const [showInfoTradeModal, setShowInfoTradeModal] = useState(false);
   const [showRewardPopup, setShowRewardPopup] = useState(false);
   const [rewardData, setRewardData] = useState<any>(null);
@@ -66,6 +68,17 @@ export default function GiruPanel() {
     return { ...base, ...dynamic };
   };
 
+  
+  const getDynamicCost = (baseCost: number) => {
+    if (!game) return baseCost;
+    
+    const invBonus = getGiruInvestmentBonus(game.giruLevel || 1);
+    let cost = baseCost;
+    if (invBonus.costDiscount > 0) cost = Math.floor(cost * (1 - invBonus.costDiscount));
+    cost = Math.floor(cost * getFavorDiscount(favor));
+    return cost;
+  };
+
   const handleAction = async (npcId: string, actionId: string) => {
     if (isProcessing) return;
     setIsProcessing(true);
@@ -81,19 +94,16 @@ export default function GiruPanel() {
       return;
     }
 
-    if (actionId === "info") {
-      if (game.nightLimits.infoTradeUsed) {
+    
+    if (actionId === "info" && npcId === "yeonhwa") {
+      if (game.nightLimits?.infoTradeUsed) {
         alert("오늘의 정보 거래는 이미 완료되었습니다.");
-        setIsProcessing(false);
-        return;
+        setIsProcessing(false); return;
       }
-      if (npcId === "yeonhwa") {
-        setShowInfoTradeModal(true);
-        setIsProcessing(false);
-        return;
-      }
+      setShowInfoTradeModal(true); setIsProcessing(false); return;
     }
-
+    
+    // Custom button triggers (not standard actions but let's add them via buttons)
     const result = interactGiru(npcId, actionId);
     if (result.success) {
       setDialogue(result.message);
@@ -125,7 +135,7 @@ export default function GiruPanel() {
   };
 
   const realmIndex = REALM_ORDER.indexOf(game.realm || "필부");
-  const isRealmLocked = realmIndex < 1;
+  const isRealmLocked = false; // 필부부터 가능하도록 수정
   const isNight = game.timeState === "night";
   const isDaytimeLocked = !isNight && !isRealmLocked;
 
@@ -647,6 +657,30 @@ export default function GiruPanel() {
               })()}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
+                
+                {/* NPC 전용 특수 기능 버튼 */}
+                {selectedNpc.id === "seolmae" && favor >= 40 && (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowSeolmaeBuffModal(true)}
+                    style={{ padding: "10px 16px", borderRadius: "14px", background: "linear-gradient(135deg, #1e3c72, #2a5298)", color: "#fff", border: "1px solid #4facfe", fontWeight: 800, cursor: "pointer", display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>🌸 설매의 축복 (버프 선택)</span>
+                    <span>무료</span>
+                  </motion.button>
+                )}
+                
+                {selectedNpc.id === "hongryeon" && (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowInvestmentModal(true)}
+                    style={{ padding: "10px 16px", borderRadius: "14px", background: "linear-gradient(135deg, #8e2de2, #4a00e0)", color: "#fff", border: "1px solid #c39bd3", fontWeight: 800, cursor: "pointer", display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>💎 월향루 투자 (기루 레벨업)</span>
+                    <span>Lv.{game.giruLevel || 1}</span>
+                  </motion.button>
+                )}
+
                 {GIRU_ACTIONS.map(action => (
                   <motion.button
                     key={action.id}
@@ -657,9 +691,9 @@ export default function GiruPanel() {
                       padding: "10px 16px",
                       borderRadius: "14px",
                       border: "1px solid rgba(255,255,255,0.08)",
-                      background: game.coins >= action.cost ? "rgba(255,255,255,0.07)" : "rgba(255,0,0,0.05)",
-                      color: game.coins >= action.cost ? "#fff" : "#ff6b6b",
-                      cursor: game.coins >= action.cost ? "pointer" : "not-allowed",
+                      background: game.coins >= (action.id !== "gift" ? getDynamicCost(action.cost) : 0) ? "rgba(255,255,255,0.07)" : "rgba(255,0,0,0.05)",
+                      color: game.coins >= (action.id !== "gift" ? getDynamicCost(action.cost) : 0) ? "#fff" : "#ff6b6b",
+                      cursor: game.coins >= (action.id !== "gift" ? getDynamicCost(action.cost) : 0) ? "pointer" : "not-allowed",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center"
@@ -670,7 +704,7 @@ export default function GiruPanel() {
                       <div style={{ fontSize: "11px", opacity: 0.5 }}>{action.desc}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "14px", fontWeight: 900, color: "#ffd700" }}>💰 {action.cost.toLocaleString()}</div>
+                      <div style={{ fontSize: "14px", fontWeight: 900, color: "#ffd700" }}>💰 {action.id !== "gift" ? getDynamicCost(action.cost).toLocaleString() : 0}</div>
                       <div style={{ fontSize: "11px", color: "#e0c3fc", fontWeight: "bold" }}>❤️ +{action.favor}</div>
                     </div>
                   </motion.button>
@@ -883,112 +917,115 @@ export default function GiruPanel() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* 연화 정보 거래 모달 */}
+
+      {/* 홍련 투자 모달 */}
       <AnimatePresence>
-        {showInfoTradeModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              background: "rgba(0,0,0,0.85)",
-              backdropFilter: "blur(8px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10000,
-              padding: "20px"
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              style={{
-                width: "100%",
-                maxWidth: "400px",
-                background: "#12121a",
-                borderRadius: "28px",
-                border: "1px solid rgba(255,215,0,0.3)",
-                padding: "30px",
-                textAlign: "center",
-                boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
-              }}
-            >
-              <div style={{ fontSize: "40px", marginBottom: "15px" }}>🕯️</div>
-              <h2 style={{ fontSize: "22px", fontWeight: 900, color: "#ffd700", marginBottom: "10px" }}>강호의 은밀한 정보</h2>
-              <p style={{ fontSize: "14px", color: "#ccc", marginBottom: "25px", lineHeight: "1.6" }}>
-                연화가 특별한 정보를 입수했습니다.<br />내일의 운명을 바꿀 정보를 선택하세요.
-              </p>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    const { buyGiruInformation } = useGameStore.getState() as any;
-                    buyGiruInformation("TREASURE_FORECAST");
-                    setShowInfoTradeModal(false);
-                    setDialogue("좋은 선택입니다. 내일은 주머니가 두둑해지겠군요.");
-                  }}
-                  style={{
-                    padding: "16px",
-                    borderRadius: "18px",
-                    background: "rgba(255,215,0,0.1)",
-                    border: "1px solid rgba(255,215,0,0.4)",
-                    color: "#fff",
-                    textAlign: "left",
-                    cursor: "pointer"
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: "16px", color: "#ffd700" }}>💰 희귀 무뢰배 예보</div>
-                  <div style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>내일 보물 무뢰배 출현 확률이 대폭 상승합니다.</div>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    const { buyGiruInformation } = useGameStore.getState() as any;
-                    buyGiruInformation("BOSS_RAID_CLUE");
-                    setShowInfoTradeModal(false);
-                    setDialogue("위험한 정보지만 보상은 확실할 겁니다. 건승을 빕니다.");
-                  }}
-                  style={{
-                    padding: "16px",
-                    borderRadius: "18px",
-                    background: "rgba(255,77,77,0.1)",
-                    border: "1px solid rgba(255,77,77,0.4)",
-                    color: "#fff",
-                    textAlign: "left",
-                    cursor: "pointer"
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: "16px", color: "#ff4d4d" }}>👹 보스 레이드 단서</div>
-                  <div style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>내일 강력한 특수 보스에게 도전할 수 있습니다.</div>
-                </motion.button>
+        {showInvestmentModal && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: "#1a1a2e", padding: "20px", borderRadius: "16px", width: "80%", border: "2px solid #8e2de2" }}>
+              <h3 style={{ margin: "0 0 10px 0", color: "#ffd700" }}>월향루 투자</h3>
+              <p style={{ fontSize: "12px", color: "#ccc" }}>기루에 투자하여 모든 서비스 비용을 줄이고 혜택을 늘리세요.</p>
+              
+              <div style={{ margin: "15px 0", padding: "10px", background: "rgba(255,255,255,0.05)", borderRadius: "8px" }}>
+                <div>현재 레벨: {game.giruLevel || 1}</div>
+                <div>누적 투자: {(game.giruInvestment || 0).toLocaleString()} 금화</div>
+                {game.giruLevel < 10 ? (
+                  <div style={{ marginTop: "10px", color: "#4facfe" }}>
+                    다음 레벨 필요 금액: {(() => {
+                       
+                       return GIRU_INVEST_COSTS[game.giruLevel || 1].toLocaleString();
+                    })()} 금화
+                  </div>
+                ) : (
+                  <div style={{ marginTop: "10px", color: "#4dff8a" }}>최대 레벨 도달!</div>
+                )}
               </div>
-
-              <button
-                onClick={() => setShowInfoTradeModal(false)}
-                style={{
-                  marginTop: "20px",
-                  padding: "10px",
-                  color: "#888",
-                  background: "none",
-                  border: "none",
-                  fontSize: "13px",
-                  cursor: "pointer"
-                }}
-              >
-                나중에 하기
-              </button>
+              
+              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                <button onClick={() => {
+                  
+                  const nextCost = GIRU_INVEST_COSTS[game.giruLevel || 1];
+                  if (game.giruLevel >= 10) { alert("이미 최대 레벨입니다."); return; }
+                  if (game.coins < nextCost) { alert("금화가 부족합니다."); return; }
+                  useGameStore.setState((s: any) => ({
+                    game: { ...s.game, coins: s.game.coins - nextCost, giruLevel: (s.game.giruLevel || 1) + 1, giruInvestment: (s.game.giruInvestment || 0) + nextCost }
+                  }));
+                  useGameStore.getState().triggerSave(true);
+                  alert("투자가 완료되었습니다! 기루 레벨이 상승했습니다.");
+                }} style={{ flex: 1, padding: "10px", background: "#8e2de2", border: "none", color: "#fff", borderRadius: "8px" }}>투자하기</button>
+                <button onClick={() => setShowInvestmentModal(false)} style={{ flex: 1, padding: "10px", background: "#555", border: "none", color: "#fff", borderRadius: "8px" }}>닫기</button>
+              </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
+
+      {/* 설매 버프 모달 */}
+      <AnimatePresence>
+        {showSeolmaeBuffModal && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: "#1a1a2e", padding: "20px", borderRadius: "16px", width: "80%", border: "2px solid #4facfe" }}>
+              <h3 style={{ margin: "0 0 10px 0", color: "#4facfe" }}>설매의 축복</h3>
+              <p style={{ fontSize: "12px", color: "#ccc" }}>다음날 전투를 위한 버프를 1개 선택하세요.</p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "15px" }}>
+                {(() => {
+                  
+                  return SEOLMAE_BUFFS.map((buff: any) => (
+                    <button key={buff.id} onClick={() => {
+                       const value = Math.floor(Math.random() * (buff.max - buff.min) + buff.min);
+                       useGameStore.setState((s: any) => ({
+                         game: { ...s.game, nightBuffs: [...(s.game.nightBuffs || []), { id: buff.id, name: `${buff.name} +${value}${buff.suffix}` }] }
+                       }));
+                       alert(`${buff.name} +${value}${buff.suffix} 버프를 받았습니다!`);
+                       setShowSeolmaeBuffModal(false);
+                    }} style={{ padding: "10px", background: "rgba(79,172,254,0.1)", border: "1px solid #4facfe", color: "#fff", borderRadius: "8px", textAlign: "left" }}>
+                      {buff.name} ( {buff.min}{buff.suffix} ~ {buff.max}{buff.suffix} )
+                    </button>
+                  ));
+                })()}
+              </div>
+              <button onClick={() => setShowSeolmaeBuffModal(false)} style={{ width: "100%", padding: "10px", background: "#555", border: "none", color: "#fff", borderRadius: "8px", marginTop: "15px" }}>닫기</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 정보 거래 모달 교체 */}
+      <AnimatePresence>
+        {showInfoTradeModal && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: "#1a1a2e", padding: "20px", borderRadius: "16px", width: "80%", border: "2px solid #e0c3fc" }}>
+              <h3 style={{ margin: "0 0 10px 0", color: "#e0c3fc" }}>비밀 정보 거래</h3>
+              <p style={{ fontSize: "12px", color: "#ccc" }}>어떤 정보를 원하시나요?</p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "15px" }}>
+                {["low", "mid", "high", "special"].map(tier => {
+                  if (tier === "special" && favor < 60) return null; // 특급은 60이상
+                  const label = tier === "low" ? "하급 정보" : tier === "mid" ? "중급 정보" : tier === "high" ? "고급 정보" : "특급 정보";
+                  
+                  const conf = INFO_TIER_CONFIG[tier];
+                  const rBonus = REALM_BONUS_CONFIG[game.realm || "필부"] || { priceMult: 1 };
+                  const cost = Math.floor(conf.basePrice * rBonus.priceMult * getFavorDiscount(favor));
+                  
+                  return (
+                    <button key={tier} onClick={() => {
+                      const res = interactGiru("yeonhwa", "info", { infoTier: tier });
+                      if(res.success) { setDialogue(res.message); setShowInfoTradeModal(false); }
+                      else { alert(res.message); }
+                    }} style={{ display: "flex", justifyContent: "space-between", padding: "12px", background: "rgba(224,195,252,0.1)", border: "1px solid #e0c3fc", color: "#fff", borderRadius: "8px" }}>
+                      <span>{label}</span>
+                      <span style={{ color: "#ffd700" }}>💰 {cost.toLocaleString()}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button onClick={() => setShowInfoTradeModal(false)} style={{ width: "100%", padding: "10px", background: "#555", border: "none", color: "#fff", borderRadius: "8px", marginTop: "15px" }}>닫기</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
 
       {/* 임무 보상 팝업 */}
       <AnimatePresence>

@@ -30,6 +30,7 @@ export default function GameBottomNav({
   // [시스템 삽입] 전투 진행 여부 및 밤 모드 확인
   const isPlaying = useGameStore((state) => state.game.masterDuel.isPlaying);
   const isNight = useGameStore((state) => state.game.timeState === "night");
+  const hasSeenFirstNight = useGameStore((state) => state.game.hasSeenFirstNight);
 
   // [시스템 삽입] 전투 중일 때는 하단 메뉴 전체를 렌더링하지 않음
   if (isPlaying) return null;
@@ -49,27 +50,23 @@ export default function GameBottomNav({
       }}
     >
       {items.map((item) => {
-        const unlocked = unlockedTabs.includes(item.key);
+        const isGiruOrGambling = item.key === "giru" || item.key === "gambling";
+        // 기루와 도박장은 첫 밤을 보낸 이후에만 해금
+        const unlocked = isGiruOrGambling ? hasSeenFirstNight : unlockedTabs.includes(item.key);
         const active = activeTab === item.key;
-        const isNightOnly = item.key === "giru" || item.key === "gambling";
-        const isLockedByDay = isNightOnly && !isNight;
+        const isLockedByDay = false; // 출입제한(밤에만 가능) 삭제
 
         return (
           <button
             key={item.key}
             onClick={() => {
-              // [궁금증 유발] 기루와 도박은 잠금/시간 여부와 상관없이 무조건 입장 가능
-              if (item.key === "giru" || item.key === "gambling") {
-                onChange(item.key);
+              if (isGiruOrGambling && !hasSeenFirstNight) {
+                alert("해가 지고 어두운 밤이 찾아와야 비밀스러운 장소가 열립니다.");
                 return;
               }
 
               if (!unlocked) return;
               
-              if (isLockedByDay) {
-                alert("밤(Night)에만 입장할 수 있는 장소입니다.");
-                return;
-              }
               onChange(item.key);
             }}
             style={{
@@ -81,9 +78,9 @@ export default function GameBottomNav({
               background: active
                 ? "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)"
                 : unlocked 
-                  ? isLockedByDay ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.05)"
+                  ? "rgba(255,255,255,0.05)"
                   : "rgba(0,0,0,0.4)",
-              color: active ? "#2b1d00" : (unlocked && !isLockedByDay) ? "white" : "#666",
+              color: active ? "#2b1d00" : unlocked ? "white" : "#666",
               padding: "10px 2px",
               fontWeight: 900,
               fontSize: 10,
@@ -96,19 +93,19 @@ export default function GameBottomNav({
               minWidth: 0,
               overflow: "hidden",
               transition: "all 0.2s ease",
-              filter: (unlocked && !isLockedByDay) ? "none" : "grayscale(0.8)",
-              opacity: isLockedByDay ? 0.6 : 1,
+              filter: unlocked ? "none" : "grayscale(0.8)",
+              opacity: unlocked ? 1 : 0.6,
             }}
           >
             <span style={{ fontSize: 13 }}>{item.label}</span>
-            {(!unlocked || isLockedByDay) && (
+            {!unlocked && (
               <span style={{
                 position: "absolute",
                 top: "2px",
                 right: "4px",
                 fontSize: "11px",
               }}>
-                {isLockedByDay ? "🌙" : "🔒"}
+                🔒
               </span>
             )}
           </button>

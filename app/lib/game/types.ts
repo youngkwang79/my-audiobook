@@ -281,6 +281,7 @@ export type MasterDuelState = {
     statMult?: number;
   };
   equippedSkillIds: string[]; // 무공 이름 리스트 (최대 4개)
+  skillComboCount?: number; // 7타 무공 발동 카운터
   isBoss: boolean;
 
   // --- 도전권 시스템 (Challenge Ticket System) ---
@@ -404,9 +405,16 @@ export type HeroProfile = {
 };
 
 export type NextDayEvent = {
-  type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE" | null;
+  type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE" | "GIRU_INFO_EVENT" | null;
   targetArea?: string;
   bossId?: string;
+  tierId?: string;
+  tierName?: string;
+  rewardType?: string;
+  eventPower?: number;
+  amountMultiplier?: number;
+  qualityGrade?: number;
+  rareChance?: number;
   clueText?: string;
   isUsed: boolean;
 };
@@ -419,6 +427,8 @@ export type GameSaveData = {
 
   hero: HeroProfile;
   hasStarted: boolean;
+  hasSeenFirstNight: boolean;
+  showFirstNightPopup: boolean;
   upgradeLevels: Record<string, number>;
 
   faction: FactionType;
@@ -521,9 +531,19 @@ export type GameSaveData = {
     autoGain: number;  // New: Increases passive gain
     offlineLimit: number; // New: Increases offline cap (hours)
   };
+  // --- New Acquisition Fields ---
+  manualFragments: Record<string, number>;
+  advancedMaterials: number;
+  legendaryGearFragments: number;
+  divineWeaponShards: number;
+  factionBonds: Record<string, number>;
+
   activeTab: TabType;
   showInnVictoryEffect: boolean;
   isAudioMuted: boolean;
+  giruLevel: number;
+  giruInvestment: number;
+  npcFavor: Record<string, number>;
   innBuffEndTime: number; // New: Enhancement buff from Inn
   oilBuffs: Record<string, number>; // New: Polishing oil active buffs (key -> timeLeft)
   wisdom: number; // New: Currency for Seogak refinement 
