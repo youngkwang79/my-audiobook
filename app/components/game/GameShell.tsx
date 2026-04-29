@@ -21,6 +21,7 @@ import GiruPanel from "./GiruPanel";
 import GamblingPanel from "./GamblingPanel";
 import DawnSettlement from "./DawnSettlement";
 import GameIntroPanel from "./GameIntroPanel";
+import QuestPanel from "./QuestPanel";
 
 export default function GameShell() {
   const activeTab = useGameStore((s: any) => s.game.activeTab || "training");
@@ -122,10 +123,10 @@ export default function GameShell() {
   // --- Night System Tick ---
   useEffect(() => {
     const ticker = setInterval(() => {
-      const { updateTime, game } = useGameStore.getState() as any;
+      const { updateTime } = useGameStore.getState() as any;
       if (document.hidden) return;
-      if (updateTime) updateTime(5);
-    }, 5000);
+      if (updateTime) updateTime(1);
+    }, 1000);
     return () => clearInterval(ticker);
   }, []);
 
@@ -274,6 +275,7 @@ export default function GameShell() {
                 {activeTab === "tower" && <TowerPanel />}
                 {activeTab === "giru" && <GiruPanel />}
                 {activeTab === "gambling" && <GamblingPanel />}
+                {activeTab === "quest" && <QuestPanel />}
               </div>
               <GameBottomNav
                 activeTab={activeTab as any}

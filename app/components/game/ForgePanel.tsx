@@ -31,7 +31,7 @@ const FORGE_REALM_LIST = ["회복제", ...REALM_ORDER];
 function PotionItem({ p, playerRealm, buyPotion, unlocked, currentCoins }: any) {
   const [qty, setQty] = useState(1);
   const realmIdx = REALM_ORDER.indexOf(playerRealm);
-  const cost = Math.floor(p.basePrice * Math.pow(1.5, Math.max(0, realmIdx))) * qty;
+  const cost = Math.floor(p.basePrice * Math.pow(2.0, Math.max(0, realmIdx))) * qty;
 
   return (
     <div style={{
@@ -425,15 +425,15 @@ export default function ForgePanel(props: Props) {
                 {selectedRealm === "회복제" ? (
                   <>
                     {[
-                      { id: "hp_small", name: "생명력 회복제(小)", icon: "🧪", desc: "전체 생명력의 30% 회복", basePrice: 10000 },
-                      { id: "hp_medium", name: "생명력 회복제(中)", icon: "🏺", desc: "전체 생명력의 60% 회복", basePrice: 25000 },
-                      { id: "hp_large", name: "생명력 회복제(大)", icon: "💎", desc: "전체 생명력 100% 회복", basePrice: 50000 },
-                      { id: "mp_small", name: "내공 회복제(小)", icon: "💧", desc: "전체 내공의 30% 회복", basePrice: 8000 },
-                      { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 내공의 60% 회복", basePrice: 20000 },
-                      { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 내공 100% 회복", basePrice: 40000 },
+                      { id: "hp_small", name: "생명력 회복제(小)", icon: "🧪", desc: "전체 생명력의 30% 회복", basePrice: 500 },
+                      { id: "hp_medium", name: "생명력 회복제(中)", icon: "🏺", desc: "전체 생명력의 60% 회복", basePrice: 2000 },
+                      { id: "hp_large", name: "생명력 회복제(大)", icon: "💎", desc: "전체 생명력 100% 회복", basePrice: 5000 },
+                      { id: "mp_small", name: "내공 회복제(小)", icon: "💧", desc: "전체 내공의 30% 회복", basePrice: 500 },
+                      { id: "mp_medium", name: "내공 회복제(中)", icon: "🌀", desc: "전체 내공의 60% 회복", basePrice: 2000 },
+                      { id: "mp_large", name: "내공 회복제(大)", icon: "🌑", desc: "전체 내공 100% 회복", basePrice: 5000 },
                       { id: "trance_2", name: "무아지경(x2)", icon: "⚡", desc: "공격력 2배 (30초)", basePrice: 200000 },
-                      { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 150000000 },
-                      { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 1000000000 },
+                      { id: "trance_5", name: "무아지경(x5)", icon: "🔥", desc: "공격력 5배 (30초)", basePrice: 1500000 },
+                      { id: "trance_10", name: "무아지경(x10)", icon: "🌞", desc: "공격력 10배 (30초)", basePrice: 10000000 },
                     ].map((p: any) => (
                       <PotionItem key={p.id} p={p} playerRealm={playerRealm} buyPotion={buyPotion} unlocked={unlocked} currentCoins={currentCoins} />
                     ))}

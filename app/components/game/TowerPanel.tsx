@@ -71,6 +71,41 @@ export default function TowerPanel() {
         >
           탑 입장
         </button>
+
+        <div className="w-full max-w-sm mt-8 p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+           <h3 className="text-sm font-black text-slate-400 mb-4 uppercase tracking-widest text-center">천극무한탑 명예의 전당</h3>
+           <div className="space-y-3">
+             <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
+               <div className="flex items-center gap-3">
+                 <span className="text-xl">🏆</span>
+                 <div>
+                   <div className="text-[10px] text-yellow-500/70 font-bold">MY BEST RECORD</div>
+                   <div className="text-sm font-black text-white">{tower.highestFloor}층</div>
+                 </div>
+               </div>
+               <div className="text-right">
+                 <div className="text-[10px] text-slate-500 font-bold">WIN STREAK</div>
+                 <div className="text-sm font-black text-yellow-500">{(game.duel?.bestWinStreak) || 0}연승</div>
+               </div>
+             </div>
+             
+             {/* Dummy Leaderboard for Immersion */}
+             <div className="text-[9px] text-slate-600 font-bold mb-1 uppercase px-1">Top Rankers</div>
+             {[
+               { name: "독고구패", floor: 999, faction: "검종" },
+               { name: "무당신인", floor: 850, faction: "무당" },
+               { name: "혈교주", floor: 842, faction: "마교" }
+             ].map((ranker, i) => (
+               <div key={i} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-lg border border-white/5 opacity-60 hover:opacity-100 transition-opacity">
+                 <div className="flex items-center gap-3">
+                   <span className="text-xs font-black text-slate-500">{i+1}</span>
+                   <span className="text-xs font-bold text-slate-300">{ranker.name}</span>
+                 </div>
+                 <span className="text-xs font-mono text-slate-400">{ranker.floor}층</span>
+               </div>
+             ))}
+           </div>
+        </div>
       </div>
     );
   }

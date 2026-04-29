@@ -378,15 +378,20 @@ export default function InventoryPanel(props: Props) {
                   // 등급 및 한글 명칭 계산
                   let displayName = id;
                   let gradePrefix = "";
-                  
-                  if (id === "common_fragment") {
+                  const gradeMap: any = { common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" };
+
+                  if (id.startsWith("manual_fragment_")) {
+                    const gradeKey = id.replace("manual_fragment_", "");
+                    const gradeName = gradeMap[gradeKey] || gradeKey;
+                    displayName = `${gradeName} 비급 조각`;
+                    gradePrefix = `[${gradeName}]`;
+                  } else if (id === "common_fragment") {
                     displayName = "일반 비급 조각";
                     gradePrefix = "[일반]";
                   } else {
                     const skillId = id.replace("_조각", "");
                     const skill = MARTIAL_COMPENDIUM.find(s => s.id === skillId);
                     if (skill) {
-                      const gradeMap: any = { common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" };
                       gradePrefix = `[${gradeMap[skill.grade] || "???"}]`;
                       displayName = `${skill.name} 조각`;
                     } else {
@@ -930,6 +935,35 @@ export default function InventoryPanel(props: Props) {
                 }}
               >
                 판매
+              </button>
+
+              <button
+                onClick={() => {
+                  let materials = 1;
+                  if (popupItem.tier === "명품") materials = 3;
+                  else if (popupItem.tier === "보구") materials = 10;
+                  else if (popupItem.tier === "신기" || popupItem.name.includes("[패왕]")) materials = 50;
+                  
+                  if (confirm(`${popupItem.name}을(를) 분해하시겠습니까?\n획득 재료: 상급 재료 ${materials}개`)) {
+                    (useGameStore.getState() as any).dismantleItem(popupItem.id);
+                    setPopupItem(null);
+                  }
+                }}
+                disabled={popupItem.id === selectedEquippedId}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  background: "rgba(100,200,255,0.15)",
+                  color: "#8ccfff",
+                  border: "1px solid rgba(100,200,255,0.3)",
+                  cursor: popupItem.id === selectedEquippedId ? "not-allowed" : "pointer",
+                  opacity: popupItem.id === selectedEquippedId ? 0.5 : 1
+                }}
+              >
+                분해
               </button>
 
               <button

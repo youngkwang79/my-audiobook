@@ -376,7 +376,10 @@ interface GameState {
   getReputationCost: (statKey: keyof GameSaveData["statUpgrades"]) => number;
   spendPoints: (statKey: keyof GameSaveData["statUpgrades"]) => void;
   sellItem: (itemId: string) => void;
+  dismantleItem: (itemId: string) => void;
   sellConsumable: (id: ConsumableId) => void;
+  claimQuestReward: (questId: string) => void;
+  updateQuestProgress: (targetType: string, amount: number) => void;
   getMultiUpgradeCost: (key: string, count: number, mode: 'gold' | 'reputation') => number;
   upgradeStatMulti: (key: string, count: number, mode: 'gold' | 'reputation') => void;
   updateBuffs: (dt: number) => void;
@@ -786,7 +789,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   getTotalEvasion: () => {
     const { game } = get();
-    let eva = (game.eva || 0) + get().getStatUpgradeBonus("eva") + get().getOptionSum("eva");
+    const factionData = FACTIONS.find(f => f.name === game.faction);
+    const factionBaseEva = factionData?.bonusStats?.eva || 0;
+    let eva = (game.eva || 0) + get().getStatUpgradeBonus("eva") + get().getOptionSum("eva") + factionBaseEva;
     
     // Add flat evade from equipment
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
@@ -917,6 +922,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
       let currentDummyHp = s.game.dummyHp;
       let totalDamageDealt = 0;
+
+      // 퀘스트 업데이트 (허수아비 타격)
+      get().updateQuestProgress("dummy_hit", hitCount);
 
       for (let i = 0; i < hitCount; i++) {
         let isHitDodged = Math.random() < stats.eva / 100;
@@ -1096,7 +1104,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           touches: nTouches,
           comboCount: combo,
           lastAttackTime: now,
-          lastReward: lastR
+          lastReward: lastR,
+          timeRemaining: (s.game.timeState === "day") ? Math.max(0, s.game.timeRemaining - (amount * 0.1)) : s.game.timeRemaining
         }
       };
     });
@@ -1531,12 +1540,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const realmIdx = REALM_ORDER.indexOf(s.game.realm);
       const basePrices: Record<string, number> = {
-        hp_small: 500, hp_medium: 1500, hp_large: 5000,
-        mp_small: 500, mp_medium: 1500, mp_large: 5000,
+        hp_small: 500, hp_medium: 2000, hp_large: 5000,
+        mp_small: 500, mp_medium: 2000, mp_large: 5000,
         trance_2: 200000, trance_5: 1500000, trance_10: 10000000
       };
       const basePrice = basePrices[id] || 5000;
-      const price = Math.floor(basePrice * Math.pow(2.5, Math.max(0, realmIdx))) * q;
+      const price = Math.floor(basePrice * Math.pow(2.0, Math.max(0, realmIdx))) * q;
 
       if (s.game.coins < price) return s;
       return { game: { ...s.game, coins: s.game.coins - price, consumables: { ...s.game.consumables, [id]: (s.game.consumables[id] || 0) + q } } };
@@ -1699,11 +1708,79 @@ export const useGameStore = create<GameState>((set, get) => ({
     const p = (it.name.includes("[패왕]") || it.tier === "신기") ? 40000000 : Math.floor((it.price || 0) * 0.25);
     return { game: { ...s.game, coins: s.game.coins + p, ownedWeapons: s.game.ownedWeapons.filter((w: any) => w.id !== id) } };
   }),
+  dismantleItem: (id: string) => set((s: any) => {
+    const it = s.game.ownedWeapons.find((w: any) => w.id === id);
+    if (!it) return s;
+    
+    // 티어별 재료 지급
+    let materials = 1;
+    if (it.tier === "명품") materials = 3;
+    else if (it.tier === "보구") materials = 10;
+    else if (it.tier === "신기" || it.name.includes("[패왕]")) materials = 50;
+
+    const nextMaterials = (s.game.advancedMaterials || 0) + materials;
+    return { 
+      game: { 
+        ...s.game, 
+        advancedMaterials: nextMaterials, 
+        ownedWeapons: s.game.ownedWeapons.filter((w: any) => w.id !== id) 
+      } 
+    };
+  }),
   sellConsumable: (id: ConsumableId) => set((s: any) => {
     if ((s.game.consumables[id] || 0) <= 0) return s;
     const prices: Record<string, number> = { hp_small: 250, hp_medium: 1000, hp_large: 5000, mp_small: 250, mp_medium: 1000, mp_large: 5000 };
     const price = prices[id] || 500;
     return { game: { ...s.game, coins: s.game.coins + price, consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 } } };
+  }),
+  claimQuestReward: (id: string) => set((s: any) => {
+    const quests = [...(s.game.activeQuests || [])];
+    const qIdx = quests.findIndex(q => q.id === id);
+    if (qIdx === -1 || quests[qIdx].status !== "completed") return s;
+
+    const q = quests[qIdx];
+    const reward = q.reward;
+
+    // 보상 지급
+    let nextCoins = s.game.coins + (reward.gold || 0);
+    let nextRep = (s.game.reputation || 0) + (reward.token || 0); // 칭호/명성?
+    
+    // 호감도 반영
+    const nextFavor = { ...(s.game.npcFavor || {}) };
+    if (reward.favor && q.npcId) {
+      nextFavor[q.npcId] = (nextFavor[q.npcId] || 0) + reward.favor;
+    }
+
+    quests[qIdx] = { ...q, status: "rewarded" };
+
+    return {
+      game: {
+        ...s.game,
+        coins: nextCoins,
+        reputation: nextRep,
+        npcFavor: nextFavor,
+        activeQuests: quests
+      }
+    };
+  }),
+  updateQuestProgress: (targetType: string, amount: number) => set((s: any) => {
+    const quests = [...(s.game.activeQuests || [])];
+    let changed = false;
+    quests.forEach((q, idx) => {
+      if (q.status === "active" && q.targetType === targetType) {
+        const nextCount = Math.min(q.targetCount, q.currentCount + amount);
+        if (nextCount !== q.currentCount) {
+          quests[idx] = { 
+            ...q, 
+            currentCount: nextCount, 
+            status: nextCount >= q.targetCount ? "completed" : "active" 
+          };
+          changed = true;
+        }
+      }
+    });
+    if (!changed) return s;
+    return { game: { ...s.game, activeQuests: quests } };
   }),
 
   checkOfflineRewards: () => {
@@ -2246,16 +2323,19 @@ export const useGameStore = create<GameState>((set, get) => ({
               if (k === "random_faction") {
                 const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
                 const randomSkill = targetSkills[Math.floor(Math.random() * targetSkills.length)];
-                const fragId = `${randomSkill.id}_조각`;
+                const fragId = `manual_fragment_${randomSkill.grade}`;
                 nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
-                msg += `\n[획득] ${randomSkill.name} 조각 ${v}개`;
+                const gradeName = ({ common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" } as any)[randomSkill.grade] || "???";
+                msg += `\n[획득] ${gradeName} 비급 조각 ${v}개`;
               } else if (k === "all_faction") {
                 const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
-                targetSkills.forEach(sk => {
-                  const fragId = `${sk.id}_조각`;
+                // 모든 등급에 대해 조각 지급 (중복 제거)
+                const grades = Array.from(new Set(targetSkills.map(s => s.grade)));
+                grades.forEach(grade => {
+                  const fragId = `manual_fragment_${grade}`;
                   nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
                 });
-                msg += `\n[획득] 문파 모든 비급 조각 각 ${v}개씩`;
+                msg += `\n[획득] 문파 등급별 비급 조각 각 ${v}개씩`;
               } else {
                 nextFragments[k] = (nextFragments[k] || 0) + v;
                 msg += `\n[획득] 비급 조각 ${v}개`;
@@ -3868,7 +3948,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (possibleEvents.length === 0) {
       set((s: any) => {
         const nextFavors = { ...s.game.npcFavors };
-        nextFavors[npcId] = (nextFavors[npcId] || 0) + (action.favor || 0);
+        const gainedFavor = (action.favor || 0);
+        nextFavors[npcId] = (nextFavors[npcId] || 0) + gainedFavor;
 
         const nextLimits = {
           ...s.game.nightLimits,
@@ -3880,12 +3961,37 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         };
 
+        let pendingReward = s.game.pendingReward;
+        const claimed = s.game.giruRewardsClaimed || {};
+        let nextConsumables = { ...s.game.consumables };
+        let nextFragments = { ...(s.game.manualFragments || {}) };
+        let nextClaimed = { ...claimed };
+
+        // 100 호감도 보상
+        if (nextFavors[npcId] >= 100 && !claimed[npcId]) {
+          const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
+          pendingReward = {
+            title: `[호감] ${npcName}의 증표`,
+            items: [
+              { icon: "🎁", name: "패왕의 보물상자", count: 2, color: "#ffd700" },
+              { icon: "📜", name: "신화 비급 조각", count: 50, color: "#ff3e3e", slotName: "재료" }
+            ]
+          };
+          nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 2;
+          nextFragments.manual_fragment_mythic = (nextFragments.manual_fragment_mythic || 0) + 50;
+          nextClaimed[npcId] = true;
+        }
+
         return {
           game: {
             ...s.game,
             coins: s.game.coins - action.cost,
             npcFavors: nextFavors,
-            nightLimits: nextLimits
+            nightLimits: nextLimits,
+            consumables: nextConsumables,
+            manualFragments: nextFragments,
+            pendingReward,
+            giruRewardsClaimed: nextClaimed
           }
         };
       });
@@ -3896,10 +4002,32 @@ export const useGameStore = create<GameState>((set, get) => ({
     const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
 
     let infoMsg = "";
-    set((s: any) => {
-      const nextFavors = { ...s.game.npcFavors };
-      nextFavors[npcId] = (nextFavors[npcId] || 0) + (event.result.favor || action.favor || 0);
+    const gainedFavor = (event.result.favor || action.favor || 0);
+    const nextFavors = { ...(get().game.npcFavors || {}) };
+    nextFavors[npcId] = (nextFavors[npcId] || 0) + gainedFavor;
 
+    // 호감도 보상 체크 (100점 달성 시)
+    let pendingReward = get().game.pendingReward;
+    const claimed = get().game.giruRewardsClaimed || {};
+    let nextClaimed = { ...claimed };
+    let nextConsumables = { ...get().game.consumables };
+    let nextFragments = { ...(get().game.manualFragments || {}) };
+
+    if (nextFavors[npcId] >= 100 && !claimed[npcId]) {
+      const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
+      pendingReward = {
+        title: `[호감] ${npcName}의 증표`,
+        items: [
+          { icon: "🎁", name: "패왕의 보물상자", count: 2, color: "#ffd700" },
+          { icon: "📜", name: "신화 비급 조각", count: 50, color: "#ff3e3e", slotName: "재료" }
+        ]
+      };
+      nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 2;
+      nextFragments.manual_fragment_mythic = (nextFragments.manual_fragment_mythic || 0) + 50;
+      nextClaimed[npcId] = true;
+    }
+
+    set((s: any) => {
       const nextBuffs = [...(s.game.nightBuffs || [])];
       if (event.result.buff) {
         nextBuffs.push({
@@ -3933,7 +4061,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       // --- Info Trade Special Rewards ---
-      let nextFragments = { ...(s.game.manualFragments || {}) };
       let nextMaterials = s.game.advancedMaterials || 0;
       let nextBonds = { ...(s.game.factionBonds || {}) };
 
@@ -3941,7 +4068,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         const tier = (extra as any).infoTier;
         const faction = s.game.faction;
         
-        // --- [재설계] 정보 구매 시 즉시 지급이 아닌 '기연 대결' 발생 ---
         let rivalName = "신비한 고수";
         let rivalHpMult = 1.0;
         let rivalAtkMult = 1.0;
@@ -3950,7 +4076,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (tier === "low") {
           rivalName = "월향루 무뢰배 대장";
           rivalHpMult = 1.5; rivalAtkMult = 1.2;
-          rivalRewards = { manualFragments: { "common_fragment": 5 } };
+          rivalRewards = { manualFragments: { "manual_fragment_common": 5 } };
           infoMsg = "\n[기연] 월향루 근처에 무뢰배 대장이 나타났습니다!";
         } else if (tier === "mid") {
           rivalName = `${faction} 배신자`;
@@ -3969,16 +4095,19 @@ export const useGameStore = create<GameState>((set, get) => ({
           infoMsg = `\n[기연] 전설적인 고수와 대결할 절호의 기회가 생겼습니다!`;
         }
 
-        // 마스터 대결(Master Duel) 시스템으로 연계
         return {
           game: {
             ...s.game,
             coins: s.game.coins - (action.cost || 0),
             npcFavors: nextFavors,
             nightLimits: nextLimits,
+            consumables: nextConsumables,
+            manualFragments: nextFragments,
+            pendingReward,
+            giruRewardsClaimed: nextClaimed,
             masterDuel: {
               ...s.game.masterDuel,
-              isPlaying: false, // 즉시 시작하지 않고 사용자가 직접 시작하도록 수정
+              isPlaying: false, 
               rivalName,
               rivalHp: Math.floor(get().getTotalHp() * rivalHpMult),
               rivalMaxHp: Math.floor(get().getTotalHp() * rivalHpMult),
@@ -3986,7 +4115,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               playerHp: get().getTotalHp(),
               playerMaxHp: get().getTotalHp(),
               rewards: rivalRewards,
-              isGiruEncounter: true // 기루 전용 대결임을 표시
+              isGiruEncounter: true 
             }
           }
         };
@@ -4004,7 +4133,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           gamblingTokens: (s.game.gamblingTokens || 0) + (event.result.token || 0),
           manualFragments: nextFragments,
           advancedMaterials: nextMaterials,
-          factionBonds: nextBonds
+          factionBonds: nextBonds,
+          consumables: nextConsumables,
+          pendingReward,
+          giruRewardsClaimed: nextClaimed
         }
       };
     });
@@ -4203,7 +4335,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           tower: { ...s.game.tower, isInside: s.game.activeTab === "tower" ? s.game.tower.isInside : false }
         }
       }));
-    } else if (state.game.isMinigameActive || state.game.masterDuel.isPlaying || state.game.tower?.isInside) {
+    }
+
+    if (state.game.isMinigameActive || state.game.masterDuel.isPlaying || state.game.tower?.isInside) {
       return;
     }
 

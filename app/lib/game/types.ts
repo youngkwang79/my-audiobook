@@ -43,7 +43,7 @@ export type EquipSlot =
   | "ring"
   | "bracelet";
 
-export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade" | "tower" | "giru" | "gambling";
+export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade" | "tower" | "giru" | "gambling" | "quest";
 export type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse";
 
 export type ConsumableId =
@@ -169,10 +169,8 @@ export type FactionInfo = {
     hp?: number;
     critRate?: number;
     critDmg?: number;
-    eva?: number;
-    agi?: number;
     speed?: number;
-    targetDmg?: number;
+    eva?: number;
   };
   specialAdvantage: string;
   characterImages?: {
@@ -367,6 +365,7 @@ export interface Quest {
     token?: number;
     favor?: number;
   };
+  targetType?: string;
 }
 
 export type TowerState = {
@@ -578,6 +577,8 @@ export type GameSaveData = {
   isForgeFullUnlocked: boolean;
   lastInnEventKillCount: number;
   innEventIndex: number;
+  activeQuests: Quest[];
+  giruRewardsClaimed?: Record<string, boolean>;
   regenAccumulator: number;
   gamblingTokens: number;
   yabawiEvent: { active: boolean; expiresAt: number } | null;
@@ -597,7 +598,6 @@ export type GameSaveData = {
     autoFps: boolean;
   };
   showDawnSettlement: boolean;
-  activeQuests: Quest[]; // New: List of active/completed NPC quests
   dayCount: number;
   nextDayEvent: NextDayEvent | null;
 };

@@ -371,7 +371,7 @@ export function getCraftingRequirements(skill: CompendiumSkill) {
   const goldCost = Math.floor(basePrice * priceMultiplier);
 
   return {
-    fragmentId: skill.grade === "common" ? "common_fragment" : `${skill.id}_조각`,
+    fragmentId: `manual_fragment_${skill.grade}`,
     requiredFragments,
     requiredAdvancedMaterials,
     requiredLegendaryGearFragments,

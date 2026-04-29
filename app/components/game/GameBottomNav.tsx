@@ -20,6 +20,7 @@ const items: { key: TabType; label: string }[] = [
   { key: "gambling", label: "도박" },
   { key: "forge", label: "대장" },
   { key: "inventory", label: "장비" },
+  { key: "quest", label: "임무" },
 ];
 
 export default function GameBottomNav({
@@ -42,7 +43,7 @@ export default function GameBottomNav({
         bottom: 0,
         zIndex: 9999,
         display: "grid",
-        gridTemplateColumns: "repeat(10, 1fr)",
+        gridTemplateColumns: "repeat(11, 1fr)",
         gap: 2,
         padding: "8px 2px calc(15px + env(safe-area-inset-bottom))",
         background: "linear-gradient(180deg, rgba(0,0,0,0.95), rgba(10,10,12,1))",

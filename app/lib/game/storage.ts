@@ -82,7 +82,7 @@ export const defaultGameData: GameSaveData = {
   eva: 0.1,
   critRate: 0.1,
 
-  unlockedTabs: ["training"],
+  unlockedTabs: ["training", "inventory", "quest"],
   ownedWeapons: [],
   equippedWeaponId: null,
   equippedGear: defaultEquippedGear,
@@ -269,7 +269,20 @@ export const defaultGameData: GameSaveData = {
   },
   showDawnSettlement: false,
   giruGifts: {},
-  activeQuests: [],
+  giruRewardsClaimed: {},
+  activeQuests: [
+    {
+      id: "starter_1",
+      npcId: "scarecrow_master",
+      title: "허수아비 100회 타격",
+      desc: "수련장에서 허수아비를 100회 타격하여 기초 체력을 기르세요.",
+      targetCount: 100,
+      currentCount: 0,
+      status: "active",
+      targetType: "dummy_hit",
+      reward: { gold: 10000, exp: 500, favor: 5 }
+    }
+  ],
   regenAccumulator: 0,
   oilBuffs: {},
   gamblingTokens: 0,
