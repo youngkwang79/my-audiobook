@@ -309,7 +309,7 @@ function getDummyStats(realm: string, star: number, totalAtk: number = 10) {
   const expectedHitSurvive = 8;
   const minimumHp = totalAtk * expectedHitSurvive;
   if (hp < minimumHp) {
-      hp = Math.floor(minimumHp);
+    hp = Math.floor(minimumHp);
   }
 
   return { hp, def, eva, atk: Math.floor(atkBase * (1 + star * 0.2)) };
@@ -561,7 +561,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     const gearAtk = eq.reduce((s, i) => s + (i.attackBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     const realmMult = REALM_SETTINGS[game.realm]?.bonus || 1;
-    
+
     // [재설계] 단계별 공격력 성장 공식 적용
     let upgradeAtk = get().getStatUpgradeBonus("atk");
 
@@ -925,7 +925,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // 피해 감쇠 시스템 (한방컷 방지 및 타격감 유지)
         const softCap = stats.hp * 0.15; // 한 타격당 최대 체력의 15%를 기준으로 감쇠
         if (dmg > softCap) {
-           dmg = softCap + (dmg - softCap) * 0.1;
+          dmg = softCap + (dmg - softCap) * 0.1;
         }
 
         totalDamageDealt += dmg;
@@ -1112,21 +1112,21 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       let nextGame = { ...s.game };
       if (typeof priceOrReqs === 'number') {
-         nextGame.coins -= priceOrReqs;
+        nextGame.coins -= priceOrReqs;
       } else if (priceOrReqs && typeof priceOrReqs === 'object') {
-         nextGame.coins -= (priceOrReqs.goldCost || 0);
-         if (priceOrReqs.requiredFragments > 0) {
-            nextGame.manualFragments = { ...nextGame.manualFragments, [priceOrReqs.fragmentId]: (nextGame.manualFragments?.[priceOrReqs.fragmentId] || 0) - priceOrReqs.requiredFragments };
-         }
-         if (priceOrReqs.requiredAdvancedMaterials > 0) {
-            nextGame.advancedMaterials = (nextGame.advancedMaterials || 0) - priceOrReqs.requiredAdvancedMaterials;
-         }
-         if (priceOrReqs.requiredLegendaryGearFragments > 0) {
-            nextGame.legendaryGearFragments = (nextGame.legendaryGearFragments || 0) - priceOrReqs.requiredLegendaryGearFragments;
-         }
-         if (priceOrReqs.requiredBonds > 0) {
-            nextGame.bonds = { ...nextGame.bonds, [priceOrReqs.bondId]: (nextGame.bonds?.[priceOrReqs.bondId] || 0) - priceOrReqs.requiredBonds };
-         }
+        nextGame.coins -= (priceOrReqs.goldCost || 0);
+        if (priceOrReqs.requiredFragments > 0) {
+          nextGame.manualFragments = { ...nextGame.manualFragments, [priceOrReqs.fragmentId]: (nextGame.manualFragments?.[priceOrReqs.fragmentId] || 0) - priceOrReqs.requiredFragments };
+        }
+        if (priceOrReqs.requiredAdvancedMaterials > 0) {
+          nextGame.advancedMaterials = (nextGame.advancedMaterials || 0) - priceOrReqs.requiredAdvancedMaterials;
+        }
+        if (priceOrReqs.requiredLegendaryGearFragments > 0) {
+          nextGame.legendaryGearFragments = (nextGame.legendaryGearFragments || 0) - priceOrReqs.requiredLegendaryGearFragments;
+        }
+        if (priceOrReqs.requiredBonds > 0) {
+          nextGame.bonds = { ...nextGame.bonds, [priceOrReqs.bondId]: (nextGame.bonds?.[priceOrReqs.bondId] || 0) - priceOrReqs.requiredBonds };
+        }
       }
 
       return {
@@ -1348,17 +1348,34 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (k === 'critRate') return level * 0.05;
     if (k === 'critDmg') return level * 0.5;
     if (k === 'eva') return level * 0.05;
-    
+
     const inc = STAT_INCREMENTS[k] || 0;
     return level * inc;
   },
 
   breakthrough: () => {
     const { game } = get();
+    const list = Object.keys(REALM_SETTINGS);
+    const realmIdx = list.indexOf(game.realm);
+    
+    // 누적 돌파 횟수 계산 (필부 1성->2성이 첫 돌파)
+    const breakthroughCount = (realmIdx * 10) + game.star;
+    const rewardAmount = 40000 + (breakthroughCount * 10000);
+
     if (game.star < 10) {
       const nV = game.star + 1;
       const st = getDummyStats(game.realm, nV);
-      set((s: any) => ({ game: { ...s.game, star: nV, dummyHp: st.hp, maxDummyHp: st.hp } }));
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          star: nV,
+          dummyHp: st.hp,
+          maxDummyHp: st.hp,
+          coins: s.game.coins + rewardAmount,
+          reputation: (s.game.reputation || 0) + rewardAmount
+        }
+      }));
+      alert(`✨ 돌파 성공! [${game.realm} ${nV}성]에 도달했습니다!\n보상으로 ${rewardAmount.toLocaleString()}냥과 명성 ${rewardAmount.toLocaleString()}을 획득했습니다.`);
     }
     else {
       const nxt = get().getNextRealmName();
@@ -1378,9 +1395,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             maxHp: getRealmSettings(nxt).hp,
             dummyHp: st.hp,
             maxDummyHp: st.hp,
-            unlockedTabs: nextTabs
+            unlockedTabs: nextTabs,
+            coins: s.game.coins + rewardAmount,
+            reputation: (s.game.reputation || 0) + rewardAmount
           }
         }));
+
+        alert(`✨ 경지 돌파! 새로운 경지 [${nxt}]에 도달했습니다!\n보상으로 ${rewardAmount.toLocaleString()}냥과 명성 ${rewardAmount.toLocaleString()}을 획득했습니다.`);
+
         // 경지 돌파 시 투전판 이벤트 확정 발생
         if (!get().game.yabawiEvent?.active) {
           setTimeout(() => get().triggerYabawiEvent(), 500);
@@ -2340,7 +2362,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const successRates: Record<number, number> = {
       0: 100, 1: 100, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100,
-      10: 100, 
+      10: 100,
       11: 45, 12: 45, 13: 45, 14: 45, 15: 45,
       16: 25, 17: 25, 18: 25, 19: 25, 20: 25,
       21: 10, 22: 10, 23: 10, 24: 10, 25: 10,
