@@ -35,32 +35,42 @@ function PotionItem({ p, playerRealm, buyPotion, unlocked, currentCoins }: any) 
 
   return (
     <div style={{
-      borderRadius: 10, border: "1px solid rgba(0,242,255,0.2)", background: "rgba(0,242,255,0.05)",
-      padding: "6px 10px", display: "flex", alignItems: "center", gap: 8
+      borderRadius: 12, border: "1px solid rgba(0,242,255,0.15)", background: "rgba(0,242,255,0.03)",
+      padding: "8px", display: "flex", flexDirection: "column", gap: 6, position: "relative"
     }}>
-      <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(0,242,255,0.1)", display: "grid", placeItems: "center", fontSize: 18 }}>{p.icon}</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 900, color: "#fff" }}>{p.name}</div>
-        <div style={{ fontSize: 10, color: "#00f2ff", opacity: 0.8 }}>{p.desc}</div>
-        <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold" }}>{cost.toLocaleString()} 냥</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,242,255,0.1)", display: "grid", placeItems: "center", fontSize: 16 }}>{p.icon}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 950, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+          <div style={{ fontSize: 9, color: "#ffd700", fontWeight: "bold" }}>{cost.toLocaleString()} 냥</div>
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid #444", background: "#222", color: "#fff", cursor: "pointer" }}>-</button>
-        <input
-          type="number"
-          value={qty}
-          onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
-          style={{ width: 35, textAlign: "center", background: "#000", color: "#fff", border: "1px solid #444", borderRadius: 4, fontSize: 12 }}
-        />
-        <button onClick={() => setQty(Math.min(99, qty + 1))} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid #444", background: "#222", color: "#fff", cursor: "pointer" }}>+</button>
+      
+      <div style={{ fontSize: 9, color: "#00f2ff", opacity: 0.7, lineHeight: 1.2, height: 22, overflow: "hidden" }}>{p.desc}</div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginTop: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 18, height: 18, borderRadius: 4, border: "1px solid #444", background: "#222", color: "#fff", cursor: "pointer", fontSize: 10 }}>-</button>
+          <input
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+            style={{ width: 24, textAlign: "center", background: "#000", color: "#fff", border: "1px solid #444", borderRadius: 4, fontSize: 10, padding: 0 }}
+          />
+          <button onClick={() => setQty(Math.min(99, qty + 1))} style={{ width: 18, height: 18, borderRadius: 4, border: "1px solid #444", background: "#222", color: "#fff", cursor: "pointer", fontSize: 10 }}>+</button>
+        </div>
+        <button
+          onClick={() => buyPotion(p.id as any, qty)}
+          disabled={!unlocked || currentCoins < cost}
+          style={{ 
+            background: "linear-gradient(135deg, #00f2ff, #0099ff)", 
+            padding: "4px 8px", borderRadius: 6, color: "#fff", border: "none",
+            fontSize: 10, fontWeight: 900, cursor: "pointer", opacity: (!unlocked || currentCoins < cost) ? 0.5 : 1
+          }}
+        >
+          구매
+        </button>
       </div>
-      <button
-        onClick={() => buyPotion(p.id as any, qty)}
-        disabled={!unlocked || currentCoins < cost}
-        style={{ ...goldBtn, background: "linear-gradient(135deg, #00f2ff, #0099ff)", padding: "6px 10px", minWidth: 60, color: "#fff", border: "none" }}
-      >
-        구매
-      </button>
     </div>
   );
 }
@@ -384,7 +394,7 @@ export default function ForgePanel(props: Props) {
 
 
       {/* 메인 콘텐츠 (스크롤 영역) */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative", paddingBottom: 100 }} className="hide-scrollbar">
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative", paddingBottom: 120, WebkitOverflowScrolling: "touch" }} className="hide-scrollbar">
         {!unlocked && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 20, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 24, borderRadius: 20 }}>
             <div style={{ fontSize: 42, marginBottom: 12 }}>🔒</div>
@@ -420,8 +430,12 @@ export default function ForgePanel(props: Props) {
             </div>
 
             {/* 제작 목록 */}
-            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 20 }} className="hide-scrollbar">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ flex: 1, paddingBottom: 80 }} className="hide-scrollbar">
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: selectedRealm === "회복제" ? "repeat(2, 1fr)" : "1fr", 
+                gap: 8 
+              }}>
                 {selectedRealm === "회복제" ? (
                   <>
                     {[
