@@ -3112,6 +3112,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         set((s: any) => ({ game: { ...s.game, ...cloudData, isInitialized: true } }));
         saveGame(get().game);
         console.log("클라우드(Firebase) 데이터 로드 성공");
+      } else {
+        // 클라우드에 데이터가 없는 경우 (신규 유저)
+        // 기존 로컬 데이터를 덮어씌워 초기화 상태로 시작하게 함 (계정 간 데이터 꼬임 방지)
+        console.log("클라우드 데이터 없음 - 신규 유저로 초기화합니다.");
+        set((s: any) => ({ game: { ...defaultGameData, isInitialized: true } }));
+        saveGame(get().game);
       }
     } catch (e) {
       console.warn("데이터 불러오기 중 에러 발생:", e);
