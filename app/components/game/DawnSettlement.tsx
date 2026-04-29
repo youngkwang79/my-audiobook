@@ -86,7 +86,17 @@ export default function DawnSettlement({ onClose }: { onClose: () => void }) {
                     borderRadius: "10px", 
                     background: "rgba(255,255,255,0.05)"
                   }}>
-                    <span style={{ fontSize: "13px", color: "#ddd" }}>{id.replace(/_/g, ' ').toUpperCase()}</span>
+                    <span style={{ fontSize: "13px", color: "#ddd" }}>{
+                      {
+                        gilu_gift: "월향루 선물함",
+                        moon_buff: "월향 버프권",
+                        stone_box: "현철 강화석 상자",
+                        rare_box: "흑시 희귀품 상자",
+                        night_gear: "야행 장비 상자",
+                        gear_piece: "야행 장비 조각",
+                        manual_fragment_bundle: "비급 조각 주머니",
+                      }[id] || id.replace(/_/g, ' ').toUpperCase()
+                    }</span>
                     <span style={{ fontSize: "13px", color: "#ffd700", fontWeight: 700 }}>{count}회 교환</span>
                   </div>
                 ))

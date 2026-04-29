@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, formatCompactNumber, REALM_ORDER } from "@/app/lib/game/useGameStore";
-import { GIRU_NPCS, GIRU_ACTIONS, GiruNPC, GiruEvent, GIRU_GIFT_ITEMS, GIRU_QUESTS, getGiruInvestmentBonus, getFavorDiscount, GIRU_INVEST_COSTS, SEOLMAE_BUFFS, INFO_TIER_CONFIG, REALM_BONUS_CONFIG } from "@/app/lib/game/nightSystem";
+import { GIRU_NPCS, GIRU_ACTIONS, GiruNPC, GiruEvent, GIRU_GIFT_ITEMS, GIRU_QUESTS, getGiruInvestmentBonus, getFavorDiscount, GIRU_INVEST_COSTS, SEOLMAE_BUFFS, INFO_TIER_CONFIG, REALM_BONUS_CONFIG, ROGUE_QUEST_REWARDS } from "@/app/lib/game/nightSystem";
 import GiruPuzzleGame from "./GiruPuzzleGame";
 
 export default function GiruPanel() {
@@ -215,6 +215,38 @@ export default function GiruPanel() {
 
         {!selectedNpc ? (
           <div style={{ height: "100%", position: "relative", display: "flex", alignItems: "center" }}>
+            {/* 좌우 내비게이션 안내 화살표 */}
+            {!isEditMode && activeNpcIndex > 0 && (
+              <motion.div 
+                animate={{ opacity: [0.3, 0.8, 0.3], x: [0, -8, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                onClick={() => setActiveNpcIndex(activeNpcIndex - 1)}
+                style={{ 
+                  position: "absolute", left: 10, top: "40%", transform: "translateY(-50%)", 
+                  fontSize: "24px", color: "#e0c3fc", zIndex: 20, cursor: "pointer",
+                  textShadow: "0 0 10px rgba(224, 195, 252, 0.5)",
+                  padding: "20px 10px"
+                }}
+              >
+                ◀
+              </motion.div>
+            )}
+            {!isEditMode && activeNpcIndex < GIRU_NPCS.length - 1 && (
+              <motion.div 
+                animate={{ opacity: [0.3, 0.8, 0.3], x: [0, 8, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                onClick={() => setActiveNpcIndex(activeNpcIndex + 1)}
+                style={{ 
+                  position: "absolute", right: 10, top: "40%", transform: "translateY(-50%)", 
+                  fontSize: "24px", color: "#e0c3fc", zIndex: 20, cursor: "pointer",
+                  textShadow: "0 0 10px rgba(224, 195, 252, 0.5)",
+                  padding: "20px 10px"
+                }}
+              >
+                ▶
+              </motion.div>
+            )}
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeNpcIndex}
@@ -606,6 +638,11 @@ export default function GiruPanel() {
                             </button>
                           </div>
                           <div style={{ fontSize: "11px", color: "#aaa", marginTop: "4px" }}>{q.desc}</div>
+                          <div style={{ fontSize: "10px", color: "#ffd700", marginTop: "4px", fontWeight: 700 }}>
+                            보상: {q.id === "q_yeonhwa_1" 
+                              ? `${formatCompactNumber(ROGUE_QUEST_REWARDS[game.realm]?.gold || 100000)}냥, 투전패 ${ROGUE_QUEST_REWARDS[game.realm]?.token || 2}개`
+                              : `${formatCompactNumber(q.reward.gold || 0)}냥, 투전패 ${q.reward.token || 0}개`}
+                          </div>
                         </div>
                       ))}
 
@@ -621,11 +658,22 @@ export default function GiruPanel() {
                             <span style={{ fontWeight: 800, fontSize: "14px", color: q.status === "completed" ? "#4dff8a" : "#fff" }}>
                               {q.title} {q.status === "completed" ? "(완료)" : ""}
                             </span>
+                            <div style={{ fontSize: "10px", color: "#ffd700", fontWeight: 700 }}>
+                              {q.id === "q_yeonhwa_1" 
+                                ? `${formatCompactNumber(ROGUE_QUEST_REWARDS[game.realm]?.gold || 100000)}냥, 투전패 ${ROGUE_QUEST_REWARDS[game.realm]?.token || 2}개`
+                                : `${formatCompactNumber(q.reward.gold || 0)}냥, 투전패 ${q.reward.token || 0}개`}
+                            </div>
                             {q.status === "completed" && (
                               <button
                                 onClick={() => {
                                   const { completeQuest } = useGameStore.getState() as any;
-                                  setRewardData(q.reward);
+                                  let finalReward = { ...q.reward };
+                                  if (q.id === "q_yeonhwa_1") {
+                                    const realmRewards = ROGUE_QUEST_REWARDS[game.realm] || ROGUE_QUEST_REWARDS["필부"];
+                                    finalReward.gold = realmRewards.gold;
+                                    finalReward.token = realmRewards.token;
+                                  }
+                                  setRewardData(finalReward);
                                   setShowRewardPopup(true);
                                   completeQuest(q.id);
                                   setDialogue(`임무를 완수하셨군요! 여기 보상입니다.`);

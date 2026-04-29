@@ -13,6 +13,19 @@ export default function VisitorStats() {
   useEffect(() => {
     let alive = true;
 
+    const trackVisit = async () => {
+      try {
+        await fetch("/api/visits/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ page_path: window.location.pathname }),
+          cache: "no-store",
+        });
+      } catch (e) {
+        console.error("방문 추적 실패:", e);
+      }
+    };
+
     const loadStats = async () => {
       try {
         const res = await fetch("/api/visits/stats", {
@@ -39,7 +52,12 @@ export default function VisitorStats() {
       }
     };
 
-    loadStats();
+    const init = async () => {
+      await trackVisit();
+      if (alive) await loadStats();
+    };
+
+    init();
 
     return () => {
       alive = false;

@@ -67,14 +67,15 @@ export const defaultGameData: GameSaveData = {
   advancedMaterials: 0,
   legendaryGearFragments: 0,
   divineWeaponShards: 0,
+  gearPieces: 0,
   factionBonds: {},
 
   reputation: 0,
 
   hp: 150,
   maxHp: 150,
-  mp: 60,
-  maxMp: 60,
+  mp: 300,
+  maxMp: 300,
 
   agi: 5,
   def: 50,
@@ -240,7 +241,8 @@ export const defaultGameData: GameSaveData = {
     oil_eva_3: 0, oil_def_3: 0, oil_reflect: 0, oil_vajra: 0, oil_vampire: 0,
     oil_speed_3: 0, oil_luck_3: 0, oil_clarity: 0, oil_eye: 0,
     oil_demon: 0, oil_triple_hit: 0, oil_formless: 0, oil_blessed: 0,
-    charm_luck: 0, exp_scroll: 0, paewang_box: 0
+    charm_luck: 0, exp_scroll: 0, paewang_box: 0,
+    stone_box_tujeon: 0, rare_box_tujeon: 0, night_gear_box: 0, gear_piece_bundle: 0, manual_fragment_bundle: 0
   },
   quickSlots: [null, null, null, null, null],
   skillCooldowns: {},
@@ -273,6 +275,7 @@ export const defaultGameData: GameSaveData = {
   gamblingTokens: 0,
   yabawiEvent: null,
   tower: defaultTowerState,
+  pendingReward: null,
 
   // --- Night System ---
   timeState: "day",

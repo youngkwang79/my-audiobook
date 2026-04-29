@@ -10,8 +10,9 @@ export default function GameStatusPanel() {
   const game = useGameStore((s: any) => s.game);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isApplying, setIsApplying] = useState(false);
-  const [applyProgress, setApplyProgress] = useState(0);
+  const [isCheatOpen, setIsCheatOpen] = useState(false);
+  const [isCheatAuthOpen, setIsCheatAuthOpen] = useState(false);
+  const [authInput, setAuthInput] = useState("");
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps, triggerGodMode } = useGameStore() as any;
@@ -74,27 +75,7 @@ export default function GameStatusPanel() {
   const hpPercent = totalHp > 0 ? Math.min((safeGame.hp / totalHp) * 100, 100) : 0;
   const mpPercent = totalMp > 0 ? Math.min((safeGame.mp / totalMp) * 100, 100) : 0;
 
-  useEffect(() => {
-    if (isApplying) {
-      const startTime = Date.now();
-      const duration = 3000;
-      const interval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min((elapsed / duration) * 100, 100);
-        setApplyProgress(progress);
-        if (progress >= 100) {
-          clearInterval(interval);
-          window.location.reload();
-        }
-      }, 50);
-      return () => clearInterval(interval);
-    }
-  }, [isApplying]);
 
-  const handleApplyChanges = () => {
-    triggerSave(true);
-    setIsApplying(true);
-  };
 
   return (
     <>
@@ -162,22 +143,7 @@ export default function GameStatusPanel() {
               홈
             </button>
 
-            <button
-              onClick={handleApplyChanges}
-              style={{
-                padding: "2px 8px",
-                fontSize: "11px",
-                background: "linear-gradient(180deg, #444, #222)",
-                border: "1px solid rgba(255,215,120,0.4)",
-                borderRadius: "6px",
-                color: "#ffd778",
-                cursor: "pointer",
-                fontWeight: "bold",
-                marginLeft: "4px"
-              }}
-            >
-              적용
-            </button>
+
           </div>
 
           <button
@@ -218,6 +184,30 @@ export default function GameStatusPanel() {
             ⚙️
           </button>
           
+          <button
+            onClick={() => {
+              setIsCheatAuthOpen(true);
+              setAuthInput("");
+            }}
+            title="개발자 치트 패널"
+            style={{
+              width: "28px",
+              height: "28px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "12px",
+              background: "linear-gradient(135deg, #ff4444, #aa0000)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: "8px",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "900",
+              marginLeft: "4px"
+            }}
+          >
+            G
+          </button>
 
         </div>
 
@@ -414,6 +404,155 @@ export default function GameStatusPanel() {
 
       <CharacterModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
+      {/* 치트 보안 인증 모달 */}
+      {isCheatAuthOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 3000,
+          background: "rgba(0,0,0,0.95)", backdropFilter: "blur(15px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }} onClick={() => setIsCheatAuthOpen(false)}>
+          <div style={{
+            width: "100%", maxWidth: 300, background: "#0a0a0a",
+            borderRadius: 24, border: "2px solid #ff4444",
+            padding: 30, display: "flex", flexDirection: "column", gap: 20,
+            boxShadow: "0 0 60px rgba(255,0,0,0.4)",
+            textAlign: "center"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 32 }}>🔒</div>
+            <div style={{ fontSize: 18, fontWeight: 950, color: "#ff4444", letterSpacing: 1 }}>접근 권한 필요</div>
+            <div style={{ fontSize: 11, color: "#888", marginTop: -10 }}>개발자 코드를 입력하십시오.</div>
+            
+            <input 
+              type="password"
+              value={authInput}
+              onChange={e => setAuthInput(e.target.value)}
+              placeholder="••••"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (authInput === "0429") {
+                    setIsCheatAuthOpen(false);
+                    setIsCheatOpen(true);
+                    setAuthInput("");
+                  } else {
+                    alert("접근 거부: 잘못된 코드입니다.");
+                    setAuthInput("");
+                  }
+                }
+              }}
+              style={{
+                background: "rgba(255,255,255,0.05)", border: "1px solid #444",
+                borderRadius: 12, padding: "12px", color: "#fff",
+                textAlign: "center", fontSize: 20, letterSpacing: 4,
+                outline: "none", width: "100%"
+              }}
+            />
+
+            <button
+              onClick={() => {
+                if (authInput === "0429") {
+                  setIsCheatAuthOpen(false);
+                  setIsCheatOpen(true);
+                  setAuthInput("");
+                } else {
+                  alert("접근 거부: 잘못된 코드입니다.");
+                  setAuthInput("");
+                }
+              }}
+              style={{
+                padding: "14px", borderRadius: 12, border: "none",
+                background: "linear-gradient(135deg, #ff4444, #aa0000)",
+                color: "#fff", fontWeight: 950, fontSize: 14, cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(255,0,0,0.3)"
+              }}
+            >
+              승인 요청
+            </button>
+            <button 
+              onClick={() => setIsCheatAuthOpen(false)}
+              style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer" }}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 치트 패널 */}
+      {isCheatOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 2000,
+          background: "rgba(0,0,0,0.92)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }} onClick={() => setIsCheatOpen(false)}>
+          <div style={{
+            width: "100%", maxWidth: 360, background: "#1a0a0a",
+            borderRadius: 20, border: "2px solid rgba(255,60,60,0.6)",
+            padding: 24, display: "flex", flexDirection: "column", gap: 16,
+            boxShadow: "0 0 40px rgba(255,0,0,0.3)"
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 950, color: "#ff4444" }}>🔧 개발자 치트 패널</div>
+              <button onClick={() => setIsCheatOpen(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 22, cursor: "pointer" }}>&times;</button>
+            </div>
+            <div style={{ fontSize: 12, color: "#ff8888", background: "rgba(255,0,0,0.1)", borderRadius: 10, padding: "8px 12px" }}>
+              ⚠️ 테스트 전용 기능입니다. 모든 재화가 1조로 설정됩니다.
+            </div>
+            {[
+              { label: "🪙 금화", field: "coins" },
+              { label: "🏆 명성", field: "reputation" },
+              { label: "⚔️ 혈투징표", field: "bossTokens" },
+              { label: "💡 심득", field: "wisdom" },
+              { label: "💎 강화석", field: "enhancementStones" },
+              { label: "🎴 투전패", field: "gamblingTokens" },
+            ].map(({ label, field }) => (
+              <div key={field} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "8px 14px", background: "rgba(255,255,255,0.03)",
+                borderRadius: 10, border: "1px solid rgba(255,60,60,0.2)"
+              }}>
+                <div style={{ fontSize: 13, color: "#eee", fontWeight: 700 }}>{label}</div>
+                <div style={{ fontSize: 12, color: "#ff8888" }}>
+                  현재: {((game as any)[field] ?? 0).toLocaleString()}
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                const trillion = 1_000_000_000_000;
+                useGameStore.setState((s: any) => ({
+                  game: {
+                    ...s.game,
+                    coins: trillion,
+                    reputation: trillion,
+                    bossTokens: trillion,
+                    wisdom: trillion,
+                    enhancementStones: trillion,
+                    gamblingTokens: trillion,
+                    advancedMaterials: trillion,
+                    factionBonds: { 
+                      "화산파": trillion, "소림": trillion, "무당": trillion, "개방": trillion, 
+                      "청성파": trillion, "점창파": trillion, "공동파": trillion, "아미파": trillion, 
+                      "곤륜파": trillion, "남궁세가": trillion, "제갈세가": trillion, "사마세가": trillion, 
+                      "하북팽가": trillion, "사천당가": trillion, "일월신교": trillion, "천마신교": trillion 
+                    }
+                  }
+                }));
+                setIsCheatOpen(false);
+              }}
+              style={{
+                padding: "14px", borderRadius: 14, border: "none",
+                background: "linear-gradient(135deg, #ff4444, #aa0000)",
+                color: "#fff", fontWeight: 950, fontSize: 16, cursor: "pointer",
+                boxShadow: "0 4px 20px rgba(255,0,0,0.4)",
+              }}
+            >
+              💰 모든 재화 1조 지급
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 설정 모달 */}
       {isSettingsOpen && (
         <div style={{
@@ -429,7 +568,6 @@ export default function GameStatusPanel() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <div style={{ fontSize: 18, fontWeight: 950, color: "#ffd778" }}>⚙️ 환경 설정</div>
-
               </div>
               <button onClick={() => setIsSettingsOpen(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 20, cursor: "pointer" }}>&times;</button>
             </div>
@@ -554,42 +692,6 @@ export default function GameStatusPanel() {
 
             <div style={{ textAlign: "center", fontSize: 10, color: "#555", marginTop: 5 }}>v1.4.2 Settings Menu</div>
           </div>
-        </div>
-      )}
-      {isApplying && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 10000,
-          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          color: "#fff", gap: 20
-        }}>
-          <div style={{ 
-            fontSize: 18, 
-            fontWeight: 900, 
-            textAlign: "center",
-            color: "#ffd778",
-            textShadow: "0 0 10px rgba(255,215,120,0.3)"
-          }}>
-            데이터 유지하면서 변경사항 적용중...
-          </div>
-          <div style={{ 
-            width: "240px", 
-            height: "10px", 
-            background: "rgba(255,255,255,0.05)", 
-            borderRadius: 5, 
-            overflow: "hidden", 
-            border: "1px solid rgba(255,215,120,0.2)",
-            boxShadow: "0 0 15px rgba(0,0,0,0.5)"
-          }}>
-            <div style={{ 
-              width: `${applyProgress}%`, 
-              height: "100%", 
-              background: "linear-gradient(90deg, #f3c969, #d4a23c)", 
-              transition: "width 0.1s linear",
-              boxShadow: "0 0 10px rgba(212,162,60,0.5)"
-            }} />
-          </div>
-          <div style={{ fontSize: 12, color: "#888", marginTop: 5 }}>잠시만 기다려주세요</div>
         </div>
       )}
     </>

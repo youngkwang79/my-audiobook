@@ -2,9 +2,9 @@
 import { create } from "zustand";
 import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource, NextDayEvent, Quest } from "./types";
 import { FACTIONS } from "./factions";
-import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS } from "./nightSystem";
+import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS, ROGUE_QUEST_REWARDS } from "./nightSystem";
 import { defaultGameData, loadGame, saveGame } from "./storage";
-import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS } from "./items";
+import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS, generateRandomGear, SET_GROUPS } from "./items";
 import { getMovementBuff } from "./movementLogic";
 import {
   ensureLearnedSkill,
@@ -36,17 +36,17 @@ export function formatCompactNumber(num: number): string {
 }
 
 export const REALM_SETTINGS: Record<string, any> = {
-  필부: { bonus: 1.0, minTouches: 0, dummyHp: 1000, dummyType: "straw", label: "낡은 짚더미", hp: 150, mp: 60, goldMultiplier: 1 },
-  삼류: { bonus: 1.0, minTouches: 30000, dummyHp: 50000, dummyType: "straw", label: "말라비틀어진 짚더미", hp: 300, mp: 150, goldMultiplier: 3 },
-  이류: { bonus: 1.5, minTouches: 2500000, dummyHp: 400000, dummyType: "wood", label: "통나무 목인", hp: 600, mp: 350, goldMultiplier: 8 },
-  일류: { bonus: 2.5, minTouches: 15000000, dummyHp: 3500000, dummyType: "leather", label: "가죽 목격인", hp: 1200, mp: 700, goldMultiplier: 20 },
-  절정: { bonus: 4.5, minTouches: 100000000, dummyHp: 25000000, dummyType: "iron", label: "청강철 목인", hp: 2500, mp: 1500, goldMultiplier: 50 },
-  초절정: { bonus: 8.0, minTouches: 500000000, dummyHp: 200000000, dummyType: "spirit", label: "기운 서린 목격인", hp: 5000, mp: 3000, goldMultiplier: 150 },
-  화경: { bonus: 15.0, minTouches: 2500000000, dummyHp: 1500000000, dummyType: "master", label: "화경의 환영", hp: 12000, mp: 7000, goldMultiplier: 400 },
-  현경: { bonus: 40.0, minTouches: 15000000000, dummyHp: 12000000000, dummyType: "legend", label: "현경의 전설", hp: 25000, mp: 15000, goldMultiplier: 1000 },
-  생사경: { bonus: 100.0, minTouches: 100000000000, dummyHp: 100000000000, dummyType: "life-death", label: "생사의 문턱", hp: 50000, mp: 35000, goldMultiplier: 2500 },
-  신화경: { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: "myth", label: "신화의 형상", hp: 120000, mp: 80000, goldMultiplier: 7000 },
-  천인합일: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: "heaven", label: "천인합일의 경지", hp: 300000, mp: 200000, goldMultiplier: 20000 },
+  필부: { bonus: 1.0, minTouches: 0, dummyHp: 300, dummyType: "straw", label: "낡은 짚더미", hp: 150, mp: 300, goldMultiplier: 1 },
+  삼류: { bonus: 1.0, minTouches: 30000, dummyHp: 50000, dummyType: "straw", label: "말라비틀어진 짚더미", hp: 300, mp: 800, goldMultiplier: 3 },
+  이류: { bonus: 1.5, minTouches: 2500000, dummyHp: 400000, dummyType: "wood", label: "통나무 목인", hp: 600, mp: 2000, goldMultiplier: 8 },
+  일류: { bonus: 2.5, minTouches: 15000000, dummyHp: 3500000, dummyType: "leather", label: "가죽 목격인", hp: 1200, mp: 5000, goldMultiplier: 20 },
+  절정: { bonus: 4.5, minTouches: 100000000, dummyHp: 25000000, dummyType: "iron", label: "청강철 목인", hp: 2500, mp: 12000, goldMultiplier: 50 },
+  초절정: { bonus: 8.0, minTouches: 500000000, dummyHp: 200000000, dummyType: "spirit", label: "기운 서린 목격인", hp: 5000, mp: 30000, goldMultiplier: 150 },
+  화경: { bonus: 15.0, minTouches: 2500000000, dummyHp: 1500000000, dummyType: "master", label: "화경의 환영", hp: 12000, mp: 70000, goldMultiplier: 400 },
+  현경: { bonus: 40.0, minTouches: 15000000000, dummyHp: 12000000000, dummyType: "legend", label: "현경의 전설", hp: 25000, mp: 150000, goldMultiplier: 1000 },
+  생사경: { bonus: 100.0, minTouches: 100000000000, dummyHp: 100000000000, dummyType: "life-death", label: "생사의 문턱", hp: 50000, mp: 400000, goldMultiplier: 2500 },
+  신화경: { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: "myth", label: "신화의 형상", hp: 120000, mp: 1000000, goldMultiplier: 7000 },
+  천인합일: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: "heaven", label: "천인합일의 경지", hp: 300000, mp: 3000000, goldMultiplier: 20000 },
 };
 
 export function getInnStageConfig(stage: number) {
@@ -355,7 +355,7 @@ interface GameState {
   equipItem: (itemId: string) => void;
   unequipItem: (slot: EquipSlot) => void;
   resolveTimingMission: (payload: any) => void;
-  startMasterDuel: (isSpecialBoss?: boolean) => void;
+  startMasterDuel: (isSpecialBoss?: boolean, isGiru?: boolean) => void;
   updateMasterDuel: (dt: number) => void;
   claimDuelReward: () => void;
   markInnEntryHandled: () => void;
@@ -490,11 +490,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     Object.values(game.equippedGear).forEach(id => {
       if (!id) return;
       const item = game.ownedWeapons.find(w => w.id === id);
-      if (item?.setName) {
-        counts[item.setName] = (counts[item.setName] || 0) + 1;
-      } else if (item?.realm) {
-        // Realm set items (default sets)
-        counts[item.realm] = (counts[item.realm] || 0) + 1;
+      if (item?.setGroupId) {
+        // Only count pieces of the same realm to trigger the set effect?
+        // User said: "같은 '경지' 기준으로 묶임".
+        // But also said "공격 세트", "생존 세트".
+        // So we count setGroupId.
+        counts[item.setGroupId] = (counts[item.setGroupId] || 0) + 1;
       }
     });
     return counts;
@@ -580,19 +581,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     const setCounts = get().getSetCounts();
-    let setAtkBonus = 1;
-    Object.entries(setCounts).forEach(([setName, count]) => {
-      const realmSet = REALM_SET_OPTIONS[setName];
-      if (realmSet && count >= realmSet.requiredPieces) setAtkBonus *= (realmSet.attackBonusMultiplier || 1);
-
-      const syn = SYNERGY_CONFIG[setName];
-      if (syn) {
-        if (count >= 3 && syn[3]?.atkMult) setAtkBonus *= (1 + syn[3].atkMult);
-        if (count >= 5 && syn[5]?.allStat) setAtkBonus *= (1 + syn[5].allStat);
+    let setAtkMult = 1;
+    let finalDmgMult = 1;
+    
+    Object.entries(setCounts).forEach(([setId, count]) => {
+      const group = (SET_GROUPS as any[]).find(g => g.id === setId);
+      if (group) {
+        group.effects.forEach((eff: any) => {
+          if (count >= eff.pieces) {
+            if (eff.stats.attackMultiplier) setAtkMult += eff.stats.attackMultiplier;
+            if (eff.stats.finalDamageMultiplier) finalDmgMult += eff.stats.finalDamageMultiplier;
+          }
+        });
       }
     });
 
-    let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0) / 100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkBonus * nightAtkMult;
+    let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0) / 100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkMult * finalDmgMult * nightAtkMult;
 
     // Special Training: Aura Type (Atk Bonus)
     if (faction?.specialTraining?.type === 'aura') {
@@ -632,36 +636,24 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let setCrit = 0;
     const setCounts = get().getSetCounts();
-    Object.entries(setCounts).forEach(([setName, count]) => {
-      const realmSet = REALM_SET_OPTIONS[setName];
-      if (realmSet && count >= realmSet.requiredPieces) setCrit += (realmSet.critRateBonus || 0);
-
-      const syn = SYNERGY_CONFIG[setName];
-      if (syn) {
-        if (count >= 3 && syn[3]?.critRate) setCrit += syn[3].critRate;
-        if (count >= 5 && syn[5]?.allStat) setCrit += 5; // Moderate bonus for allStat
+    Object.entries(setCounts).forEach(([setId, count]) => {
+      const group = (SET_GROUPS as any[]).find(g => g.id === setId);
+      if (group) {
+        group.effects.forEach((eff: any) => {
+          if (count >= eff.pieces && eff.stats.critRate) setCrit += eff.stats.critRate;
+        });
       }
     });
 
     const nightBuffs = get().getNightBuffs();
     let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critRate") + get().getOptionSum("crit_rate") + skillBonus + setCrit + nightBuffs.crit;
 
-    // 옵션 중복 패널티 적용
-    const critOptionCount = get().getOptionCount("crit_rate");
-    if (critOptionCount > 1) {
-      finalCrit *= (1 - 0.05 * (critOptionCount - 1));
-    }
-
-    // 감쇠 시스템 적용 (critRate = critRate / (1 + critRate))
-    const rateDecimal = finalCrit / 100;
-    finalCrit = (rateDecimal / (1 + rateDecimal)) * 100;
-
-    // 최종 상한 적용 (35%)
-    finalCrit = Math.min(35, finalCrit);
+    // 최종 상한 적용 (50%)
+    finalCrit = Math.min(50, finalCrit);
 
     // 연마유 영안 버프 (치명타 50% 상승 - 감쇠 및 상한 이후 합산)
     if (game.oilBuffs?.oil_eye > 0) {
-      finalCrit = Math.min(85, finalCrit + 50);
+      finalCrit = Math.min(100, finalCrit + 50);
     }
 
     return finalCrit;
@@ -729,15 +721,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (game.movementBuff && game.movementBuff.data.def) moveMult = game.movementBuff.data.def;
     const setCounts = get().getSetCounts();
     let setDefMult = 1;
-    Object.entries(setCounts).forEach(([setName, count]) => {
-      const syn = SYNERGY_CONFIG[setName];
-      if (syn && count >= 5 && syn[5]?.allStat) setDefMult *= (1 + syn[5].allStat);
+    Object.entries(setCounts).forEach(([setId, count]) => {
+      const group = (SET_GROUPS as any[]).find(g => g.id === setId);
+      if (group) {
+        group.effects.forEach((eff: any) => {
+          if (count >= eff.pieces && eff.stats.defenseMultiplier) setDefMult += eff.stats.defenseMultiplier;
+        });
+      }
     });
 
     const faction = FACTIONS.find(f => f.name === game.faction);
     const optionDefPct = Math.min(180, get().getOptionSum("def_pct"));
 
-    // [재설계] 방어력 성장 공식
+    // [재설계] 방어력 성장 공식: 무기 공격력 기준 비율 적용 (도포)
+    const mWeapon = game.ownedWeapons.find(w => w.id === game.equippedGear?.mainWeapon);
+    const baseWeaponAtk = mWeapon?.attackBonus || 10;
+    
     const defUpgradeBonus = get().getStatUpgradeBonus("def");
 
     let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + defUpgradeBonus) * (1 + (faction?.bonusStats?.def || 0) / 100) * moveMult * setDefMult * (1 + optionDefPct / 100);
@@ -754,15 +753,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get();
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
+    
     const setCounts = get().getSetCounts();
     let setHpMult = 1;
-    Object.entries(setCounts).forEach(([setName, count]) => {
-      const syn = SYNERGY_CONFIG[setName];
-      if (syn && count >= 5 && syn[5]?.allStat) setHpMult *= (1 + syn[5].allStat);
+    let setHpRegen = 0;
+    
+    Object.entries(setCounts).forEach(([setId, count]) => {
+      const group = (SET_GROUPS as any[]).find(g => g.id === setId);
+      if (group) {
+        group.effects.forEach((eff: any) => {
+          if (count >= eff.pieces) {
+            if (eff.stats.hpRegenPct) setHpRegen += eff.stats.hpRegenPct;
+            // Note: Survival set has defense/dmg reduction, not flat HP mult in Request
+          }
+        });
+      }
     });
 
-    // [재설계] HP 성장 공식
-    const hpUpgradeBonus = get().getStatUpgradeBonus("hpRec");
+    const hpUpgradeBonus = get().getStatUpgradeBonus("hpRec") * 10; // Upgrade adds to base HP too
 
     let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + hpUpgradeBonus + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0) / 100) * setHpMult;
 
@@ -778,37 +786,35 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   getTotalEvasion: () => {
     const { game } = get();
-    const faction = FACTIONS.find(f => f.name === game.faction);
-    const evaBonusPerLevel = 0.3; // 0.3% per level
     let eva = (game.eva || 0) + get().getStatUpgradeBonus("eva") + get().getOptionSum("eva");
+    
+    // Add flat evade from equipment
+    const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
+    eva += eq.reduce((s, i) => s + (i.evadeBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
 
     const setCounts = get().getSetCounts();
-    Object.entries(setCounts).forEach(([setName, count]) => {
-      const syn = SYNERGY_CONFIG[setName];
-      if (syn && count >= 5 && syn[5]?.allStat) eva += 5; // Moderate flat eva bonus for allStat
+    Object.entries(setCounts).forEach(([setId, count]) => {
+      const group = (SET_GROUPS as any[]).find(g => g.id === setId);
+      if (group) {
+        group.effects.forEach((eff: any) => {
+          if (count >= eff.pieces && eff.stats.evasion) eva += eff.stats.evasion;
+        });
+      }
     });
 
-    // 옵션 중복 패널티 적용
-    const evaOptionCount = get().getOptionCount("eva");
-    if (evaOptionCount > 1) {
-      eva *= (1 - 0.05 * (evaOptionCount - 1));
+    // 최종 상한 적용 (기본 50%, 무당은 80%)
+    let cap = 50;
+    if (game.faction === "무당") {
+      cap = 80;
+      eva += 25; // 무당 기본 회피 보너스 (상향!)
     }
 
-    // 감쇠 시스템 적용 (evasion = evasion / (1 + evasion))
-    const evaDecimal = eva / 100;
-    eva = (evaDecimal / (1 + evaDecimal)) * 100;
-
-    // 최종 상한 적용 (15%)
-    eva = Math.min(15, eva);
-
-    let cap = 70;
     if (game.movementBuff && game.movementBuff.data.evaCap) cap = game.movementBuff.data.evaCap;
-
+    
     // 연마유 무영 버프 (회피율 3배)
     if (game.oilBuffs?.oil_eva_3 > 0) {
-      eva *= 3;
+      eva = Math.min(100, eva * 3);
     }
-
 
     return Math.min(cap, eva);
   }, getTotalLuck: () => {
@@ -840,14 +846,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   getTotalMp: () => {
     const { game } = get();
-    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
 
     const setCounts = get().getSetCounts();
     let setMpMult = 1;
-    Object.entries(setCounts).forEach(([setName, count]) => {
-      const syn = SYNERGY_CONFIG[setName];
-      if (syn && count >= 5 && syn[5]?.allStat) setMpMult *= (1 + syn[5].allStat);
+    Object.entries(setCounts).forEach(([setId, count]) => {
+      const group = (SET_GROUPS as any[]).find(g => g.id === setId);
+      if (group) {
+        group.effects.forEach((eff: any) => {
+          if (count >= eff.pieces && eff.stats.maxMpMultiplier) setMpMult += eff.stats.maxMpMultiplier;
+        });
+      }
     });
 
     const optionMpPct = Math.min(200, get().getOptionSum("mp_pct"));
@@ -884,9 +893,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nightGoldMult = nightBuffs.gold;
     const nightTouchMult = nightBuffs.touch;
 
-    const finalExp = amount * nightExpMult * eq.reduce((a, i) => a * (i.expMultiplier || 1), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0) / 100) * expB * (1 + innBonus.exp) * (1 + get().getOptionSum("exp_pct") / 100);
+    const finalExp = amount * nightExpMult * eq.reduce((a, i) => a * (1 + (i.expMultiplier || 0)), 1) * (1 + (FACTIONS.find(f => f.name === game.faction)?.expBonus || 0) / 100) * expB * (1 + innBonus.exp) * (1 + get().getOptionSum("exp_pct") / 100);
     const factionCoinBonus = (FACTIONS.find(f => f.name === game.faction)?.coinBonus || 0) / 100;
-    const finalGoldB = goldB * (1 + innBonus.gold) * nightGoldMult * (1 + factionCoinBonus);
+    const itemGoldB = eq.reduce((a, i) => a + (i.goldMultiplier || 0), 1);
+    const finalGoldB = goldB * (1 + innBonus.gold) * nightGoldMult * (1 + factionCoinBonus) * itemGoldB;
 
     set((s: any) => {
       const now = Date.now();
@@ -1125,7 +1135,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           nextGame.legendaryGearFragments = (nextGame.legendaryGearFragments || 0) - priceOrReqs.requiredLegendaryGearFragments;
         }
         if (priceOrReqs.requiredBonds > 0) {
-          nextGame.bonds = { ...nextGame.bonds, [priceOrReqs.bondId]: (nextGame.bonds?.[priceOrReqs.bondId] || 0) - priceOrReqs.requiredBonds };
+          nextGame.factionBonds = { ...nextGame.factionBonds, [priceOrReqs.bondId]: (nextGame.factionBonds?.[priceOrReqs.bondId] || 0) - priceOrReqs.requiredBonds };
         }
       }
 
@@ -1270,7 +1280,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => ({
       game: {
         ...s.game,
-        bossTokens: (s.game.bossTokens || 0) - 250,
+        bossTokens: (s.game.bossTokens || 0) - 500,
         ownedWeapons: [...s.game.ownedWeapons, divineItem]
       }
     }));
@@ -1521,12 +1531,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const realmIdx = REALM_ORDER.indexOf(s.game.realm);
       const basePrices: Record<string, number> = {
-        hp_small: 10000, hp_medium: 25000, hp_large: 50000,
-        mp_small: 8000, mp_medium: 20000, mp_large: 40000,
+        hp_small: 500, hp_medium: 1500, hp_large: 5000,
+        mp_small: 500, mp_medium: 1500, mp_large: 5000,
         trance_2: 200000, trance_5: 1500000, trance_10: 10000000
       };
       const basePrice = basePrices[id] || 5000;
-      const price = Math.floor(basePrice * Math.pow(1.5, Math.max(0, realmIdx))) * q;
+      const price = Math.floor(basePrice * Math.pow(2.5, Math.max(0, realmIdx))) * q;
 
       if (s.game.coins < price) return s;
       return { game: { ...s.game, coins: s.game.coins - price, consumables: { ...s.game.consumables, [id]: (s.game.consumables[id] || 0) + q } } };
@@ -1563,11 +1573,111 @@ export const useGameStore = create<GameState>((set, get) => ({
       const base = baseList[Math.floor(Math.random() * baseList.length)];
       const newItem = rollPaewangItem({ ...base, id: `paewang_${Date.now()}` }, 1, s.game.upgradeLevels?.luck || 0, 10);
 
+      const slotNames: any = { mainWeapon: "무기", subWeapon: "보조", gloves: "장갑", shoes: "신발", robe: "도포", necklace: "목걸이", ring: "반지", bracelet: "팔찌" };
+
       return {
         game: {
           ...s.game,
           ownedWeapons: [...s.game.ownedWeapons, newItem],
-          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 }
+          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
+          pendingReward: {
+            title: "패왕의 유물 개봉",
+            items: [{ 
+              icon: newItem.icon, 
+              name: newItem.name, 
+              color: "#ff9d00",
+              slotName: slotNames[newItem.slot] || newItem.slot 
+            }]
+          }
+        }
+      };
+    }
+    else if (id === "stone_box_tujeon") {
+      return {
+        game: {
+          ...s.game,
+          enhancementStones: (s.game.enhancementStones || 0) + 30,
+          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
+          pendingReward: {
+            title: "상자 개봉 완료",
+            items: [{ icon: "🪨", name: "현철 강화석", count: 30, color: "#6ad7ff" }]
+          }
+        }
+      };
+    }
+    else if (id === "rare_box_tujeon" || id === "night_gear_box") {
+      const luck = s.game.statUpgrades?.luck || 0;
+      const newItem = generateRandomGear(s.game.realm, 0, luck);
+      // 등급 보정 (희귀/영웅)
+      if (id === "rare_box_tujeon") newItem.tier = "명품";
+      else newItem.tier = "보구";
+      
+      const tierColor = newItem.tier === "보구" ? "#a822f3" : "#4facfe";
+      const slotNames: any = { mainWeapon: "무기", subWeapon: "보조", gloves: "장갑", shoes: "신발", robe: "도포", necklace: "목걸이", ring: "반지", bracelet: "팔찌" };
+
+      return {
+        game: {
+          ...s.game,
+          ownedWeapons: [...s.game.ownedWeapons, newItem],
+          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
+          pendingReward: {
+            title: "새로운 장비 획득",
+            items: [{ 
+              icon: newItem.icon, 
+              name: newItem.name, 
+              color: tierColor,
+              slotName: slotNames[newItem.slot] || newItem.slot 
+            }]
+          }
+        }
+      };
+    }
+    else if (id === "gear_piece_bundle") {
+      return {
+        game: {
+          ...s.game,
+          gearPieces: (s.game.gearPieces || 0) + 5,
+          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
+          pendingReward: {
+            title: "조각 묶음 해제",
+            items: [{ icon: "⚔️", name: "야행 장비 조각", count: 5, color: "#ff6bd6" }]
+          }
+        }
+      };
+    }
+    else if (id === "manual_fragment_bundle") {
+      const { faction, realm } = s.game;
+      const userRealmIdx = REALM_ORDER.indexOf(realm as any);
+      
+      const targetSkills = MARTIAL_COMPENDIUM.filter(sk => 
+        sk.factionName === faction && 
+        REALM_ORDER.indexOf(sk.realm as any) <= userRealmIdx
+      );
+      
+      const randomSkill = targetSkills.length > 0 
+        ? targetSkills[Math.floor(Math.random() * targetSkills.length)]
+        : MARTIAL_COMPENDIUM[0];
+        
+      const fragId = randomSkill.grade === "common" ? "common_fragment" : `${randomSkill.id}_조각`;
+      const fragCount = 10;
+
+      return {
+        game: {
+          ...s.game,
+          manualFragments: {
+            ...s.game.manualFragments,
+            [fragId]: (s.game.manualFragments?.[fragId] || 0) + fragCount
+          },
+          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
+          pendingReward: {
+            title: "비급 주머니 해제",
+            items: [{ 
+              icon: "📜", 
+              name: `${randomSkill.name} 조각`, 
+              count: fragCount, 
+              color: "#ffd700" 
+            }]
+          }
         }
       };
     }
@@ -1745,8 +1855,23 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   incrementCombo: () => set((s: any) => ({ game: { ...s.game, comboCount: (s.game.comboCount || 0) + 1, lastAttackTime: Date.now() } })),
   setSelectedMasterLevel: (l: number) => set((s: any) => { const e = generateEnemy(l); return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, selectedLevel: l, rivalName: e.name, rivalHp: e.hp, rivalMaxHp: e.hp, lastWinReward: undefined } } }; }),
-  startMasterDuel: (isSpecialBoss = false) => {
+  startMasterDuel: (isSpecialBoss = false, isGiru = false) => {
     const { game } = get();
+    if (isGiru) {
+      if (!game.masterDuel.isGiruEncounter) return;
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          masterDuel: {
+            ...s.game.masterDuel,
+            isPlaying: true,
+            timeLimit: 40,
+            lastAttackTime: Date.now()
+          }
+        }
+      }));
+      return;
+    }
     if (game.masterDuel.challengeTickets <= 0 && !isSpecialBoss) return;
 
     let e: any;
@@ -1998,8 +2123,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (isCrit) totalDamage += baseDamage * 0.8;
       }
 
-      if (faction === "무당파" && fState.counterReady) {
-        totalDamage *= 1.5;
+      if (faction === "무당" && fState.counterReady) {
+        totalDamage *= 2.0;
         fState.counterReady = false;
       }
       if (faction === "점창파") {
@@ -2102,6 +2227,42 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         const nextConsumables = { ...s.game.consumables };
         if (oilId) nextConsumables[oilId] = (nextConsumables[oilId] || 0) + 1;
+
+        const nextFragments = { ...(s.game.manualFragments || {}) };
+        const nextBonds = { ...(s.game.factionBonds || {}) };
+        let nextMaterials = s.game.advancedMaterials || 0;
+
+        // --- 기루 기연(Info) 보상 지급 ---
+        if (masterDuel.rewards) {
+          const r = masterDuel.rewards;
+          if (r.advancedMaterials) nextMaterials += r.advancedMaterials;
+          if (r.factionBonds) {
+            Object.entries(r.factionBonds).forEach(([f, v]: any) => {
+              nextBonds[f] = (nextBonds[f] || 0) + v;
+            });
+          }
+          if (r.manualFragments) {
+            Object.entries(r.manualFragments).forEach(([k, v]: any) => {
+              if (k === "random_faction") {
+                const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
+                const randomSkill = targetSkills[Math.floor(Math.random() * targetSkills.length)];
+                const fragId = `${randomSkill.id}_조각`;
+                nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
+                msg += `\n[획득] ${randomSkill.name} 조각 ${v}개`;
+              } else if (k === "all_faction") {
+                const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
+                targetSkills.forEach(sk => {
+                  const fragId = `${sk.id}_조각`;
+                  nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
+                });
+                msg += `\n[획득] 문파 모든 비급 조각 각 ${v}개씩`;
+              } else {
+                nextFragments[k] = (nextFragments[k] || 0) + v;
+                msg += `\n[획득] 비급 조각 ${v}개`;
+              }
+            });
+          }
+        }
         const nextLevel = level + 1;
         const nextMaxLevel = Math.max(masterDuel.currentLevel, nextLevel);
         const nextEnemy = generateEnemy(nextLevel);
@@ -2117,10 +2278,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             touches: (s.game.touches || 0) + expGain,
             hp: playerHp, mp: playerMp,
             consumables: nextConsumables,
+            manualFragments: nextFragments,
+            advancedMaterials: nextMaterials,
+            factionBonds: nextBonds,
             oilBuffs: nextBuffs,
             masterDuel: {
               ...nextMD,
               isPlaying: false,
+              isGiruEncounter: false, // 기연 종료
               currentLevel: nextMaxLevel,
               selectedLevel: nextLevel,
               rivalHp: nextEnemy.hp,
@@ -3730,6 +3895,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
 
+    let infoMsg = "";
     set((s: any) => {
       const nextFavors = { ...s.game.npcFavors };
       nextFavors[npcId] = (nextFavors[npcId] || 0) + (event.result.favor || action.favor || 0);
@@ -3766,22 +3932,85 @@ export const useGameStore = create<GameState>((set, get) => ({
         nextMp = Math.min(get().getTotalMp(), nextMp + mpHealAmt);
       }
 
+      // --- Info Trade Special Rewards ---
+      let nextFragments = { ...(s.game.manualFragments || {}) };
+      let nextMaterials = s.game.advancedMaterials || 0;
+      let nextBonds = { ...(s.game.factionBonds || {}) };
+
+      if (actionId === "info" && extra && (extra as any).infoTier) {
+        const tier = (extra as any).infoTier;
+        const faction = s.game.faction;
+        
+        // --- [재설계] 정보 구매 시 즉시 지급이 아닌 '기연 대결' 발생 ---
+        let rivalName = "신비한 고수";
+        let rivalHpMult = 1.0;
+        let rivalAtkMult = 1.0;
+        let rivalRewards: any = {};
+
+        if (tier === "low") {
+          rivalName = "월향루 무뢰배 대장";
+          rivalHpMult = 1.5; rivalAtkMult = 1.2;
+          rivalRewards = { manualFragments: { "common_fragment": 5 } };
+          infoMsg = "\n[기연] 월향루 근처에 무뢰배 대장이 나타났습니다!";
+        } else if (tier === "mid") {
+          rivalName = `${faction} 배신자`;
+          rivalHpMult = 3.0; rivalAtkMult = 1.8;
+          rivalRewards = { manualFragments: { "random_faction": 10 } };
+          infoMsg = `\n[기연] ${faction}의 기술을 훔친 배신자가 인근에 숨어들었습니다!`;
+        } else if (tier === "high") {
+          rivalName = "은둔 고수";
+          rivalHpMult = 6.0; rivalAtkMult = 3.5;
+          rivalRewards = { advancedMaterials: 5, factionBonds: { [faction]: 1 }, manualFragments: { "random_faction": 25 } };
+          infoMsg = `\n[기연] 소문의 은둔 고수가 강호에 모습을 드러냈습니다!`;
+        } else if (tier === "special") {
+          rivalName = "강호의 전설";
+          rivalHpMult = 15.0; rivalAtkMult = 8.0;
+          rivalRewards = { advancedMaterials: 20, factionBonds: { [faction]: 3 }, manualFragments: { "all_faction": 10 } };
+          infoMsg = `\n[기연] 전설적인 고수와 대결할 절호의 기회가 생겼습니다!`;
+        }
+
+        // 마스터 대결(Master Duel) 시스템으로 연계
+        return {
+          game: {
+            ...s.game,
+            coins: s.game.coins - (action.cost || 0),
+            npcFavors: nextFavors,
+            nightLimits: nextLimits,
+            masterDuel: {
+              ...s.game.masterDuel,
+              isPlaying: false, // 즉시 시작하지 않고 사용자가 직접 시작하도록 수정
+              rivalName,
+              rivalHp: Math.floor(get().getTotalHp() * rivalHpMult),
+              rivalMaxHp: Math.floor(get().getTotalHp() * rivalHpMult),
+              rivalAtk: Math.floor(get().getStableAttack() * rivalAtkMult),
+              playerHp: get().getTotalHp(),
+              playerMaxHp: get().getTotalHp(),
+              rewards: rivalRewards,
+              isGiruEncounter: true // 기루 전용 대결임을 표시
+            }
+          }
+        };
+      }
+
       return {
         game: {
           ...s.game,
-          coins: s.game.coins - action.cost,
+          coins: s.game.coins - (action.cost || 0),
           hp: nextHp,
           mp: nextMp,
           npcFavors: nextFavors,
           nightBuffs: nextBuffs,
           nightLimits: nextLimits,
           gamblingTokens: (s.game.gamblingTokens || 0) + (event.result.token || 0),
+          manualFragments: nextFragments,
+          advancedMaterials: nextMaterials,
+          factionBonds: nextBonds
         }
       };
     });
 
     get().triggerSave(true);
-    return { success: true, message: event.text, event };
+    return { success: true, message: event.text + (infoMsg || ""), event };
   },
 
   setLowPowerMode: (enabled: boolean) => {
@@ -3810,19 +4039,30 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setActiveTab: (tab: any) =>
     set((s: any) => {
-      let streak = s.game.masterDuel.streakCount || 0;
+      const game = s.game;
+      let nextMD = { ...game.masterDuel };
+      let nextTower = { ...(game.tower || {}) };
+      let nextIsMini = game.isMinigameActive;
+
       if (tab !== "master") {
-        streak = 0; // 대경페이지를 벗어남 시 초기화
+        nextMD.streakCount = 0;
+        nextMD.isPlaying = false;
       }
+      if (tab !== "tower") {
+        nextTower.isInside = false;
+      }
+      if (tab !== "inn") {
+        nextIsMini = false;
+      }
+
       return {
         game: {
-          ...s.game,
+          ...game,
           activeTab: tab,
-          showInnVictoryEffect: false, // 탭 전환 시 이펙트 초기화
-          masterDuel: {
-            ...s.game.masterDuel,
-            streakCount: streak
-          }
+          showInnVictoryEffect: false,
+          masterDuel: nextMD,
+          tower: nextTower,
+          isMinigameActive: nextIsMini
         }
       };
     }),
@@ -3944,8 +4184,28 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   updateTime: (dt: number) => {
     const state = get();
+    const { activeTab } = state.game;
+    
     // 미니게임, 대결, 무한탑 진행 중에는 시간(낮/밤)이 흐르지 않도록 방어
-    if (state.game.isMinigameActive || state.game.masterDuel.isPlaying || state.game.tower?.isInside) return;
+    // 단, 탭을 옮겼는데도 플래그가 남아있는 경우를 위해 자동 복구 로직 추가
+    let isStuck = false;
+    if (state.game.isMinigameActive && activeTab !== "inn") isStuck = true;
+    if (state.game.masterDuel.isPlaying && activeTab !== "master") isStuck = true;
+    if (state.game.tower?.isInside && activeTab !== "tower") isStuck = true;
+
+    if (isStuck) {
+      // 플래그가 꼬인 경우 강제 해제하고 진행
+      set((s: any) => ({
+        game: {
+          ...s.game,
+          isMinigameActive: s.game.activeTab === "inn" ? s.game.isMinigameActive : false,
+          masterDuel: { ...s.game.masterDuel, isPlaying: s.game.activeTab === "master" ? s.game.masterDuel.isPlaying : false },
+          tower: { ...s.game.tower, isInside: s.game.activeTab === "tower" ? s.game.tower.isInside : false }
+        }
+      }));
+    } else if (state.game.isMinigameActive || state.game.masterDuel.isPlaying || state.game.tower?.isInside) {
+      return;
+    }
 
     set((s: any) => {
       let nextTimeState = s.game.timeState || "day";
@@ -4074,7 +4334,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (idx === -1 || quests[idx].status !== "completed") return s;
 
     const q = quests[idx];
-    const reward = q.reward;
+    let reward = { ...q.reward };
+
+    // Dynamic reward for Rogue Clearing quest based on current realm
+    if (questId === "q_yeonhwa_1") {
+      const realmRewards = ROGUE_QUEST_REWARDS[s.game.realm] || ROGUE_QUEST_REWARDS["필부"];
+      reward.gold = realmRewards.gold;
+      reward.token = realmRewards.token;
+    }
 
     quests[idx].status = "rewarded";
 

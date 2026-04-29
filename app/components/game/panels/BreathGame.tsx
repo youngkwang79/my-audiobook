@@ -88,7 +88,7 @@ export const BreathGame = React.memo(({
   const config = useMemo(() => {
     const laneCount = getCounterLaneCount(stage);
     const scoreScale = Math.max(1, powerFactor);
-    const baseHp = 1200 + stage * 900 + Math.floor(Math.pow(stage, 1.45) * 650);
+    const baseHp = 1000 + stage * 600 + Math.floor(Math.pow(stage, 1.2) * 500);
 
     return {
       laneCount,
@@ -97,7 +97,7 @@ export const BreathGame = React.memo(({
       maxOnScreen: Math.min(12, 2 + Math.floor(stage / 2)),
       enemyHp: Math.floor(baseHp * scoreScale * 0.75),
       counterNeed: Math.min(10, 3 + Math.floor(stage / 2)),
-      counterDamage: Math.floor((220 + stage * 80) * scoreScale),
+      counterDamage: Math.floor((250 + stage * 100) * scoreScale),
     };
   }, [stage, powerFactor, getCounterLaneCount]);
 
@@ -254,7 +254,7 @@ export const BreathGame = React.memo(({
       counterPlayerHpRef.current = nextHp;
       setCounterPlayerHp(nextHp);
       addFloatText(`허공 방어 -1 HP`, "#ff4d4d");
-      triggerShake();
+      // triggerShake(); // 방어 누를 때마다 화면 밀리는 현상 방지를 위해 허공 방어 시 흔들림 제거
       if (nextHp <= 0) {
         onFail(playerScoreRef.current, "방어가 흐트러져 무뢰배에게 패배했습니다.");
       }

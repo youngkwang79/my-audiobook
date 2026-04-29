@@ -1214,6 +1214,26 @@ export default function MasterPanel() {
                 </div>
               )}
             </div>
+            
+            {/* 기루 기연 대결 버튼 */}
+            {masterDuel.isGiruEncounter && !masterDuel.isPlaying && (
+              <button
+                onClick={() => startMasterDuel(false, true)}
+                style={{
+                  width: "100%", padding: "14px", borderRadius: 16,
+                  background: "linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)",
+                  border: "2px solid #fff",
+                  color: "#000",
+                  fontSize: 18, fontWeight: 950,
+                  boxShadow: "0 0 25px rgba(255, 215, 0, 0.4)",
+                  cursor: "pointer",
+                  marginBottom: "8px",
+                  animation: "hpPulse 1.5s infinite"
+                }}
+              >
+                ✨ 기연의 고수와 대결하기!
+              </button>
+            )}
 
             {/* 특수 보스 레이드 버튼 (BOSS_RAID_CLUE 있을 때만) */}
             {nextDayEvent?.type === "BOSS_RAID_CLUE" && !nextDayEvent.isUsed && (

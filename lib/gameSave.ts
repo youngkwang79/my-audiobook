@@ -44,12 +44,31 @@ export async function loadGame(userId: string) {
   return data?.game_data ?? null;
 }
 
+// --- Helper to remove undefined for Firestore ---
+function sanitizeData(data: any): any {
+  if (data === undefined) return null;
+  if (data === null) return null;
+  if (Array.isArray(data)) return data.map(sanitizeData);
+  if (typeof data === "object") {
+    const sanitized: any = {};
+    for (const key in data) {
+      const value = sanitizeData(data[key]);
+      if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+  return data;
+}
+
 // --- Firebase Implementation ---
 export async function saveGameToFirebase(userId: string, gameData: any) {
   try {
     const docRef = doc(db, "gameSaves", userId);
+    const sanitized = sanitizeData(gameData);
     await setDoc(docRef, {
-      game_data: gameData,
+      game_data: sanitized,
       updated_at: serverTimestamp(),
       user_id: userId
     }, { merge: true });

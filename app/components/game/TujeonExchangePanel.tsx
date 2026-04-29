@@ -67,6 +67,16 @@ const EXCHANGE_ITEMS = [
     desc: "고급 장비 제작에 필요한 조각을 얻습니다.",
     rewardText: "장비 조각 +5",
   },
+  {
+    id: "manual_fragment_bundle",
+    icon: "📜",
+    name: "흘러들어온 비급 조각",
+    grade: "전설",
+    cost: 150,
+    limit: 1,
+    desc: "도박장에 우연히 흘러들어온 희귀한 비급 조각입니다. 매우 비싸지만 가치가 높습니다.",
+    rewardText: "비급 조각 +10",
+  },
 ];
 
 const UNLOCK_ITEMS = [
@@ -177,18 +187,38 @@ export default function TujeonExchangePanel() {
       }
 
       if (item.id === "stone_box") {
-        nextGame.enhancementStones = (s.game.enhancementStones ?? 0) + 30;
+        nextGame.consumables = {
+          ...(s.game.consumables || {}),
+          stone_box_tujeon: (s.game.consumables?.stone_box_tujeon || 0) + 1
+        };
       }
 
-      if (item.id === "rare_box" || item.id === "night_gear") {
-        const luck = s.game.statUpgrades?.luck || 0;
-        const newItem = generateRandomGear(s.game.realm, 0, luck);
-        nextGame.ownedWeapons = [...(s.game.ownedWeapons || []), newItem];
-        showMsg(`[${newItem.name}] 획득! 행낭에서 확인하세요.`);
+      if (item.id === "rare_box") {
+        nextGame.consumables = {
+          ...(s.game.consumables || {}),
+          rare_box_tujeon: (s.game.consumables?.rare_box_tujeon || 0) + 1
+        };
+      }
+
+      if (item.id === "night_gear") {
+        nextGame.consumables = {
+          ...(s.game.consumables || {}),
+          night_gear_box: (s.game.consumables?.night_gear_box || 0) + 1
+        };
       }
 
       if (item.id === "gear_piece") {
-        nextGame.gearPieces = (s.game.gearPieces ?? 0) + 5;
+        nextGame.consumables = {
+          ...(s.game.consumables || {}),
+          gear_piece_bundle: (s.game.consumables?.gear_piece_bundle || 0) + 1
+        };
+      }
+
+      if (item.id === "manual_fragment_bundle") {
+        nextGame.consumables = {
+          ...(s.game.consumables || {}),
+          manual_fragment_bundle: (s.game.consumables?.manual_fragment_bundle || 0) + 1
+        };
       }
 
       return { game: nextGame };

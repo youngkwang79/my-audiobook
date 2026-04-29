@@ -65,6 +65,7 @@ export interface CompendiumSkill {
   order: number;
   multiplier: number;
   description: string;
+  mpCost: number;
 }
 
 export interface LearnedSkillState {
@@ -165,6 +166,7 @@ function inferGrade(order: number, skillType: "martial" | "movement"): SkillGrad
   if (skillType === "movement") {
     if (order >= 102) return "legendary";
     if (order >= 101) return "epic";
+    if (order === 100) return "common"; // 입문보법은 일반 등급으로 취급
     return "rare";
   }
 
@@ -207,9 +209,9 @@ function buildDescription(
   };
 
   const gradeMap: Record<SkillGrade, string> = {
-    common: "범급",
+    common: "일반",
     rare: "진품",
-    epic: "절학",
+    epic: "명품",
     legendary: "전설",
     mythic: "신화",
   };
@@ -241,8 +243,9 @@ export function buildMartialCompendium(): CompendiumSkill[] {
         element,
         grade,
         order: index,
-        multiplier: skill.multiplier || (1.5 + index * 0.8), // 경지에 따른 기본 배수 자동 할당 (1.5 ~ 9.5배)
+        multiplier: skill.multiplier || (1.5 + index * 0.8), 
         description: buildDescription(faction.name, skill.name, category, element, grade),
+        mpCost: Math.floor(100 * Math.pow(1.8, index))
       });
     });
 
@@ -266,8 +269,9 @@ export function buildMartialCompendium(): CompendiumSkill[] {
         element,
         grade,
         order: movementInfo.order,
-        multiplier: 1, // 보법은 대미지 배수 없음
+        multiplier: 1, 
         description: buildDescription(faction.name, moveName, category, element, grade),
+        mpCost: Math.floor(150 * Math.pow(2.0, ["entry", "peak", "final"].indexOf(movementInfo.key)))
       });
     });
   });
@@ -324,7 +328,15 @@ export function getBaseSkillPrice(skill: CompendiumSkill) {
 }
 
 export function getCraftingRequirements(skill: CompendiumSkill) {
-  const order = skill.order || 0;
+  const rawOrder = skill.order || 0;
+  // 보법(order 100~102)의 경우 계산용 order를 재조정하여 과도한 요구치 방지
+  let order = rawOrder;
+  if (rawOrder >= 100) {
+    if (rawOrder === 100) order = 1;      // 입문보법: 삼류 수준
+    else if (rawOrder === 101) order = 5; // 절정보법: 초절정 수준
+    else if (rawOrder === 102) order = 10; // 극정보법: 천인합일 수준
+  }
+
   let requiredFragments = 0;
   let requiredAdvancedMaterials = 0;
   let requiredBonds = 0;
@@ -359,7 +371,7 @@ export function getCraftingRequirements(skill: CompendiumSkill) {
   const goldCost = Math.floor(basePrice * priceMultiplier);
 
   return {
-    fragmentId: `${skill.id}_조각`,
+    fragmentId: skill.grade === "common" ? "common_fragment" : `${skill.id}_조각`,
     requiredFragments,
     requiredAdvancedMaterials,
     requiredLegendaryGearFragments,

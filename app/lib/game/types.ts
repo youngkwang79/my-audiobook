@@ -54,14 +54,26 @@ export type ConsumableId =
   | "oil_eva_3" | "oil_def_3" | "oil_reflect" | "oil_vajra" | "oil_vampire"
   | "oil_speed_3" | "oil_luck_3" | "oil_clarity" | "oil_eye"
   | "oil_demon" | "oil_triple_hit" | "oil_formless" | "oil_blessed"
-  | "charm_luck" | "exp_scroll" | "paewang_box";
+  | "charm_luck" | "exp_scroll" | "paewang_box"
+  | "stone_box_tujeon" | "rare_box_tujeon" | "night_gear_box" | "gear_piece_bundle" | "manual_fragment_bundle";
 
 export type ItemTier = "평범" | "명품" | "보구" | "신기";
+
+export type RandomOptionGrade = "하급" | "중급" | "상급" | "최상급";
 
 export type RandomOption = {
   stat: string;
   value: number;
   label: string;
+  grade?: RandomOptionGrade;
+};
+
+export type LegendaryOption = {
+  id: string;
+  name: string;
+  description: string;
+  effect: (game: any) => any; // This might be used in logic or just as metadata
+  value?: number;
 };
 
 export type OwnedWeapon = {
@@ -75,6 +87,8 @@ export type OwnedWeapon = {
   attackBonus: number;
   attackMultiplier?: number;
   expMultiplier?: number;
+  goldMultiplier?: number;
+  dropMultiplier?: number;
   defenseBonus?: number;
   evadeBonus?: number;
   critBonus?: number;
@@ -93,6 +107,8 @@ export type OwnedWeapon = {
     multiplier: number;
   };
   setName?: string; // Synergy support
+  setGroupId?: string; // New: For set effects (Attack, Survival, etc.)
+  legendaryOptions?: LegendaryOption[];
   enhancement?: number; // New: Enhancement level (+1, +2, ...)
   soulEffect?: { name: string; desc: string; key: string }; // New: Soul infusion effect
   oilEffect?: { key: string; label: string; chance: number; }; // New: Oil enhancement effect
@@ -283,6 +299,7 @@ export type MasterDuelState = {
   equippedSkillIds: string[]; // 무공 이름 리스트 (최대 4개)
   skillComboCount?: number; // 7타 무공 발동 카운터
   isBoss: boolean;
+  isGiruEncounter?: boolean;
 
   // --- 도전권 시스템 (Challenge Ticket System) ---
   challengeTickets: number;
@@ -477,6 +494,10 @@ export type GameSaveData = {
   masterDuel: MasterDuelState;
   footworkGame: FootworkGameState;
   pendingDuelReward?: any;
+  pendingReward: {
+    title: string;
+    items: { icon: string; name: string; count?: number; color?: string; slotName?: string }[];
+  } | null;
 
   pendingInnEntry: boolean;
   innEventVersion: number;
@@ -536,6 +557,7 @@ export type GameSaveData = {
   advancedMaterials: number;
   legendaryGearFragments: number;
   divineWeaponShards: number;
+  gearPieces: number;
   factionBonds: Record<string, number>;
 
   activeTab: TabType;

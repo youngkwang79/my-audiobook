@@ -517,7 +517,7 @@ export default function InnPanel({
   const currentTotalAtk = getTotalAttack();
   // [위명 위압] 최다 위명 기록 50000점당 1% 공격력(점수 획득량) 보너스 적용
   const prestigeBonus = Math.floor((innHighScore || 0) / 50000) / 100;
-  const powerFactor = (1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 2) * (1 + prestigeBonus);
+  const powerFactor = (1 + Math.log10(Math.max(1, currentTotalAtk / 100)) * 3.5) * (1 + prestigeBonus);
 
   const addFloatText = (text: string, color: string, x = 50, y = 50) => {
     const id = Date.now() + Math.random();
@@ -956,7 +956,7 @@ export default function InnPanel({
 
     if (polesRef.current[0] === side) {
       // Success Step - Using the user's specific gain formula
-      const gain = Math.floor((20 + Math.min(comboRef.current, 10)) * (1 + Math.log10(Math.max(1, currentTotalAtk / 1000)) * 0.5)) * 0.9;
+      const gain = Math.floor((30 + Math.min(comboRef.current, 20)) * (1 + Math.log10(Math.max(1, currentTotalAtk / 1000)) * 0.8)) * 0.9;
       const nextScore = playerScoreRef.current + gain;
       playerScoreRef.current = nextScore;
       setPlayerScore(nextScore);
@@ -1013,7 +1013,7 @@ export default function InnPanel({
 
       comboRef.current = 0;
       setCombo(0);
-      triggerShake();
+      // triggerShake(); // Removed to reduce visual clutter
       addFloatText(currentStage >= 3 ? "URGENT MISS!" : "MISS!", "#ff4d4d");
 
       if (nextHp <= 0) {
@@ -1058,11 +1058,17 @@ export default function InnPanel({
   return (
     <section style={{
       ...containerStyle,
-      transform: isShake ? "translateX(5px)" : "none",
-      transition: "transform 0.05s linear",
+      animation: isShake ? "innShake 0.15s ease-in-out infinite" : "none",
       backgroundImage: isPlaying ? "none" : "linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('/bg-inn-duel.png')",
     }}>
       <style>{`
+        @keyframes innShake {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          50% { transform: translateX(4px); }
+          75% { transform: translateX(-4px); }
+          100% { transform: translateX(0); }
+        }
         @keyframes bgMotion {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }

@@ -39,6 +39,7 @@ export default function GameShell() {
   const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
   const gamblingTokens = useGameStore((s: any) => s.game.gamblingTokens);
   const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
+  const pendingReward = useGameStore((s: any) => s.game.pendingReward);
 
   const markInnEntryHandled = useGameStore((s: any) => s.markInnEntryHandled);
   const clearUnlockEffect = useGameStore((s: any) => s.clearUnlockEffect);
@@ -284,6 +285,91 @@ export default function GameShell() {
             <AnimatePresence>
               {showDawnSettlement && (
                 <DawnSettlement onClose={closeDawnSettlement} />
+              )}
+            </AnimatePresence>
+
+            {/* 보상 팝업 (WOW 포인트) */}
+            <AnimatePresence>
+              {pendingReward && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  style={{
+                    position: "fixed", inset: 0, zIndex: 6000,
+                    background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)",
+                    display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+                  }}
+                  onClick={() => useGameStore.setState((s: any) => ({ game: { ...s.game, pendingReward: null } }))}
+                >
+                  <motion.div
+                    initial={{ scale: 0.5, y: 50, opacity: 0 }}
+                    animate={{ scale: 1, y: 0, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    style={{
+                      width: "100%", maxWidth: 320, background: "rgba(20,20,30,0.95)",
+                      borderRadius: 24, border: "2px solid #ffd700", padding: 30,
+                      textAlign: "center", boxShadow: "0 0 50px rgba(255,215,0,0.3)",
+                      position: "relative", overflow: "hidden"
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div style={{
+                      position: "absolute", top: -50, left: -50, width: 200, height: 200,
+                      background: "radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%)",
+                      pointerEvents: "none"
+                    }} />
+
+                    <div style={{ fontSize: 14, color: "#ffd700", fontWeight: 900, letterSpacing: 2, marginBottom: 5 }}>
+                      REWARD OBTAINED
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 950, color: "#fff", marginBottom: 25, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
+                      {pendingReward?.title}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 15, alignItems: "center" }}>
+                      {pendingReward?.items.map((item: any, idx: number) => (
+                        <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                          <div style={{ 
+                            width: 80, height: 80, borderRadius: 20, background: "rgba(255,255,255,0.05)",
+                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40,
+                            border: `1px solid ${item.color || "#ffd700"}44`,
+                            boxShadow: `0 0 20px ${item.color || "#ffd700"}22`
+                          }}>
+                            {item.icon}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: item.color || "#fff" }}>
+                              {item.name} {item.count ? `x${item.count}` : ""}
+                            </div>
+                            {item.slotName && (
+                              <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>
+                                이 아이템은 행낭의 <span style={{ color: "#ffd700", fontWeight: "bold" }}>[{item.slotName}]</span> 칸으로 이동했습니다.
+                              </div>
+                            )}
+                            {!item.slotName && (
+                              <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>
+                                재화가 즉시 지급되었습니다.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => useGameStore.setState((s: any) => ({ game: { ...s.game, pendingReward: null } }))}
+                      style={{
+                        marginTop: 30, width: "100%", padding: "14px", borderRadius: 12, border: "none",
+                        background: "linear-gradient(135deg, #ffd700, #ff9d00)",
+                        color: "#000", fontWeight: 950, fontSize: 14, cursor: "pointer",
+                        boxShadow: "0 4px 15px rgba(255,215,0,0.3)"
+                      }}
+                    >
+                      확인
+                    </button>
+                  </motion.div>
+                </motion.div>
               )}
             </AnimatePresence>
           </>

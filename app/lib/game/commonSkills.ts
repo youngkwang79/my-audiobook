@@ -87,8 +87,9 @@ export function buildCommonCompendium(): CompendiumSkill[] {
         element: s.element as SkillElement,
         grade,
         order: realmIdx,
-        multiplier: 1.2 + realmIdx * 0.7, // 문파 무공보다 살짝 낮거나 비슷한 수준
-        description: s.desc
+        multiplier: 1.2 + realmIdx * 0.7, 
+        description: s.desc,
+        mpCost: Math.floor(100 * Math.pow(1.8, realmIdx))
       });
     });
   });

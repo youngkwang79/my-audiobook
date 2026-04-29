@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useRef } from "react";
 import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
-import { SYNERGY_SETS } from "@/app/lib/game/items";
+import { MARTIAL_COMPENDIUM } from "@/app/lib/game/martialArtsSystem";
+import { SYNERGY_CONFIG } from "@/app/lib/game/items";
 import { FORGE_ITEMS } from "@/app/lib/game/items";
 import type { EquipSlot, OwnedWeapon, WeaponId, ConsumableId } from "@/app/lib/game/types";
 
@@ -29,6 +30,7 @@ const slotMeta: {
     { slot: "ring", label: "반지", icon: "💍", short: "반지" },
     { slot: "bracelet", label: "팔찌", icon: "📿", short: "팔찌" },
     { slot: "medicine" as any, label: "행낭", icon: "👜", short: "행낭" },
+    { slot: "materials" as any, label: "재료", icon: "💎", short: "재료" },
   ];
 
 export default function InventoryPanel(props: Props) {
@@ -81,6 +83,7 @@ export default function InventoryPanel(props: Props) {
   const selectedEquippedId = equippedGear?.[selectedSlot] ?? null;
 
   const isMedicineSelected = (selectedSlot as any) === "medicine";
+  const isMaterialsSelected = (selectedSlot as any) === "materials";
 
 
   const resolveEquippedItem = (slot: EquipSlot) =>
@@ -365,7 +368,65 @@ export default function InventoryPanel(props: Props) {
             touchAction: "pan-y"
           }}
         >
-          {isMedicineSelected ? (
+          {isMaterialsSelected ? (
+            <div style={{ height: "100%", overflowY: "auto" }} className="hide-scrollbar">
+              <h4 style={{ fontSize: "12px", color: "#ffd700", margin: "0 0 10px 0" }}>📜 비급 조각</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(55px, 1fr))", gap: 8, marginBottom: "20px" }}>
+                {Object.entries(useGameStore.getState().game.manualFragments || {}).map(([id, count]: [string, any]) => {
+                  if (count <= 0) return null;
+                  
+                  // 등급 및 한글 명칭 계산
+                  let displayName = id;
+                  let gradePrefix = "";
+                  
+                  if (id === "common_fragment") {
+                    displayName = "일반 비급 조각";
+                    gradePrefix = "[일반]";
+                  } else {
+                    const skillId = id.replace("_조각", "");
+                    const skill = MARTIAL_COMPENDIUM.find(s => s.id === skillId);
+                    if (skill) {
+                      const gradeMap: any = { common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" };
+                      gradePrefix = `[${gradeMap[skill.grade] || "???"}]`;
+                      displayName = `${skill.name} 조각`;
+                    } else {
+                      displayName = id.replace("_조각", "").replace(/.*__/, "");
+                    }
+                  }
+
+                  return (
+                    <div key={id} style={{
+                      aspectRatio: "1/1", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px", position: "relative"
+                    }}>
+                      <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold", position: "absolute", top: 4, left: 4 }}>{gradePrefix}</div>
+                      <div style={{ fontSize: 18, marginTop: 4 }}>📜</div>
+                      <div style={{ fontSize: 8, color: "#eee", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", fontWeight: "bold" }}>
+                        {displayName}
+                      </div>
+                      <div style={{ position: "absolute", bottom: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 8, padding: "0 3px", borderRadius: 3 }}>
+                        {count}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <h4 style={{ fontSize: "12px", color: "#ffd700", margin: "0 0 10px 0" }}>💎 특수 재료</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
+                  <span style={{ fontSize: "11px", color: "#ccc" }}>✨ 상급 재료</span>
+                  <span style={{ fontSize: "12px", fontWeight: "bold", color: "#4dff8a" }}>{useGameStore.getState().game.advancedMaterials || 0}</span>
+                </div>
+                {Object.entries(useGameStore.getState().game.factionBonds || {}).map(([faction, count]: [string, any]) => (
+                  <div key={faction} style={{ display: "flex", justifyContent: "space-between", background: "rgba(255,255,255,0.04)", padding: "8px 12px", borderRadius: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "#ccc" }}>🤝 {faction} 인연</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#ff7eb3" }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : isMedicineSelected ? (
             <div style={{
               height: "100%",
               display: "grid",
@@ -721,19 +782,22 @@ export default function InventoryPanel(props: Props) {
             </div>
 
             <div style={{ fontSize: 12, color: "#ddd", lineHeight: 1.5 }}>
-              {popupItem.description}
+              {(popupItem.description || "")
+                .split(" | ")
+                .filter((part: string) => !part.includes("+0"))
+                .join(" | ")}
             </div>
 
             <div style={{ background: "rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: 8, fontSize: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ color: "#ff4d4d", fontWeight: "bold" }}>기본 공격력 +{popupItem.attackBonus}</div>
-              {popupItem.hpBonus && <div style={{ color: "#a8ff7e", fontWeight: "bold" }}>기본 생명력 +{popupItem.hpBonus}</div>}
-              {popupItem.mpBonus && <div style={{ color: "#4d94ff", fontWeight: "bold" }}>기본 내공 +{popupItem.mpBonus}</div>}
+              {Number(popupItem.attackBonus) > 0 && <div style={{ color: "#ff4d4d", fontWeight: "bold" }}>기본 공격력 +{popupItem.attackBonus}</div>}
+              {Number(popupItem.hpBonus) > 0 && <div style={{ color: "#a8ff7e", fontWeight: "bold" }}>기본 생명력 +{popupItem.hpBonus}</div>}
+              {Number(popupItem.mpBonus) > 0 && <div style={{ color: "#4d94ff", fontWeight: "bold" }}>기본 내공 +{popupItem.mpBonus}</div>}
 
               {/* 무작위 옵션 표시 */}
               {popupItem.randomOptions && popupItem.randomOptions.length > 0 && (
                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
                   {popupItem.randomOptions.map((opt: any, i: number) => (
-                    <div key={i} style={{ color: "#7ee7ff", fontSize: 11 }}>🔹 {opt.label}</div>
+                    <div key={i} style={{ color: "#7ee7ff", fontSize: 11 }}>🔹 {opt.label.replace(" %", "")}</div>
                   ))}
                 </div>
               )}
@@ -741,11 +805,11 @@ export default function InventoryPanel(props: Props) {
               {/* 시너지 세트 표시 */}
               {popupItem.setName && (
                 <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div style={{ color: "#ffd700", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>🧩 세트: {(SYNERGY_SETS as any)[popupItem.setName]?.label || popupItem.setName}</div>
+                  <div style={{ color: "#ffd700", fontWeight: "bold", fontSize: 11, marginBottom: 2 }}>🧩 세트: {(SYNERGY_CONFIG as any)[popupItem.setName]?.label || popupItem.setName}</div>
                   {(() => {
                     const counts = (useGameStore.getState() as any).getSetCounts();
                     const activeCount = counts[popupItem.setName!] || 0;
-                    const setDesc = (SYNERGY_SETS as any)[popupItem.setName!]?.description || "";
+                    const setDesc = (SYNERGY_CONFIG as any)[popupItem.setName!]?.description || "";
                     const parts = setDesc.split(" | ");
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -907,7 +971,7 @@ function getPotionName(id: ConsumableId) {
   if (id === "trance_2") return "무아지경의 환약 (2배)";
   if (id === "trance_5") return "무아지경의 환약 (5배)";
   if (id === "trance_10") return "무아지경의 환약 (10배)";
-  if (id === "exp_scroll") return "수련의 고서 (EXP 2배)";
+  if (id === "exp_scroll") return "수련의 고서 (경험치 2배)";
   if (id === "oil_atk_3") return "광폭유";
   if (id === "oil_crit_3") return "파천유";
   if (id === "oil_thunder") return "뇌전유";
@@ -928,6 +992,11 @@ function getPotionName(id: ConsumableId) {
   if (id === "oil_blessed") return "가호유";
   if (id === "charm_luck") return "행운의 부적 (드랍율)";
   if (id === "paewang_box") return "[패왕]의 유물 상자";
+  if (id === "stone_box_tujeon") return "현철 강화석 상자 (투전)";
+  if (id === "rare_box_tujeon") return "흑시 희귀품 상자";
+  if (id === "night_gear_box") return "야행 장비 상자";
+  if (id === "gear_piece_bundle") return "야행 장비 조각 묶음";
+  if (id === "manual_fragment_bundle") return "비급 조각 주머니";
   return id;
 }
 
@@ -939,6 +1008,9 @@ function getPotionIcon(id: ConsumableId) {
   if (id.startsWith("oil_")) return "🍯";
   if (id === "charm_luck") return "🧧";
   if (id === "paewang_box") return "🎁";
+  if (id.endsWith("_box") || id.endsWith("_box_tujeon")) return "🎁";
+  if (id === "gear_piece_bundle") return "⚔️";
+  if (id === "manual_fragment_bundle") return "📜";
   return "📦";
 }
 
@@ -968,6 +1040,12 @@ function getPotionDesc(id: ConsumableId) {
   if (id === "oil_triple_hit") return "5% 확률로 3배의 연타 공격을 발동합니다.";
   if (id === "oil_formless") return "3% 확률로 적 현재 체력의 10%를 즉시 삭감합니다.";
   if (id === "oil_blessed") return "모든 능력치가 소폭 상승하는 축복을 받습니다.";
+  if (id === "paewang_box") return "패왕의 권능이 서린 보물입니다. 최고의 무구를 획득할 수 있습니다.";
+  if (id === "stone_box_tujeon") return "장비 강화에 필요한 현철 강화석 30개를 획득합니다.";
+  if (id === "rare_box_tujeon") return "무작위 부위의 희귀 등급 장비를 획득합니다.";
+  if (id === "night_gear_box") return "현재 경지에 맞는 무작위 영웅 등급 야행 장비를 획득합니다.";
+  if (id === "gear_piece_bundle") return "장비 제작에 필요한 야행 장비 조각 5개를 획득합니다.";
+  if (id === "manual_fragment_bundle") return "무공 비급 제작에 사용되는 비급 조각들을 무작위로 획득합니다.";
   if (id.startsWith("oil_")) return "무기에 발라 특수한 효과를 부여합니다.";
   return "특별한 효과가 있는 비약입니다.";
 }

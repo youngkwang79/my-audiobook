@@ -214,7 +214,7 @@ export const GIRU_QUESTS: GiruQuest[] = [
     targetCount: 500,
     currentCount: 0,
     status: "active",
-    reward: { gold: 50000000, favor: 10, token: 5 }
+    reward: { favor: 10 } // Gold and tokens are calculated dynamically by realm
   },
   {
     id: "q_seolmae_1",
@@ -350,3 +350,18 @@ export const SEOLMAE_BUFFS = [
   { id: "exp_up", name: "경험치 증가", min: 15, max: 40, suffix: "%" },
   { id: "drop_up", name: "드랍률 증가", min: 10, max: 35, suffix: "%" }
 ];
+
+// 경지별 무뢰배 소탕 보상 테이블
+export const ROGUE_QUEST_REWARDS: Record<string, { gold: number; token: number }> = {
+  "필부": { gold: 100000, token: 2 },
+  "삼류": { gold: 400000, token: 5 },
+  "이류": { gold: 1500000, token: 10 },
+  "일류": { gold: 6000000, token: 20 },
+  "절정": { gold: 25000000, token: 45 },
+  "초절정": { gold: 100000000, token: 100 },
+  "화경": { gold: 400000000, token: 250 },
+  "현경": { gold: 1500000000, token: 600 },
+  "생사경": { gold: 6000000000, token: 1500 },
+  "신화경": { gold: 25000000000, token: 4000 },
+  "천인합일": { gold: 100000000000, token: 10000 },
+};

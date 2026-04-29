@@ -44,9 +44,9 @@ function LoginPageInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [capsOn, setCapsOn] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState<"google" | "kakao" | "discord" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [oauthBusy, setOauthBusy] = useState<"google" | "kakao" | null>(null);
 
   const redirect = searchParams.get("redirect") || "/";
 
@@ -87,7 +87,7 @@ function LoginPageInner() {
     }
   }
 
-  async function signInWithProvider(provider: "google" | "kakao") {
+  async function signInWithProvider(provider: "google" | "kakao" | "discord") {
     setMsg(null);
 
     if (!supabase) {
@@ -132,7 +132,7 @@ function LoginPageInner() {
     setMsg(null);
 
     if (!supabase) {
-      setMsg("로그인 설정이 아직 배포에 반영되지 않았습니다.");
+      setMsg("로그인 설정이 아직 배포에 반영되었습니다.");
       return;
     }
 
@@ -211,9 +211,9 @@ function LoginPageInner() {
             }}
           >
             <div style={{ fontSize: 22, fontWeight: 950 }}>
-              {oauthBusy === "google"
-                ? "구글 로그인으로 이동 중..."
-                : "카카오 로그인으로 이동 중..."}
+              {oauthBusy === "google" ? "구글 로그인 중..." :
+                oauthBusy === "kakao" ? "카카오 로그인 중..." :
+                  "디스코드 로그인 중..."}
             </div>
             <div style={{ marginTop: 10, opacity: 0.72 }}>
               로그인 완료 후 무림북으로 돌아옵니다.
@@ -424,32 +424,50 @@ function LoginPageInner() {
                 : "회원가입"}
           </button>
 
-          <button
-            type="button"
-            className="socialBtn"
-            disabled={!!oauthBusy}
-            onClick={() => signInWithProvider("google")}
-            style={{
-              background: "#ffffff",
-              color: "#111111",
-              opacity: oauthBusy ? 0.65 : 1,
-            }}
-          >
-            구글로 시작하기
-          </button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <button
+              type="button"
+              className="socialBtn"
+              disabled={!!oauthBusy}
+              onClick={() => signInWithProvider("google")}
+              style={{
+                background: "#ffffff",
+                color: "#111111",
+                fontSize: 14,
+                opacity: oauthBusy ? 0.65 : 1,
+              }}
+            >
+              구글 로그인
+            </button>
+
+            <button
+              type="button"
+              className="socialBtn"
+              disabled={!!oauthBusy}
+              onClick={() => signInWithProvider("kakao")}
+              style={{
+                background: "#FEE500",
+                color: "#191919",
+                fontSize: 14,
+                opacity: oauthBusy ? 0.65 : 1,
+              }}
+            >
+              카카오 로그인
+            </button>
+          </div>
 
           <button
             type="button"
             className="socialBtn"
             disabled={!!oauthBusy}
-            onClick={() => signInWithProvider("kakao")}
+            onClick={() => signInWithProvider("discord")}
             style={{
-              background: "#FEE500",
-              color: "#191919",
+              background: "#5865F2",
+              color: "#ffffff",
               opacity: oauthBusy ? 0.65 : 1,
             }}
           >
-            카카오로 시작하기
+            디스코드 로그인
           </button>
 
           {msg && <div className="helpBox">{msg}</div>}

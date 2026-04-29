@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { FORGE_ITEMS, REALM_SET_OPTIONS, rollTierAndOptions, RANDOM_OPTION_POOL, getEnhancementMultiplier } from "@/app/lib/game/items";
+import { FORGE_ITEMS, REALM_SET_OPTIONS, rollTierAndOptions, RANDOM_OPTION_POOL, getEnhancementMultiplier, generateRandomGear } from "@/app/lib/game/items";
 import { useGameStore, REALM_ORDER, REALM_SETTINGS, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import type { WeaponId, ConsumableId, EquipSlot } from "@/app/lib/game/types";
 
@@ -80,6 +80,7 @@ export default function ForgePanel(props: Props) {
   const reputation = useGameStore((s: any) => s.game.reputation);
   const wisdom = useGameStore((s: any) => s.game.wisdom);
   const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
+  const gearPieces = useGameStore((s: any) => s.game.gearPieces || 0);
 
   const addWeapon = useGameStore((s: any) => s.addWeapon);
   const addCoins = useGameStore((s: any) => s.addCoins);
@@ -93,7 +94,7 @@ export default function ForgePanel(props: Props) {
   const unlocked = unlockedTabs.includes("forge");
   const ownedIds = useMemo(() => ownedWeapons.map((item: any) => item.id), [ownedWeapons]);
 
-  const [activeTab, setActiveTab] = useState<"craft" | "enhance">("craft");
+  const [activeTab, setActiveTab] = useState<"craft" | "enhance" | "night">("craft");
   const [enhanceSubTab, setEnhanceSubTab] = useState<"level" | "reroll" | "soul" | "oil">("level");
   const [selectedRealm, setSelectedRealm] = useState("필부");
   const [selectedEnhanceItem, setSelectedEnhanceItem] = useState<WeaponId | null>(null);
@@ -113,7 +114,7 @@ export default function ForgePanel(props: Props) {
 
   const forgeRealms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
   const canAccessRealm = (realm: string) => {
-    if (realm === "회복제") return true;
+    if (realm === "회복제" || realm === "야행 장비") return true;
     if (isForgeFullUnlocked) return true; // God Mode: All realms unlocked
     const playerIdx = forgeRealms.indexOf(playerRealm);
     const targetIdx = forgeRealms.indexOf(realm);
@@ -139,6 +140,27 @@ export default function ForgePanel(props: Props) {
 
     setPurchaseEffect({ name: rolledItem.name, icon: rolledItem.icon ?? "⚔️" });
     setTimeout(() => setPurchaseEffect(null), 600);
+  };
+
+  const handleCraftNightGear = () => {
+    if (gearPieces < 10) return;
+    
+    const luck = upgradeLevels?.luck || 0;
+    const newItem = generateRandomGear(playerRealm, 0, luck + 20); // 행운 보너스
+    // 야행 장비는 명품 등급 이상 보장
+    if (newItem.tier === "평범") newItem.tier = "명품";
+
+    useGameStore.setState((s: any) => ({
+      game: {
+        ...s.game,
+        gearPieces: s.game.gearPieces - 10,
+        ownedWeapons: [...s.game.ownedWeapons, newItem]
+      }
+    }));
+
+    setPurchaseEffect({ name: newItem.name, icon: newItem.icon ?? "🏮" });
+    setTimeout(() => setPurchaseEffect(null), 600);
+    alert(`[${newItem.name}] 합성 성공! 현재 경지에 맞는 강력한 야행 장비를 획득했습니다.`);
   };
 
 
@@ -316,6 +338,8 @@ export default function ForgePanel(props: Props) {
         <span>💎 {formatCompactNumber(currentStones)}</span>
         <span style={{ color: "#444" }}>|</span>
         <span>💡 {formatCompactNumber(wisdom || 0)}</span>
+        <span style={{ color: "#444" }}>|</span>
+        <span style={{ color: "#ff6bd6" }}>⚔️ {formatCompactNumber(gearPieces)}</span>
       </div>
 
       {/* 헤더 탭 (고정) */}
@@ -344,31 +368,15 @@ export default function ForgePanel(props: Props) {
             장비 제련
           </button>
           <button
-            onClick={() => {
-              useGameStore.setState((s: any) => ({
-                game: {
-                  ...s.game,
-                  wisdom: (s.game.wisdom || 0) + 10000000,
-                  exp: (s.game.exp || 0) + 10000000,
-                  touches: (s.game.touches || 0) + 1000000000,
-                }
-              }));
-              // 강제로 돌파 함수 호출 (경지/성 상승)
-              useGameStore.getState().breakthrough();
-              alert("강제 돌파 성공! 폭발적인 기운이 전신을 감쌉니다. (수련치/경험치/경지 대폭 상승)");
-            }}
+            onClick={() => setActiveTab("night")}
             style={{
-              background: "none",
-              border: "none",
-              color: "#555",
-              fontSize: "12px",
-              cursor: "pointer",
-              opacity: 0.5,
-              padding: "8px",
-              marginLeft: "10px"
+              padding: "6px 14px", borderRadius: 10, border: "none",
+              background: activeTab === "night" ? "#ff6bd6" : "rgba(255,255,255,0.05)",
+              color: activeTab === "night" ? "#fff" : "#888",
+              fontSize: 14, fontWeight: 900, cursor: "pointer"
             }}
           >
-            w
+            야행 합성
           </button>
         </div>
       </div>
@@ -896,6 +904,42 @@ export default function ForgePanel(props: Props) {
                 {enhanceSubTab === "level" ? `🔨 제련 시작 ${totalRate}%` : enhanceSubTab === "reroll" ? (selectedItem?.tier === "평범" ? "재연마 불가 (평범 등급)" : "🎲 재연마 시작") : (enhanceSubTab === "oil" ? (selectedOilId ? "🧪 연마하기" : "상단 옵션을 선택해주세요") : "강화 항목을 선택해주세요")}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* 3. 야행 장비 탭 커스텀 레이아웃 */}
+        {activeTab === "night" && (
+          <div style={{ padding: "30px 20px", textAlign: "center", background: "rgba(255,107,214,0.05)", borderRadius: 20, border: "1px dashed rgba(255,107,214,0.3)", marginTop: 10 }}>
+             <div style={{ fontSize: 48, marginBottom: 15 }}>🏮</div>
+             <div style={{ fontSize: 18, fontWeight: 950, color: "#ff6bd6", marginBottom: 5 }}>야행 장비 합성</div>
+             <div style={{ fontSize: 12, color: "#eee", marginBottom: 15, lineHeight: 1.5, opacity: 0.8 }}>야행 장비 조각 10개를 사용하여<br/>현재 경지에 맞는 강력한 장비를 합성합니다.<br/>(명품 등급 이상 확정 획득)</div>
+             
+             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 15, marginBottom: 25 }}>
+                <div style={{ textAlign: "center" }}>
+                   <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>필요 조각</div>
+                   <div style={{ fontSize: 16, fontWeight: 900, color: "#fff" }}>10</div>
+                </div>
+                <div style={{ fontSize: 20, color: "#444" }}>→</div>
+                <div style={{ textAlign: "center" }}>
+                   <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>보유 조각</div>
+                   <div style={{ fontSize: 16, fontWeight: 900, color: gearPieces >= 10 ? "#ff6bd6" : "#ff4d4d" }}>{gearPieces}</div>
+                </div>
+             </div>
+
+             <button 
+                onClick={handleCraftNightGear}
+                disabled={gearPieces < 10}
+                style={{
+                   width: "100%", padding: "14px", borderRadius: 14, border: "none",
+                   background: gearPieces >= 10 ? "linear-gradient(135deg, #ff6bd6, #8e2de2)" : "rgba(255,255,255,0.05)",
+                   color: gearPieces >= 10 ? "#fff" : "#555", fontWeight: 950, fontSize: 15,
+                   cursor: gearPieces >= 10 ? "pointer" : "not-allowed",
+                   boxShadow: gearPieces >= 10 ? "0 4px 15px rgba(255,107,214,0.3)" : "none",
+                   transition: "all 0.2s"
+                }}
+             >
+                {gearPieces >= 10 ? "신비로운 장비 합성하기" : "조각이 부족합니다"}
+             </button>
           </div>
         )}
 

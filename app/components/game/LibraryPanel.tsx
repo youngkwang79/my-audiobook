@@ -393,7 +393,7 @@ export default function LibraryPanel() {
                         fontSize: "11px",
                         fontWeight: "bold"
                       }}>
-                        {recipe.resultGrade.toUpperCase()}
+                        {({ common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" } as any)[recipe.resultGrade] || recipe.resultGrade}
                       </div>
                     </div>
 
@@ -618,7 +618,7 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
         const game = useGameStore.getState().game;
         const currentFragments = game.manualFragments?.[reqs.fragmentId] || 0;
         const currentAdvanced = game.advancedMaterials || 0;
-        const currentBonds = game.factionBonds?.[reqs.bondId] || 0;
+        const currentBonds = game.factionBonds?.[skill.factionName] || 0;
         
         const canCraft = currentFragments >= reqs.requiredFragments &&
                          currentAdvanced >= reqs.requiredAdvancedMaterials &&
@@ -626,53 +626,77 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
                          game.coins >= reqs.goldCost;
 
         return (
-          <div style={{ marginLeft: "15px", display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end", fontSize: "11px", color: "#aaa" }}>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <span style={{ color: currentFragments >= reqs.requiredFragments ? "#8f8" : "#f88" }}>
-                조각 {currentFragments}/{reqs.requiredFragments}
-              </span>
-              <span style={{ color: currentAdvanced >= reqs.requiredAdvancedMaterials ? "#8f8" : "#f88" }}>
-                상급재료 {currentAdvanced}/{reqs.requiredAdvancedMaterials}
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <span style={{ color: currentBonds >= reqs.requiredBonds ? "#8f8" : "#f88" }}>
-                {skill.factionName} 인연 {currentBonds}/{reqs.requiredBonds}
-              </span>
-              <span style={{ color: game.coins >= reqs.goldCost ? "#ffd700" : "#f88" }}>
+          <div style={{ marginLeft: "15px", display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end", fontSize: "11px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "flex-end" }}>
+              <div style={{ 
+                background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "6px", border: `1px solid ${currentFragments >= reqs.requiredFragments ? "#4caf50" : "#ff5252"}33`,
+                color: currentFragments >= reqs.requiredFragments ? "#81c784" : "#ff8a80"
+              }}>
+                {({ common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" } as any)[skill.grade] || "???"} 조각 {currentFragments}/{reqs.requiredFragments}
+              </div>
+              <div style={{ 
+                background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "6px", border: `1px solid ${currentAdvanced >= reqs.requiredAdvancedMaterials ? "#4caf50" : "#ff5252"}33`,
+                color: currentAdvanced >= reqs.requiredAdvancedMaterials ? "#81c784" : "#ff8a80"
+              }}>
+                재료 {currentAdvanced}/{reqs.requiredAdvancedMaterials}
+              </div>
+              <div style={{ 
+                background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "6px", border: `1px solid ${currentBonds >= reqs.requiredBonds ? "#4caf50" : "#ff5252"}33`,
+                color: currentBonds >= reqs.requiredBonds ? "#81c784" : "#ff8a80"
+              }}>
+                인연 {currentBonds}/{reqs.requiredBonds}
+              </div>
+              <div style={{ 
+                background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "6px", border: `1px solid ${game.coins >= reqs.goldCost ? "#ffd700" : "#ff5252"}33`,
+                color: game.coins >= reqs.goldCost ? "#ffd700" : "#ff8a80"
+              }}>
                 제작비 {reqs.goldCost.toLocaleString()}냥
-              </span>
+              </div>
             </div>
+            
             <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
               <button
-                onClick={() => alert("기루의 특급 정보나 다음 단계 사냥터에서 획득할 수 있습니다.")}
+                onClick={() => alert("기루의 연화에게 '비밀 정보'를 구매하거나 사냥터에서 획득할 수 있습니다.")}
                 style={{
-                  padding: "6px 10px", borderRadius: "4px", border: "1px solid #444", background: "transparent", color: "#aaa", fontSize: "11px", cursor: "pointer"
+                  padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#aaa", fontSize: "11px", cursor: "pointer", fontWeight: "bold"
                 }}
               >
-                획득처 보기
+                획득처
               </button>
               <button
                 disabled={!canCraft}
                 onClick={onLearn}
                 style={{
-                  padding: "6px 16px", borderRadius: "4px", border: "none", background: canCraft ? accent : "#222", color: canCraft ? "#000" : "#555", fontWeight: "bold", fontSize: "11px", cursor: canCraft ? "pointer" : "default"
+                  padding: "6px 16px", borderRadius: "8px", border: "none", 
+                  background: canCraft ? accent : "#2a2a2a", 
+                  color: canCraft ? "#000" : "#666", 
+                  fontWeight: "bold", fontSize: "11px", cursor: canCraft ? "pointer" : "default",
+                  boxShadow: canCraft ? `0 0 15px ${accent}44` : "none"
                 }}
               >
-                제작
+                비급 완성
               </button>
             </div>
           </div>
         );
-      })() : (
-        <button
-          disabled={true}
-          style={{
-            marginLeft: "15px", padding: "8px 12px", borderRadius: "6px", border: "none", background: skill.unlocked ? "#222" : "#111", color: skill.unlocked ? "#444" : "#333", fontWeight: "bold", fontSize: "12px", minWidth: "90px"
-          }}
-        >
-          {skill.unlocked ? "습득완료" : "단서 부족"}
-        </button>
+      })() : skill.silhouette ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+          <div style={{ fontSize: "10px", color: "#666" }}>필요 경지: {skill.realm}</div>
+          <button
+            onClick={() => alert("기루에서 해당 문파의 단서를 수집해야 합니다.")}
+            style={{
+              padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)", color: "#444", fontSize: "11px", cursor: "pointer"
+            }}
+          >
+            단서 얻기
+          </button>
+        </div>
+      ) : (
+        <div style={{ 
+          padding: "8px 16px", borderRadius: "8px", background: "rgba(255,255,255,0.05)", color: accent, fontWeight: "bold", fontSize: "12px", border: `1px solid ${accent}33`
+        }}>
+          연마 가능
+        </div>
       )}
     </div>
   );
