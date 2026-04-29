@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 import { GIRU_GIFT_ITEMS } from "@/app/lib/game/nightSystem";
+import { generateRandomGear } from "@/app/lib/game/items";
 import { useState } from "react";
 
 const EXCHANGE_ITEMS = [
@@ -43,8 +44,18 @@ const EXCHANGE_ITEMS = [
     grade: "희귀",
     cost: 30,
     limit: 2,
-    desc: "흑시에서 흘러나온 희귀 아이템을 얻습니다.",
-    rewardText: "희귀 아이템 +1",
+    desc: "무작위 부위의 희귀 등급 장비를 획득합니다.",
+    rewardText: "무작위 장비 +1",
+  },
+  {
+    id: "night_gear",
+    icon: "🏮",
+    name: "야행 장비 상자",
+    grade: "영웅",
+    cost: 100,
+    limit: 1,
+    desc: "현재 경지에 맞는 무작위 영웅급 야행 장비를 획득합니다.",
+    rewardText: "무작위 장비 +1",
   },
   {
     id: "gear_piece",
@@ -52,7 +63,7 @@ const EXCHANGE_ITEMS = [
     name: "야행 장비 조각",
     grade: "영웅",
     cost: 50,
-    limit: 2,
+    limit: 3,
     desc: "고급 장비 제작에 필요한 조각을 얻습니다.",
     rewardText: "장비 조각 +5",
   },
@@ -169,17 +180,11 @@ export default function TujeonExchangePanel() {
         nextGame.enhancementStones = (s.game.enhancementStones ?? 0) + 30;
       }
 
-      if (item.id === "rare_box") {
-        nextGame.rareItems = (s.game.rareItems ?? 0) + 1;
-        nextGame.inventory = [
-          ...(s.game.inventory ?? []),
-          {
-            id: `rare_item_${Date.now()}`,
-            name: "흑시 희귀품",
-            type: "rare",
-            desc: "투전패 교환소에서 얻은 희귀 아이템입니다.",
-          },
-        ];
+      if (item.id === "rare_box" || item.id === "night_gear") {
+        const luck = s.game.statUpgrades?.luck || 0;
+        const newItem = generateRandomGear(s.game.realm, 0, luck);
+        nextGame.ownedWeapons = [...(s.game.ownedWeapons || []), newItem];
+        showMsg(`[${newItem.name}] 획득! 행낭에서 확인하세요.`);
       }
 
       if (item.id === "gear_piece") {

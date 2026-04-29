@@ -1460,3 +1460,25 @@ export function getEnhancementMultiplier(level: number): number {
   };
   return table[level] ?? (1.0 + level * 0.15); // 안전장치
 }
+
+/**
+ * 무작위 부위의 장비를 생성합니다. (투전패 교환소 등에서 사용)
+ */
+export function generateRandomGear(realm: string, level: number, luck: number = 0): OwnedWeapon {
+  const slots: EquipSlot[] = ["mainWeapon", "subWeapon", "gloves", "shoes", "robe", "necklace", "ring", "bracelet"];
+  const slot = slots[Math.floor(Math.random() * slots.length)];
+  
+  // 해당 경지에 맞는 베이스 아이템 찾기
+  let baseItem = FORGE_ITEMS.find(i => i.realm === realm && i.slot === slot);
+  if (!baseItem) {
+    baseItem = FORGE_ITEMS.find(i => i.slot === slot) || FORGE_ITEMS[0];
+  }
+  
+  const id = `rand_${slot}_${Date.now()}`;
+  const newItem = { ...baseItem, id };
+  
+  const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+  const rIdx = realms.indexOf(realm);
+  
+  return rollTierAndOptions(newItem, level, luck, rIdx);
+}
