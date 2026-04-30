@@ -67,7 +67,7 @@ export default function UpgradePanel() {
 
   // Stat Mappings to Tabs
   const UPGRADE_GROUPS: Record<TabType, string[]> = {
-    basic: ['atk', 'def', 'hpRec', 'mpRec'],
+    basic: ['atk', 'def', 'hpRec', 'mpRec', 'hpRecovery'],
     technique: ['critRate', 'critDmg', 'eva'],
     mastery: ['luck', 'autoGain', 'offlineLimit']
   };
@@ -83,6 +83,7 @@ export default function UpgradePanel() {
     if (id === 'atk') displayName = "공격력";
     if (id === 'def') displayName = "방어력";
     if (id === 'hpRec') displayName = "생명력";
+    if (id === 'hpRecovery') displayName = "재생";
 
     if (id === 'eva' && faction?.specialTraining) {
       displayName = faction.specialTraining.name;
@@ -103,6 +104,7 @@ export default function UpgradePanel() {
         { id: "atk", desc: "공격력을 영구적으로 증진시켜\n 적에게 더 큰 피해를 줍니다." },
         { id: "def", desc: "신체를 금강석처럼 단단하게 하여\n 받는 피해를 줄입니다." },
         { id: "hpRec", desc: "생명력을 증진시켜 생사 갈림길에서\n 더 오래 버티게 합니다." },
+        { id: "hpRecovery", desc: "기혈의 흐름을 원활하게 하여\n 상처를 더 빠르게 치유합니다." },
         { id: "mpRec", desc: "강력한 무공을 사용할 수 있게\n'단전이 확장'됩니다." },
         { id: "critRate", desc: "공격 시 치명상을 입힐 확률을 높입니다." },
         { id: "critDmg", desc: "치명타가 발생했을 때 주는\n 피해량을 늘립니다." },
@@ -139,7 +141,7 @@ export default function UpgradePanel() {
       return "🏃";
     }
     const icons: Record<string, string> = {
-      atk: "⚔️", def: "🛡️", hpRec: "❤️", mpRec: "💎",
+      atk: "⚔️", def: "🛡️", hpRec: "❤️", mpRec: "💎", hpRecovery: "🍵",
       critRate: "🎯", critDmg: "💥", eva: "🏃",
       luck: "🍀", autoGain: "💰", offlineLimit: "⏳"
     };
@@ -323,7 +325,7 @@ export default function UpgradePanel() {
                     disabled={!canAffordGold}
                     style={{
                       ...actionButtonStyle,
-                      padding: "4px", width: "130px", height: "50px",
+                      padding: "2px", width: "110px", height: "40px",
                       background: canAffordGold
                         ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)"
                         : "rgba(255,255,255,0.05)",
@@ -333,7 +335,7 @@ export default function UpgradePanel() {
                     }}
                   >
 
-                    <span style={{ fontWeight: 950, fontSize: 26 }}>{formatCompactNumber(goldCost)}</span>
+                    <span style={{ fontWeight: 950, fontSize: 20 }}>{formatCompactNumber(goldCost)}</span>
                   </button>
 
                   {/* Reputation Upgrade (Blue Box) */}
@@ -343,7 +345,7 @@ export default function UpgradePanel() {
                       disabled={!canAffordRep}
                       style={{
                         ...actionButtonStyle,
-                        padding: "4px", width: "130px", height: "50px",
+                        padding: "2px", width: "110px", height: "40px",
                         background: canAffordRep
                           ? "linear-gradient(135deg, #00f2ff 0%, #0077ff 100%)"
                           : "rgba(0, 242, 255, 0.05)",
@@ -353,7 +355,7 @@ export default function UpgradePanel() {
                       }}
                     >
 
-                      <span style={{ fontWeight: 950, fontSize: 26 }}>{formatCompactNumber(repCost)}</span>
+                      <span style={{ fontWeight: 950, fontSize: 20 }}>{formatCompactNumber(repCost)}</span>
                     </button>
                   )}
                 </div>
@@ -412,7 +414,7 @@ export default function UpgradePanel() {
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
-  height: "100%", width: "100%", padding: "10px",
+  height: "100%", width: "100%", padding: "8px",
   background: "rgba(10,12,20,0.95)",
   borderRadius: "0 0 20px 20px", border: "1px solid rgba(255,215,0,0.1)",
   borderTop: "none", marginTop: "-1px",
@@ -420,7 +422,7 @@ const containerStyle: React.CSSProperties = {
 };
 
 const headerStyle: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20
+  display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12
 };
 
 const currencyBadge: React.CSSProperties = {
@@ -429,43 +431,43 @@ const currencyBadge: React.CSSProperties = {
 };
 
 const summaryBarStyle: React.CSSProperties = {
-  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "10px", gap: 12, marginBottom: 12,
+  display: "flex", background: "rgba(0,0,0,0.3)", borderRadius: "16px", padding: "6px 10px", gap: 12, marginBottom: 8,
   border: "1px solid rgba(255,255,255,0.05)"
 };
 
 const summaryItem: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, fontSize: 13
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, fontSize: 12
 };
 
 const multiplierGroupStyle: React.CSSProperties = {
-  display: "flex", gap: 8, marginBottom: 14
+  display: "flex", gap: 8, marginBottom: 8
 };
 
 const multiplierButtonStyle: React.CSSProperties = {
-  flex: 1, padding: "9px 0", borderRadius: "12px", border: "none", fontSize: 18, fontWeight: 900,
+  flex: 1, padding: "6px 0", borderRadius: "10px", border: "none", fontSize: 14, fontWeight: 900,
   cursor: "pointer", transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
 };
 
 const tabGroupStyle: React.CSSProperties = {
-  display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 16
+  display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 8
 };
 
 const tabButtonStyle: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "22px 0", 
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 0", 
   background: "transparent", border: "none", cursor: "pointer", transition: "0.2s"
 };
 
 const listAreaStyle: React.CSSProperties = {
-  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10
+  flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 9
 };
 
 const cardStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.03)", borderRadius: "20px", padding: "14px", 
+  background: "rgba(255,255,255,0.03)", borderRadius: "16px", padding: "10px 12px", 
   border: "1px solid rgba(255,255,255,0.05)", position: "relative", overflow: "hidden"
 };
 
 const iconBoxStyle: React.CSSProperties = {
-  width: 58, height: 58, borderRadius: "16px", display: "flex", alignItems: "center", 
+  width: 46, height: 46, borderRadius: "12px", display: "flex", alignItems: "center", 
   justifyContent: "center", position: "relative"
 };
 

@@ -231,7 +231,8 @@ export function rollTierAndOptions(baseItem: OwnedWeapon, realmIdx: number, luck
   
   // 1. 등급 결정 (ItemTier)
   const tierRoll = Math.random() * 100 + luckLevel * 0.5;
-  if (tierRoll > 98) item.tier = "신기";
+  if (tierRoll > 99.5) item.tier = "신기";
+  else if (tierRoll > 97) item.tier = "국보";
   else if (tierRoll > 90) item.tier = "보구";
   else if (tierRoll > 70) item.tier = "명품";
   else item.tier = "평범";

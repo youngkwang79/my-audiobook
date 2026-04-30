@@ -73,7 +73,7 @@ export const FACTIONS: FactionInfo[] = [
     coinBonus: 12,
     touchFlavor: "흘리고 되받아치는 태극의 흐름으로 타격이 이어집니다.",
     theme: { glow: "rgba(160,220,255,0.22)", accent: "#bde7ff" },
-    bonusStats: { eva: 70, speed: 30, atk: 5 },
+    bonusStats: { eva: 20, speed: 30, atk: 5 },
     characterImages: { ready: "/images/char_wudang_ready.png", attack: "/images/char_wudang_attack.png" },
     specialAdvantage: "회피 성공 시 다음 공격 대폭 강화, 장기전 비례 대미지 상승, 회피 시 즉시 반격",
     martial: {

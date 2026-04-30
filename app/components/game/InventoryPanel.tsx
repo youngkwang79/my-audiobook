@@ -55,6 +55,8 @@ export default function InventoryPanel(props: Props) {
   const getTotalEvasion = useGameStore((s: any) => s.getTotalEvasion);
   const getTotalSpeed = useGameStore((s: any) => s.getTotalSpeed);
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
+  const gamblingTokenFragments = useGameStore((s: any) => s.game.gamblingTokenFragments || 0);
+  const synthesizeTujeonTokens = useGameStore((s: any) => s.synthesizeTujeonTokens);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const unlocked = unlockedTabs.includes("inventory");
@@ -430,6 +432,37 @@ export default function InventoryPanel(props: Props) {
                   </div>
                 ))}
               </div>
+
+              <h4 style={{ fontSize: "12px", color: "#ffd700", margin: "15px 0 10px 0" }}>🎴 투전패 재료</h4>
+              <div style={{ background: "rgba(255,255,255,0.04)", padding: "10px 12px", borderRadius: "10px", border: "1px solid rgba(255,215,120,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 24, filter: gamblingTokenFragments >= 5 ? "drop-shadow(0 0 5px #ffd700)" : "none" }}>🧩</div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#ccc" }}>투전패 조각</div>
+                    <div style={{ fontSize: "14px", fontWeight: "bold", color: gamblingTokenFragments >= 5 ? "#4dff8a" : "#eee" }}>
+                      {gamblingTokenFragments} / 5
+                    </div>
+                  </div>
+                </div>
+                {gamblingTokenFragments >= 5 && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); synthesizeTujeonTokens(); }}
+                    style={{ 
+                      padding: "8px 16px", 
+                      background: "linear-gradient(135deg, #ffd700, #ff9d00)", 
+                      color: "#000", 
+                      border: "none", 
+                      borderRadius: "8px", 
+                      fontSize: "12px", 
+                      fontWeight: 900, 
+                      cursor: "pointer",
+                      boxShadow: "0 0 15px rgba(255,215,0,0.4)"
+                    }}
+                  >
+                    합성하기
+                  </button>
+                )}
+              </div>
             </div>
           ) : isMedicineSelected ? (
             <div style={{
@@ -520,7 +553,7 @@ export default function InventoryPanel(props: Props) {
                     <div style={{ fontSize: 24, marginBottom: 2 }}>
                       {item.icon ?? "📦"}
                     </div>
-                    <div style={{ fontSize: 9, fontWeight: "900", color: item.tier === "신기" ? "#ff9d00" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>
+                    <div style={{ fontSize: 9, fontWeight: "900", color: item.tier === "신기" ? "#ff9d00" : item.tier === "국보" ? "#ff4d4d" : item.tier === "보구" ? "#a822f3" : item.tier === "명품" ? "#4facfe" : "#fff", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>
                       {item.name.split(' ')[0]}
                     </div>
                     {isEquipped && (
@@ -778,7 +811,7 @@ export default function InventoryPanel(props: Props) {
                 {popupItem.icon ?? "📦"}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 16, fontWeight: 900, color: popupItem.tier === "신기" ? "#ff9d00" : popupItem.tier === "보구" ? "#a822f3" : popupItem.tier === "명품" ? "#4facfe" : "#ffe08a" }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: popupItem.tier === "신기" ? "#ff9d00" : popupItem.tier === "국보" ? "#ff4d4d" : popupItem.tier === "보구" ? "#a822f3" : popupItem.tier === "명품" ? "#4facfe" : "#ffe08a" }}>
                   {popupItem.name}
                   {popupItem.tier && <span style={{ fontSize: 10, marginLeft: 6, padding: "1px 4px", borderRadius: 4, background: "rgba(255,255,255,0.1)", color: "#fff" }}>{popupItem.tier}</span>}
                 </div>
@@ -939,10 +972,21 @@ export default function InventoryPanel(props: Props) {
 
               <button
                 onClick={() => {
-                  let materials = 1;
-                  if (popupItem.tier === "명품") materials = 3;
-                  else if (popupItem.tier === "보구") materials = 10;
-                  else if (popupItem.tier === "신기" || popupItem.name.includes("[패왕]")) materials = 50;
+                  const { game } = useGameStore.getState();
+                  const realmOrder = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+                  const userRealmIdx = realmOrder.indexOf(game.realm);
+                  const isPeakOrHigher = userRealmIdx >= 4;
+
+                  let materials = 0;
+                  if (isPeakOrHigher) {
+                    if (popupItem.tier === "국보") materials = 25;
+                    else if (popupItem.tier === "신기" || popupItem.name.includes("[패왕]")) materials = 100;
+                  } else {
+                    if (popupItem.tier === "명품") materials = 2;
+                    else if (popupItem.tier === "보구") materials = 8;
+                    else if (popupItem.tier === "국보") materials = 30;
+                    else if (popupItem.tier === "신기" || popupItem.name.includes("[패왕]")) materials = 150;
+                  }
                   
                   if (confirm(`${popupItem.name}을(를) 분해하시겠습니까?\n획득 재료: 상급 재료 ${materials}개`)) {
                     (useGameStore.getState() as any).dismantleItem(popupItem.id);

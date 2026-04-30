@@ -15,7 +15,7 @@ type CardType = {
 type MoorimTwentyOneProps = {
   onResult: (win: boolean, bet: number) => void;
   userCoins: number;
-  addTujeonToken: (amount: number) => void;
+  addTujeonToken: (tokens: number, fragments?: number) => void;
   addCoins: (amount: number) => void;
 };
 
@@ -26,7 +26,7 @@ export default function MoorimTwentyOneGame({
   addCoins
 }: MoorimTwentyOneProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [betAmount, setBetAmount] = useState(10000000); // Default 10M
+  const [betAmount, setBetAmount] = useState(2000); // Default 2,000 for early game accessibility
   const [playerHand, setPlayerHand] = useState<CardType[]>([]);
   const [dealerHand, setDealerHand] = useState<CardType[]>([]);
   const [gameState, setGameState] = useState<'betting' | 'playing' | 'dealer_turn' | 'result'>('betting');
@@ -185,8 +185,14 @@ export default function MoorimTwentyOneGame({
     
     if (result === 'win' || result === 'dealer_bust') {
       setResultMsg('승리! 패술 대련에서 승리하였습니다.');
-      const tokens = Math.floor(betAmount / 10000000) + 1;
-      addTujeonToken(tokens);
+      if (betAmount >= 1000000) {
+        const tokens = Math.floor(betAmount / 10000000) + 1;
+        addTujeonToken(tokens, 0);
+      } else {
+        // 100만냥 미만은 조각 1개 지급
+        addTujeonToken(0, 1);
+      }
+      addCoins(betAmount * 2); // 참가금 포함 2배 반환
       onResult(true, betAmount);
     } else if (result === 'push') {
       setResultMsg('무승부. 참가금을 돌려받았습니다.');
@@ -220,7 +226,7 @@ export default function MoorimTwentyOneGame({
             참가금 설정
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '25px' }}>
-            {[1000000, 5000000, 10000000, 50000000, 100000000, 500000000].map(amt => (
+            {[2000, 10000, 100000, 1000000, 5000000, 10000000, 50000000, 100000000, 500000000].map(amt => (
               <button
                 key={amt}
                 onClick={() => setBetAmount(amt)}

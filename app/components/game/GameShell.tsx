@@ -124,7 +124,6 @@ export default function GameShell() {
   useEffect(() => {
     const ticker = setInterval(() => {
       const { updateTime } = useGameStore.getState() as any;
-      if (document.hidden) return;
       if (updateTime) updateTime(1);
     }, 1000);
     return () => clearInterval(ticker);
@@ -164,7 +163,11 @@ export default function GameShell() {
 
   const handleSetFaction = (f: any) => {
     useGameStore.setState((s: any) => ({
-      game: { ...s.game, faction: f }
+      game: { 
+        ...s.game, 
+        faction: f,
+        unlockedTabs: Array.from(new Set([...(s.game.unlockedTabs || []), "quest"]))
+      }
     }));
   };
 

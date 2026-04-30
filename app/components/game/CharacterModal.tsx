@@ -17,7 +17,8 @@ export default function CharacterModal({
     getTotalDefense,
     getTotalHp,
     getTotalEvasion,
-    getTotalSpeed
+    getTotalSpeed,
+    getTotalHpRecovery
   } = useGameStore();
 
   if (!isOpen) return null;
@@ -92,6 +93,7 @@ export default function CharacterModal({
   const totalHp = getTotalHp();
   const totalEvasion = getTotalEvasion();
   const totalSpeed = getTotalSpeed();
+  const totalHpRecovery = getTotalHpRecovery();
 
   const equippedWeaponLabel =
     [mainWeapon?.name, subWeapon?.name].filter(Boolean).join(" / ") || "맨손";
@@ -219,19 +221,10 @@ export default function CharacterModal({
               <span style={{ color: "#888", fontSize: "11px" }}>성명:</span> {safeGame.name}
             </div>
             <div>
-              <span style={{ color: "#888", fontSize: "11px" }}>나이:</span> {safeGame.age}세
-            </div>
-            <div>
-              <span style={{ color: "#888", fontSize: "11px" }}>신장:</span> {safeGame.height}cm
-            </div>
-            <div>
               <span style={{ color: "#888", fontSize: "11px" }}>소속:</span> {safeGame.faction}
             </div>
             <div style={{ color: "#ffd778", fontWeight: "bold" }}>
               <span style={{ color: "#888", fontSize: "11px" }}>경지:</span> {safeGame.realm} ({safeGame.star}성)
-            </div>
-            <div style={{ color: "#ffcc00", fontWeight: "bold" }}>
-              <span style={{ color: "#888", fontSize: "11px" }}>명성:</span> {formatCompactNumber(game.reputation)}
             </div>
           </div>
         </div>
@@ -265,71 +258,35 @@ export default function CharacterModal({
           </div>
         )}
 
-        <div style={{ marginBottom: "12px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              color: "#d4a23c",
-              marginBottom: "4px",
-              fontWeight: "bold",
-            }}
-          >
-            [ 전투 능력 ]
+        <div style={{ marginBottom: "16px" }}>
+          <div style={{ fontSize: "12px", color: "#d4a23c", marginBottom: "8px", fontWeight: "bold", borderBottom: "1px solid rgba(212,162,60,0.3)", paddingBottom: "4px" }}>
+            [ 전투 능력 상세 ]
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <StatRow
-              label="최종 공격력"
-              value={formatCompactNumber(totalAttack)}
-              color="#ff4d4d"
-              sub={safeGame.comboCount > 0 ? `🔥 ${safeGame.comboCount}` : undefined}
-            />
-            <StatRow
-              label="최종 생명력"
-              value={formatCompactNumber(totalHp)}
-              color="#ff8c8c"
-            />
-            <StatRow
-              label="현재 내공"
-              value={`${formatCompactNumber(safeGame.mp)} / ${formatCompactNumber(safeGame.maxMp)}`}
-              color="#55aaff"
-            />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "10px", padding: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <StatRow label="생명력" value={formatCompactNumber(totalHp)} color="#ff8c8c" />
+                <StatRow label="내공" value={formatCompactNumber(safeGame.mp)} color="#55aaff" />
+                <StatRow label="공격력" value={formatCompactNumber(totalAttack)} color="#ff4d4d" />
                 <StatRow label="방어력" value={formatCompactNumber(totalDefense)} color="#8ecbff" />
-                <StatRow label="회피율" value={`${totalEvasion.toFixed(1)}%`} color="#7fffd4" />
-                <StatRow label="치명타" value={`${totalCritRate.toFixed(1)}%`} color="#ffcc00" />
-                <StatRow label="치피" value={`${totalCritDmg}%`} color="#ff7e4d" />
-            </div>
-            <StatRow label="신법 (속도)" value={`${totalSpeed.toFixed(1)}%`} color="#a8ff7e" />
-
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginTop: "4px" }}>
-              <span style={{ color: "#888" }}>장착 무기</span>
-              <span style={{ color: (mainWeapon || subWeapon) ? "#ffd778" : "#666", fontSize: "10px" }}>
-                {equippedWeaponLabel}
-              </span>
+                <StatRow label="재생력" value={`${formatCompactNumber(totalHpRecovery)}`} color="#ff8c8c" />
+              </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
-              <span style={{ color: "#888" }}>장착 장신구</span>
-              <span style={{ color: (gloves || shoes || robe || necklace || ring) ? "#ffd778" : "#666", textAlign: "right", maxWidth: "60%", fontSize: "10px", lineHeight: 1.2 }}>
-                {gearSummary || "없음"}
-              </span>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginTop: "4px" }}>
-              <span style={{ color: "#888" }}>보유 영약</span>
-              <span style={{ color: (safeGame.consumables && Object.values(safeGame.consumables).some(v => (v as number) > 0)) ? "#55ffaa" : "#666", textAlign: "right", maxWidth: "60%", fontSize: "10px", lineHeight: 1.2 }}>
-                {safeGame.consumables ? Object.entries(safeGame.consumables).map(([k, v]) => {
-                  if (!v) return null;
-                  const name = k === "hp_small" ? "소형 체력" : 
-                               k === "hp_medium" ? "체력환약" : 
-                               k === "hp_large" ? "대형 체력" : 
-                               k === "mp_small" ? "소형 내력" : 
-                               k === "mp_medium" ? "내력환약" : 
-                               k === "mp_large" ? "대형 내력" : "영약";
-                  return `${name} ${v}개`;
-                }).filter(Boolean).join(" / ") || "없음" : "없음"}
-              </span>
+            {/* 기술 수치 그룹 */}
+            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "10px", padding: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ fontSize: "10px", color: "#888", marginBottom: "6px", fontWeight: "bold" }}>기술 및 신법</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <StatRow label="치명타 확률" value={`${totalCritRate.toFixed(1)}%`} color="#ffcc00" />
+                  <StatRow label="치명타 피해" value={`${totalCritDmg}%`} color="#ff7e4d" />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <StatRow label="회피율" value={`${totalEvasion.toFixed(1)}%`} color="#7fffd4" />
+                  <StatRow label="신법(속도)" value={`${totalSpeed.toFixed(1)}%`} color="#a8ff7e" />
+                </div>
+              </div>
             </div>
           </div>
         </div>

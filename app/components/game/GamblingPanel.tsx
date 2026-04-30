@@ -44,17 +44,7 @@ export default function GamblingPanel() {
   const handleTwentyOneResult = (win: boolean, bet: number) => {
     if (win) {
       setStreak(prev => prev + 1);
-      // Quest progression if any
-      useGameStore.setState((s: any) => {
-        if (!s.game.activeQuests) return s;
-        const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
-        if (qIdx === -1) return s;
-        const q = s.game.activeQuests[qIdx];
-        const nextCount = q.currentCount + 1;
-        const nextQuests = [...s.game.activeQuests];
-        nextQuests[qIdx] = { ...q, currentCount: nextCount, status: nextCount >= q.targetCount ? "completed" : "active" };
-        return { game: { ...s.game, activeQuests: nextQuests } };
-      });
+      (useGameStore.getState() as any).updateQuestProgress("gamble_win", bet);
     } else {
       setStreak(0);
     }

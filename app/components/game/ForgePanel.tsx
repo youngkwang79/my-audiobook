@@ -194,13 +194,25 @@ export default function ForgePanel(props: Props) {
     const rMult = rSettings.rewardMultiplier || 1;
     const starFactor = 1 + (star - 1) * 0.1;
 
-    // 기본 강화 비용 (level 서브탭용)
-    let gold = Math.floor(5000 * rMult * starFactor * Math.pow(1.5, curLv));
-    let stone = Math.round(5 * Math.pow(1.35, curLv) * stoneScale);
-    let rep = Math.floor(20000 * repScale);
+    const tierMultiplier = item.tier === "신기" ? 5 : item.tier === "보구" ? 2.5 : item.tier === "명품" ? 1.5 : 1;
 
-    // 서브탭별 비용 조정
-    if (enhanceSubTab === "reroll") {
+    let gold = 0;
+    let stone = 0;
+    let rep = 0;
+
+    if (enhanceSubTab === "level") {
+      if ((item.realm || "필부") === "필부") {
+        gold = 5000;
+        rep = 5000;
+        stone = 5;
+      } else {
+        const itemPrice = item.price || 5000;
+        const growthFactor = Math.pow(1.15, curLv);
+        gold = Math.floor(itemPrice * growthFactor * tierMultiplier);
+        rep = gold;
+        stone = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv) * tierMultiplier));
+      }
+    } else if (enhanceSubTab === "reroll") {
       rep = Math.floor(30000 * repScale);
       stone = Math.round(10 * stoneScale);
       gold = 0;

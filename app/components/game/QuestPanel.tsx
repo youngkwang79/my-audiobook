@@ -7,7 +7,9 @@ import type { Quest } from "@/app/lib/game/types";
 
 export default function QuestPanel() {
   const activeQuests = useGameStore((s: any) => s.game.activeQuests || []);
+  const questRerollCount = useGameStore((s: any) => s.game.questRerollCount || 0);
   const claimQuestReward = useGameStore((s: any) => s.claimQuestReward);
+  const rerollQuest = useGameStore((s: any) => s.rerollQuest);
 
   const sortedQuests = useMemo(() => {
     return [...activeQuests].sort((a, b) => {
@@ -33,8 +35,11 @@ export default function QuestPanel() {
         <h2 style={{ fontSize: "20px", fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 0 10px rgba(255,215,120,0.3)" }}>
           강호 임무 <span style={{ fontSize: "14px", fontWeight: 400, color: "#888", marginLeft: "10px" }}>Active Missions</span>
         </h2>
-        <div style={{ fontSize: "12px", color: "#666" }}>
-          완료된 임무는 즉시 보상을 수령할 수 있습니다.
+        <div style={{ fontSize: "12px", color: "#666", textAlign: "right" }}>
+          완료된 임무는 즉시 보상을 수령할 수 있습니다.<br />
+          <span style={{ color: questRerollCount >= 2 ? "#ff4d4d" : "#ffd700", fontWeight: 700 }}>
+            임무 갱신 가능: {Math.max(0, 2 - questRerollCount)}회
+          </span>
         </div>
       </div>
 
@@ -77,6 +82,26 @@ export default function QuestPanel() {
               }}>
                 {quest.status === "completed" ? "완료됨" : (quest.status === "rewarded" ? "보상 수령 완료" : "진행 중")}
               </div>
+
+              {/* Reroll Button (only for active quests) */}
+              {quest.status === "active" && questRerollCount < 2 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm("이 임무를 포기하고 새로운 임무를 받으시겠습니까?\n(일일 갱신 횟수가 차감됩니다)")) {
+                      rerollQuest(quest.id);
+                    }
+                  }}
+                  style={{
+                    position: "absolute", top: 24, right: 8,
+                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#888", fontSize: "10px", padding: "2px 6px", borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                >
+                  🔄 임무 교체
+                </button>
+              )}
 
               <div style={{ marginBottom: "8px" }}>
                 <h3 style={{ fontSize: "16px", fontWeight: 900, margin: "0 0 4px 0", color: quest.status === "completed" ? "#81c784" : "#fff" }}>

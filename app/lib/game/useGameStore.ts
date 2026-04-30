@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource, NextDayEvent, Quest } from "./types";
 import { FACTIONS } from "./factions";
-import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS, ROGUE_QUEST_REWARDS } from "./nightSystem";
+import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS, ROGUE_QUEST_REWARDS, getNextAdaptiveQuests } from "./nightSystem";
 import { defaultGameData, loadGame, saveGame } from "./storage";
 import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS, generateRandomGear, SET_GROUPS } from "./items";
 import { getMovementBuff } from "./movementLogic";
@@ -85,6 +85,7 @@ export const REALM_ORDER = ["필부", "삼류", "이류", "일류", "절정", "�
 
 export const STAT_UPGRADE_CONFIG: Record<string, { name: string; resources: string[] }> = {
   hpRec: { name: "생명력", resources: ["gold"] },
+  hpRecovery: { name: "재생", resources: ["gold"] },
   mpRec: { name: "내공", resources: ["gold"] },
   atk: { name: "공격력", resources: ["gold"] },
   def: { name: "방어력", resources: ["gold"] },
@@ -100,6 +101,7 @@ export const STAT_INCREMENTS: Record<string, number> = {
   atk: 250,
   def: 250,
   hpRec: 2500,
+  hpRecovery: 10,
   mpRec: 100,
   critRate: 0.001,
   critDmg: 1,
@@ -153,6 +155,10 @@ export function generateTowerEnemy(floor: number) {
   if (theme.effect === "void") traits.push("공허 (능력 억제)");
 
   let hpMult = isBoss ? 3.0 : 1.0;
+  // 초반 층 난이도 완화 (1층 30% 하향, 7층부터 정상화)
+  if (!isBoss) {
+    hpMult *= Math.min(1.0, 0.7 + (floor - 1) * 0.05);
+  }
   let atkMult = isBoss ? 1.5 : 1.0;
   let defMult = 1.0;
   let eva = Math.min(40, floor * 0.5);
@@ -379,6 +385,8 @@ interface GameState {
   dismantleItem: (itemId: string) => void;
   sellConsumable: (id: ConsumableId) => void;
   claimQuestReward: (questId: string) => void;
+  rerollQuest: (questId: string) => void;
+  refreshQuests: () => void;
   updateQuestProgress: (targetType: string, amount: number) => void;
   getMultiUpgradeCost: (key: string, count: number, mode: 'gold' | 'reputation') => number;
   upgradeStatMulti: (key: string, count: number, mode: 'gold' | 'reputation') => void;
@@ -407,7 +415,8 @@ interface GameState {
   applyOilResults: (oilRes: any) => void;
   triggerYabawiEvent: () => void;
   useGamblingToken: () => boolean;
-  giveGamblingToken: (amount: number) => void;
+  giveGamblingToken: (tokens: number, fragments?: number) => void;
+  synthesizeTujeonTokens: () => boolean;
   combatAnalysis: CombatAnalysis;
   startCombatAnalysis: (duration?: number) => void;
   stopCombatAnalysis: () => void;
@@ -477,14 +486,32 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     return false;
   },
-  giveGamblingToken: (amount: number) => {
+  giveGamblingToken: (tokens: number, fragments: number = 0) => {
     set((s: any) => ({
       game: {
         ...s.game,
-        gamblingTokens: (s.game.gamblingTokens || 0) + amount
+        gamblingTokens: (s.game.gamblingTokens || 0) + tokens,
+        gamblingTokenFragments: (s.game.gamblingTokenFragments || 0) + fragments
       }
     }));
     get().triggerSave(true);
+  },
+  synthesizeTujeonTokens: () => {
+    set((s: any) => {
+      const fragments = s.game.gamblingTokenFragments || 0;
+      if (fragments < 5) return s;
+      const gainedTokens = Math.floor(fragments / 5);
+      const remainingFragments = fragments % 5;
+      return {
+        game: {
+          ...s.game,
+          gamblingTokens: (s.game.gamblingTokens || 0) + gainedTokens,
+          gamblingTokenFragments: remainingFragments
+        }
+      };
+    });
+    get().triggerSave(true);
+    return true;
   },
   getSetCounts: () => {
     const { game } = get();
@@ -599,7 +626,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     });
 
-    let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0) / 100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkMult * finalDmgMult * nightAtkMult;
+    const breakthroughAtk = game.breakthroughStats?.atk || 0;
+    let final = (game.baseAttack + gearAtk + upgradeAtk + optionAtkFlat + breakthroughAtk) * (mWeapon?.attackMultiplier || 1) * realmMult * game.attackMultiplier * (1 + (faction?.bonusStats?.atk || 0) / 100) * (1 + innBonus.atk) * (1 + optionAtkPct / 100) * moveAtkMult * setAtkMult * finalDmgMult * nightAtkMult;
 
     // Special Training: Aura Type (Atk Bonus)
     if (faction?.specialTraining?.type === 'aura') {
@@ -649,7 +677,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     const nightBuffs = get().getNightBuffs();
-    let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critRate") + get().getOptionSum("crit_rate") + skillBonus + setCrit + nightBuffs.crit;
+    const breakthroughCrit = game.breakthroughStats?.critRate || 0;
+    let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critRate") + get().getOptionSum("crit_rate") + breakthroughCrit + skillBonus + setCrit + nightBuffs.crit;
 
     // 최종 상한 적용 (50%)
     finalCrit = Math.min(50, finalCrit);
@@ -665,7 +694,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get();
     let moveMult = 1;
     if (game.movementBuff && game.movementBuff.data.critDmgMult) moveMult = game.movementBuff.data.critDmgMult;
-    const base = 150 + game.ownedWeapons.filter((w: any) => Object.values(game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critDmg") + (get().getInnBonus().critDmg) + get().getOptionSum("crit_dmg");
+    const breakthroughCritDmg = game.breakthroughStats?.critDmg || 0;
+    const base = 150 + game.ownedWeapons.filter((w: any) => Object.values(game.equippedGear || {}).includes(w.id)).reduce((s: any, i: any) => s + (i.critDmgBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critDmg") + (get().getInnBonus().critDmg) + get().getOptionSum("crit_dmg") + breakthroughCritDmg;
 
     let bonus = 0;
     if (game.movementBuff && game.movementBuff.data.critDmg) bonus = game.movementBuff.data.critDmg;
@@ -701,8 +731,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const maxHp = get().getTotalHp();
     const baseRegen = Math.max(1, Math.floor(maxHp * 0.01));
 
-    // [재설계] 단계당 +10 고정 회복 추가
-    const upgradeRegen = get().getStatUpgradeBonus("hpRec");
+    // [재설계] 단계당 고정 회복 추가
+    const upgradeRegen = get().getStatUpgradeBonus("hpRecovery");
 
     let specBonus = 0;
     const faction = FACTIONS.find(f => f.name === game.faction);
@@ -711,7 +741,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       specBonus = specLevel * 100; // +100 per level
     }
 
-    return baseRegen + upgradeRegen + specBonus;
+    const breakthroughHpRec = game.breakthroughStats?.hpRec || 0;
+    return baseRegen + upgradeRegen + specBonus + breakthroughHpRec;
   },
   getTotalMpRecovery: () => {
     const { game } = get();
@@ -741,8 +772,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const baseWeaponAtk = mWeapon?.attackBonus || 10;
     
     const defUpgradeBonus = get().getStatUpgradeBonus("def");
+    const breakthroughDef = game.breakthroughStats?.def || 0;
 
-    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + defUpgradeBonus) * (1 + (faction?.bonusStats?.def || 0) / 100) * moveMult * setDefMult * (1 + optionDefPct / 100);
+    let finalDef = (game.def + eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + defUpgradeBonus + breakthroughDef) * (1 + (faction?.bonusStats?.def || 0) / 100) * moveMult * setDefMult * (1 + optionDefPct / 100);
 
     // Special Training: Armor Type (Def Bonus)
     if (faction?.specialTraining?.type === 'armor') {
@@ -774,8 +806,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     const hpUpgradeBonus = get().getStatUpgradeBonus("hpRec") * 10; // Upgrade adds to base HP too
+    const breakthroughHp = game.breakthroughStats?.hp || 0;
 
-    let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + hpUpgradeBonus + get().getOptionSum("hp")) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0) / 100) * setHpMult;
+    let baseTotal = (game.maxHp + eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + hpUpgradeBonus + get().getOptionSum("hp") + breakthroughHp) * (1 + (FACTIONS.find(f => f.name === game.faction)?.bonusStats?.hp || 0) / 100) * setHpMult;
 
     const faction = FACTIONS.find(f => f.name === game.faction);
     const optionHpPct = Math.min(220, get().getOptionSum("hp_pct"));
@@ -791,7 +824,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get();
     const factionData = FACTIONS.find(f => f.name === game.faction);
     const factionBaseEva = factionData?.bonusStats?.eva || 0;
-    let eva = (game.eva || 0) + get().getStatUpgradeBonus("eva") + get().getOptionSum("eva") + factionBaseEva;
+    const breakthroughEva = game.breakthroughStats?.eva || 0;
+    let eva = (game.eva || 0) + get().getStatUpgradeBonus("eva") + get().getOptionSum("eva") + factionBaseEva + breakthroughEva;
     
     // Add flat evade from equipment
     const eq = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
@@ -830,7 +864,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   }, getTotalSpeed: () => {
     const { game } = get();
     const equippedWeapons = game.ownedWeapons.filter(w => Object.values(game.equippedGear || {}).includes(w.id));
-    const baseSpeed = 100 + equippedWeapons.reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    const breakthroughSpeed = game.breakthroughStats?.speed || 0;
+    const baseSpeed = 100 + equippedWeapons.reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + breakthroughSpeed;
 
     // 아이템 공속% 보너스
     let speedPct = get().getOptionSum("speed_pct");
@@ -865,7 +900,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     const optionMpPct = Math.min(200, get().getOptionSum("mp_pct"));
-    let baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("mpRec") + get().getOptionSum("mp")) * setMpMult;
+    const breakthroughMp = game.breakthroughStats?.mp || 0;
+    let baseTotal = (game.maxMp + eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("mpRec") + get().getOptionSum("mp") + breakthroughMp) * setMpMult;
     return Math.floor(baseTotal * (1 + optionMpPct / 100));
   },
   getInnBonus: () => {
@@ -1022,7 +1058,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (tKills >= qT) {
         if (qT === 10) {
           qT = 30;
-          cMT = "허수아비 누적 처치 30번\n[개방: 대장간]";
+          cMT = "허수아비 누적 처치 30번\n[개방: 대장간/장비]";
           uET = "무아지경(x10) 진입!";
           aM = 10; bTL = 30; aB = "무아지경";
         } else if (qT === 30) {
@@ -1074,21 +1110,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           dummyHp: currentDummyHp,
           maxDummyHp: currentMaxHp,
           totalDummyKills: tKills,
-          activeQuests: (() => {
-            if (!s.game.activeQuests) return [];
-            const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_yeonhwa_1" && q.status === "active");
-            if (qIdx === -1) return s.game.activeQuests;
-            const q = s.game.activeQuests[qIdx];
-            const nextCount = q.currentCount + 1;
-            const nextQuests = [...s.game.activeQuests];
-            nextQuests[qIdx] = {
-              ...q,
-              currentCount: nextCount,
-              status: nextCount >= q.targetCount ? "completed" : "active"
-            };
-            if (nextCount === q.targetCount) setTimeout(() => alert(`퀘스트 [${q.title}] 완료! 월향루에서 보상을 받으세요.`), 500);
-            return nextQuests;
-          })(),
+          activeQuests: s.game.activeQuests, // updateQuestProgress에서 처리
           dummyKills: tKills >= 300 ? killGap : tKills,
           questTarget: tKills >= 300 ? targetInterval : qT,
           currentMissionTitle: cMT,
@@ -1109,7 +1131,151 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
     });
+    get().updateQuestProgress("dummy_hit", 1);
     get().triggerSave();
+  },
+
+  updateQuestProgress: (targetType: string, amount: number = 1) => {
+    set((s: any) => {
+      if (!s.game.activeQuests) return s;
+      let changed = false;
+      const nextQuests = s.game.activeQuests.map((q: any) => {
+        if (q.status === "active") {
+          // 목표 유형별 특별 처리
+          if (q.targetType === "reach_upgrade_level") {
+             const key = q.id.split("_")[2]; // q_stat_atk_5 -> atk
+             const currentLv = s.game.upgradeLevels?.[key] || 0;
+             if (currentLv >= q.targetCount) {
+                changed = true;
+                setTimeout(() => alert(`[임무 완료] ${q.title}`), 500);
+                return { ...q, currentCount: q.targetCount, status: "completed" };
+             }
+          }
+          if (q.targetType === "reach_duel_rating") {
+             const currentRating = s.game.duel?.rating || 0;
+             if (currentRating >= q.targetCount) {
+                changed = true;
+                setTimeout(() => alert(`[임무 완료] ${q.title}`), 500);
+                return { ...q, currentCount: q.targetCount, status: "completed" };
+             }
+          }
+
+          // 도박 승리 (판돈 조건 체크)
+          if (targetType === "gamble_win") {
+             const betAmount = amount; // gamble_win 시에는 amount를 판돈으로 전달한다고 가정
+             if (q.id === "q_chowoon_1") {
+                if (betAmount >= 5000000) {
+                   const nextCount = q.currentCount + 1;
+                   const isDone = nextCount >= q.targetCount;
+                   if (isDone) setTimeout(() => alert(`[퀘스트 완료] ${q.title}`), 500);
+                   changed = true;
+                   return { ...q, currentCount: Math.min(q.targetCount, nextCount), status: isDone ? "completed" : "active" };
+                } else {
+                   return q; // 조건 미달 시 무시
+                }
+             }
+          }
+          
+          if (q.targetType === targetType) {
+            const nextCount = q.currentCount + amount;
+            const isDone = nextCount >= q.targetCount;
+            if (isDone) {
+              setTimeout(() => {
+                alert(`[퀘스트 완료] ${q.title}\n월향루에서 보상을 받으세요!`);
+              }, 500);
+            }
+            changed = true;
+            return { ...q, currentCount: Math.min(q.targetCount, nextCount), status: isDone ? "completed" : "active" };
+          }
+        }
+        return q;
+      });
+      if (!changed) return s;
+      return { game: { ...s.game, activeQuests: nextQuests } };
+    });
+  },
+
+  refreshQuests: () => {
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        activeQuests: getNextAdaptiveQuests(s.game)
+      }
+    }));
+  },
+
+  claimQuestReward: (questId: string) => {
+    const { game, addCoins, updateQuestProgress, refreshQuests } = get();
+    const quest = (game.activeQuests || []).find((q: any) => q.id === questId);
+    if (!quest || quest.status !== "completed") return;
+
+    set((s: any) => {
+      const reward = quest.reward;
+      const nextConsumables = { ...(s.game.consumables || {}) };
+      
+      // 특별 보상 처리 (아이템 등)
+      if (reward.item === "oil_box") {
+        nextConsumables.oil_box = (nextConsumables.oil_box || 0) + 1;
+      }
+      if (reward.item === "gear_piece_10") {
+        s.game.gearPieces = (s.game.gearPieces || 0) + 10;
+      }
+
+      // 퀘스트 제거 (또는 상태 변경 후 필터링)
+      const nextQuests = s.game.activeQuests.filter((q: any) => q.id !== questId);
+
+      return {
+        game: {
+          ...s.game,
+          coins: s.game.coins + (reward.gold || 0),
+          reputation: (s.game.reputation || 0) + (reward.favor ? reward.favor * 1000 : 0),
+          exp: (s.game.exp || 0) + (reward.exp || 0),
+          gamblingTokens: (s.game.gamblingTokens || 0) + (reward.token || 0),
+          npcFavors: (() => {
+             const nextFavors = { ...(s.game.npcFavors || {}) };
+             if (quest.npcId && reward.favor) {
+                // 한글 이름 매칭 (임시)
+                const nameMap: any = { yeonhwa: "연화", seolmae: "설매", chowoon: "초운", sohee: "소희", oldman: "백노인" };
+                const kname = nameMap[quest.npcId] || quest.npcId;
+                nextFavors[kname] = (nextFavors[kname] || 0) + reward.favor;
+             }
+             return nextFavors;
+          })(),
+          consumables: nextConsumables,
+          activeQuests: nextQuests
+        }
+      };
+    });
+
+    // 보상 수령 후 즉시 새로운 퀘스트 보충
+    refreshQuests();
+    get().triggerSave(true);
+    alert(`[임무 보상 수령 완료]`);
+  },
+
+  rerollQuest: (questId: string) => {
+    const { game, refreshQuests } = get();
+    const count = game.questRerollCount || 0;
+    if (count >= 2) {
+      alert("오늘은 더 이상 임무를 갱신할 수 없습니다. (일일 최대 2회)");
+      return;
+    }
+
+    set((s: any) => {
+      const nextQuests = (s.game.activeQuests || []).filter((q: any) => q.id !== questId);
+      return {
+        game: {
+          ...s.game,
+          activeQuests: nextQuests,
+          questRerollCount: count + 1
+        }
+      };
+    });
+
+    // 제거 후 즉시 새로운 퀘스트 보충
+    refreshQuests();
+    get().triggerSave(true);
+    alert(`임무를 갱신했습니다. (남은 횟수: ${1 - count}회)`);
   },
 
   addWeapon: (w: any) => {
@@ -1181,6 +1347,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         martialArtsSkills: refineLearnedSkill(s.game.martialArtsSkills, skillId)
       }
     }));
+    get().updateQuestProgress("refine_skill", 1);
     get().triggerSave(true);
   },
 
@@ -1201,7 +1368,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       value: 100,
       skillId: recipe.id,
       stars: 1,
-      mpCost: 50
+      mpCost: recipe.resultGrade === "mythic" ? 15000 : 
+              recipe.resultGrade === "legendary" ? 4000 :
+              recipe.resultGrade === "epic" ? 1000 : 250
     };
 
     set((s: any) => {
@@ -1298,7 +1467,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { success: true, item: divineItem };
   },
 
-  triggerSave: (i = false) => { if (i) { if (debounceTimer) clearTimeout(debounceTimer); saveGame({ ...get().game, lastSaveTime: Date.now() }); debounceTimer = null; return; } if (!debounceTimer) debounceTimer = setTimeout(() => { saveGame({ ...get().game, lastSaveTime: Date.now() }); debounceTimer = null; }, 10000); },
+  triggerSave: (i = false) => { if (i) { if (debounceTimer) clearTimeout(debounceTimer); saveGame({ ...get().game, lastSaveTime: Date.now() }); debounceTimer = null; return; } if (!debounceTimer) debounceTimer = setTimeout(() => { saveGame({ ...get().game, lastSaveTime: Date.now() }); debounceTimer = null; }, 60000); },
   importGameData: (data: any) => {
     set((s: any) => ({
       game: {
@@ -1364,6 +1533,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return 50 * (Math.pow(1.08, level) - 1);
     }
     if (k === 'mpRec') return level * 100;
+    if (k === 'hpRecovery') return level * 10;
     if (k === 'critRate') return level * 0.05;
     if (k === 'critDmg') return level * 0.5;
     if (k === 'eva') return level * 0.05;
@@ -1381,6 +1551,50 @@ export const useGameStore = create<GameState>((set, get) => ({
     const breakthroughCount = (realmIdx * 10) + game.star;
     const rewardAmount = 40000 + (breakthroughCount * 10000);
 
+    // --- [신규] 모든 능력치 +5% 보상 계산 (장비 기준) ---
+    const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
+    const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
+    
+    // 1. 장비 기본 스탯 + 강화 보너스
+    const gearAtk = eq.reduce((s, i) => s + (i.attackBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    const gearDef = eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    const gearHp = eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    const gearMp = eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
+    
+    // 2. 옵션 스탯 합산
+    const optAtk = get().getOptionSum("atk");
+    const optDef = get().getOptionSum("def");
+    const optHp = get().getOptionSum("hp");
+    const optMp = get().getOptionSum("mp");
+    const optCritRate = get().getOptionSum("crit_rate");
+    const optCritDmg = get().getOptionSum("crit_dmg");
+    const optEva = get().getOptionSum("eva");
+    const optSpeed = get().getOptionSum("speed");
+    const optHpRec = get().getOptionSum("hp_rec");
+
+    // 3. 5% 보너스 계산 (정수형 변환)
+    const bonusAtk = Math.floor((gearAtk + optAtk) * 0.05);
+    const bonusDef = Math.floor((gearDef + optDef) * 0.05);
+    const bonusHp = Math.floor((gearHp + optHp) * 0.05);
+    const bonusMp = Math.floor((gearMp + optMp) * 0.05);
+    const bonusCritRate = Number(((optCritRate) * 0.05).toFixed(3));
+    const bonusCritDmg = Number(((optCritDmg) * 0.05).toFixed(3));
+    const bonusEva = Number(((optEva) * 0.05).toFixed(3));
+    const bonusSpeed = Number(((optSpeed) * 0.05).toFixed(3));
+    const bonusHpRec = Math.floor((optHpRec) * 0.05);
+
+    const nextBreakthroughStats = {
+      atk: (game.breakthroughStats?.atk || 0) + bonusAtk,
+      def: (game.breakthroughStats?.def || 0) + bonusDef,
+      hp: (game.breakthroughStats?.hp || 0) + bonusHp,
+      mp: (game.breakthroughStats?.mp || 0) + bonusMp,
+      critRate: (game.breakthroughStats?.critRate || 0) + bonusCritRate,
+      critDmg: (game.breakthroughStats?.critDmg || 0) + bonusCritDmg,
+      eva: (game.breakthroughStats?.eva || 0) + bonusEva,
+      speed: (game.breakthroughStats?.speed || 0) + bonusSpeed,
+      hpRec: (game.breakthroughStats?.hpRec || 0) + bonusHpRec,
+    };
+
     if (game.star < 10) {
       const nV = game.star + 1;
       const st = getDummyStats(game.realm, nV);
@@ -1391,10 +1605,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           dummyHp: st.hp,
           maxDummyHp: st.hp,
           coins: s.game.coins + rewardAmount,
-          reputation: (s.game.reputation || 0) + rewardAmount
+          reputation: (s.game.reputation || 0) + rewardAmount,
+          breakthroughStats: nextBreakthroughStats
         }
       }));
-      alert(`✨ 돌파 성공! [${game.realm} ${nV}성]에 도달했습니다!\n보상으로 ${rewardAmount.toLocaleString()}냥과 명성 ${rewardAmount.toLocaleString()}을 획득했습니다.`);
+      alert(`✨ 돌파 성공! [${game.realm} ${nV}성]에 도달했습니다!\n보상: ${rewardAmount.toLocaleString()}냥, 명성 ${rewardAmount.toLocaleString()}\n추가 보상: 모든 능력치 +5% (각성 보너스 누적)`);
     }
     else {
       const nxt = get().getNextRealmName();
@@ -1416,11 +1631,12 @@ export const useGameStore = create<GameState>((set, get) => ({
             maxDummyHp: st.hp,
             unlockedTabs: nextTabs,
             coins: s.game.coins + rewardAmount,
-            reputation: (s.game.reputation || 0) + rewardAmount
+            reputation: (s.game.reputation || 0) + rewardAmount,
+            breakthroughStats: nextBreakthroughStats
           }
         }));
 
-        alert(`✨ 경지 돌파! 새로운 경지 [${nxt}]에 도달했습니다!\n보상으로 ${rewardAmount.toLocaleString()}냥과 명성 ${rewardAmount.toLocaleString()}을 획득했습니다.`);
+        alert(`✨ 경지 돌파! 새로운 경지 [${nxt}]에 도달했습니다!\n보상: ${rewardAmount.toLocaleString()}냥, 명성 ${rewardAmount.toLocaleString()}\n추가 보상: 모든 능력치 +5% (각성 보너스 누적)`);
 
         // 경지 돌파 시 투전판 이벤트 확정 발생
         if (!get().game.yabawiEvent?.active) {
@@ -1550,6 +1766,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (s.game.coins < price) return s;
       return { game: { ...s.game, coins: s.game.coins - price, consumables: { ...s.game.consumables, [id]: (s.game.consumables[id] || 0) + q } } };
     });
+    get().updateQuestProgress("buy_potion", q);
     get().triggerSave(true);
   },
   useConsumable: (id: string) => set((s: any) => {
@@ -1565,6 +1782,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     else if (id === "mp_small") nextMp = Math.min(maxMp, nextMp + maxMp * 0.2);
     else if (id === "mp_medium") nextMp = Math.min(maxMp, nextMp + maxMp * 0.5);
     else if (id === "mp_large") nextMp = maxMp;
+
+    // 전투 중 물약 사용 퀘스트 추적
+    const isCombat = s.game.masterDuel.isPlaying || s.game.tower?.isInside;
+    if (isCombat) {
+       get().updateQuestProgress("use_potion_combat", 1);
+    }
     else if (id.startsWith("trance_")) {
       const multiplier = parseInt(id.split("_")[1]);
       return {
@@ -1712,11 +1935,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     const it = s.game.ownedWeapons.find((w: any) => w.id === id);
     if (!it) return s;
     
-    // 티어별 재료 지급
-    let materials = 1;
-    if (it.tier === "명품") materials = 3;
-    else if (it.tier === "보구") materials = 10;
-    else if (it.tier === "신기" || it.name.includes("[패왕]")) materials = 50;
+    const userRealmIdx = REALM_ORDER.indexOf(s.game.realm);
+    let materials = 0;
+    
+    if (userRealmIdx >= 4) { // 절정 이상
+      if (it.tier === "국보") materials = 25;
+      else if (it.tier === "신기" || it.name.includes("[패왕]")) materials = 100;
+    } else { // 절정 미만
+      if (it.tier === "명품") materials = 2;
+      else if (it.tier === "보구") materials = 8;
+      else if (it.tier === "국보") materials = 30;
+      else if (it.tier === "신기" || it.name.includes("[패왕]")) materials = 150;
+    }
 
     const nextMaterials = (s.game.advancedMaterials || 0) + materials;
     return { 
@@ -1732,55 +1962,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const prices: Record<string, number> = { hp_small: 250, hp_medium: 1000, hp_large: 5000, mp_small: 250, mp_medium: 1000, mp_large: 5000 };
     const price = prices[id] || 500;
     return { game: { ...s.game, coins: s.game.coins + price, consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 } } };
-  }),
-  claimQuestReward: (id: string) => set((s: any) => {
-    const quests = [...(s.game.activeQuests || [])];
-    const qIdx = quests.findIndex(q => q.id === id);
-    if (qIdx === -1 || quests[qIdx].status !== "completed") return s;
-
-    const q = quests[qIdx];
-    const reward = q.reward;
-
-    // 보상 지급
-    let nextCoins = s.game.coins + (reward.gold || 0);
-    let nextRep = (s.game.reputation || 0) + (reward.token || 0); // 칭호/명성?
-    
-    // 호감도 반영
-    const nextFavor = { ...(s.game.npcFavor || {}) };
-    if (reward.favor && q.npcId) {
-      nextFavor[q.npcId] = (nextFavor[q.npcId] || 0) + reward.favor;
-    }
-
-    quests[qIdx] = { ...q, status: "rewarded" };
-
-    return {
-      game: {
-        ...s.game,
-        coins: nextCoins,
-        reputation: nextRep,
-        npcFavor: nextFavor,
-        activeQuests: quests
-      }
-    };
-  }),
-  updateQuestProgress: (targetType: string, amount: number) => set((s: any) => {
-    const quests = [...(s.game.activeQuests || [])];
-    let changed = false;
-    quests.forEach((q, idx) => {
-      if (q.status === "active" && q.targetType === targetType) {
-        const nextCount = Math.min(q.targetCount, q.currentCount + amount);
-        if (nextCount !== q.currentCount) {
-          quests[idx] = { 
-            ...q, 
-            currentCount: nextCount, 
-            status: nextCount >= q.targetCount ? "completed" : "active" 
-          };
-          changed = true;
-        }
-      }
-    });
-    if (!changed) return s;
-    return { game: { ...s.game, activeQuests: quests } };
   }),
 
   checkOfflineRewards: () => {
@@ -2019,6 +2200,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   updateMasterDuel: (dt: number) => set((s: any) => {
     if (!s.game.masterDuel.isPlaying) return s;
+    const now = Date.now();
 
     const masterDuel = s.game.masterDuel;
     const faction = s.game.faction;
@@ -2103,6 +2285,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return {
       game: {
         ...s.game,
+        lastActivityHeartbeat: now,
         hp: Math.max(0, nextHp),
         mp: Math.max(0, nextMp),
         masterDuel: {
@@ -2293,7 +2476,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const bossTokenGain = Math.floor(rewardBase);
         const wisdomGain = Math.floor(rewardBase);
         const oilChance = Math.random() < Math.min(0.10, 0.01 + (level * 0.0025));
-        const oilKeys = ["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"];
+        const oilKeys = ["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless", "oil_blessed"];
         const oilId = oilChance ? oilKeys[Math.floor(Math.random() * oilKeys.length)] : null;
 
         const oilNameMap: Record<string, string> = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
@@ -2301,6 +2484,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         let bonusText = streakBonus > 1 ? ` (보너스 +${Math.round((streakBonus - 1) * 100)}%)` : "";
         let msg = `[처단 완료] 연속 ${currentStreak + 1}회${bonusText}\n금화 +${goldGain.toLocaleString()}\n명성 +${reputationGain.toLocaleString()}\n징표 ${bossTokenGain.toLocaleString()}\n심득 +${wisdomGain.toLocaleString()}\n수련 정진 +${expGain.toLocaleString()}`;
         if (oilId) msg += `\n[획득] ${oilNameMap[oilId] || oilId}`;
+        
+        // 타임 어택 퀘스트 추적 (20초 이내 승리)
+        if (masterDuel.timeLeft >= 20) {
+           get().updateQuestProgress("time_attack_win", 1);
+        }
+
+        get().updateQuestProgress("reach_duel_rating", 0); // 등급 도달 체크용
 
         const nextConsumables = { ...s.game.consumables };
         if (oilId) nextConsumables[oilId] = (nextConsumables[oilId] || 0) + 1;
@@ -2592,12 +2782,20 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rMult = rSettings.rewardMultiplier || 1;
     const starFactor = 1 + (game.star - 1) * 0.1;
 
-    const itemPrice = item.price || 5000;
-    const growthFactor = Math.pow(1.15, curLv); // 레벨당 15%씩 증가 (기존 1.5배에서 완화)
+    const tierMultiplier = item.tier === "신기" ? 5 : item.tier === "보구" ? 2.5 : item.tier === "명품" ? 1.5 : 1;
 
-    const goldCost = Math.floor(itemPrice * growthFactor);
-    const repCost = Math.floor(itemPrice * growthFactor);
-    const stoneCost = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv)));
+    let goldCost, repCost, stoneCost;
+    if ((item.realm || "필부") === "필부") {
+      goldCost = 5000;
+      repCost = 5000;
+      stoneCost = 5;
+    } else {
+      const itemPrice = item.price || 5000;
+      const growthFactor = Math.pow(1.15, curLv);
+      goldCost = Math.floor(itemPrice * growthFactor * tierMultiplier);
+      repCost = Math.floor(itemPrice * growthFactor * tierMultiplier);
+      stoneCost = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv) * tierMultiplier));
+    }
 
     if (game.coins < goldCost) return { success: false, message: "금화가 부족합니다." };
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
@@ -2651,6 +2849,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
+    get().updateQuestProgress("enhance_item", 1);
     let failMsg = "강화에 실패했습니다.";
     if (curLv >= 11) {
       failMsg = useHeavenlyTalisman
@@ -2696,6 +2895,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
+    get().updateQuestProgress("refine_item", 1);
     return { success: true, message: "기연 재연마 성공!" };
   },
 
@@ -2836,6 +3036,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
+    get().updateQuestProgress("apply_oil", 1);
     return { success: true, message: `${oilNames[oilId]} 주입 성공!` };
   },
 
@@ -2962,12 +3163,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 도감에서 원본 데이터 가져오기 (타입 판별 정확도 향상)
     const sk = MARTIAL_COMPENDIUM.find(m => m.name === name && m.factionName === game.faction) || skBase;
 
-    if (game.mp < skBase.mpCost || (game.skillCooldowns[name] || 0) > 0) return;
+    const mpCost = sk.mpCost || 50;
+
+    if (game.mp < mpCost || (game.skillCooldowns[name] || 0) > 0) return;
 
     set((s: any) => ({
       game: {
         ...s.game,
-        mp: s.game.mp - (skBase.mpCost || 50),
+        mp: Math.max(0, s.game.mp - mpCost),
         skillCooldowns: { ...s.game.skillCooldowns, [name]: 10 }
       }
     }));
@@ -3198,15 +3401,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   updateInnCombat: (dt: number, currentScore: number) => {
-    const { game } = get();
-    const combat = game.timingMission.combatState;
-    if (!combat || (combat.phase !== "playing" && combat.phase !== "counter" && combat.phase !== "finisher")) return;
-
-    const stage = game.timingMission.currentStage;
-    const stageConfig = getInnStageConfig(stage);
-
+    const now = Date.now();
     set((s: any) => {
-      const nextCombat = { ...s.game.timingMission.combatState! };
+      const { game } = s;
+      const combat = game.timingMission.combatState;
+      if (!combat || (combat.phase !== "playing" && combat.phase !== "counter" && combat.phase !== "finisher")) return s;
+
+      const stage = game.timingMission.currentStage;
+      const stageConfig = getInnStageConfig(stage);
+      const nextCombat = { ...combat };
 
       // 1. Enemy HP calculation (Relative to current stage)
       nextCombat.enemyHp = Math.max(0, stageConfig.relativeTarget - (currentScore - stageConfig.prevTarget));
@@ -3259,6 +3462,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         game: {
           ...s.game,
+          lastActivityHeartbeat: now,
           timingMission: {
             ...s.game.timingMission,
             combatState: nextCombat
@@ -3525,6 +3729,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => ({
       game: {
         ...s.game,
+        lastActivityHeartbeat: Date.now(),
         tower: {
           ...s.game.tower,
           isInside: false,
@@ -3602,6 +3807,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const nextFloor = floor + 1;
         const highestFloor = Math.max(t.highestFloor, floor);
         const goldReward = floor * 5000;
+        get().updateQuestProgress("tower_floor", 1);
 
         let event: any = null;
         let pendingBuffs: any = null;
@@ -3644,6 +3850,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         return {
           game: {
             ...s.game,
+            lastActivityHeartbeat: now,
             mp: nextMp,
             coins: s.game.coins + goldReward,
             tower: {
@@ -3667,6 +3874,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         game: {
           ...s.game,
+          lastActivityHeartbeat: now,
           mp: nextMp,
           tower: {
             ...t,
@@ -3680,11 +3888,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   updateTower: (dt: number) => {
-    const { game } = get();
-    if (!game.tower.isInside || !game.tower.enemy || game.tower.eventRoom || game.tower.pendingBuffChoices || game.tower.pendingArtifactChoices) return;
-
+    const now = Date.now();
     set((s: any) => {
       const t = s.game.tower;
+      if (!t.isInside || !t.enemy || t.eventRoom || t.pendingBuffChoices || t.pendingArtifactChoices) return s;
       const enemy = t.enemy!;
       const theme = getTowerTheme(t.currentFloor);
 
@@ -3746,7 +3953,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           const nextArtifacts = t.artifacts.filter((a: any) => a.id !== artifact.id);
           return {
             towerAttackTimer: 0,
-            game: { ...s.game, tower: { ...t, hp: nextHp, artifacts: nextArtifacts, lastReward: "만년삼의 기운으로 부활했습니다!" } }
+            game: { ...s.game, lastActivityHeartbeat: now, tower: { ...t, hp: nextHp, artifacts: nextArtifacts, lastReward: "만년삼의 기운으로 부활했습니다!" } }
           };
         }
       }
@@ -3757,6 +3964,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         towerAttackTimer: 0,
         game: {
           ...s.game,
+          lastActivityHeartbeat: now,
           tower: {
             ...t,
             hp: nextHp,
@@ -4073,6 +4281,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         let rivalAtkMult = 1.0;
         let rivalRewards: any = {};
 
+        const realmIdx = REALM_ORDER.indexOf(s.game.realm);
+        const rewardScale = 1 + (realmIdx * 0.3);
+        const lowRewardScale = 1 + (realmIdx * 0.2);
+
         if (tier === "low") {
           rivalName = "월향루 무뢰배 대장";
           rivalHpMult = 1.5; rivalAtkMult = 1.2;
@@ -4086,12 +4298,20 @@ export const useGameStore = create<GameState>((set, get) => ({
         } else if (tier === "high") {
           rivalName = "은둔 고수";
           rivalHpMult = 6.0; rivalAtkMult = 3.5;
-          rivalRewards = { advancedMaterials: 5, factionBonds: { [faction]: 1 }, manualFragments: { "random_faction": 25 } };
+          rivalRewards = { 
+            advancedMaterials: Math.floor(5 * lowRewardScale), 
+            factionBonds: { [faction]: 1 }, 
+            manualFragments: { "random_faction": 25 } 
+          };
           infoMsg = `\n[기연] 소문의 은둔 고수가 강호에 모습을 드러냈습니다!`;
         } else if (tier === "special") {
           rivalName = "강호의 전설";
           rivalHpMult = 15.0; rivalAtkMult = 8.0;
-          rivalRewards = { advancedMaterials: 20, factionBonds: { [faction]: 3 }, manualFragments: { "all_faction": 10 } };
+          rivalRewards = { 
+            advancedMaterials: Math.floor(20 * rewardScale), 
+            factionBonds: { [faction]: 3 }, 
+            manualFragments: { "all_faction": 10 } 
+          };
           infoMsg = `\n[기연] 전설적인 고수와 대결할 절호의 기회가 생겼습니다!`;
         }
 
@@ -4315,35 +4535,53 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
   updateTime: (dt: number) => {
-    const state = get();
-    const { activeTab } = state.game;
-    
-    // 미니게임, 대결, 무한탑 진행 중에는 시간(낮/밤)이 흐르지 않도록 방어
-    // 단, 탭을 옮겼는데도 플래그가 남아있는 경우를 위해 자동 복구 로직 추가
-    let isStuck = false;
-    if (state.game.isMinigameActive && activeTab !== "inn") isStuck = true;
-    if (state.game.masterDuel.isPlaying && activeTab !== "master") isStuck = true;
-    if (state.game.tower?.isInside && activeTab !== "tower") isStuck = true;
-
-    if (isStuck) {
-      // 플래그가 꼬인 경우 강제 해제하고 진행
-      set((s: any) => ({
-        game: {
-          ...s.game,
-          isMinigameActive: s.game.activeTab === "inn" ? s.game.isMinigameActive : false,
-          masterDuel: { ...s.game.masterDuel, isPlaying: s.game.activeTab === "master" ? s.game.masterDuel.isPlaying : false },
-          tower: { ...s.game.tower, isInside: s.game.activeTab === "tower" ? s.game.tower.isInside : false }
-        }
-      }));
-    }
-
-    if (state.game.isMinigameActive || state.game.masterDuel.isPlaying || state.game.tower?.isInside) {
-      return;
-    }
-
     set((s: any) => {
+      const { activeTab, isMinigameActive, masterDuel, tower, lastActivityHeartbeat } = s.game;
+      
+      // 1. 실제 시간 정지가 필요한 상황인지 엄격하게 판단 (탭 위치 + 플래그 + 하트비트)
+      const isHeartbeatActive = (Date.now() - (lastActivityHeartbeat || 0)) < 10000; 
+      const isActuallyPlayingMinigame = isMinigameActive && activeTab === "inn" && isHeartbeatActive;
+      const isActuallyInMasterDuel = masterDuel.isPlaying && activeTab === "master" && isHeartbeatActive;
+      const isActuallyInTower = tower?.isInside && activeTab === "tower" && isHeartbeatActive;
+
+      // 2. 다른 탭에 있는데 플래그가 남아있는 경우 (Stuck) 복구 로직 변수 계산
+      let nextIsMini = isMinigameActive;
+      let nextMasterIsPlaying = masterDuel.isPlaying;
+      let nextTowerIsInside = tower?.isInside;
+
+      const needsRecovery = 
+        (isMinigameActive && activeTab !== "inn") ||
+        (masterDuel.isPlaying && activeTab !== "master") ||
+        (tower?.isInside && activeTab !== "tower");
+
+      if (needsRecovery) {
+        nextIsMini = activeTab === "inn" ? isMinigameActive : false;
+        nextMasterIsPlaying = activeTab === "master" ? masterDuel.isPlaying : false;
+        nextTowerIsInside = (activeTab === "tower" && tower) ? tower.isInside : false;
+      }
+
+      // 3. 진짜 플레이 중인 경우에만 중단 (복구 로직이 수행된 경우 반영하여 리턴)
+      if (isActuallyPlayingMinigame || isActuallyInMasterDuel || isActuallyInTower) {
+        if (!needsRecovery) return s;
+        return {
+          game: {
+            ...s.game,
+            isMinigameActive: nextIsMini,
+            masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
+            tower: { ...s.game.tower, isInside: nextTowerIsInside }
+          }
+        };
+      }
+
+      // 4. 시간 흐름 로직 (복구된 플래그와 함께 적용)
       let nextTimeState = s.game.timeState || "day";
-      let nextTimeRemaining = (s.game.timeRemaining || 300) - dt;
+      
+      let currentTR = s.game.timeRemaining;
+      if (typeof currentTR !== 'number' || isNaN(currentTR)) {
+        currentTR = 300;
+      }
+      
+      let nextTimeRemaining = currentTR - dt;
       let nextNightLimits = s.game.nightLimits;
       let triggerSettlement = false;
 
@@ -4351,45 +4589,44 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (nextTimeState === "day") {
           nextTimeState = "dusk";
           nextTimeRemaining = 60;
-          // 낮이 끝나면 이벤트 정보 초기화
           return {
             game: {
               ...s.game,
               timeState: nextTimeState,
               timeRemaining: nextTimeRemaining,
-              nextDayEvent: null
+              nextDayEvent: null,
+              isMinigameActive: nextIsMini,
+              masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
+              tower: { ...s.game.tower, isInside: nextTowerIsInside }
             }
           };
         } else if (nextTimeState === "dusk") {
           nextTimeState = "night";
           nextTimeRemaining = 300;
-          // 밤 진입 시 행동 제한 및 이전 기록 초기화
-          nextNightLimits = {
-            giluActionLeft: 5,
-            npcTalkCount: {},
-            infoTradeUsed: false,
-          };
+          nextNightLimits = { giluActionLeft: 5, npcTalkCount: {}, infoTradeUsed: false };
           return {
             game: {
               ...s.game,
               timeState: nextTimeState,
               timeRemaining: nextTimeRemaining,
               nightLimits: nextNightLimits,
-              nightBuffs: [], // 새로운 밤이 시작되므로 이전 밤의 버프 초기화
-              tujeonExchangeBought: {} // 투전 거래 내역 초기화
+              nightBuffs: [],
+              tujeonExchangeBought: {},
+              isMinigameActive: nextIsMini,
+              masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
+              tower: { ...s.game.tower, isInside: nextTowerIsInside }
             }
           };
         } else if (nextTimeState === "night") {
           nextTimeState = "dawn";
           nextTimeRemaining = 60;
-          // 새벽 정산 팝업 트리거
           triggerSettlement = true;
         } else if (nextTimeState === "dawn") {
           nextTimeState = "day";
           nextTimeRemaining = 300;
-          // 다음 날 시작 시 dayCount 증가 및 이벤트 준비, 밤 버프 초기화
           const nextDayCount = (s.game.dayCount || 1) + 1;
           const nextEvent = s.game.nextDayEvent ? { ...s.game.nextDayEvent, isUsed: false } : null;
+          const nextQuests = getNextAdaptiveQuests({ ...s.game, dayCount: nextDayCount });
           return {
             game: {
               ...s.game,
@@ -4397,8 +4634,12 @@ export const useGameStore = create<GameState>((set, get) => ({
               timeRemaining: nextTimeRemaining,
               dayCount: nextDayCount,
               nextDayEvent: nextEvent,
+              activeQuests: nextQuests,
               nightLimits: nextNightLimits,
-              showDawnSettlement: false // 새벽 정산 팝업 강제 닫기
+              showDawnSettlement: false,
+              isMinigameActive: nextIsMini,
+              masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
+              tower: { ...s.game.tower, isInside: nextTowerIsInside }
             }
           };
         }
@@ -4410,7 +4651,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           timeState: nextTimeState,
           timeRemaining: nextTimeRemaining,
           nightLimits: nextNightLimits,
-          showDawnSettlement: triggerSettlement ? true : s.game.showDawnSettlement
+          showDawnSettlement: triggerSettlement ? true : s.game.showDawnSettlement,
+          isMinigameActive: nextIsMini,
+          masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
+          tower: { ...s.game.tower, isInside: nextTowerIsInside }
         }
       };
     });
@@ -4485,6 +4729,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: s.game.coins + (reward.gold || 0),
       exp: s.game.exp + (reward.exp || 0),
       gamblingTokens: (s.game.gamblingTokens || 0) + (reward.token || 0),
+      advancedMaterials: (s.game.advancedMaterials || 0) + (reward.advancedMaterials || 0),
+      manualFragments: {
+        ...(s.game.manualFragments || {}),
+        ...(reward.manualFragments || {})
+      },
       npcFavors: {
         ...(s.game.npcFavors || {}),
         [q.npcId]: Math.min(100, (s.game.npcFavors?.[q.npcId] || 0) + (reward.favor || 0))
@@ -4509,7 +4758,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         maxHp: 1000000,
         mp: 1000000,
         maxMp: 1000000,
-        unlockedTabs: Array.from(new Set([...s.game.unlockedTabs, "upgrade", "forge", "inventory", "inn", "master", "library", "tower", "giru", "gambling"])),
+        unlockedTabs: Array.from(new Set([...s.game.unlockedTabs, "upgrade", "forge", "inventory", "inn", "master", "library", "tower", "giru", "gambling", "quest"])),
         lastInnEventKillCount: s.game.totalDummyKills,
         pendingInnEntry: false,
         timingMission: {

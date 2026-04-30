@@ -68,7 +68,20 @@ export const defaultGameData: GameSaveData = {
   legendaryGearFragments: 0,
   divineWeaponShards: 0,
   gearPieces: 0,
+  breakthroughStats: {
+    atk: 0,
+    def: 0,
+    hp: 0,
+    mp: 0,
+    critRate: 0,
+    critDmg: 0,
+    eva: 0,
+    speed: 0,
+    hpRec: 0
+  },
+  lastActivityHeartbeat: Date.now(),
   factionBonds: {},
+  unlockedContents: [],
 
   reputation: 0,
 
@@ -82,7 +95,7 @@ export const defaultGameData: GameSaveData = {
   eva: 0.1,
   critRate: 0.1,
 
-  unlockedTabs: ["training", "inventory", "quest"],
+  unlockedTabs: ["training"],
   ownedWeapons: [],
   equippedWeaponId: null,
   equippedGear: defaultEquippedGear,
@@ -284,8 +297,10 @@ export const defaultGameData: GameSaveData = {
     }
   ],
   regenAccumulator: 0,
-  oilBuffs: {},
   gamblingTokens: 0,
+  gamblingTokenFragments: 0,
+  questRerollCount: 0,
+  oilBuffs: {},
   yabawiEvent: null,
   tower: defaultTowerState,
   pendingReward: null,

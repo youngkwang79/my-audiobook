@@ -245,7 +245,7 @@ export function buildMartialCompendium(): CompendiumSkill[] {
         order: index,
         multiplier: skill.multiplier || (1.5 + index * 0.8), 
         description: buildDescription(faction.name, skill.name, category, element, grade),
-        mpCost: Math.floor(100 * Math.pow(1.8, index))
+        mpCost: Math.floor(100 * Math.pow(2.5, index))
       });
     });
 
@@ -315,10 +315,10 @@ export function getRefineGoldCost(stars: number) {
 
 export function getBaseSkillPrice(skill: CompendiumSkill) {
   if (skill.skillType === "movement" && skill.order === 100) {
-    return 30000;
+    return 100000;
   }
   const basePrices: Record<SkillGrade, number> = {
-    common: 3000,        // 3,000 (필부경지 인하)
+    common: 50000,       // 5만 (필부 경지)
     rare: 5000000,       // 500만
     epic: 50000000,      // 5,000만
     legendary: 500000000, // 5억

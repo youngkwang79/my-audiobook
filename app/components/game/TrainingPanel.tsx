@@ -369,22 +369,30 @@ export default function TrainingPanel() {
         eqSkillDamage = totalAtk * bestEqSkill.multiplier;
       } else if (gameState.learnedSkills.length > 0) {
         const bestSkill = [...gameState.learnedSkills].sort((a: any, b: any) => ((b as any).multiplier || 0) - ((a as any).multiplier || 0))[0];
-        martialSkillProc = true;
-        martialSkillName = bestSkill.name;
-
-        // [수정] 무공 대미지 계산식 정교화 (성급 보너스 및 문파 보정 포함)
+        // [수정] 무공 발동 시 실제 내공 소모 로직 추가
         const skData = MARTIAL_COMPENDIUM.find((m: any) => m.name === bestSkill.name && m.factionName === faction) || bestSkill;
-        const learned = martialArtsSkills.find((ms: any) => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);
-        const stars = learned?.stars || 0;
-        const refineMult = getRefineBonusMultiplier(stars);
-        const baseMultiplier = (skData as any).multiplier || 1.5;
+        const mpCost = (skData as any).mpCost || 50;
 
-        let damageMultiplier = 1.0;
-        if (faction === "천마신교") damageMultiplier = 5.0;
-        if (faction === "하북팽가") damageMultiplier = 1.5;
+        if (gameState.mp >= mpCost) {
+          martialSkillProc = true;
+          martialSkillName = bestSkill.name;
 
-        martialSkillDamage = totalAtk * baseMultiplier * refineMult * damageMultiplier;
-        // Training auto-proc does not consume inner power
+          const learned = martialArtsSkills.find((ms: any) => ms.skillId === (skData as any).id || ms.skillId === (skData as any).skillId);
+          const stars = learned?.stars || 0;
+          const refineMult = getRefineBonusMultiplier(stars);
+          const baseMultiplier = (skData as any).multiplier || 1.5;
+
+          let damageMultiplier = 1.0;
+          if (faction === "천마신교") damageMultiplier = 5.0;
+          if (faction === "하북팽가") damageMultiplier = 1.5;
+
+          martialSkillDamage = totalAtk * baseMultiplier * refineMult * damageMultiplier;
+
+          // 내공 차감
+          useGameStore.setState((s: any) => ({
+            game: { ...s.game, mp: Math.max(0, s.game.mp - mpCost) }
+          }));
+        }
       }
 
       // Log Skill Damage if proc'd

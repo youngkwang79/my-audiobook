@@ -89,7 +89,7 @@ export function buildCommonCompendium(): CompendiumSkill[] {
         order: realmIdx,
         multiplier: 1.2 + realmIdx * 0.7, 
         description: s.desc,
-        mpCost: Math.floor(100 * Math.pow(1.8, realmIdx))
+        mpCost: Math.floor(100 * Math.pow(2.5, realmIdx))
       });
     });
   });

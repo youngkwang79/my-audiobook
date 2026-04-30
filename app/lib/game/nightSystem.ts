@@ -201,8 +201,10 @@ export interface GiruQuest {
     gold?: number;
     favor?: number;
     token?: number;
+    exp?: number;
     item?: string;
   };
+  targetType?: string;
 }
 
 export const GIRU_QUESTS: GiruQuest[] = [
@@ -224,17 +226,72 @@ export const GIRU_QUESTS: GiruQuest[] = [
     targetCount: 5,
     currentCount: 0,
     status: "active",
-    reward: { gold: 30000000, favor: 15, token: 3 }
+    reward: { gold: 10000000, favor: 15, token: 3 }
   },
   {
     id: "q_chowoon_1",
     npcId: "chowoon",
     title: "투전의 신",
-    desc: "도박장에서 실력을 증명하세요. (5회 승리)",
+    desc: "도박장에서 실력을 증명하세요. (500만냥 이상 판돈으로 5회 승리)",
     targetCount: 5,
     currentCount: 0,
     status: "active",
     reward: { gold: 100000000, favor: 20, token: 10 }
+  },
+  {
+    id: "q_tutorial_forge",
+    npcId: "yeonhwa",
+    title: "장비 강화의 기초",
+    desc: "아무 장비나 1회 강화하세요.",
+    targetCount: 1,
+    currentCount: 0,
+    status: "active",
+    targetType: "enhance_item",
+    reward: { gold: 100000, token: 1, favor: 5 }
+  },
+  {
+    id: "q_tutorial_refine",
+    npcId: "yeonhwa",
+    title: "장비 재연마 실습",
+    desc: "명품 등급 이상의 장비를 1회 재연마하세요.",
+    targetCount: 1,
+    currentCount: 0,
+    status: "active",
+    targetType: "refine_item",
+    reward: { gold: 300000, token: 2, favor: 8 }
+  },
+  {
+    id: "q_tutorial_oil",
+    npcId: "seolmae",
+    title: "기름진 위력",
+    desc: "연마유를 사용하여 장비에 특수 효과를 부여하세요.",
+    targetCount: 1,
+    currentCount: 0,
+    status: "active",
+    targetType: "apply_oil",
+    reward: { gold: 500000, token: 2, favor: 10 }
+  },
+  {
+    id: "q_daily_tower",
+    npcId: "oldman",
+    title: "탑의 수색자",
+    desc: "무한의 탑에서 5개 층을 돌파하세요.",
+    targetCount: 5,
+    currentCount: 0,
+    status: "active",
+    targetType: "tower_floor",
+    reward: { gold: 200000, token: 3, favor: 5 }
+  },
+  {
+    id: "q_daily_study",
+    npcId: "sohee",
+    title: "무공의 정진",
+    desc: "장경각에서 무공을 1회 연마(정진)하여 숙련도를 높이세요.",
+    targetCount: 1,
+    currentCount: 0,
+    status: "active",
+    targetType: "refine_skill",
+    reward: { gold: 150000, token: 2, favor: 7 }
   }
 ];
 
@@ -365,3 +422,95 @@ export const ROGUE_QUEST_REWARDS: Record<string, { gold: number; token: number }
   "신화경": { gold: 25000000000, token: 4000 },
   "천인합일": { gold: 100000000000, token: 10000 },
 };
+export function getNextAdaptiveQuests(game: any) {
+  const quests: GiruQuest[] = [];
+  const { realm, upgradeLevels, duel, consumables, inventory } = game;
+
+  // 1. 기초 가이드 연계 (강화, 재연마, 연마유, 탑, 무공)
+  // 완료되지 않은 튜토리얼 성격의 고정 임무들 우선 노출
+  const fixedIds = ["q_tutorial_forge", "q_tutorial_refine", "q_tutorial_oil", "q_daily_tower", "q_daily_study"];
+  fixedIds.forEach(id => {
+    const q = GIRU_QUESTS.find(fq => fq.id === id);
+    if (q && quests.length < 3) quests.push({ ...q });
+  });
+
+  if (quests.length >= 3) return quests;
+
+  // 2. 수련 상태 기반 임무 (부족한 스탯 강화 유도)
+  const stats = [
+    { key: "attack", name: "공격력", type: "reach_upgrade_level" },
+    { key: "defense", name: "방어력", type: "reach_upgrade_level" },
+    { key: "hp", name: "생명력", type: "reach_upgrade_level" },
+    { key: "mp", name: "내공", type: "reach_upgrade_level" },
+    { key: "autoGain", name: "수련 효율", type: "reach_upgrade_level" }
+  ];
+
+  for (const stat of stats) {
+    const currentLv = upgradeLevels[stat.key] || 0;
+    const targetLv = Math.floor(currentLv / 5) * 5 + 5; // 5단위 목표
+    if (quests.length < 3) {
+      quests.push({
+        id: `q_adaptive_stat_${stat.key}_${targetLv}`,
+        npcId: "yeonhwa",
+        title: `${stat.name} 정진`,
+        desc: `기초 수련을 통해 ${stat.name} 레벨을 ${targetLv}까지 달성하세요.`,
+        targetCount: targetLv,
+        currentCount: currentLv,
+        status: currentLv >= targetLv ? "completed" : "active",
+        targetType: stat.type,
+        reward: { gold: 20000 + targetLv * 5000, favor: 3, exp: targetLv * 500 }
+      });
+    }
+  }
+
+  if (quests.length >= 3) return quests;
+
+  // 3. 대결 및 명성 임무 (악적 대결 티어)
+  const currentRating = duel?.rating || 0;
+  const targetRating = Math.floor(currentRating / 500) * 500 + 500;
+  if (quests.length < 3) {
+    quests.push({
+      id: `q_adaptive_rating_${targetRating}`,
+      npcId: "chowoon",
+      title: "명성 자자",
+      desc: "악적들과의 대결에서 승리하여 명성 점수(Rating)를 " + targetRating + "점 이상 달성하세요.",
+      targetCount: targetRating,
+      currentCount: currentRating,
+      status: currentRating >= targetRating ? "completed" : "active",
+      targetType: "reach_duel_rating",
+      reward: { gold: targetRating * 100, token: 5, favor: 10 }
+    });
+  }
+
+  // 4. 소모품 활용 임무 (물약 사용 튜토리얼)
+  if (quests.length < 3) {
+    quests.push({
+      id: "q_adaptive_potion_combat",
+      npcId: "oldman",
+      title: "실전 약리 활용",
+      desc: "전투(악적 대결 또는 탑) 중에 물약을 3회 이상 사용하세요.",
+      targetCount: 3,
+      currentCount: 0,
+      status: "active",
+      targetType: "use_potion_combat",
+      reward: { gold: 50000, item: "oil_box", favor: 5 }
+    });
+  }
+
+  // 5. 타임 어택 임무 (20초 이내 승리)
+  if (quests.length < 3) {
+    quests.push({
+      id: "q_adaptive_time_attack",
+      npcId: "chowoon",
+      title: "신속의 일격",
+      desc: "악적 대결에서 20초 이내에 승리하여 실력을 증명하세요. (1회)",
+      targetCount: 1,
+      currentCount: 0,
+      status: "active",
+      targetType: "time_attack_win",
+      reward: { gold: 500000, token: 10, favor: 15 }
+    });
+  }
+
+  return quests.slice(0, 3);
+}

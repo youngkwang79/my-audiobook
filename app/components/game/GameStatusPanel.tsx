@@ -15,7 +15,7 @@ export default function GameStatusPanel() {
   const [authInput, setAuthInput] = useState("");
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { getTotalAttack, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps, triggerGodMode } = useGameStore() as any;
+  const { getTotalAttack, getTotalHpRecovery, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps, triggerGodMode } = useGameStore() as any;
 
   // 데이터 유실 방지를 위한 초기화 및 매핑
   const safeGame: any = {
@@ -253,7 +253,7 @@ export default function GameStatusPanel() {
                 }}
               />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#fff", fontWeight: "bold", textShadow: "1px 1px 1px #000" }}>
-                {Math.floor(safeGame.hp).toLocaleString()} / {Math.floor(totalHp).toLocaleString()}
+                {Math.floor(safeGame.hp).toLocaleString()}
               </div>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function GameStatusPanel() {
                 }}
               />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#fff", fontWeight: "bold", textShadow: "1px 1px 1px #000" }}>
-                {Math.floor(safeGame.mp).toLocaleString()} / {Math.floor(totalMp).toLocaleString()}
+                {Math.floor(safeGame.mp).toLocaleString()}
               </div>
             </div>
           </div>
@@ -359,9 +359,9 @@ export default function GameStatusPanel() {
             <span>✨</span>
             <span>{formatCompactNumber(safeGame.touches)}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#ff4d4d" }}>
-            <span>⚔️</span>
-            <span>{formatCompactNumber(Math.floor(totalAttack))}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#ff8c8c" }}>
+            <span>🍵</span>
+            <span>{formatCompactNumber(Math.floor(getTotalHpRecovery()))}</span>
           </div>
         </div>
 

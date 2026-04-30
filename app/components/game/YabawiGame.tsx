@@ -14,8 +14,8 @@ interface YabawiGameProps {
 
 // Internal stage settings helper
 const getStageSettings = (level: number) => {
-  const baseSpeed = 450;
-  const speed = Math.max(170, baseSpeed - (level - 1) * 20);
+  const baseSpeed = 500;
+  const speed = Math.max(100, baseSpeed - (level - 1) * 35);
   const shuffle = Math.min(18, 5 + Math.floor(level / 2));
   
   const limits = [
@@ -141,16 +141,8 @@ export default function YabawiGame({ onResult, userCoins, onStartGame, session, 
     setSelectedCup(index);
     setGameState("revealing");
     
-    // 45% 고정 승률 적용
-    const winRoll = Math.random() < 0.45;
-    const isWinner = winRoll;
-    
-    if (winRoll) {
-      setBallPosition(cups[index]);
-    } else if (cups[index] === ballPosition) {
-      const available = cups.filter(c => c !== cups[index]);
-      setBallPosition(available[Math.floor(Math.random() * available.length)]);
-    }
+    // [Fair Logic] 공의 위치가 시각적 셔플 결과와 일치하도록 수정
+    const isWinner = cups[index] === ballPosition;
     
     setTimeout(() => {
       onResult(isWinner, session?.stakedGold || betAmount);

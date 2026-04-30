@@ -57,7 +57,7 @@ export type ConsumableId =
   | "charm_luck" | "exp_scroll" | "paewang_box"
   | "stone_box_tujeon" | "rare_box_tujeon" | "night_gear_box" | "gear_piece_bundle" | "manual_fragment_bundle";
 
-export type ItemTier = "평범" | "명품" | "보구" | "신기";
+export type ItemTier = "평범" | "명품" | "보구" | "국보" | "신기";
 
 export type RandomOptionGrade = "하급" | "중급" | "상급" | "최상급";
 
@@ -492,7 +492,8 @@ export type GameSaveData = {
   duel: DuelState;
   masterDuel: MasterDuelState;
   footworkGame: FootworkGameState;
-  pendingDuelReward?: any;
+  tower: TowerState;
+  unlockedContents: string[]; // New: list of unlocked features/secrets
   pendingReward: {
     title: string;
     items: { icon: string; name: string; count?: number; color?: string; slotName?: string }[];
@@ -581,10 +582,13 @@ export type GameSaveData = {
   giruRewardsClaimed?: Record<string, boolean>;
   regenAccumulator: number;
   gamblingTokens: number;
+  gamblingTokenFragments: number; // New: 5 fragments = 1 token
+  questRerollCount: number; // New: max 2 per day
   yabawiEvent: { active: boolean; expiresAt: number } | null;
   pendingYabawiPlay?: boolean;
-  tower: TowerState;
-
+  breakthroughStats: Record<string, number>; // New: Permanent stats from breakthroughs
+  lastActivityHeartbeat: number; // New: To prevent stuck time flags
+  
   // --- Night System ---
   timeState: "day" | "dusk" | "night" | "dawn";
   timeRemaining: number; // in seconds
