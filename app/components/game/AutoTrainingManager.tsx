@@ -24,11 +24,29 @@ export default function AutoTrainingManager() {
     
     const timer = setInterval(() => {
       const game = useGameStore.getState().game;
-      if (document.hidden) return;
+      if (document.hidden || !game.faction) return;
 
-      // 대미지 연동을 포함한 자동 수련 실행
+      // 자동 수련은 문파 선택 이후 항상 작동
+      const tutorialProgress = game.tutorialProgress;
+      const currentStepId = tutorialProgress.currentStepId;
+
+      // 유저 요청: 대장간 탭에 있는 동안은 자동사냥 멈춤, 수련 탭 누르면 다시 작동
+      const activeTab = game.activeTab || "training";
+      if (activeTab === "forge") return;
+
+      // 튜토리얼 중에는 특정 안내 단계(자동수련, 자동전투)에서만 허용하고, 
+      // 대장간 등 조작이 필요한 단계에서는 멈춰서 팝업 겹침을 방지함
+      const isAutoTrainingAllowedStep = 
+        currentStepId === "auto_training_info" || 
+        currentStepId === "explain_auto_battle" || 
+        currentStepId === "trance_achieved" ||
+        currentStepId === "start_training";
+
+      if (tutorialProgress.isActive && !isAutoTrainingAllowedStep) return;
+
       autoTrain(amountPerTick);
 
+      // 시간 흐름 및 버프 업데이트는 튜토리얼 중에도 계속 진행
       const isCombat = useGameStore.getState().game.masterDuel.isPlaying;
       if (updateBuffs && !isCombat) {
         updateBuffs(tickMs / 1000);

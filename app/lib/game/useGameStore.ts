@@ -111,6 +111,362 @@ export const STAT_INCREMENTS: Record<string, number> = {
   offlineLimit: 0.5,
 };
 
+export const TUTORIAL_STEPS: Record<string, any> = {
+  start_faction: {
+    id: "start_faction",
+    title: "강호 입성",
+    message: "문파를 선택하고 강호에 발을 들였습니다. 먼저 [임무] 탭을 확인하여 앞으로의 방향을 잡으세요.",
+    targetId: "nav-quest",
+    actionType: "click"
+  },
+  check_quest: {
+    id: "check_quest",
+    title: "임무 확인",
+    message: "임무를 수행하고 강해져서 강호에 이름을 날리세요. 이제 수련장으로 이동합시다.",
+    targetId: "nav-training",
+    actionType: "click"
+  },
+  explain_quest_list: {
+    id: "explain_quest_list",
+    title: "임무 상세",
+    message: "임무 내용과 보상 내역을 이곳에서 확인할 수 있습니다. 첫 번째 임무인 '허수아비 100마리 처치'를 확인하고 수련장으로 이동해봅시다.",
+    targetId: "quest-item-first",
+    actionType: "any"
+  },
+  start_training: {
+    id: "start_training",
+    title: "기초 수련",
+    message: "수련장에서 허수아비를 처치하여 깨달음을 얻으세요. 화면을 터치해 공격할 수 있습니다.",
+    targetId: "training-area",
+    actionType: "click"
+  },
+  explain_mission_bar: {
+    id: "explain_mission_bar",
+    title: "임무 및 상태 확인",
+    message: "하단의 임무 포시창에서는 현재 진행중인 임무를 확인할 수 있습니다. 상단은 상태를 바로 확인할 수 있는 창입니다. 순서는 금화,명성,수련치,공격력입니다.",
+    targetId: "player-status-button",
+    actionType: "any"
+  },
+  click_status_detailed: {
+    id: "click_status_detailed",
+    title: "상태창 확인",
+    message: "상태창 버튼을 눌러 상세 정보를 확인하세요.",
+    targetId: "player-status-button",
+    actionType: "click"
+  },
+  explain_status_panel: {
+    id: "explain_status_panel",
+    title: "성취도 상세",
+    message: "개인 능력치와 전투력, 그리고 다음 깨달음(경지)까지의 상세한 정보를 확인할 수 있습니다.",
+    targetId: null,
+    actionType: "any"
+  },
+  auto_training_info: {
+    id: "auto_training_info",
+    title: "자동 수련 안내",
+    message: "초당 5번의 자동 수련이 진행 중입니다. 경지가 높아질수록 허수아비의 생명력도 높아지니, 직접 터치해야 더 빨리 강해질 수 있습니다!",
+    targetId: "training-area",
+    actionType: "any"
+  },
+  explain_time_cycle: {
+    id: "explain_time_cycle",
+    title: "시간의 흐름",
+    message: "하루는 낮(5분) 그리고 황혼(1분) 그리고 밤(5분) 그리고 새벽(1분)으로 돌아갑니다.",
+    targetId: "time-status-bar",
+    actionType: "any"
+  },
+  explain_night_only: {
+    id: "explain_night_only",
+    title: "밤의 활동",
+    message: "기루와 도박은 밤에만 이용할 수 있습니다.",
+    targetId: "nav-giru",
+    actionType: "any"
+  },
+
+  select_item_inventory: {
+    id: "select_item_inventory",
+    title: "아이템 선택",
+    message: "방금 구입한 무기를 선택하세요.",
+    targetId: "inv-item-list-first",
+    actionType: "click"
+  },
+  click_equip_button: {
+    id: "click_equip_button",
+    title: "장착 완료",
+    message: "[장착하기] 버튼을 눌러 무기를 착용합니다.",
+    targetId: "inv-equip-btn",
+    actionType: "click"
+  },
+  explain_auto_battle: {
+    id: "explain_auto_battle",
+    title: "자동 전투",
+    message: "자동 전투(수련)는 직접 터치하지 않아도 지속적으로 성장을 도와줍니다.",
+    targetId: "training-area",
+    actionType: "any"
+  },
+  trance_achieved: {
+    id: "trance_achieved",
+    title: "무아지경 진입",
+    message: "축하합니다! 무아지경 상태에서는 공격력이 10배로 상승합니다. 더 빠르게 허수아비를 처단하세요.",
+    targetId: null,
+    actionType: "any"
+  },
+  forge_unlock: {
+    id: "forge_unlock",
+    title: "대장간 개방",
+    message: "허수아비 30번 처치 보상으로 [대장간]이 열렸습니다! 장비를 마련하여 더 강해질 시간입니다.",
+    targetId: "nav-forge",
+    actionType: "any"
+  },
+  goto_forge_click: {
+    id: "goto_forge_click",
+    title: "대장간 이동",
+    message: "무림은 위험한 곳입니다. 자신을 보호하고 강화하기 위한 필수 장소입니다.",
+    targetId: "nav-forge",
+    actionType: "click"
+  },
+  buy_weapon: {
+    id: "buy_weapon",
+    title: "장비 구입",
+    message: "먼저 [무명철검]을 구입하세요. 튜토리얼 진행을 위해 특별히 [명품] 등급의 장비가 준비될 것입니다.",
+    targetId: "forge-buy-weapon-필부_mainWeapon",
+    actionType: "click"
+  },
+  goto_inventory: {
+    id: "goto_inventory",
+    title: "가방 확인",
+    message: "장비를 눌러서 구입한 장비를 착용하러 갑니다.",
+    targetId: "nav-inventory",
+    actionType: "click"
+  },
+  select_item_inventory: {
+    id: "select_item_inventory",
+    title: "아이템 선택",
+    message: "방금 구입한 무기를 선택하세요.",
+    targetId: "inv-item-list-first",
+    actionType: "click"
+  },
+  click_equip_button: {
+    id: "click_equip_button",
+    title: "장착하기",
+    message: "[장착하기] 버튼을 눌러 무기를 착용합니다.",
+    targetId: "inv-equip-btn",
+    actionType: "click"
+  },
+  goto_forge_refine: {
+    id: "goto_forge_refine",
+    title: "장비 제련 유도",
+    message: "이제 장비를 제련하여 성능을 극한으로 끌어올려 봅시다. 다시 대장간으로 이동하세요.",
+    targetId: "nav-forge",
+    actionType: "click"
+  },
+  select_refine_tab: {
+    id: "select_refine_tab",
+    title: "장비 제련",
+    message: "[장비 제련] 메뉴를 선택하세요.",
+    targetId: "forge-main-tab-enhance",
+    actionType: "click"
+  },
+  select_item_to_refine: {
+    id: "select_item_to_refine",
+    title: "대상 선택",
+    message: "제련할 아이템(현재 착용 중인 무기)을 선택하세요.",
+    targetId: "forge-refine-target-slot",
+    actionType: "click"
+  },
+  check_refine_preview: {
+    id: "check_refine_preview",
+    title: "강화 수치 확인",
+    message: "장비를 제련하면 공격력을 포함한 기본 능력치가 크게 상승합니다. 현재 수치와 제련 후 예상 수치를 확인해보세요.",
+    targetId: "forge-refine-stat-preview",
+    actionType: "any"
+  },
+  click_refine_start: {
+    id: "click_refine_start",
+    title: "제련 시작",
+    message: "[제련 시작]을 눌러 장비를 강화합니다. 공격력이 상승합니다.",
+    targetId: "forge-refine-start-btn",
+    actionType: "click"
+  },
+  check_refine_result: {
+    id: "check_refine_result",
+    title: "제련 결과 확인",
+    message: "제련이 성공하여 장비의 강화 수치가 상승했습니다! +1강당 장비의 기본 능력치가 10%씩 중첩되어 증가합니다. 이제 더 강력해진 공격력을 확인해보세요.",
+    targetId: "forge-info-box-header",
+    actionType: "any"
+  },
+  select_reroll_tab: {
+    id: "select_reroll_tab",
+    title: "재연마 선택",
+    message: "다음은 [재연마]입니다. 장비의 효과를 무작위로 새롭게 변경할 수 있습니다.",
+    targetId: "forge-tab-reroll",
+    actionType: "click"
+  },
+  select_item_to_reroll: {
+    id: "select_item_to_reroll",
+    title: "대상 선택",
+    message: "재연마할 아이템을 다시 한번 선택해주세요.",
+    targetId: "forge-refine-target-slot",
+    actionType: "click"
+  },
+  check_current_options: {
+    id: "check_current_options",
+    title: "현재 옵션 확인",
+    message: "재연마를 하기 전, 현재 장비에 부여된 옵션들을 확인해보세요. 마음에 들지 않는 옵션이 있다면 [재연마 시작]을 통해 새롭게 바꿀 수 있습니다.",
+    targetId: "forge-item-options-list",
+    actionType: "any"
+  },
+  click_reroll_start: {
+    id: "click_reroll_start",
+    title: "재연마 실행",
+    message: "[재연마 시작] 버튼을 눌러 새로운 옵션을 획득해보세요.",
+    targetId: "forge-reroll-start-btn",
+    actionType: "click"
+  },
+  check_reroll_result: {
+    id: "check_reroll_result",
+    title: "재연마 결과 확인",
+    message: "재연마를 통해 장비에 새로운 옵션들이 부여되었습니다! 어떤 효과들이 추가되었는지 확인해보세요.",
+    targetId: "forge-item-options-list",
+    actionType: "any"
+  },
+  select_infuse_tab: {
+    id: "select_infuse_tab",
+    title: "연마 탭 선택",
+    message: "마지막으로 [연마]입니다. 특수 재료인 기름을 발라 장비에 특별한 효과를 부여합니다.",
+    targetId: "forge-tab-infuse",
+    actionType: "click"
+  },
+  select_item_to_infuse: {
+    id: "select_item_to_infuse",
+    title: "대상 선택",
+    message: "연마할 아이템을 선택하세요.",
+    targetId: "forge-refine-target-slot",
+    actionType: "click"
+  },
+  select_oil: {
+    id: "select_oil",
+    title: "연마제 선택",
+    message: "공격력을 대폭 높여주는 [광폭유] 외 2종을 미리 지급해드렸습니다. 이제 처음부터 직접 해볼까요?",
+    targetId: "forge-oil-item-oil_atk_3",
+    actionType: "any"
+  },
+  click_infuse_start: {
+    id: "click_infuse_start",
+    title: "연마 완료",
+    message: "[연마하기]를 클릭하여 무기에 화염의 기운을 불어넣으세요.",
+    targetId: "forge-infuse-start-btn",
+    actionType: "click"
+  },
+  check_forge_result: {
+    id: "check_forge_result",
+    title: "최종 성능 확인",
+    message: "제련, 재연마, 연마유 주입까지 마쳤습니다! 상단 정보창에서 장비의 강화 수치와 새롭게 부여된 옵션들을 확인해보세요. 훨씬 강력해진 것을 느끼실 수 있습니다.",
+    targetId: "forge-info-box-header",
+    actionType: "any"
+  },
+  goto_inventory_final: {
+    id: "goto_inventory_final",
+    title: "가방 확인",
+    message: "이제 대장간을 나가서 강해진 무기를 가방에서 직접 확인해 봅시다. 하단의 [장비] 탭을 선택하세요.",
+    targetId: "nav-inventory",
+    actionType: "click"
+  },
+  select_infused_item: {
+    id: "select_infused_item",
+    title: "무기 확인",
+    message: "인벤토리에서 방금 연마한 무기를 선택하여 전체 정보를 확인해보세요.",
+    targetId: "inv-item-list-first",
+    actionType: "click"
+  },
+  check_final_infused_options: {
+    id: "check_final_infused_options",
+    title: "최종 무기 정보",
+    message: "보이시나요? 제련된 공격력과 새롭게 부여된 랜덤 옵션들, 그리고 연마유의 특수 효과까지 모두 적용되었습니다! 이제 그 누구도 당신을 막을 수 없습니다.",
+    targetId: "inv-stat-list",
+    actionType: "any"
+  },
+  goto_craft_tab_for_potion: {
+    id: "goto_craft_tab_for_potion",
+    title: "장비 제작 이동",
+    message: "마지막으로 소모품을 준비할 차례입니다. 다시 대장간으로 이동하여 [장비 제작] 탭을 선택하세요.",
+    targetId: "nav-forge",
+    actionType: "click"
+  },
+  select_potion_category: {
+    id: "select_potion_category",
+    title: "회복제 선택",
+    message: "대장간에서는 무기뿐만 아니라 회복제도 제작할 수 있습니다. [회복제] 카테고리를 선택하세요.",
+    targetId: "forge-realm-회복제",
+    actionType: "click"
+  },
+  buy_hp_potion: {
+    id: "buy_hp_potion",
+    title: "회복제 구입",
+    message: "생존에 필수적인 [생명력 회복제(소)]를 구입해 봅시다.",
+    targetId: "forge-buy-potion-potion_hp_1",
+    actionType: "click"
+  },
+  goto_inventory_potion: {
+    id: "goto_inventory_potion",
+    title: "장비탭 이동",
+    message: "구입한 물약을 장착하러 다시 가방(장비) 탭으로 이동합니다.",
+    targetId: "nav-inventory",
+    actionType: "click"
+  },
+  select_medicine_tab: {
+    id: "select_medicine_tab",
+    title: "행낭 선택",
+    message: "소모품을 확인할 수 있는 [행낭] 메뉴를 선택하세요.",
+    targetId: "inv-slot-medicine",
+    actionType: "click"
+  },
+  guide_potion_setup: {
+    id: "guide_potion_setup",
+    title: "물약 장착",
+    message: "소형회복제를 꾹 눌러서 아래의 [물약 장착] 슬롯으로 끌어다 놓으면 장착됩니다. 대결 시 자동으로 사용되어 생존을 돕습니다.",
+    targetId: "inv-medicine-item-first",
+    secondTargetId: "inv-quick-slot-0",
+    actionType: "any"
+  },
+
+  upgrade_unlock: {
+    id: "upgrade_unlock",
+    title: "강화 개방",
+    message: "허수아비 50번 처치 보상으로 [강화]가 열렸습니다. 획득한 금화로 능력치를 영구히 상승시키세요.",
+    targetId: "nav-upgrade",
+    actionType: "click"
+  },
+  library_unlock: {
+    id: "library_unlock",
+    title: "비급 도서관",
+    message: "허수아비 80번 처치 보상으로 [비급]이 열렸습니다. 새로운 무공을 배우고 연마할 수 있습니다.",
+    targetId: "nav-library",
+    actionType: "click"
+  },
+  tower_unlock: {
+    id: "tower_unlock",
+    title: "무한의 탑",
+    message: "허수아비 100번 처치 보상으로 [탑]이 열렸습니다. 자신의 한계를 시험하고 보상을 획득하세요.",
+    targetId: "nav-tower",
+    actionType: "click"
+  },
+  master_unlock: {
+    id: "master_unlock",
+    title: "고수와의 대결",
+    message: "허수아비 150번 처치 보상으로 [대결]이 열렸습니다. 강력한 고수들을 처단하고 명성을 쌓으세요.",
+    targetId: "nav-master",
+    actionType: "click"
+  },
+  inn_event: {
+    id: "inn_event",
+    title: "객잔 무뢰배",
+    message: "허수아비 300번 처치 시 [객잔]에서 무뢰배들이 나타납니다! [객잔]으로 이동하여 그들을 추격하세요.",
+    targetId: "nav-inn",
+    actionType: "click"
+  }
+};
+
 export const TOWER_BUFF_POOL = [
   { id: "atk_up", name: "천마의 힘", description: "공격력 +20% / 방어력 -10%", bonus: { atk: 1.2 }, penalty: { def: 0.9 } },
   { id: "eva_up", name: "허공답보", description: "회피율 +15% / 체력 -10%", bonus: { eva: 15 }, penalty: { hp: 0.9 } },
@@ -447,6 +803,8 @@ interface GameState {
   buyGiruInformation: (type: "TREASURE_FORECAST" | "BOSS_RAID_CLUE") => void;
   triggerGodMode: () => void;
   getStatUpgradeBonus: (k: string) => number;
+  setTutorialStep: (stepId: string) => void;
+  completeTutorialStep: (stepId: string) => void;
 }
 
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -461,7 +819,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     results: null
   },
 
-  setPlayerInfo: (info: any) => { set((s: any) => ({ game: { ...s.game, ...info, isInitialized: true } })); get().triggerSave(); },
+  setPlayerInfo: (info: any) => { 
+    set((s: any) => ({ 
+      game: { 
+        ...s.game, 
+        ...info, 
+        isInitialized: true, 
+        tutorialProgress: { 
+          isActive: true, 
+          currentStepId: "start_faction",
+          completedStepIds: []
+        } 
+      } 
+    })); 
+    get().triggerSave(); 
+  },
+
   triggerYabawiEvent: () => {
     set((s: any) => ({
       game: {
@@ -510,6 +883,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
     });
+    if (s.game.tutorialProgress.currentStepId === "click_refine_start") {
+      get().setTutorialStep("select_reroll_tab");
+    }
     get().triggerSave(true);
     return true;
   },
@@ -939,6 +1315,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const itemGoldB = eq.reduce((a, i) => a + (i.goldMultiplier || 0), 1);
     const finalGoldB = goldB * (1 + innBonus.gold) * nightGoldMult * (1 + factionCoinBonus) * itemGoldB;
 
+    let killsAdded = 0;
+    let milestoneToTrigger: string | null = null;
     set((s: any) => {
       const now = Date.now();
       let combo = s.game.lastAttackTime && (now - s.game.lastAttackTime < 1500) ? s.game.comboCount + 1 : 1;
@@ -953,14 +1331,19 @@ export const useGameStore = create<GameState>((set, get) => ({
       let pIE = s.game.pendingInnEntry;
       let iEV = s.game.innEventVersion || 0;
       let currentIdx = s.game.innEventIndex || 0;
+      
+      let qT = s.game.questTarget;
+      let cMT = s.game.currentMissionTitle;
+      let uTabs = [...(s.game.unlockedTabs || [])];
+      let uET = s.game.unlockEffectText;
+      let aM = s.game.attackMultiplier;
+      let bTL = s.game.buffTimeLeft;
+      let aB = s.game.activeBuff;
 
       const hitCount = Math.max(1, Math.floor(amount));
       const rG = REALM_SETTINGS[s.game.realm]?.goldMultiplier || 1;
       let currentDummyHp = s.game.dummyHp;
       let totalDamageDealt = 0;
-
-      // 퀘스트 업데이트 (허수아비 타격)
-      get().updateQuestProgress("dummy_hit", hitCount);
 
       for (let i = 0; i < hitCount; i++) {
         let isHitDodged = Math.random() < stats.eva / 100;
@@ -976,8 +1359,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           dmg = baseDmg * avgCritMult * skillBonus;
         }
 
-        // 피해 감쇠 시스템 (한방컷 방지 및 타격감 유지)
-        const softCap = stats.hp * 0.15; // 한 타격당 최대 체력의 15%를 기준으로 감쇠
+        const softCap = stats.hp * 0.15;
         if (dmg > softCap) {
           dmg = softCap + (dmg - softCap) * 0.1;
         }
@@ -986,6 +1368,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         currentDummyHp -= dmg;
         if (currentDummyHp <= 0) {
           tKills += 1;
+          killsAdded += 1;
           const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
           let kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
           if (isTreasureForecast) {
@@ -1005,7 +1388,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const killGap = tKills - (s.game.lastInnEventKillCount || 0);
 
       let nTM = { ...s.game.timingMission };
-      if (killGap >= targetInterval && !nTM.available) {
+      if (tKills >= 400 && killGap >= targetInterval && !nTM.available && !s.game.tutorialProgress.isActive) {
         const miniGames = ["breath", "dodge", "puzzle", "pulse"];
         const gameIdx = iEV % 4;
         const selectedGame = miniGames[gameIdx];
@@ -1045,59 +1428,69 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
 
-      rep += eGold;
-      const currentMaxHp = stats.hp;
-      let qT = s.game.questTarget;
-      let cMT = s.game.currentMissionTitle;
-      let uTabs = [...(s.game.unlockedTabs || [])];
-      let uET = s.game.unlockEffectText;
-      let aM = s.game.attackMultiplier;
-      let bTL = s.game.buffTimeLeft;
-      let aB = s.game.activeBuff;
+      const finalKills = tKills;
+      const finalKillGap = tKills >= 300 ? killGap : tKills;
 
-      if (tKills >= qT) {
-        if (qT === 10) {
-          qT = 30;
-          cMT = "허수아비 누적 처치 30번\n[개방: 대장간/장비]";
-          uET = "무아지경(x10) 진입!";
-          aM = 10; bTL = 30; aB = "무아지경";
-        } else if (qT === 30) {
-          qT = 50;
-          cMT = "허수아비 누적 처치 50번\n[개방: 강화]";
-          uET = "[대장간] 개방";
-          uTabs = Array.from(new Set([...uTabs, "forge", "inventory"]));
-        } else if (qT === 50) {
-          qT = 80;
-          cMT = "허수아비 누적 처치 80번\n[개방: 비급/기루/도박]";
-          uET = "[강화] 개방";
-          uTabs = Array.from(new Set([...uTabs, "upgrade"]));
-        } else if (qT === 80) {
-          qT = 100;
-          cMT = "허수아비 누적 처치 100번\n[개방: 무한의 탑]";
-          uET = "[비급/기루/도박] 개방";
-          uTabs = Array.from(new Set([...uTabs, "library", "giru", "gambling"]));
-        } else if (qT === 100) {
-          qT = 150;
-          cMT = "허수아비 누적 처치 150번\n[개방: 대결]";
-          uET = "[무한의 탑] 개방";
-          uTabs = Array.from(new Set([...uTabs, "tower"]));
-        } else if (qT === 150) {
-          qT = 290;
-          cMT = "허수아비 누적 처치 290번\n[개방: 객잔]";
-          uET = "[대결] 개방";
-          uTabs = Array.from(new Set([...uTabs, "master"]));
-        } else if (qT === 290) {
-          qT = targetInterval;
-          cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
-          uET = "[객잔] 개방";
-          uTabs = Array.from(new Set([...uTabs, "inn"]));
+      rep += eGold;
+      const stats_hp = stats.hp;
+      let qT_val = qT;
+      let cMT_val = cMT;
+      let uTabs_val = uTabs;
+      let uET_val = uET;
+      let aM_val = aM;
+      let bTL_val = bTL;
+      let aB_val = aB;
+
+      if (finalKills >= qT_val) {
+        if (qT_val === 10) {
+          qT_val = 30;
+          cMT_val = "허수아비 누적 처치 30번\n[개방: 대장간/장비]";
+          uET_val = null;
+          aM_val = 10; bTL_val = 30; aB_val = "무아지경";
+          milestoneToTrigger = "trance_achieved";
+        } else if (qT_val === 30) {
+          qT_val = 50;
+          cMT_val = "허수아비 누적 처치 50번\n[개방: 강화]";
+          uET_val = null;
+          uTabs_val = Array.from(new Set([...uTabs_val, "forge", "inventory"]));
+          milestoneToTrigger = "forge_unlock";
+        } else if (qT_val === 50) {
+          qT_val = 80;
+          cMT_val = "허수아비 누적 처치 80번\n[개방: 비급/기루/도박]";
+          uET_val = null;
+          uTabs_val = Array.from(new Set([...uTabs_val, "upgrade"]));
+          milestoneToTrigger = "upgrade_unlock";
+        } else if (qT_val === 80) {
+          qT_val = 100;
+          cMT_val = "허수아비 누적 처치 100번\n[개방: 무한의 탑]";
+          uET_val = null;
+          uTabs_val = Array.from(new Set([...uTabs_val, "library", "giru", "gambling"]));
+          milestoneToTrigger = "library_unlock";
+        } else if (qT_val === 100) {
+          qT_val = 150;
+          cMT_val = "허수아비 누적 처치 150번\n[개방: 대결]";
+          uET_val = null;
+          uTabs_val = Array.from(new Set([...uTabs_val, "tower"]));
+          milestoneToTrigger = "tower_unlock";
+        } else if (qT_val === 150) {
+          qT_val = 290;
+          cMT_val = "허수아비 누적 처치 290번\n[개방: 객잔]";
+          uET_val = null;
+          uTabs_val = Array.from(new Set([...uTabs_val, "master"]));
+          milestoneToTrigger = "master_unlock";
+        } else if (qT_val === 290) {
+          qT_val = targetInterval;
+          cMT_val = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
+          uET_val = null;
+          uTabs_val = Array.from(new Set([...uTabs_val, "inn"]));
           pIE = false;
-        } else if (qT >= targetInterval) {
-          qT = targetInterval;
-          cMT = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
-          uET = null;
+          milestoneToTrigger = "inn_event";
+        } else if (qT_val >= targetInterval) {
+          qT_val = targetInterval;
+          cMT_val = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
+          uET_val = null;
         }
-        if (uET) lastR = uET;
+        if (uET_val) lastR = uET_val;
       }
 
       return {
@@ -1108,21 +1501,21 @@ export const useGameStore = create<GameState>((set, get) => ({
           reputation: rep,
           exp: s.game.exp + finalExp,
           dummyHp: currentDummyHp,
-          maxDummyHp: currentMaxHp,
-          totalDummyKills: tKills,
-          activeQuests: s.game.activeQuests, // updateQuestProgress에서 처리
-          dummyKills: tKills >= 300 ? killGap : tKills,
-          questTarget: tKills >= 300 ? targetInterval : qT,
-          currentMissionTitle: cMT,
-          unlockedTabs: uTabs,
-          unlockEffectText: uET,
-          attackMultiplier: aM,
-          buffTimeLeft: bTL,
-          activeBuff: aB,
+          maxDummyHp: stats_hp,
+          totalDummyKills: finalKills,
+          activeQuests: s.game.activeQuests,
+          dummyKills: finalKillGap,
+          questTarget: finalKills >= 300 ? targetInterval : qT_val,
+          currentMissionTitle: cMT_val,
+          unlockedTabs: uTabs_val,
+          unlockEffectText: uET_val,
+          attackMultiplier: aM_val,
+          buffTimeLeft: bTL_val,
+          activeBuff: aB_val,
           pendingInnEntry: pIE,
           innEventVersion: iEV,
           innEventIndex: currentIdx,
-          lastInnEventKillCount: (killGap >= targetInterval) ? tKills : s.game.lastInnEventKillCount,
+          lastInnEventKillCount: (finalKillGap >= targetInterval) ? finalKills : s.game.lastInnEventKillCount,
           touches: nTouches,
           comboCount: combo,
           lastAttackTime: now,
@@ -1131,7 +1524,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
     });
-    get().updateQuestProgress("dummy_hit", 1);
+    if (milestoneToTrigger) get().setTutorialStep(milestoneToTrigger);
+    get().updateQuestProgress("dummy_hit", Math.max(1, Math.floor(amount)));
+    if (killsAdded > 0) {
+      get().updateQuestProgress("dummy_kill", killsAdded);
+    }
     get().triggerSave();
   },
 
@@ -1194,7 +1591,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { game: { ...s.game, activeQuests: nextQuests } };
     });
   },
-
   refreshQuests: () => {
     set((s: any) => ({
       game: {
@@ -1923,7 +2319,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     };
   }),
-  equipItem: (id: string) => set((s: any) => { const it = s.game.ownedWeapons.find((w: any) => w.id === id); if (!it) return s; return { game: { ...s.game, equippedGear: { ...s.game.equippedGear, [it.slot]: id } } }; }),
+  equipItem: (id: string) => set((s: any) => { 
+    const it = s.game.ownedWeapons.find((w: any) => w.id === id); 
+    if (!it) return s; 
+    
+    if (s.game.tutorialProgress.currentStepId === "equip_weapon") {
+      setTimeout(() => get().setTutorialStep("goto_forge_refine"), 100);
+    }
+    
+    return { game: { ...s.game, equippedGear: { ...s.game.equippedGear, [it.slot]: id } } }; 
+  }),
   unequipItem: (slot: EquipSlot) => set((s: any) => ({ game: { ...s.game, equippedGear: { ...s.game.equippedGear, [slot]: null } } })),
   sellItem: (id: string) => set((s: any) => {
     const it = s.game.ownedWeapons.find((w: any) => w.id === id);
@@ -2797,9 +3202,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       stoneCost = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv) * tierMultiplier));
     }
 
-    if (game.coins < goldCost) return { success: false, message: "금화가 부족합니다." };
-    if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
-    if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+    const isTutorial = game.tutorialProgress.currentStepId === "click_refine_start";
+
+    if (!isTutorial) {
+      if (game.coins < goldCost) return { success: false, message: "금화가 부족합니다." };
+      if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
+      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+    }
     if (useBlessedOil && (game.consumables["oil_blessed"] || 0) <= 0) return { success: false, message: "축복받은 기름이 부족합니다." };
     if (useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0) return { success: false, message: "천운의 부적이 부족합니다." };
 
@@ -2816,7 +3225,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isInnBuffActive = Date.now() < (game.innBuffEndTime || 0);
     if (isInnBuffActive) totalRate += 5;
     if (useBlessedOil) totalRate += 5;
-    const success = Math.random() * 100 < totalRate;
+    const success = isTutorial || (Math.random() * 100 < totalRate);
 
     set((s: any) => {
       const nextConsumables = { ...s.game.consumables };
@@ -2828,6 +3237,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           let nextLv = curLv;
           if (success) {
             nextLv = curLv + 1;
+            // 튜토리얼 중이면 확실히 강해진 느낌을 주기 위해 기초 공격력도 대폭 상향
+            if (isTutorial) {
+              return { ...w, enhancement: nextLv, attackBonus: (w.attackBonus || 10) + 10 };
+            }
           } else if (curLv >= 21 && !useHeavenlyTalisman) {
             nextLv = curLv - 1;
           }
@@ -2849,6 +3262,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
+    // 튜토리얼 단계 자동 전환은 TutorialOverlay 또는 ForgePanel에서 처리하도록 제거 (결과 확인 단계를 위해)
+
     get().updateQuestProgress("enhance_item", 1);
     let failMsg = "강화에 실패했습니다.";
     if (curLv >= 11) {
@@ -2856,30 +3271,65 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? "강화에 실패했으나 천운의 부적이 단계 하락을 방어했습니다."
         : "강화에 실패하여 강화 단계가 하락했습니다.";
     }
-    return { success, message: success ? `${curLv + 1}강 강화 성공!` : failMsg };
+    const successMsg = isTutorial 
+      ? `무명철검 +${curLv + 1}강 강화 성공! (공격력 10 → 22)`
+      : `${curLv + 1}강 강화 성공!`;
+    return { success, message: success ? successMsg : failMsg };
   },
 
-  rerollWeaponOptions: (itemId: string) => {
+  rerollWeaponOptions: (itemId: string, lockedOptionIndex?: number) => {
     const { game } = get();
     const item = game.ownedWeapons.find(w => w.id === itemId);
     if (!item) return { success: false, message: "장비를 찾을 수 없습니다." };
-    if (item.tier === "평범") return { success: false, message: "평범 등급은 재연마할 수 없습니다." };
 
     const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
     const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
 
-    const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
-    const repCost = Math.floor(30000 * repScale);
-    const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
-    const stoneCost = Math.round(10 * stoneScale);
+    let repCost, stoneCost;
+    if ((item.realm || "필부") === "필부") {
+      repCost = 5000;
+      stoneCost = 5;
+    } else {
+      const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
+      repCost = Math.floor(30000 * repScale);
+      const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
+      stoneCost = Math.round(10 * stoneScale);
+    }
 
-    if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
-    if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+    // 옵션 고정 시 비용 2배
+    if (lockedOptionIndex !== undefined) {
+      repCost *= 2;
+      stoneCost *= 2;
+    }
+
+    const isTutorial = game.tutorialProgress.currentStepId === "click_reroll_start";
+    if (!isTutorial) {
+      if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
+      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+    }
 
     set((s: any) => {
       const nextWeapons = s.game.ownedWeapons.map((w: any) => {
         if (w.id === itemId) {
-          return rollTierAndOptions(w, realmIdx, get().getTotalLuck(), realmIdx);
+          // 튜토리얼 중에는 무조건 신기 등급 수준의 행운(500) 부여하여 최상급 옵션 3개 이상 보장
+          let rolled = rollTierAndOptions(
+            w, 
+            realmIdx, 
+            isTutorial ? 500 : get().getTotalLuck(), 
+            realmIdx,
+            isTutorial ? "명품" : undefined,
+            lockedOptionIndex // 고정 옵션 인덱스 전달
+          );
+          
+          // 튜토리얼 중이면 확실히 옵션이 바뀐 것을 보여주기 위해 강제로 새로운 옵션 세트 주입
+          if (isTutorial) {
+            rolled.randomOptions = [
+              { stat: "atk_pct", label: "공격력", value: 15, grade: "최상급" },
+              { stat: "crit_rate", label: "치명타 확률", value: 5, grade: "최상급" },
+              { stat: "crit_dmg", label: "치명타 피해", value: 20, grade: "최상급" }
+            ];
+          }
+          return { ...rolled, enhancement: w.enhancement };
         }
         return w;
       });
@@ -2908,10 +3358,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
     const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
 
-    const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
-    const repCost = Math.floor(200000 * repScale);
-    const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
-    const stoneCost = Math.round(100 * stoneScale);
+    let repCost, stoneCost;
+    if ((item.realm || "필부") === "필부") {
+      repCost = 5000;
+      stoneCost = 5;
+    } else {
+      const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
+      repCost = Math.floor(200000 * repScale);
+      const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
+      stoneCost = Math.round(100 * stoneScale);
+    }
 
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
     if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
@@ -2951,10 +3407,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
     const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
 
-    const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
-    const repCost = Math.floor(80000 * repScale);
-    const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
-    const stoneCost = Math.round(20 * stoneScale);
+    let repCost, stoneCost;
+    if ((item.realm || "필부") === "필부") {
+      repCost = 5000;
+      stoneCost = 5;
+    } else {
+      const repScale = Math.pow(1.8, realmIdx) * (isPaewang ? 10 : 1);
+      repCost = Math.floor(80000 * repScale);
+      const stoneScale = Math.pow(1.25, realmIdx) * (isPaewang ? 5 : 1);
+      stoneCost = Math.round(20 * stoneScale);
+    }
 
     if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
     if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
@@ -3036,6 +3498,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
+    // 튜토리얼 단계 자동 전환은 TutorialOverlay 또는 ForgePanel에서 처리하도록 제거
+
     get().updateQuestProgress("apply_oil", 1);
     return { success: true, message: `${oilNames[oilId]} 주입 성공!` };
   },
@@ -3563,10 +4027,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         console.log("클라우드(Firebase) 데이터 로드 성공");
       } else {
         // 클라우드에 데이터가 없는 경우 (신규 유저)
-        // 기존 로컬 데이터를 덮어씌워 초기화 상태로 시작하게 함 (계정 간 데이터 꼬임 방지)
-        console.log("클라우드 데이터 없음 - 신규 유저로 초기화합니다.");
-        set((s: any) => ({ game: { ...defaultGameData, isInitialized: true } }));
-        saveGame(get().game);
+        // 로컬 데이터가 이미 있다면(경지나 처치수가 있다면) 초기화하지 않고 클라우드로 업로드 시도
+        const currentLocal = get().game;
+        if (currentLocal.totalDummyKills > 0 || currentLocal.realm !== "필부") {
+          console.log("클라우드 데이터 없음 - 현재 로컬 데이터를 클라우드에 보존합니다.");
+          await saveGameToFirebase(user.id, currentLocal);
+        } else {
+          console.log("신규 유저로 감지되어 초기화합니다.");
+          set((s: any) => ({ game: { ...defaultGameData, isInitialized: true } }));
+          saveGame(get().game);
+        }
       }
     } catch (e) {
       console.warn("데이터 불러오기 중 에러 발생:", e);
@@ -4071,6 +4541,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     get().triggerSave(true);
   },
+
+  setActiveTab: (tab: any) =>
+    set((s: any) => {
+      if (s.game.tutorialProgress.isActive) {
+        const { currentStepId } = s.game.tutorialProgress;
+        if (tab === "quest" && currentStepId === "start_faction") {
+          setTimeout(() => get().setTutorialStep("explain_quest_list"), 100);
+        } else if (tab === "training" && currentStepId === "check_quest") {
+          setTimeout(() => get().setTutorialStep("start_training"), 100);
+        } else if (tab === "forge" && currentStepId === "forge_unlock") {
+          setTimeout(() => get().setTutorialStep("buy_weapon"), 100);
+        } else if (tab === "inventory" && currentStepId === "goto_inventory") {
+          setTimeout(() => get().setTutorialStep("equip_weapon"), 100);
+        } else if (tab === "forge" && currentStepId === "goto_forge_refine") {
+          setTimeout(() => get().setTutorialStep("select_refine_tab"), 100);
+        } else if (tab === "training" && currentStepId === "final_back_to_training") {
+          setTimeout(() => get().completeTutorialStep("final_back_to_training"), 100);
+        }
+      }
+      return { game: { ...s.game, activeTab: tab } };
+    }),
 
   visitGiru: () => {
     set((s: any) => ({ game: { ...s.game, activeTab: "giru" } }));
@@ -4698,6 +5189,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextGifts = { ...(s.game.giruGifts || {}) };
     nextGifts[giftId] = (nextGifts[giftId] || 0) + count;
     if (nextGifts[giftId] <= 0) delete nextGifts[giftId];
+    if (stepId === "actual_final_back_to_training") {
+      // 튜토리얼 종료 처리 (필요시)
+    } else if (stepId === "select_oil") {
+      // 오일 지급 (이미 위에서 처리되지만 명시적으로 확인)
+    }
     return { game: { ...s.game, giruGifts: nextGifts } };
   }),
   acceptQuest: (questId: string) => set((s: any) => {
@@ -4778,6 +5274,273 @@ export const useGameStore = create<GameState>((set, get) => ({
     }));
     get().triggerSave(true);
   },
+
+  setTutorialStep: (stepId: string) => set((s: any) => {
+    if (s.game.tutorialProgress.completedStepIds.includes(stepId)) return s;
+    
+    const gameUpdate: any = {
+      tutorialProgress: {
+        ...s.game.tutorialProgress,
+        isActive: true,
+        currentStepId: stepId
+      }
+    };
+
+    // 튜토리얼 진행을 위한 자원 지원
+    if (stepId === "start_faction") {
+      // 문파 선택 시 기본 연마제 3종 지급
+      gameUpdate.consumables = { 
+        ...(s.game.consumables || {}), 
+        oil_atk_3: 1,
+        oil_crit_3: 1,
+        oil_thunder: 1
+      };
+    } else if (stepId === "forge_unlock") {
+      gameUpdate.coins = s.game.coins + 30000;
+      gameUpdate.reputation = s.game.reputation + 100000;
+      gameUpdate.enhancementStones = s.game.enhancementStones + 50;
+    } else if (stepId === "select_reroll_tab") {
+      gameUpdate.reputation = s.game.reputation + 30000;
+      // FIX: Ensure tutorial weapon is at least Masterpiece for reroll tutorial
+      gameUpdate.ownedWeapons = s.game.ownedWeapons.map((w: any) => 
+        (w.id.startsWith("필부_mainWeapon") && w.tier === "평범") ? { ...w, tier: "명품" } : w
+      );
+    } else if (stepId === "select_infuse_tab" || stepId === "select_item_to_infuse" || stepId === "select_oil") {
+      gameUpdate.reputation = s.game.reputation + 80000;
+      // 연마 탭 진입 및 선택 시 주요 연마제 3종 각각 체크하여 부족하면 즉시 보충
+      const nextConsumables = { ...(s.game.consumables || {}) };
+      let changed = false;
+      
+      ["oil_atk_3", "oil_crit_3", "oil_thunder"].forEach(oid => {
+        if ((nextConsumables[oid] || 0) <= 0) {
+          nextConsumables[oid] = 1;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        gameUpdate.consumables = nextConsumables;
+      }
+    } else if (stepId === "select_potion_category") {
+      gameUpdate.coins = s.game.coins + 100000;
+    } else if (stepId === "goto_forge_refine") {
+      // 제련/재연마 튜토리얼 준비: 금화, 명성, 강화석을 넉넉히 줌
+      gameUpdate.coins = s.game.coins + 200000;
+      gameUpdate.reputation = s.game.reputation + 500000;
+      gameUpdate.enhancementStones = (s.game.enhancementStones || 0) + 200;
+    } else if (stepId === "click_reroll_start") {
+      // 재연마 시점에도 혹시 모르니 보충
+      if (s.game.reputation < 50000) gameUpdate.reputation = s.game.reputation + 100000;
+      if ((s.game.enhancementStones || 0) < 20) gameUpdate.enhancementStones = (s.game.enhancementStones || 0) + 100;
+    } else if (stepId === "click_refine_start") {
+      // 제련 시작 시점에도 혹시 모르니 보충
+      if (s.game.coins < 5000) gameUpdate.coins = s.game.coins + 50000;
+      if ((s.game.enhancementStones || 0) < 10) gameUpdate.enhancementStones = (s.game.enhancementStones || 0) + 50;
+    } else if (stepId === "select_item_inventory") {
+      // 튜토리얼용: 직접 장착해보는 경험을 위해, 만약 이미 장착되어 있다면 해제해줌
+      const equippedId = s.game.equippedGear?.mainWeapon;
+      if (equippedId && equippedId.startsWith("필부_mainWeapon")) {
+        const nextGear = { ...(s.game.equippedGear || {}) };
+        nextGear.mainWeapon = null;
+        gameUpdate.equippedGear = nextGear;
+      }
+    } else if (stepId === "goto_inventory") {
+      // 튜토리얼 무기 유실 방지: 가방으로 넘어가는데 무기가 없으면 즉시 생성해서 넣어줌
+      const hasSword = s.game.ownedWeapons.some((w: any) => w.id.startsWith("필부_mainWeapon"));
+      if (!hasSword) {
+        const tutorialSword = {
+          id: `필부_mainWeapon_tutorial_fixed_${Date.now()}`,
+          name: "무명철검",
+          slot: "mainWeapon",
+          realm: "필부",
+          tier: "명품",
+          attackBonus: 10,
+          price: 5000,
+          icon: "⚔️",
+          description: "공격 +10 | 튜토리얼 지급품",
+          randomOptions: [
+            { stat: "atk_pct", label: "공격력", value: 4, grade: "중급" },
+            { stat: "crit_rate", label: "치명타 확률", value: 1, grade: "중급" }
+          ]
+        };
+        gameUpdate.ownedWeapons = [...s.game.ownedWeapons, tutorialSword];
+      }
+    }
+
+    return {
+      game: {
+        ...s.game,
+        ...gameUpdate
+      }
+    };
+  }),
+
+  prevTutorialStep: () => set((s: any) => {
+    const currentId = s.game.tutorialProgress.currentStepId;
+    const prevMap: Record<string, string> = {
+      "explain_quest_list": "start_faction",
+      "check_quest": "explain_quest_list",
+      "explain_mission_bar": "check_quest",
+      "click_status_detailed": "explain_mission_bar",
+      "explain_status_panel": "click_status_detailed",
+      "explain_time_cycle": "explain_status_panel",
+      "explain_night_only": "explain_time_cycle",
+      "explain_auto_battle": "explain_night_only",
+      "auto_training_info": "explain_auto_battle",
+      "goto_forge_click": "forge_unlock",
+      "buy_weapon": "goto_forge_click",
+      "goto_inventory": "buy_weapon",
+      "select_item_inventory": "goto_inventory",
+      "click_equip_button": "select_item_inventory",
+      "goto_forge_refine": "click_equip_button",
+      "select_refine_tab": "goto_forge_refine",
+      "select_item_to_refine": "select_refine_tab",
+      "check_refine_preview": "select_item_to_refine",
+      "click_refine_start": "check_refine_preview",
+      "check_refine_result": "select_item_to_refine", // Skip click_refine_start to prevent exploit
+      "select_reroll_tab": "check_refine_result",
+      "select_item_to_reroll": "select_reroll_tab",
+      "check_current_options": "select_item_to_reroll",
+      "click_reroll_start": "check_current_options",
+      "check_reroll_result": "select_item_to_reroll", // Skip click_reroll_start
+      "select_infuse_tab": "check_reroll_result",
+      "select_item_to_infuse": "select_infuse_tab",
+      "select_oil": "select_item_to_infuse",
+      "click_infuse_start": "select_oil",
+      "check_forge_result": "select_item_to_infuse", // Skip click_infuse_start
+      "goto_inventory_final": "check_forge_result",
+      "select_infused_item": "goto_inventory_final",
+      "check_final_infused_options": "select_infused_item",
+      "goto_craft_tab_for_potion": "check_final_infused_options",
+      "select_potion_category": "goto_craft_tab_for_potion",
+      "buy_hp_potion": "select_potion_category",
+      "goto_inventory_potion": "buy_hp_potion",
+      "select_medicine_tab": "goto_inventory_potion",
+      "guide_potion_setup": "select_medicine_tab",
+      "actual_final_back_to_training": "guide_potion_setup"
+    };
+    
+    const prevId = prevMap[currentId];
+    if (!prevId) return s;
+
+    return {
+      game: {
+        ...s.game,
+        tutorialProgress: {
+          ...s.game.tutorialProgress,
+          currentStepId: prevId
+        }
+      }
+    };
+  }),
+
+  completeTutorialStep: (stepId: string) => set((s: any) => {
+    // 장착 완료 단계에서 확인 버튼을 누르면 자동으로 장착 처리
+    if (stepId === "click_equip_button") {
+      const weapons = s.game.ownedWeapons;
+      if (weapons && weapons.length > 0) {
+        const lastWeapon = weapons[weapons.length - 1];
+        // 이미 장착되어 있지 않다면 장착 처리
+        if (s.game.equippedGear?.[lastWeapon.slot] !== lastWeapon.id) {
+          // 비동기 이슈 방지를 위해 즉시 상태 업데이트에 포함
+          const nextEquipped = { 
+            ...s.game.equippedGear, 
+            [lastWeapon.slot]: lastWeapon.id 
+          };
+          
+          const nextCompleted = Array.from(new Set([...s.game.tutorialProgress.completedStepIds, stepId]));
+          return {
+            game: {
+              ...s.game,
+              equippedGear: nextEquipped,
+              tutorialProgress: {
+                ...s.game.tutorialProgress,
+                isActive: true,
+                currentStepId: "goto_forge_refine",
+                completedStepIds: nextCompleted
+              }
+            }
+          };
+        }
+      }
+    } else if (stepId === "select_oil") {
+      const nextCompleted = Array.from(new Set([...s.game.tutorialProgress.completedStepIds, stepId]));
+      return {
+        game: {
+          ...s.game,
+          tutorialProgress: {
+            ...s.game.tutorialProgress,
+            isActive: false, // 튜토리얼 종료 (대장간 탭에 있는 동안은 자동수련 멈춤 상태 유지됨)
+            currentStepId: null,
+            completedStepIds: nextCompleted
+          }
+        }
+      };
+    }
+
+    const nextCompleted = Array.from(new Set([...s.game.tutorialProgress.completedStepIds, stepId]));
+    
+    // 다음 단계로 자동 전환이 필요한 경우
+    let nextStepId = null;
+    if (stepId === "start_faction") nextStepId = "explain_quest_list";
+    if (stepId === "explain_quest_list") nextStepId = "check_quest";
+    if (stepId === "check_quest") nextStepId = "explain_mission_bar";
+    if (stepId === "explain_mission_bar") nextStepId = "click_status_detailed";
+    if (stepId === "click_status_detailed") nextStepId = "explain_status_panel";
+    if (stepId === "explain_status_panel") nextStepId = "explain_time_cycle";
+    if (stepId === "explain_time_cycle") nextStepId = "explain_night_only";
+    if (stepId === "explain_night_only") nextStepId = "explain_auto_battle";
+    if (stepId === "explain_auto_battle") nextStepId = "auto_training_info";
+    if (stepId === "auto_training_info") nextStepId = null;
+    if (stepId === "trance_achieved") nextStepId = null; // 10킬 기념 팝업 후 일단 닫기 (또는 다음 단계로)
+    if (stepId === "forge_unlock") nextStepId = "goto_forge_click";
+    if (stepId === "goto_forge_click") nextStepId = "buy_weapon";
+    if (stepId === "buy_weapon") nextStepId = "goto_inventory";
+    if (stepId === "goto_inventory") nextStepId = "select_item_inventory";
+    if (stepId === "select_item_inventory") nextStepId = "click_equip_button";
+    if (stepId === "click_equip_button") nextStepId = "goto_forge_refine";
+    if (stepId === "goto_forge_refine") nextStepId = "select_refine_tab";
+    if (stepId === "select_refine_tab") nextStepId = "select_item_to_refine";
+    if (stepId === "select_item_to_refine") nextStepId = "check_refine_preview";
+    if (stepId === "check_refine_preview") nextStepId = "click_refine_start";
+    if (stepId === "click_refine_start") nextStepId = "check_refine_result";
+    if (stepId === "check_refine_result") nextStepId = "select_reroll_tab";
+    if (stepId === "select_reroll_tab") nextStepId = "select_item_to_reroll";
+    if (stepId === "select_item_to_reroll") nextStepId = "check_current_options";
+    if (stepId === "check_current_options") nextStepId = "click_reroll_start";
+    if (stepId === "click_reroll_start") nextStepId = "check_reroll_result";
+    if (stepId === "check_reroll_result") nextStepId = "select_infuse_tab";
+    if (stepId === "select_infuse_tab") nextStepId = "select_item_to_infuse";
+    if (stepId === "select_item_to_infuse") nextStepId = "select_oil";
+    if (stepId === "click_infuse_start") nextStepId = "check_forge_result";
+    if (stepId === "check_forge_result") nextStepId = "goto_inventory_final";
+    if (stepId === "goto_inventory_final") nextStepId = "select_infused_item";
+    if (stepId === "select_infused_item") nextStepId = "check_final_infused_options";
+    if (stepId === "check_final_infused_options") nextStepId = "goto_craft_tab_for_potion";
+    if (stepId === "goto_craft_tab_for_potion") nextStepId = "select_potion_category";
+    if (stepId === "select_potion_category") nextStepId = "buy_hp_potion";
+    if (stepId === "buy_hp_potion") nextStepId = "goto_inventory_potion";
+    if (stepId === "goto_inventory_potion") nextStepId = "select_medicine_tab";
+    if (stepId === "select_medicine_tab") nextStepId = "guide_potion_setup";
+    if (stepId === "guide_potion_setup") nextStepId = "actual_final_back_to_training";
+    if (stepId === "actual_final_back_to_training") nextStepId = null;
+
+    // 자동수련안내(최종 팁) 후 1차 튜토리얼 종료
+    const isLastStep = stepId === "auto_training_info" || stepId === "inn_event" || stepId === "actual_final_back_to_training" || stepId === "trance_achieved";
+    
+    return {
+      game: {
+        ...s.game,
+        hasStarted: isLastStep ? true : s.game.hasStarted,
+        tutorialProgress: {
+          ...s.game.tutorialProgress,
+          isActive: !isLastStep,
+          currentStepId: isLastStep ? null : nextStepId,
+          completedStepIds: nextCompleted
+        }
+      }
+    };
+  }),
 }));
 
 export function shouldPauseHeavyLoop() {

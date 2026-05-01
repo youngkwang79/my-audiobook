@@ -56,9 +56,10 @@ export default function QuestPanel() {
 
       <div style={{ display: "grid", gap: "12px" }}>
         <AnimatePresence>
-          {sortedQuests.map((quest: Quest) => (
+          {sortedQuests.map((quest: Quest, idx: number) => (
             <motion.div
               key={quest.id}
+              id={idx === 0 ? "quest-item-first" : undefined}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}

@@ -111,7 +111,7 @@ export default function UpgradePanel() {
         { id: "eva", desc: "신묘한 보법을 익혀 적의 공격을\n 회피할 확률을 높입니다." },
         { id: "luck", desc: "수행 중 기연을 만날 확률을 높여\n 귀한 보물을 얻게 합니다." },
         { id: "autoGain", desc: "수행 시 얻는 재물과 성장의 효율을\n 영구적으로 높입니다." },
-        { id: "offlineLimit", desc: "명상의 최대 시간을 늘려\n 오래 수련할 수 있게 합니다." },
+        { id: "offlineLimit", desc: "수련의 최대 시간을 늘려\n 오래 정진할 수 있게 합니다." },
       ] as any[]).find(d => d.id === id)?.desc) || "";
     }
 

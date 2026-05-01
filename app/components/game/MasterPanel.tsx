@@ -1889,7 +1889,7 @@ export default function MasterPanel() {
                 boxShadow: "0 5px 15px rgba(255,215,0,0.3)"
               }}
             >
-              확인
+              다음으로
             </button>
 
           </div>
@@ -1968,7 +1968,7 @@ export default function MasterPanel() {
                 color: "#000", fontWeight: 950, fontSize: 16, border: "none", cursor: "pointer"
               }}
             >
-              확인
+              다음으로
             </button>
           </div>
         </div>

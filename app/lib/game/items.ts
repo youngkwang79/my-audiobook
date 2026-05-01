@@ -221,32 +221,76 @@ export const LEGENDARY_OPTIONS: any[] = [
   { id: "leg_counter", name: "반격", description: "회피 성공 시 공격력 150%의 반격" },
   { id: "leg_haste", name: "질풍", description: "회피 시 3초간 이동속도 30% 증가" },
   { id: "leg_skill_dmg", name: "무신", description: "스킬 데미지 30% 증가" },
-  { id: "leg_mp_save", name: "명상", description: "내공 소모량 20% 감소" },
+  { id: "leg_mp_save", name: "심신안정", description: "내공 소모량 20% 감소" },
   { id: "leg_gold_double", name: "부호", description: "골드 획득 시 10% 확률로 2배" },
   { id: "leg_boss_drop", name: "탐욕", description: "보스 처치 시 20% 확률로 추가 드랍" },
 ];
 
-export function rollTierAndOptions(baseItem: OwnedWeapon, realmIdx: number, luckLevel: number, baseGrade: number): OwnedWeapon {
+export function rollTierAndOptions(
+  baseItem: OwnedWeapon, 
+  realmIdx: number, 
+  luckLevel: number, 
+  baseGrade: number, 
+  forcedTier?: ItemTier,
+  lockedOptionIndex?: number // 추가: 고정할 옵션 인덱스
+): OwnedWeapon {
   const item = { ...baseItem };
+  const prevOptions = baseItem.randomOptions || [];
+  const prevOptCount = prevOptions.length;
   
   // 1. 등급 결정 (ItemTier)
-  const tierRoll = Math.random() * 100 + luckLevel * 0.5;
-  if (tierRoll > 99.5) item.tier = "신기";
-  else if (tierRoll > 97) item.tier = "국보";
-  else if (tierRoll > 90) item.tier = "보구";
-  else if (tierRoll > 70) item.tier = "명품";
-  else item.tier = "평범";
+  if (forcedTier) {
+    item.tier = forcedTier;
+  } else {
+    // 기존 등급보다 낮아지지 않게 보정 (재연마 시 등급 하락 방지 옵션으로 활용 가능)
+    const tierRoll = Math.random() * 100 + luckLevel * 0.5;
+    let newTier: ItemTier = "평범";
+    if (tierRoll > 99.5) newTier = "신기";
+    else if (tierRoll > 97) newTier = "국보";
+    else if (tierRoll > 90) newTier = "보구";
+    else if (tierRoll > 70) newTier = "명품";
+    else newTier = "평범";
 
-  // 2. 랜덤 옵션 개수 (1~4개)
+    // 재연마 시 등급이 이미 존재한다면, 더 높은 것만 취함 (최소 등급 유지)
+    if (baseItem.tier) {
+      const tierOrder: ItemTier[] = ["평범", "명품", "보구", "국보", "신기"];
+      const oldIdx = tierOrder.indexOf(baseItem.tier);
+      const newIdx = tierOrder.indexOf(newTier);
+      item.tier = newIdx > oldIdx ? newTier : baseItem.tier;
+    } else {
+      item.tier = newTier;
+    }
+  }
+
+  // 2. 랜덤 옵션 개수 결정 (등급에 따라 최소 개수 보장)
   let optCount = 1;
-  if (item.tier === "신기") optCount = 3 + (Math.random() < 0.3 ? 1 : 0);
-  else if (item.tier === "보구") optCount = 2 + (Math.random() < 0.4 ? 1 : 0);
-  else if (item.tier === "명품") optCount = 1 + (Math.random() < 0.5 ? 1 : 0);
+  if (item.tier === "신기") optCount = 4;
+  else if (item.tier === "국보") optCount = 3;
+  else if (item.tier === "보구") optCount = 3;
+  else if (item.tier === "명품") optCount = 2;
+  else optCount = 1;
+
+  // [수정] 기존 옵션 개수보다 줄어들지 않도록 보장
+  optCount = Math.max(optCount, prevOptCount);
+
+  // 튜토리얼 등 강제 보정 시
+  if (forcedTier) {
+    optCount = Math.max(optCount, 3);
+  }
   
   const options: RandomOption[] = [];
   const usedStats = new Set<string>();
 
-  for (let i = 0; i < optCount; i++) {
+  // 고정 옵션 처리
+  if (lockedOptionIndex !== undefined && prevOptions[lockedOptionIndex]) {
+    const lockedOpt = prevOptions[lockedOptionIndex];
+    options.push({ ...lockedOpt });
+    usedStats.add(lockedOpt.stat);
+  }
+
+  // 나머지 옵션 생성
+  const targetCount = optCount;
+  while (options.length < targetCount) {
     const pool = RANDOM_OPTION_POOL.filter(o => !usedStats.has(o.stat));
     if (pool.length === 0) break;
     const picked = pool[Math.floor(Math.random() * pool.length)];
@@ -289,6 +333,9 @@ export function rollTierAndOptions(baseItem: OwnedWeapon, realmIdx: number, luck
       usedLegs.add(picked.id);
     }
     item.legendaryOptions = legOptions;
+  } else {
+    // [수정] 새로운 롤에서 전설 옵션 획득 실패 시 기존 옵션 제거 (재연마 대응)
+    delete item.legendaryOptions;
   }
 
   return item;
@@ -328,7 +375,7 @@ export function generateRandomAccessory(realm: RealmType, luck: number): OwnedWe
   return rollTierAndOptions(baseItem, REALM_ORDER.indexOf(realm), luck, 0);
 }
 
-export function generateRandomGear(realm: RealmType, baseGrade: number, luck: number): OwnedWeapon {
+export function generateRandomGear(realm: RealmType, baseGrade: number, luck: number, forcedTier?: ItemTier): OwnedWeapon {
   const stats = REALM_STATS[realm] || REALM_STATS["필부"];
   const slots: EquipSlot[] = ["mainWeapon", "subWeapon", "gloves", "shoes", "robe", "necklace", "ring", "bracelet"];
   const slot = slots[Math.floor(Math.random() * slots.length)];
@@ -367,7 +414,7 @@ export function generateRandomGear(realm: RealmType, baseGrade: number, luck: nu
     setGroupId: "공격" // 기본 공격 세트
   };
   
-  return rollTierAndOptions(baseItem, REALM_ORDER.indexOf(realm), luck, baseGrade);
+  return rollTierAndOptions(baseItem, REALM_ORDER.indexOf(realm), luck, baseGrade, forcedTier);
 }
 
 export function getEnhancementMultiplier(level: number): number {

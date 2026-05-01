@@ -44,6 +44,16 @@ export default function TrainingPanel() {
   const logCombatDamage = useGameStore((s: any) => s.logCombatDamage);
   const getTotalCombatPower = useGameStore((s: any) => s.getTotalCombatPower);
 
+  const tutorialProgress = useGameStore((s: any) => s.game.tutorialProgress);
+  const setTutorialStep = useGameStore((s: any) => s.setTutorialStep);
+
+  // Tutorial Trigger Backup
+  useEffect(() => {
+    if (totalDummyKills >= 5 && tutorialProgress?.isActive && tutorialProgress?.currentStepId === "start_training") {
+      setTutorialStep("explain_mission_bar");
+    }
+  }, [totalDummyKills, tutorialProgress, setTutorialStep]);
+
   // Ensure victory effect is cleared on unmount to prevent repetition when switching tabs
   useEffect(() => {
     return () => {
@@ -247,7 +257,7 @@ export default function TrainingPanel() {
     }
 
     // 무아지경 보상 팝업 제거
-    if (msg.includes("보상 획득") && msg.includes("무아지경")) {
+    if (msg.includes("무아지경")) {
       clearLastReward();
       return;
     }
@@ -319,8 +329,13 @@ export default function TrainingPanel() {
 
     setLastTouchTime(now);
     setShowPrompt(false);
-    const { pendingInnEntry, timingMission } = useGameStore.getState().game;
-    if (showBreakthroughPopup || pendingInnEntry || timingMission?.available) return;
+    const { pendingInnEntry, timingMission, tutorialProgress } = useGameStore.getState().game;
+    
+    // 튜토리얼 중 특정 조작이 필요한 단계(대장간 등)에서는 허수아비 타격 방지
+    const isRestrictedTutorialStep = tutorialProgress?.isActive && 
+      !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training"].includes(tutorialProgress.currentStepId);
+    
+    if (showBreakthroughPopup || pendingInnEntry || timingMission?.available || isRestrictedTutorialStep) return;
 
     const totalCritRate = useGameStore.getState().getTotalCritRate ? useGameStore.getState().getTotalCritRate() : 5;
     const isCritical = Math.random() < totalCritRate / 100;
@@ -828,7 +843,7 @@ export default function TrainingPanel() {
                   animation: "breakthroughConfirmPulse 1.3s ease-in-out infinite",
                 }}
               >
-                확인
+                다음으로
               </button>
             </div>
           </div>
@@ -836,7 +851,7 @@ export default function TrainingPanel() {
       )}
 
       {/* 객잔 무뢰배 난입 이벤트 (Inn Entry) 오버레이 - available일 때도 표시하여 수련장 진입 원천 차단 */}
-      {(pendingInnEntry || timingMission?.available) && (
+      {(pendingInnEntry || timingMission?.available) && !useGameStore.getState().game.tutorialProgress.isActive && (
         <div
           id="thug-invasion-overlay"
           style={{
@@ -1033,6 +1048,7 @@ export default function TrainingPanel() {
         </div>
       )}
       <div
+        id="training-area"
         onMouseDown={handleHit}
         onTouchStart={handleTouchStart}
         style={{
@@ -1437,6 +1453,7 @@ export default function TrainingPanel() {
       </div>
 
       <div
+        id="mission-status-bar"
         style={{
           width: "380px",
           maxWidth: "95%",
@@ -1470,17 +1487,41 @@ export default function TrainingPanel() {
             alignItems: "center",
             justifyContent: "center",
             textAlign: "center",
+            padding: "0 10px",
           }}
         >
-          {missionSlide === 0 ? (
-            <span style={{ color: "#ffd700", animation: "goldShine 1.5s ease-in-out infinite", whiteSpace: "pre-wrap" }}>
-              {currentMissionTitle}
-            </span>
-          ) : (
-            <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
-              객잔 무뢰배 추격 (현재: {totalDummyKills < 300 ? totalDummyKills : dummyKills} / {totalDummyKills < 300 ? 300 : questTarget})
-            </span>
-          )}
+          {(() => {
+            const activeQuests = useGameStore.getState().game.activeQuests || [];
+            const ongoingQuests = activeQuests.filter((q: any) => q.status === "active");
+            
+            // 총 슬라이드 수: 기본 2개 (메인 임무, 무뢰배 추격) + 실제 퀘스트 수
+            const totalSlides = 2 + ongoingQuests.length;
+            const currentSlideIndex = missionSlide % totalSlides;
+
+            if (currentSlideIndex === 0) {
+              return (
+                <span style={{ color: "#ffd700", animation: "goldShine 1.5s ease-in-out infinite", whiteSpace: "pre-wrap" }}>
+                  {currentMissionTitle}
+                </span>
+              );
+            } else if (currentSlideIndex === 1) {
+              return (
+                <span style={{ color: "#ffd700", fontSize: "13px", fontWeight: "bold" }}>
+                  객잔 무뢰배 추격 (현재: {totalDummyKills < 300 ? totalDummyKills : dummyKills} / {totalDummyKills < 300 ? 300 : questTarget})
+                </span>
+              );
+            } else {
+              const quest = ongoingQuests[currentSlideIndex - 2];
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <span style={{ color: "#00f2ff", fontSize: "11px", fontWeight: "bold", opacity: 0.8 }}>진행 중인 임무</span>
+                  <span style={{ color: "#fff", fontSize: "13px", fontWeight: "900" }}>
+                    {quest.title} ({quest.currentCount} / {quest.targetCount})
+                  </span>
+                </div>
+              );
+            }
+          })()}
         </div>
         <div
           style={{
@@ -1495,10 +1536,25 @@ export default function TrainingPanel() {
         >
           <div
             style={{
-              width: `${Math.min(100, (missionSlide === 0 ? (dummyKills / questTarget) : (totalDummyKills < 300 ? (totalDummyKills / 300) : (dummyKills / questTarget))) * 100)}%`,
+              width: `${Math.min(100, (() => {
+                const activeQuests = useGameStore.getState().game.activeQuests || [];
+                const ongoingQuests = activeQuests.filter((q: any) => q.status === "active");
+                const totalSlides = 2 + ongoingQuests.length;
+                const currentSlideIndex = missionSlide % totalSlides;
+
+                if (currentSlideIndex === 0) return (dummyKills / questTarget);
+                if (currentSlideIndex === 1) return (totalDummyKills < 300 ? (totalDummyKills / 300) : (dummyKills / questTarget));
+                
+                const quest = ongoingQuests[currentSlideIndex - 2];
+                return (quest.currentCount / quest.targetCount);
+              })() * 100)}%`,
               height: "100%",
-              background: "linear-gradient(90deg, #f9d423, #ffdb01)",
-              boxShadow: "0 0 10px #ffd700",
+              background: missionSlide % (2 + (useGameStore.getState().game.activeQuests || []).filter((q: any) => q.status === "active").length) >= 2 
+                ? "linear-gradient(90deg, #00f2ff, #0099ff)" 
+                : "linear-gradient(90deg, #f9d423, #ffdb01)",
+              boxShadow: missionSlide % (2 + (useGameStore.getState().game.activeQuests || []).filter((q: any) => q.status === "active").length) >= 2
+                ? "0 0 10px #00f2ff"
+                : "0 0 10px #ffd700",
               transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           />
@@ -1849,7 +1905,7 @@ export default function TrainingPanel() {
                   cursor: "pointer"
                 }}
               >
-                분석 종료 및 확인
+                분석 종료 및 다음으로
               </button>
             </div>
           </div>

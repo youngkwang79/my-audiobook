@@ -604,6 +604,11 @@ export type GameSaveData = {
   showDawnSettlement: boolean;
   dayCount: number;
   nextDayEvent: NextDayEvent | null;
+  tutorialProgress: {
+    isActive: boolean;
+    currentStepId: string | null;
+    completedStepIds: string[];
+  };
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

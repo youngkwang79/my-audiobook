@@ -177,6 +177,18 @@ export default function GameIntroPanel({
               justifyContent: "center",
               position: "relative",
             }}>
+              {/* 왼쪽 화살표 */}
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex((prev) => (prev === 0 ? FACTIONS.length - 1 : prev - 1));
+                }}
+                className="intro-blink-arrow"
+                style={{ position: "absolute", left: "25px", zIndex: 100, cursor: "pointer" }}
+              >
+                ◀
+              </div>
+
               <motion.img
                 src={previewImage}
                 alt={currentFaction.name}
@@ -195,6 +207,35 @@ export default function GameIntroPanel({
                   ease: "easeInOut"
                 }}
               />
+
+              {/* 오른쪽 화살표 */}
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex((prev) => (prev + 1) % FACTIONS.length);
+                }}
+                className="intro-blink-arrow"
+                style={{ position: "absolute", right: "25px", zIndex: 100, cursor: "pointer" }}
+              >
+                ▶
+              </div>
+
+              <style jsx>{`
+                @keyframes introArrowBlink {
+                  0% { opacity: 0.2; transform: scale(0.9); }
+                  50% { opacity: 1; transform: scale(1.1); }
+                  100% { opacity: 0.2; transform: scale(0.9); }
+                }
+                .intro-blink-arrow {
+                  color: #f3c969;
+                  font-size: 32px;
+                  font-weight: 900;
+                  animation: introArrowBlink 1.5s infinite;
+                  text-shadow: 0 0 15px rgba(243, 201, 105, 0.6);
+                  user-select: none;
+                  padding: 20px;
+                }
+              `}</style>
             </div>
 
             {/* 하단 정보 패널 (월향루 스타일) */}
@@ -275,29 +316,7 @@ export default function GameIntroPanel({
         </AnimatePresence>
       </div>
 
-      {/* 하단 인디케이터 */}
-      <div style={{
-        position: "absolute",
-        bottom: "30px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        gap: "10px",
-        zIndex: 10
-      }}>
-        {FACTIONS.map((_, i) => (
-          <div
-            key={i}
-            style={{
-              width: i === currentIndex ? "24px" : "8px",
-              height: "8px",
-              borderRadius: "4px",
-              background: i === currentIndex ? "#f3c969" : "rgba(255,255,255,0.2)",
-              transition: "all 0.3s ease"
-            }}
-          />
-        ))}
-      </div>
+
     </div>
   );
 }

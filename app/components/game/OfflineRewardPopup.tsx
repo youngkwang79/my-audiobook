@@ -33,7 +33,7 @@ export default function OfflineRewardPopup() {
         boxShadow: "0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(255,215,120,0.1)"
       }}>
         <div style={{ fontSize: 14, color: "#aaa", marginBottom: 4 }}>수련의 결실 (오프라인 보상)</div>
-        <div style={{ fontSize: 24, fontWeight: 900, color: "#ffd700", marginBottom: 20, letterSpacing: -0.5 }}>명상을 마쳤습니다</div>
+        <div style={{ fontSize: 24, fontWeight: 900, color: "#ffd700", marginBottom: 20, letterSpacing: -0.5 }}>수련을 마쳤습니다</div>
         
         <div style={{ fontSize: 13, color: "#888", marginBottom: 24 }}>
           강호에서 물러나 있던 <span style={{ color: "#fff", fontWeight: "bold" }}>{rewards.duration}시간</span> 동안<br/>
@@ -54,7 +54,7 @@ export default function OfflineRewardPopup() {
             <span style={{ fontSize: 16, fontWeight: 900, color: "#7fffaa" }}>+{rewards.touches.toLocaleString()}</span>
           </div>
           <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 14, color: "#ccc" }}>📉 명상 효율</span>
+            <span style={{ fontSize: 14, color: "#ccc" }}>📉 수련 효율</span>
             <span style={{ fontSize: 16, fontWeight: 900, color: "#88d8ff" }}>{rewards.efficiency}%</span>
           </div>
           {rewards.estimatedHoursToNextRealm > 0 ? (
@@ -64,7 +64,7 @@ export default function OfflineRewardPopup() {
             </div>
           ) : (
             <div style={{ background: "rgba(255,255,255,0.03)", padding: "12px 16px", borderRadius: 16, color: "#a0ff9e" }}>
-              현재 경지에서 최대 수련 효율에 가까운 명상 보상을 받았습니다.
+              현재 경지에서 최대 수련 효율에 가까운 보상을 받았습니다.
             </div>
           )}
         </div>

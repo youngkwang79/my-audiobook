@@ -1,7 +1,7 @@
 "use client";
 
+import { useGameStore } from "@/app/lib/game/useGameStore";
 import type { TabType } from "@/app/lib/game/types";
-import { useGameStore } from "@/app/lib/game/useGameStore"; // [시스템 삽입] 스토어 가져오기
 
 type Props = {
   activeTab: TabType;
@@ -28,12 +28,9 @@ export default function GameBottomNav({
   unlockedTabs,
   onChange,
 }: Props) {
-  // [시스템 삽입] 전투 진행 여부 및 밤 모드 확인
   const isPlaying = useGameStore((state) => state.game.masterDuel.isPlaying);
-  const isNight = useGameStore((state) => state.game.timeState === "night");
-  const hasSeenFirstNight = useGameStore((state) => state.game.hasSeenFirstNight);
+  const currentStepId = useGameStore((state) => state.game.tutorialProgress?.currentStepId);
 
-  // [시스템 삽입] 전투 중일 때는 하단 메뉴 전체를 렌더링하지 않음
   if (isPlaying) return null;
 
   return (
@@ -54,30 +51,51 @@ export default function GameBottomNav({
         const isGiruOrGambling = item.key === "giru" || item.key === "gambling";
         const unlocked = unlockedTabs.includes(item.key);
         const active = activeTab === item.key;
-        const isLockedByDay = false; // 출입제한(밤에만 가능) 삭제
+        
+        // 퀘스트 하이라이트 중 수련 탭 어둡게 처리 로직 (start_faction 단계에서만)
+        const isTrainingDarkened = item.key === "training" && currentStepId === "start_faction";
+        
+        // 튜토리얼 중에는 임무 탭 하이라이트를 완전히 제거하고 회색톤으로 유지 (단, 초기 3단계는 하이라이트 허용)
+        const isQuestTutorialMuted = item.key === "quest" && 
+                                    !!currentStepId && 
+                                    !["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
+        const isQuestHighlighted = item.key === "quest" && 
+                                   ["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
+        
+        // 수련 탭 하이라이트 (제외 요청에 따라 일반 컬러로)
+        const isTrainingHighlighted = false;
+        
+        // 밤의 활동 안내 단계에서 기루/도박 탭 강조
+        const isNightContentHighlighted = (item.key === "giru" || item.key === "gambling") && currentStepId === "explain_night_only";
+        
+        const shouldShowActiveStyle = (active || isQuestHighlighted || isTrainingHighlighted) && !isQuestTutorialMuted;
 
         return (
           <button
             key={item.key}
+            id={`nav-${item.key}`}
             onClick={() => {
-
-
               if (!unlocked) return;
-              
               onChange(item.key);
             }}
             style={{
               position: "relative",
               borderRadius: 12,
-              border: active
+              border: (shouldShowActiveStyle && !isTrainingDarkened && !isQuestTutorialMuted) || isNightContentHighlighted
                 ? "1px solid rgba(255,215,120,0.85)"
                 : "1px solid rgba(255,255,255,0.08)",
-              background: active
+              background: (shouldShowActiveStyle && !isTrainingDarkened && !isQuestTutorialMuted) || isNightContentHighlighted
                 ? "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)"
-                : unlocked 
-                  ? "rgba(255,255,255,0.05)"
-                  : "rgba(0,0,0,0.4)",
-              color: active ? "#2b1d00" : unlocked ? "white" : "#666",
+                : (isTrainingDarkened || isQuestTutorialMuted)
+                  ? "rgba(0,0,0,0.6)"
+                  : unlocked 
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.4)",
+              color: (shouldShowActiveStyle && !isTrainingDarkened && !isQuestTutorialMuted) || isNightContentHighlighted
+                ? "#2b1d00" 
+                : (isTrainingDarkened || isQuestTutorialMuted)
+                  ? "#444"
+                  : unlocked ? "white" : "#666",
               padding: "10px 2px",
               fontWeight: 900,
               fontSize: 10,
@@ -92,6 +110,7 @@ export default function GameBottomNav({
               transition: "all 0.2s ease",
               filter: unlocked ? "none" : "grayscale(0.8)",
               opacity: unlocked ? 1 : 0.6,
+              boxShadow: isNightContentHighlighted ? "0 0 15px rgba(255, 215, 120, 0.6)" : "none",
             }}
           >
             <span style={{ fontSize: 13 }}>{item.label}</span>
@@ -110,9 +129,8 @@ export default function GameBottomNav({
                   position: "absolute",
                   top: "2px",
                   right: "4px",
-                  fontSize: "9px",
-                  color: "#ffd778",
-                  opacity: 0.8
+                  fontSize: "10px",
+                  animation: "pulse 2s infinite"
                 }}>
                   🌙
                 </span>

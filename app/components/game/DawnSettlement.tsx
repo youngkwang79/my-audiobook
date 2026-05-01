@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
 
@@ -7,6 +8,13 @@ export default function DawnSettlement({ onClose }: { onClose: () => void }) {
   const { game } = useGameStore() as any;
   const nightBuffs = game.nightBuffs || [];
   const exchanged = game.tujeonExchangeBought || {};
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
   return (
     <motion.div

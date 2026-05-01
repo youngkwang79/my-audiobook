@@ -17,6 +17,22 @@ export default function GameStatusPanel() {
   const router = useRouter();
   const { getTotalAttack, getTotalHpRecovery, triggerSave, combatAnalysis, startCombatAnalysis, stopCombatAnalysis, toggleAudio, resetGame, setLowPowerMode, setAutoFps, triggerGodMode } = useGameStore() as any;
 
+  // 튜토리얼 단계에 따른 UI 강제 동기화 (뒤로가기 등 대응)
+  useEffect(() => {
+    if (game?.tutorialProgress?.isActive) {
+      const stepId = game.tutorialProgress.currentStepId;
+      if (["explain_status_panel"].includes(stepId)) {
+        if (!isModalOpen) setIsModalOpen(true);
+      } else {
+        // 상태창 단계가 아닐 때 모달이 열려있다면 닫아줌 (다른 단계 진행을 위해)
+        // 단, 유저가 직접 연 경우를 위해isActive일 때만 강제 제어
+        if (isModalOpen && !["click_status_detailed", "explain_status_panel"].includes(stepId)) {
+           // setIsModalOpen(false); // 굳이 강제로 닫을 필요는 없을지도? 유저가 수동으로 닫을 수 있게 둠
+        }
+      }
+    }
+  }, [game?.tutorialProgress?.currentStepId, game?.tutorialProgress?.isActive]);
+
   // 데이터 유실 방지를 위한 초기화 및 매핑
   const safeGame: any = {
     ...game,
@@ -80,6 +96,8 @@ export default function GameStatusPanel() {
   return (
     <>
       <aside
+        id="player-status-button"
+        onClick={() => setIsModalOpen(true)}
         style={{
           width: "100%",
           maxWidth: "400px",
@@ -96,6 +114,7 @@ export default function GameStatusPanel() {
           boxShadow: "0 5px 15px rgba(0,0,0,0.6)",
           position: "relative",
           zIndex: 10,
+          cursor: "pointer"
         }}
       >
         {/* 1. 상단: 정보 레이아웃 */}
@@ -147,7 +166,7 @@ export default function GameStatusPanel() {
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
             style={{
               padding: "4px 8px",
               fontSize: "11px",
@@ -164,7 +183,7 @@ export default function GameStatusPanel() {
           </button>
 
           <button
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }}
             title="환경 설정"
             style={{
               width: "28px",
@@ -185,7 +204,8 @@ export default function GameStatusPanel() {
           </button>
           
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setIsCheatAuthOpen(true);
               setAuthInput("");
             }}
@@ -253,7 +273,7 @@ export default function GameStatusPanel() {
                 }}
               />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#fff", fontWeight: "bold", textShadow: "1px 1px 1px #000" }}>
-                {Math.floor(safeGame.hp).toLocaleString()}
+                {Math.floor(safeGame.hp).toLocaleString()} / {Math.floor(totalHp).toLocaleString()}
               </div>
             </div>
           </div>
@@ -291,7 +311,7 @@ export default function GameStatusPanel() {
                 }}
               />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", color: "#fff", fontWeight: "bold", textShadow: "1px 1px 1px #000" }}>
-                {Math.floor(safeGame.mp).toLocaleString()}
+                {Math.floor(safeGame.mp).toLocaleString()} / {Math.floor(totalMp).toLocaleString()}
               </div>
             </div>
           </div>
@@ -360,8 +380,8 @@ export default function GameStatusPanel() {
             <span>{formatCompactNumber(safeGame.touches)}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "3px", color: "#ff8c8c" }}>
-            <span>🍵</span>
-            <span>{formatCompactNumber(Math.floor(getTotalHpRecovery()))}</span>
+            <span>⚔️</span>
+            <span>{formatCompactNumber(Math.floor(getTotalAttack()))}</span>
           </div>
         </div>
 

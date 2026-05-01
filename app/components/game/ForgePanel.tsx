@@ -60,6 +60,7 @@ function PotionItem({ p, playerRealm, buyPotion, unlocked, currentCoins }: any) 
           <button onClick={() => setQty(Math.min(99, qty + 1))} style={{ width: 18, height: 18, borderRadius: 4, border: "1px solid #444", background: "#222", color: "#fff", cursor: "pointer", fontSize: 10 }}>+</button>
         </div>
         <button
+          id={`forge-buy-potion-${p.id}`}
           onClick={() => buyPotion(p.id as any, qty)}
           disabled={!unlocked || currentCoins < cost}
           style={{ 
@@ -91,10 +92,18 @@ export default function ForgePanel(props: Props) {
   const wisdom = useGameStore((s: any) => s.game.wisdom);
   const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
   const gearPieces = useGameStore((s: any) => s.game.gearPieces || 0);
+  const currentStepId = useGameStore((s: any) => s.game.tutorialProgress.currentStepId);
 
   const addWeapon = useGameStore((s: any) => s.addWeapon);
   const addCoins = useGameStore((s: any) => s.addCoins);
-  const buyPotion = useGameStore((s: any) => s.buyPotion);
+  const _buyPotion = useGameStore((s: any) => s.buyPotion);
+  const buyPotion = (id: any, qty: number) => {
+    _buyPotion(id, qty);
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    if (game.tutorialProgress?.currentStepId === "buy_hp_potion") {
+      setTutorialStep("goto_inventory_potion");
+    }
+  };
   const enhanceWeapon = useGameStore((s: any) => s.enhanceWeapon);
   const rerollWeaponOptions = useGameStore((s: any) => s.rerollWeaponOptions);
   const infuseSoul = useGameStore((s: any) => s.infuseSoul);
@@ -104,19 +113,121 @@ export default function ForgePanel(props: Props) {
   const unlocked = unlockedTabs.includes("forge");
   const ownedIds = useMemo(() => ownedWeapons.map((item: any) => item.id), [ownedWeapons]);
 
-  const [activeTab, setActiveTab] = useState<"craft" | "enhance" | "night">("craft");
-  const [enhanceSubTab, setEnhanceSubTab] = useState<"level" | "reroll" | "soul" | "oil">("level");
-  const [selectedRealm, setSelectedRealm] = useState("필부");
-  const [selectedEnhanceItem, setSelectedEnhanceItem] = useState<WeaponId | null>(null);
+  const [activeTab, _setActiveTab] = useState<"craft" | "enhance" | "night">("craft");
+  const setActiveTab = (val: "craft" | "enhance" | "night") => {
+    _setActiveTab(val);
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    if (game.tutorialProgress?.isActive) {
+      if (val === "enhance" && game.tutorialProgress.currentStepId === "select_refine_tab") {
+        setTutorialStep("select_item_to_refine");
+      }
+    }
+  };
+  const [enhanceSubTab, _setEnhanceSubTab] = useState<"level" | "reroll" | "soul" | "oil">("level");
+  
+  const setEnhanceSubTab = (val: any) => {
+    _setEnhanceSubTab(val);
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const tutorialProgress = game?.tutorialProgress;
+    if (tutorialProgress?.isActive) {
+      if (val === "level" && tutorialProgress.currentStepId === "select_refine_tab") {
+        setTutorialStep("select_item_to_refine");
+      } else if (val === "reroll" && tutorialProgress.currentStepId === "select_reroll_tab") {
+        setTutorialStep("select_item_to_reroll");
+      } else if (val === "oil" && tutorialProgress.currentStepId === "select_infuse_tab") {
+        setTutorialStep("select_item_to_infuse");
+      }
+    }
+  };
+  const [selectedRealm, _setSelectedRealm] = useState("필부");
+  const setSelectedRealm = (realm: any) => {
+    _setSelectedRealm(realm);
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    if (game.tutorialProgress?.currentStepId === "select_potion_category" && realm === "회복제") {
+      setTutorialStep("buy_hp_potion");
+    }
+  };
+  const [selectedEnhanceItem, _setSelectedEnhanceItem] = useState<WeaponId | null>(null);
+  const [lockedOptionIdx, setLockedOptionIdx] = useState<number | null>(null); // 추가: 고정할 옵션 인덱스
+
+  const setSelectedEnhanceItem = (val: any) => {
+    _setSelectedEnhanceItem(val);
+    setLockedOptionIdx(null); // 아이템 변경 시 고정 초기화
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const tutorialProgress = game?.tutorialProgress;
+    if (tutorialProgress?.isActive && val) {
+      const selectedW = ownedWeapons.find((w: any) => w.id === val);
+      if (tutorialProgress.currentStepId === "select_item_to_refine") {
+        if (selectedW && (selectedW.enhancement || 0) > 0) {
+          // 이미 강화된 경우 결과 확인 단계로 점프
+          setTutorialStep("check_refine_result");
+        } else {
+          setTutorialStep("check_refine_preview");
+        }
+      } else if (tutorialProgress.currentStepId === "select_item_to_reroll") {
+        setTutorialStep("check_current_options");
+      } else if (tutorialProgress.currentStepId === "select_item_to_infuse") {
+        setTutorialStep("select_oil");
+      }
+    }
+  };
   const [enhanceResult, setEnhanceResult] = useState<{ success: boolean; message: string } | null>(null);
   const [purchaseEffect, setPurchaseEffect] = useState<{ name: string; icon: string } | null>(null);
-  const [selectedOilId, setSelectedOilId] = useState<ConsumableId | null>(null);
+  const [showDirectTryPopup, setShowDirectTryPopup] = useState(false);
+  const [selectedOilId, _setSelectedOilId] = useState<ConsumableId | null>(null);
+  const setSelectedOilId = (val: any) => {
+    _setSelectedOilId(val);
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const tutorialProgress = game?.tutorialProgress;
+    if (tutorialProgress?.isActive && val && tutorialProgress.currentStepId === "select_oil") {
+      setTutorialStep("click_infuse_start");
+    }
+  };
   const [now, setNow] = useState(Date.now());
+  const [oilInfoId, setOilInfoId] = useState<ConsumableId | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
+
+  // 튜토리얼 단계에 따른 UI 강제 동기화 (뒤로가기 등 대응)
+  useEffect(() => {
+    const tutorialProgress = (useGameStore.getState() as any).game?.tutorialProgress;
+    if (tutorialProgress?.isActive) {
+      const stepId = tutorialProgress.currentStepId;
+      
+      // 제련 탭 관련
+      if (["select_refine_tab", "select_item_to_refine", "click_refine_start"].includes(stepId)) {
+        if (activeTab !== "enhance") _setActiveTab("enhance");
+        if (enhanceSubTab !== "level") _setEnhanceSubTab("level");
+      }
+      // 재연마 탭 관련
+      else if (["select_reroll_tab", "select_item_to_reroll", "click_reroll_start"].includes(stepId)) {
+        if (activeTab !== "enhance") _setActiveTab("enhance");
+        if (enhanceSubTab !== "reroll") _setEnhanceSubTab("reroll");
+      }
+      // 연마 탭 관련
+      else if (["select_infuse_tab", "select_item_to_infuse", "select_oil", "click_infuse_start"].includes(stepId)) {
+        if (activeTab !== "enhance") _setActiveTab("enhance");
+        if (enhanceSubTab !== "oil") _setEnhanceSubTab("oil");
+      }
+      // 제작 탭 관련 (물약 등)
+      else if (["goto_craft_tab_for_potion", "select_potion_category", "buy_hp_potion"].includes(stepId)) {
+        if (activeTab !== "craft") _setActiveTab("craft");
+      }
+
+      // 연마제 선택 단계인데 주요 연마제 3종 중 하나라도 없으면 즉시 보충 트리거
+      const needsOils = (consumables["oil_atk_3"] || 0) <= 0 || 
+                        (consumables["oil_crit_3"] || 0) <= 0 || 
+                        (consumables["oil_thunder"] || 0) <= 0;
+      
+      if (stepId === "select_oil" && needsOils) {
+        const { setTutorialStep } = useGameStore.getState() as any;
+        setTutorialStep("select_oil"); // Re-trigger to get items from store logic
+      }
+    }
+  }, [useGameStore((s: any) => s.game.tutorialProgress.currentStepId)]);
 
   const filteredItems = useMemo(() => {
     return FORGE_ITEMS.filter((item: any) => item.realm === selectedRealm);
@@ -135,18 +246,45 @@ export default function ForgePanel(props: Props) {
   const handleBuy = (itemId: WeaponId) => {
     const item = FORGE_ITEMS.find((gear) => gear.id === itemId);
     if (!item) return;
-    if (currentCoins < item.price) return;
+
+    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const tutorialProgress = game?.tutorialProgress;
+    
+    // 튜토리얼 체크 강화: 현재 단계가 buy_weapon이거나, 방금 forge_unlock을 마쳤거나, 혹은 아직 장비를 사지 않은 튜토리얼 상태인 경우
+    const isTutorial = tutorialProgress?.isActive && (
+      tutorialProgress.currentStepId === "buy_weapon" || 
+      tutorialProgress.currentStepId === "goto_forge_click" ||
+      (itemId === "필부_mainWeapon" && !ownedWeapons.some((w: any) => w.id.startsWith("필부_mainWeapon")))
+    );
+
+    const price = isTutorial ? 0 : item.price;
+    if (currentCoins < price) {
+      alert("금화가 부족합니다.");
+      return;
+    }
 
     const realmIdx = forgeRealms.indexOf(item.realm as any);
     const rolledItem = rollTierAndOptions(
-      { ...item, id: `${item.id}_${Date.now()}` },
-      realmIdx !== -1 ? realmIdx : 1,
+      item,
+      realmIdx !== -1 ? realmIdx : 0,
       upgradeLevels?.luck || 0,
-      realmIdx !== -1 ? realmIdx : 0
+      0, // baseGrade
+      isTutorial ? "명품" : undefined
     );
 
-    addCoins(-item.price);
+    // ID 유니크화
+    rolledItem.id = `${item.id}_${Date.now()}`;
+
+    if (price > 0) {
+      addCoins(-price);
+    }
+    
     addWeapon(rolledItem);
+
+    // 튜토리얼 강제 진행 보장 (무명철검 구매 시 무조건 가방으로 안내)
+    if (isTutorial || itemId === "필부_mainWeapon") {
+      setTutorialStep("goto_inventory");
+    }
 
     setPurchaseEffect({ name: rolledItem.name, icon: rolledItem.icon ?? "⚔️" });
     setTimeout(() => setPurchaseEffect(null), 600);
@@ -213,17 +351,35 @@ export default function ForgePanel(props: Props) {
         stone = Math.max(1, Math.round((itemPrice / 1000) * Math.pow(1.1, curLv) * tierMultiplier));
       }
     } else if (enhanceSubTab === "reroll") {
-      rep = Math.floor(30000 * repScale);
-      stone = Math.round(10 * stoneScale);
-      gold = 0;
+      if ((item.realm || "필부") === "필부") {
+        rep = 5000;
+        stone = 5;
+        gold = 0;
+      } else {
+        rep = Math.floor(30000 * repScale);
+        stone = Math.round(10 * stoneScale);
+        gold = 0;
+      }
     } else if (enhanceSubTab === "soul") {
-      rep = Math.floor(200000 * repScale);
-      stone = Math.round(100 * stoneScale);
-      gold = 0;
+      if ((item.realm || "필부") === "필부") {
+        rep = 5000;
+        stone = 5;
+        gold = 0;
+      } else {
+        rep = Math.floor(200000 * repScale);
+        stone = Math.round(100 * stoneScale);
+        gold = 0;
+      }
     } else if (enhanceSubTab === "oil") {
-      rep = Math.floor(80000 * repScale);
-      stone = Math.round(20 * stoneScale);
-      gold = 0;
+      if ((item.realm || "필부") === "필부") {
+        rep = 5000;
+        stone = 5;
+        gold = 0;
+      } else {
+        rep = Math.floor(80000 * repScale);
+        stone = Math.round(20 * stoneScale);
+        gold = 0;
+      }
     }
 
     const successRates: Record<number, number> = {
@@ -279,14 +435,14 @@ export default function ForgePanel(props: Props) {
     if (result.success) {
       // Keep checkbox states as requested by user
     }
-    setTimeout(() => setEnhanceResult(null), 800);
+    setTimeout(() => setEnhanceResult(null), 2000);
   };
 
 
   const handleReroll = () => {
     if (!selectedEnhanceItem) return;
     const { rerollWeaponOptions } = useGameStore.getState();
-    const result = rerollWeaponOptions(selectedEnhanceItem);
+    const result = rerollWeaponOptions(selectedEnhanceItem, lockedOptionIdx !== null ? lockedOptionIdx : undefined);
     setEnhanceResult(result);
     setTimeout(() => setEnhanceResult(null), 800);
   };
@@ -362,6 +518,9 @@ export default function ForgePanel(props: Props) {
         <span>💡 {formatCompactNumber(wisdom || 0)}</span>
         <span style={{ color: "#444" }}>|</span>
         <span style={{ color: "#ff6bd6" }}>⚔️ {formatCompactNumber(gearPieces)}</span>
+        
+        {/* 테스트용 튜토리얼 재시작 버튼 */}
+
       </div>
 
       {/* 헤더 탭 (고정) */}
@@ -379,6 +538,7 @@ export default function ForgePanel(props: Props) {
             장비 제작
           </button>
           <button
+            id="forge-main-tab-enhance"
             onClick={() => setActiveTab("enhance")}
             style={{
               padding: "6px 14px", borderRadius: 10, border: "none",
@@ -403,8 +563,6 @@ export default function ForgePanel(props: Props) {
         </div>
       </div>
 
-
-
       {/* 메인 콘텐츠 (스크롤 영역) */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative", paddingBottom: 120, WebkitOverflowScrolling: "touch" }} className="hide-scrollbar">
         {!unlocked && (
@@ -426,6 +584,7 @@ export default function ForgePanel(props: Props) {
                 return (
                   <button
                     key={realm}
+                    id={`forge-realm-${realm}`}
                     onClick={() => !isLocked && setSelectedRealm(realm)}
                     style={{
                       padding: "6px 14px", borderRadius: 14, whiteSpace: "nowrap",
@@ -466,19 +625,32 @@ export default function ForgePanel(props: Props) {
                   </>
                 ) : (
                   <>
-                    {filteredItems.map((item: any) => (
-                      <div key={item.id} style={{ borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", fontSize: 18 }}>{item.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12, fontWeight: 900, color: "#ffe08a" }}>{item.name}</div>
-                          <div style={{ fontSize: 10, color: "#aaa", lineHeight: 1.1 }}>{item.description}</div>
-                          <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold" }}>{item.price.toLocaleString()} 냥</div>
+                    {filteredItems.map((item: any) => {
+                      const tutorialProgress = (useGameStore.getState() as any).game?.tutorialProgress;
+                      const isTutorialBuyWeapon = tutorialProgress?.isActive && tutorialProgress?.currentStepId === "buy_weapon";
+                      const isTargetItem = item.id === "필부_mainWeapon";
+                      
+                      if (isTutorialBuyWeapon && !isTargetItem) return null;
+
+                      return (
+                        <div key={item.id} style={{ borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", fontSize: 18 }}>{item.icon}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: "#ffe08a" }}>{item.name}</div>
+                            <div style={{ fontSize: 10, color: "#aaa", lineHeight: 1.1 }}>{item.description}</div>
+                            <div style={{ fontSize: 10, color: "#ffd700", fontWeight: "bold" }}>{item.price.toLocaleString()} 냥</div>
+                          </div>
+                          <button 
+                            id={`forge-buy-weapon-${item.id}`}
+                            onClick={() => handleBuy(item.id)} 
+                            disabled={currentCoins < item.price} 
+                            style={{ ...goldBtn }}
+                          >
+                            {"구매"}
+                          </button>
                         </div>
-                        <button onClick={() => handleBuy(item.id)} disabled={currentCoins < item.price} style={{ ...goldBtn }}>
-                          {"구매"}
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </>
                 )}
               </div>
@@ -527,13 +699,14 @@ export default function ForgePanel(props: Props) {
             {/* 탭 아이콘 압축 */}
             <div style={{ display: "flex", gap: 4 }}>
               {[
-                { key: "level", icon: "🔨", label: "강화" },
-                { key: "reroll", icon: "🎲", label: "재연마" },
-                { key: "soul", icon: "👻", label: "영혼" },
-                { key: "oil", icon: "🧪", label: "연마" }
+                { key: "level", icon: "🔨", label: "강화", id: "forge-tab-refine" },
+                { key: "reroll", icon: "🎲", label: "재연마", id: "forge-tab-reroll" },
+                { key: "soul", icon: "👻", label: "영혼", id: "forge-tab-soul" },
+                { key: "oil", icon: "🧪", label: "연마", id: "forge-tab-infuse" }
               ].map((tab) => (
                 <button
                   key={tab.key}
+                  id={tab.id}
                   onClick={() => setEnhanceSubTab(tab.key as any)}
                   style={{
                     flex: 1,
@@ -594,7 +767,7 @@ export default function ForgePanel(props: Props) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
                 {(
                   [
-                    { s: "mainWeapon", l: "무기" },
+                    { s: "mainWeapon", l: "무기", id: "forge-refine-target-slot" },
                     { s: "subWeapon", l: "보조" },
                     { s: "gloves", l: "장갑" },
                     { s: "shoes", l: "신발" },
@@ -613,6 +786,7 @@ export default function ForgePanel(props: Props) {
                     return (
                       <div
                         key={slot.s}
+                        id={slot.id}
                         onClick={() => item && setSelectedEnhanceItem(item.id)}
                         style={{
                           height: 40,
@@ -678,6 +852,30 @@ export default function ForgePanel(props: Props) {
                 border: "1px solid rgba(255,255,255,0.08)"
               }}
             >
+              {/* 현재 선택된 아이템 정보 고정 표시 */}
+              <div 
+                id="forge-info-box-header"
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 8, 
+                  marginBottom: 10, 
+                  padding: "6px 10px", 
+                  background: "rgba(255,255,255,0.05)", 
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.08)"
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{selectedItem?.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>
+                    {selectedItem?.name} 
+                    <span style={{ color: "#ff4d4d", marginLeft: 5 }}>+{selectedItem?.enhancement || 0}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#aaa" }}>{selectedItem?.realm} 장비</div>
+                </div>
+              </div>
+
               {enhanceSubTab === "level" ? (
                 <>
                   <div
@@ -697,7 +895,10 @@ export default function ForgePanel(props: Props) {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 7 }}>
+                  <div 
+                    id="forge-refine-stat-preview"
+                    style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 7 }}
+                  >
                     {statChanges.map((stat: any, idx: number) => (
                       <div
                         key={idx}
@@ -770,12 +971,22 @@ export default function ForgePanel(props: Props) {
                   <div style={{ fontSize: 13, fontWeight: 900, color: "#00f2ff", marginBottom: 8 }}>
                     🎲 기연 재연마
                   </div>
-                  <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8 }}>
+                  <div 
+                    id="forge-item-options-list"
+                    style={{ background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8 }}
+                  >
                     <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>[ 현재 부여된 옵션 ]</div>
                     {selectedItem?.randomOptions?.length ? (
-                      selectedItem.randomOptions.map((o: any, idx: number) => (
-                        <div key={idx} style={{ fontSize: 11, color: "#fff", padding: "2px 0" }}>🔹 {o.label}</div>
-                      ))
+                      selectedItem.randomOptions.map((o: any, idx: number) => {
+                        const curLv = selectedItem.enhancement || 0;
+                        const curVal = (o.value + curLv * 0.1).toFixed(1);
+                        const unit = (o.label.includes("%") || o.stat.endsWith("_pct") || o.stat.includes("rate")) ? "%" : "";
+                        return (
+                          <div key={idx} style={{ fontSize: 11, color: "#fff", padding: "2px 0" }}>
+                            🔹 {o.label} <span style={{ color: "#00f0ff", fontWeight: "bold" }}>+{curVal}{unit}</span>
+                          </div>
+                        );
+                      })
                     ) : (
                       <div style={{ fontSize: 11, color: "#666" }}>부여된 옵션이 없습니다.</div>
                     )}
@@ -806,19 +1017,91 @@ export default function ForgePanel(props: Props) {
                   <div style={{ fontSize: 13, fontWeight: 900, color: "#ffd700", textAlign: "center", marginBottom: 4 }}>
                     🧪 연마제 주입 (기름 바르기)
                   </div>
-                  <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 5 }} className="hide-scrollbar">
+                  <div id="forge-oil-selection-container" style={{ maxHeight: "180px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }} className="hide-scrollbar">
                     {(["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless"] as ConsumableId[]).map((oid: any) => {
                       const count = consumables[oid] || 0;
                       const isSelected = selectedOilId === oid;
+                      const isInfoShown = oilInfoId === oid;
                       const names: any = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
                       const icons: any = { oil_atk_3: "🔥", oil_crit_3: "⚡", oil_thunder: "🌩️", oil_poison: "🧪", oil_bleed: "🩸", oil_eva_3: "💨", oil_def_3: "🛡️", oil_reflect: "🪞", oil_vajra: "🔱", oil_vampire: "🧛", oil_speed_3: "🌀", oil_luck_3: "🍀", oil_clarity: "✨", oil_eye: "👁️", oil_demon: "👺", oil_triple_hit: "⚔️", oil_formless: "🔮" };
+                      const descriptions: any = {
+                        oil_atk_3: "2% 확률로 공격력 3배 (5초)",
+                        oil_crit_3: "2% 확률로 치댐 3배 (5초)",
+                        oil_thunder: "5% 확률로 500% 대미지 + 기절",
+                        oil_poison: "5% 확률로 적 방어력 50% 감소 (10초)",
+                        oil_bleed: "5% 확률로 출혈 (최대 HP 10% 지속피해)",
+                        oil_eva_3: "5% 확률로 회피율 3배 (10초)",
+                        oil_def_3: "7% 확률로 모든 피해 50% 감소 (10초)",
+                        oil_reflect: "7% 확률로 받은 피해 200% 반사 (10초)",
+                        oil_vajra: "5% 확률로 5초간 무적 상태",
+                        oil_vampire: "5% 확률로 대미지 50% 흡혈",
+                        oil_speed_3: "5% 확률로 공속 2배 (10초)",
+                        oil_luck_3: "5% 확률로 전리품 등급 상승 확률 증가",
+                        oil_clarity: "8% 확률로 상이상 즉시 해제",
+                        oil_eye: "15% 확률로 적의 공격 반드시 회피",
+                        oil_demon: "2% 확률로 일격필살(1000% 대미지) 발동",
+                        oil_triple_hit: "5% 확률로 3배 연타 공격 발동",
+                        oil_formless: "3% 확률로 적 현재 체력 10% 즉시 삭감"
+                      };
+
                       return (
-                        <button key={oid} disabled={count <= 0}
-                          onClick={() => setSelectedOilId(oid)}
-                          style={{ padding: "8px 10px", background: isSelected ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.05)", border: isSelected ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.1)", borderRadius: 10, display: "flex", alignItems: "center", gap: 8, cursor: count > 0 ? "pointer" : "default", opacity: count > 0 ? 1 : 0.4 }}>
-                          <span style={{ fontSize: 16 }}>{icons[oid]}</span>
-                          <div style={{ flex: 1, textAlign: "left", fontSize: 11, color: isSelected ? "#ffd700" : "#fff", fontWeight: 900 }}>{names[oid]} <span style={{ color: "#aaa", fontSize: 9 }}>(보유: {count})</span></div>
-                        </button>
+                        <div key={oid} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <button disabled={count <= 0}
+                              id={oid === "oil_atk_3" ? "forge-oil-item-oil_atk_3" : undefined}
+                              onClick={() => setSelectedOilId(oid)}
+                              style={{ 
+                                flex: 1,
+                                padding: "8px 10px", 
+                                background: isSelected ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.05)", 
+                                border: isSelected ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.1)", 
+                                borderRadius: 10, 
+                                display: "flex", 
+                                alignItems: "center", 
+                                gap: 8, 
+                                cursor: count > 0 ? "pointer" : "default", 
+                                opacity: count > 0 ? 1 : 0.4 
+                              }}>
+                              <span style={{ fontSize: 16 }}>{icons[oid]}</span>
+                              <div style={{ flex: 1, textAlign: "left", fontSize: 11, color: isSelected ? "#ffd700" : "#fff", fontWeight: 900 }}>
+                                {names[oid]} <span style={{ color: "#aaa", fontSize: 9 }}>(보유: {count})</span>
+                              </div>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOilInfoId(isInfoShown ? null : oid);
+                              }}
+                              style={{
+                                padding: "8px 6px",
+                                background: "rgba(255,255,255,0.08)",
+                                border: isInfoShown ? "1px solid #ffd700" : "1px solid rgba(255,255,255,0.12)",
+                                borderRadius: 8,
+                                color: isInfoShown ? "#ffd700" : "#aaa",
+                                fontSize: 9,
+                                fontWeight: 900,
+                                cursor: "pointer",
+                                whiteSpace: "nowrap"
+                              }}
+                            >
+                              자세히
+                            </button>
+                          </div>
+                          {isInfoShown && (
+                            <div style={{ 
+                              padding: "6px 10px", 
+                              background: "rgba(0,0,0,0.3)", 
+                              borderRadius: 8, 
+                              fontSize: 10, 
+                              color: "#ffd700", 
+                              border: "1px solid rgba(255,215,0,0.2)",
+                              marginLeft: 2,
+                              marginRight: 2
+                            }}>
+                              📝 {descriptions[oid]}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -895,9 +1178,18 @@ export default function ForgePanel(props: Props) {
               </div>
 
               <button
+                id={
+                  enhanceSubTab === "level" ? "forge-refine-start-btn" :
+                  enhanceSubTab === "reroll" ? "forge-reroll-start-btn" :
+                  enhanceSubTab === "oil" ? "forge-infuse-start-btn" :
+                  undefined
+                }
                 onClick={() => {
                   if (enhanceSubTab === "level") handleEnhance();
                   else if (enhanceSubTab === "reroll") handleReroll();
+                  else if (enhanceSubTab === "soul" && selectedItem) {
+                    handleInfuse("soul");
+                  }
                   else if (enhanceSubTab === "oil" && selectedOilId) {
                     if (selectedItem?.oilEffect && !confirm("이미 효과가 존재합니다. 덮어쓰시겠습니까?")) return;
                     const res = useGameStore.getState().applyOil(selectedItem!.id, selectedOilId);
@@ -906,9 +1198,9 @@ export default function ForgePanel(props: Props) {
                   }
                 }}
                 disabled={
-                  (enhanceSubTab === "level" && (!selectedItem || currentCoins < goldCost)) ||
-                  (enhanceSubTab === "reroll" && (!selectedItem || selectedItem.tier === "평범")) ||
-                  (enhanceSubTab === "oil" && !selectedOilId) ||
+                  (enhanceSubTab === "level" && (!selectedItem || currentCoins < goldCost || currentStepId === "check_refine_result")) ||
+                  (enhanceSubTab === "reroll" && (!selectedItem || currentStepId === "check_reroll_result")) ||
+                  (enhanceSubTab === "oil" && (!selectedOilId || currentStepId === "check_forge_result")) ||
                   (reputation || 0) < repCost ||
                   currentStones < stoneCost ||
                   (enhanceSubTab === "level" && useBlessedOil && (consumables["oil_blessed"] || 0) <= 0) ||
@@ -927,7 +1219,7 @@ export default function ForgePanel(props: Props) {
                   boxShadow: "0 4px 15px rgba(255,215,0,0.22)"
                 }}
               >
-                {enhanceSubTab === "level" ? `🔨 제련 시작 ${totalRate}%` : enhanceSubTab === "reroll" ? (selectedItem?.tier === "평범" ? "재연마 불가 (평범 등급)" : "🎲 재연마 시작") : (enhanceSubTab === "oil" ? (selectedOilId ? "🧪 연마하기" : "상단 옵션을 선택해주세요") : "강화 항목을 선택해주세요")}
+                {enhanceSubTab === "level" ? `🔨 제련 시작 ${totalRate}%` : enhanceSubTab === "reroll" ? "🎲 재연마 시작" : (enhanceSubTab === "oil" ? (selectedOilId ? "🧪 연마하기" : "상단 옵션을 선택해주세요") : "강화 항목을 선택해주세요")}
               </button>
             </div>
           </div>
@@ -985,6 +1277,7 @@ export default function ForgePanel(props: Props) {
         @keyframes purchasedScaleUp { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         @keyframes goldGlow { 0% { box-shadow: 0 0 5px #ff4444; } 50% { box-shadow: 0 0 20px #ff0000; } 100% { box-shadow: 0 0 5px #ff4444; } }
       `}</style>
+      
     </section>
   );
 }

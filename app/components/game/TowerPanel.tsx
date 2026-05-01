@@ -202,7 +202,15 @@ export default function TowerPanel() {
         {/* Main Brawling Area */}
         <div 
           className="flex-1 relative cursor-pointer active:scale-[0.99] transition-transform"
-          onMouseDown={handleAttack}
+          onMouseDown={(e) => {
+            if (e.button === 0) handleAttack(e);
+          }}
+          onTouchStart={(e) => {
+            // 기본 동작(줌, 스크롤 등) 방지 및 중복 이벤트 차단
+            if (e.cancelable) e.preventDefault();
+            // 각 손가락 터치마다 handleAttack 호출 (멀티터치 연타 지원)
+            handleAttack(e);
+          }}
         >
           {/* Central Combat Visuals */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

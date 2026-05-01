@@ -270,7 +270,7 @@ export default function InnPanel({
     // Cumulative geometric series for target scores
     // Each stage requires 150% of the previous stage's increment.
     // S1: 3000, S2: 3000 + 4500 = 7500, S3: 7500 + 6750 = 14250...
-    const baseIncrement = 3000;
+    const baseIncrement = 1500;
     const ratio = 1.5;
     const baseScore = Math.floor(baseIncrement * (Math.pow(ratio, s) - 1) / (ratio - 1));
 
@@ -1896,7 +1896,7 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
               onClick={closeSuccessAndExit}
               style={{ ...primaryButton, width: "100%", padding: "14px" }}
             >
-              확인 및 수련장 복귀
+              다음으로 및 수련장 복귀
             </button>
           </div>
         </div>

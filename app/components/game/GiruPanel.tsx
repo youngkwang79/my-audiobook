@@ -1141,7 +1141,7 @@ export default function GiruPanel() {
                   boxShadow: "0 10px 20px rgba(255,215,0,0.3)"
                 }}
               >
-                확인
+                다음으로
               </motion.button>
             </motion.div>
           </motion.div>

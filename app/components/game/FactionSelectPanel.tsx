@@ -122,13 +122,35 @@ export default function FactionSelectPanel({
         className="hide-scrollbar"
       >
           {/* Character Preview - Smaller */}
-          <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "5px 0", position: "relative", minHeight: "130px" }}>
+            <div className="blink-arrow" style={{ position: "absolute", left: "0px", top: "50%", transform: "translateY(-50%)", zIndex: 10, cursor: "pointer", fontSize: "32px" }} onClick={() => setSelectedIdx(prev => (prev - 1 + FACTIONS.length) % FACTIONS.length)}>◀</div>
             <img 
               src={currentFaction.characterImages?.ready || "/warrior.png"} 
               alt={currentFaction.name} 
-              style={{ height: "90px", width: "auto", filter: "drop-shadow(0 0 10px rgba(0,0,0,0.5))" }}
+              style={{ height: "130px", width: "auto", filter: "drop-shadow(0 0 15px rgba(0,0,0,0.6))", position: "relative", zIndex: 5 }}
             />
+            <div className="blink-arrow" style={{ position: "absolute", right: "0px", top: "50%", transform: "translateY(-50%)", zIndex: 10, cursor: "pointer", fontSize: "32px" }} onClick={() => setSelectedIdx(prev => (prev + 1) % FACTIONS.length)}>▶</div>
           </div>
+
+          <style jsx>{`
+            @keyframes arrowBlink {
+              0% { opacity: 0.3; transform: scale(0.9); }
+              50% { opacity: 1; transform: scale(1.15); }
+              100% { opacity: 0.3; transform: scale(0.9); }
+            }
+            .blink-arrow {
+              color: #ffd700;
+              font-size: 28px;
+              font-weight: 900;
+              animation: arrowBlink 1.2s infinite;
+              text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+              user-select: none;
+              padding: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          `}</style>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>

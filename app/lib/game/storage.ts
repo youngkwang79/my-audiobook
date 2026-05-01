@@ -101,8 +101,8 @@ export const defaultGameData: GameSaveData = {
   equippedGear: defaultEquippedGear,
 
   learnedSkills: [],
-  dummyHp: 1000,
-  maxDummyHp: 1000,
+  dummyHp: 300,
+  maxDummyHp: 300,
   totalDummyKills: 0,
   dummyKills: 0,
   questTarget: 10,
@@ -287,12 +287,12 @@ export const defaultGameData: GameSaveData = {
     {
       id: "starter_1",
       npcId: "scarecrow_master",
-      title: "허수아비 100회 타격",
-      desc: "수련장에서 허수아비를 100회 타격하여 기초 체력을 기르세요.",
+      title: "허수아비 100마리 처치",
+      desc: "수련장에서 허수아비를 100마리 처치하여 기초 체력을 기르세요.",
       targetCount: 100,
       currentCount: 0,
       status: "active",
-      targetType: "dummy_hit",
+      targetType: "dummy_kill",
       reward: { gold: 10000, exp: 500, favor: 5 }
     }
   ],
@@ -322,6 +322,11 @@ export const defaultGameData: GameSaveData = {
   },
   dayCount: 1,
   nextDayEvent: null,
+  tutorialProgress: {
+    isActive: true,
+    currentStepId: "start_faction",
+    completedStepIds: []
+  },
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

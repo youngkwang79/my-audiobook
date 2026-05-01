@@ -6,6 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 const PUZZLE_ROWS = 9;
 const PUZZLE_COLS = 9;
 
+const PUZZLE_ANIM_CSS = `
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+`;
+
 type PuzzleGameProps = {
   stage: number;
   powerFactor: number;
@@ -49,6 +57,8 @@ export function PuzzleGame({
   const [puzzleCombo, setPuzzleCombo] = useState(0);
   const [puzzleSwipeStart, setPuzzleSwipeStart] = useState<{ r: number, c: number, x: number, y: number } | null>(null);
   const [puzzleEffects, setPuzzleEffects] = useState<{ id: number; r: number; c: number; color: string }[]>([]);
+  const [lastActionTime, setLastActionTime] = useState(Date.now());
+  const [hintPos, setHintPos] = useState<[number, number] | null>(null);
 
   const puzzleGridRef = useRef<any[][]>([]);
   const puzzleDantianRef = useRef(0);
@@ -144,6 +154,53 @@ export function PuzzleGame({
     const handle = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(handle);
   }, [isPlaying, stage, mission?.combatState, updateInnCombat, onFail, onStageClear, getTargetScore]);
+
+  const findPossibleMove = useCallback((grid: any[][]) => {
+    if (!grid || grid.length === 0) return null;
+    for (let r = 0; r < PUZZLE_ROWS; r++) {
+      for (let c = 0; c < PUZZLE_COLS; c++) {
+        // Swap Right
+        if (c < PUZZLE_COLS - 1) {
+          const t1 = grid[r][c];
+          const t2 = grid[r][c + 1];
+          if (t1.type && t2.type) {
+            const tempGrid = grid.map(row => [...row]);
+            tempGrid[r][c] = t2;
+            tempGrid[r][c + 1] = t1;
+            if (findMatches(tempGrid).length > 0) return [r, c];
+          }
+        }
+        // Swap Down
+        if (r < PUZZLE_ROWS - 1) {
+          const t1 = grid[r][c];
+          const t2 = grid[r + 1][c];
+          if (t1.type && t2.type) {
+            const tempGrid = grid.map(row => [...row]);
+            tempGrid[r][c] = t2;
+            tempGrid[r + 1][c] = t1;
+            if (findMatches(tempGrid).length > 0) return [r, c];
+          }
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying || puzzleIsProcessing) {
+      setHintPos(null);
+      return;
+    }
+    const interval = setInterval(() => {
+      if (Date.now() - lastActionTime > 4000) {
+        const move = findPossibleMove(puzzleGridRef.current);
+        setHintPos(move as [number, number]);
+      } else {
+        setHintPos(null);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying, puzzleIsProcessing, lastActionTime, findPossibleMove]);
 
   const findMatches = (grid: any[][]) => {
     const horizontalItems: Map<string, Set<string>> = new Map();
@@ -385,6 +442,8 @@ export function PuzzleGame({
 
   const executePuzzleSwap = (r1: number, c1: number, r2: number, c2: number) => {
     if (!isPlaying || puzzleIsProcessing) return;
+    setLastActionTime(Date.now());
+    setHintPos(null);
     const newGrid = puzzleGrid.map(row => row.map(cell => ({ ...cell })));
     const temp = newGrid[r1][c1];
     newGrid[r1][c1] = newGrid[r2][c2];
@@ -445,6 +504,7 @@ export function PuzzleGame({
       flexDirection: "column",
       gap: "0"
     }}>
+      <style>{PUZZLE_ANIM_CSS}</style>
       <div style={{
         width: "100%",
         height: "60px",
@@ -562,8 +622,9 @@ export function PuzzleGame({
                     alignItems: "center",
                     border: "1px solid rgba(255,255,255,0.4)",
                     boxShadow: "inset 0 4px 6px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.5)",
-                    transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.15)" : "scale(1)",
-                    filter: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "brightness(1.2) drop-shadow(0 0 10px #fff)" : "none",
+                    transform: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "scale(1.15)" : (hintPos?.[0] === r && hintPos?.[1] === c ? "scale(1.1)" : "scale(1)"),
+                    filter: puzzleSelected?.[0] === r && puzzleSelected?.[1] === c ? "brightness(1.2) drop-shadow(0 0 10px #fff)" : (hintPos?.[0] === r && hintPos?.[1] === c ? "brightness(1.5) drop-shadow(0 0 15px #ffd700)" : "none"),
+                    animation: hintPos?.[0] === r && hintPos?.[1] === c ? "pulse 1s infinite" : "none",
                     transition: "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
                   }}>
                     <div style={{
