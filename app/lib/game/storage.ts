@@ -58,7 +58,7 @@ export const defaultGameData: GameSaveData = {
 
   exp: 0,
   touches: 0,
-  coins: 10000,
+  coins: 200000,
   hasBreakthrough: false,
   coinDrops: [],
   baseAttack: 10,
@@ -95,7 +95,7 @@ export const defaultGameData: GameSaveData = {
   eva: 0.1,
   critRate: 0.1,
 
-  unlockedTabs: ["training"],
+  unlockedTabs: ["training", "quest"],
   ownedWeapons: [],
   equippedWeaponId: null,
   equippedGear: defaultEquippedGear,
@@ -327,6 +327,10 @@ export const defaultGameData: GameSaveData = {
     currentStepId: "start_faction",
     completedStepIds: []
   },
+  activeUpgradeDesc: null,
+  upgradeMultiplier: 1,
+  selectedForgeItemId: null,
+  selectedForgeOilId: null,
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

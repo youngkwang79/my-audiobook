@@ -93,6 +93,8 @@ export default function ForgePanel(props: Props) {
   const upgradeLevels = useGameStore((s: any) => s.game.upgradeLevels);
   const gearPieces = useGameStore((s: any) => s.game.gearPieces || 0);
   const currentStepId = useGameStore((s: any) => s.game.tutorialProgress.currentStepId);
+  const selectedForgeItemId = useGameStore((s: any) => s.game.selectedForgeItemId);
+  const selectedForgeOilId = useGameStore((s: any) => s.game.selectedForgeOilId);
 
   const addWeapon = useGameStore((s: any) => s.addWeapon);
   const addCoins = useGameStore((s: any) => s.addCoins);
@@ -107,6 +109,8 @@ export default function ForgePanel(props: Props) {
   const enhanceWeapon = useGameStore((s: any) => s.enhanceWeapon);
   const rerollWeaponOptions = useGameStore((s: any) => s.rerollWeaponOptions);
   const infuseSoul = useGameStore((s: any) => s.infuseSoul);
+  const setSelectedForgeItem = useGameStore((s: any) => s.setSelectedForgeItem);
+  const setSelectedForgeOil = useGameStore((s: any) => s.setSelectedForgeOil);
 
   const currentCoins = props.coins ?? coins;
   const currentStones = enhancementStones || 0;
@@ -147,7 +151,8 @@ export default function ForgePanel(props: Props) {
       setTutorialStep("buy_hp_potion");
     }
   };
-  const [selectedEnhanceItem, _setSelectedEnhanceItem] = useState<WeaponId | null>(null);
+  const selectedEnhanceItem = selectedForgeItemId;
+  const _setSelectedEnhanceItem = setSelectedForgeItem;
   const [lockedOptionIdx, setLockedOptionIdx] = useState<number | null>(null); // 추가: 고정할 옵션 인덱스
 
   const setSelectedEnhanceItem = (val: any) => {
@@ -158,10 +163,15 @@ export default function ForgePanel(props: Props) {
     if (tutorialProgress?.isActive && val) {
       const selectedW = ownedWeapons.find((w: any) => w.id === val);
       if (tutorialProgress.currentStepId === "select_item_to_refine") {
+        const item = ownedWeapons.find((w: any) => w.id === "필부_mainWeapon_tutorial_fixed") || 
+                     ownedWeapons.find((w: any) => w.id.startsWith("필부_mainWeapon"));
+        if (item && !selectedEnhanceItem) {
+          _setSelectedEnhanceItem(item.id);
+        }
         if (selectedW && (selectedW.enhancement || 0) > 0) {
           // 이미 강화된 경우 결과 확인 단계로 점프
           setTutorialStep("check_refine_result");
-        } else {
+        } else if (selectedW) {
           setTutorialStep("check_refine_preview");
         }
       } else if (tutorialProgress.currentStepId === "select_item_to_reroll") {
@@ -174,7 +184,8 @@ export default function ForgePanel(props: Props) {
   const [enhanceResult, setEnhanceResult] = useState<{ success: boolean; message: string } | null>(null);
   const [purchaseEffect, setPurchaseEffect] = useState<{ name: string; icon: string } | null>(null);
   const [showDirectTryPopup, setShowDirectTryPopup] = useState(false);
-  const [selectedOilId, _setSelectedOilId] = useState<ConsumableId | null>(null);
+  const selectedOilId = selectedForgeOilId;
+  const _setSelectedOilId = setSelectedForgeOil;
   const setSelectedOilId = (val: any) => {
     _setSelectedOilId(val);
     const { game, setTutorialStep } = useGameStore.getState() as any;
@@ -272,8 +283,13 @@ export default function ForgePanel(props: Props) {
       isTutorial ? "명품" : undefined
     );
 
-    // ID 유니크화
-    rolledItem.id = `${item.id}_${Date.now()}`;
+    // ID 유니크화 (튜토리얼인 경우 고정 ID 사용)
+    rolledItem.id = isTutorial ? "필부_mainWeapon_tutorial_fixed" : `${item.id}_${Date.now()}`;
+
+    // 튜토리얼인 경우 중복 지급 방지
+    if (isTutorial && ownedWeapons.some((w: any) => w.id === rolledItem.id)) {
+      return;
+    }
 
     if (price > 0) {
       addCoins(-price);
@@ -631,12 +647,6 @@ export default function ForgePanel(props: Props) {
                 ) : (
                   <>
                     {filteredItems.map((item: any) => {
-                      const tutorialProgress = (useGameStore.getState() as any).game?.tutorialProgress;
-                      const isTutorialBuyWeapon = tutorialProgress?.isActive && tutorialProgress?.currentStepId === "buy_weapon";
-                      const isTargetItem = item.id === "필부_mainWeapon";
-                      
-                      if (isTutorialBuyWeapon && !isTargetItem) return null;
-
                       return (
                         <div key={item.id} style={{ borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", fontSize: 18 }}>{item.icon}</div>

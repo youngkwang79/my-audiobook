@@ -609,6 +609,10 @@ export type GameSaveData = {
     currentStepId: string | null;
     completedStepIds: string[];
   };
+  activeUpgradeDesc: { id: string; name: string; text: string } | null;
+  upgradeMultiplier: number;
+  selectedForgeItemId: string | null;
+  selectedForgeOilId: string | null;
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';
