@@ -324,7 +324,7 @@ export default function TrainingPanel() {
 
   const performHit = () => {
     const now = Date.now();
-    if (now - lastHitTimeRef.current < 80) return; // 반응성 개선: 220ms -> 80ms (연타 속도 상향)
+    if (now - lastHitTimeRef.current < 50) return; // 반응성 대폭 개선: 80ms -> 50ms (양손 연타 지원)
     lastHitTimeRef.current = now;
 
     setLastTouchTime(now);
@@ -333,7 +333,7 @@ export default function TrainingPanel() {
     
     // 튜토리얼 중 특정 조작이 필요한 단계(대장간 등)에서는 허수아비 타격 방지
     const isRestrictedTutorialStep = tutorialProgress?.isActive && 
-      !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training"].includes(tutorialProgress.currentStepId);
+      !!tutorialProgress.currentStepId && !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training"].includes(tutorialProgress.currentStepId);
     
     if (showBreakthroughPopup || pendingInnEntry || timingMission?.available || isRestrictedTutorialStep) return;
 
@@ -546,8 +546,12 @@ export default function TrainingPanel() {
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Handle only the first touch to prevent accidental double-counting with multi-finger
-    if (e.changedTouches.length > 0) performHit();
+    // 기본 동작(줌, 스크롤) 방지
+    if (e.cancelable) e.preventDefault();
+    // 멀티터치 대응: 각 손가락 터치마다 타격 처리
+    Array.from(e.changedTouches).forEach(() => {
+      performHit();
+    });
   };
 
 
@@ -1060,7 +1064,7 @@ export default function TrainingPanel() {
           borderRadius: 0,
           overflow: "hidden",
           cursor: showBreakthroughPopup ? "default" : "pointer",
-          touchAction: "pan-y",
+          touchAction: "none",
           boxSizing: "border-box",
           userSelect: "none",
           background: "#08060a",

@@ -209,7 +209,9 @@ export default function TowerPanel() {
             // 기본 동작(줌, 스크롤 등) 방지 및 중복 이벤트 차단
             if (e.cancelable) e.preventDefault();
             // 각 손가락 터치마다 handleAttack 호출 (멀티터치 연타 지원)
-            handleAttack(e);
+            Array.from(e.changedTouches).forEach(() => {
+              handleAttack(e);
+            });
           }}
         >
           {/* Central Combat Visuals */}

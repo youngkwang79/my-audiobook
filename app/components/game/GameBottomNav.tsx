@@ -60,7 +60,7 @@ export default function GameBottomNav({
                                     !!currentStepId && 
                                     !["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
         const isQuestHighlighted = item.key === "quest" && 
-                                   ["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
+                                   !!currentStepId && ["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
         
         // 수련 탭 하이라이트 (제외 요청에 따라 일반 컬러로)
         const isTrainingHighlighted = false;

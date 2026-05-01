@@ -360,6 +360,11 @@ export default function ForgePanel(props: Props) {
         stone = Math.round(10 * stoneScale);
         gold = 0;
       }
+      // [추가] 옵션 고정 시 비용 2배
+      if (lockedOptionIdx !== null) {
+        rep *= 2;
+        stone *= 2;
+      }
     } else if (enhanceSubTab === "soul") {
       if ((item.realm || "필부") === "필부") {
         rep = 5000;
@@ -425,7 +430,7 @@ export default function ForgePanel(props: Props) {
       stoneCost: stone,
       totalRate: rate
     };
-  }, [ownedWeapons, selectedEnhanceItem, star, innBuffEndTime, useBlessedOil, enhanceSubTab, forgeRealms, now]);
+  }, [ownedWeapons, selectedEnhanceItem, lockedOptionIdx, star, innBuffEndTime, useBlessedOil, enhanceSubTab, forgeRealms, now]);
 
   const handleEnhance = () => {
     if (!selectedEnhanceItem) return;
@@ -975,18 +980,53 @@ export default function ForgePanel(props: Props) {
                     id="forge-item-options-list"
                     style={{ background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8 }}
                   >
-                    <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>[ 현재 부여된 옵션 ]</div>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 6 }}>[ 현재 부여된 옵션 ] (고정 시 비용 2배)</div>
                     {selectedItem?.randomOptions?.length ? (
-                      selectedItem.randomOptions.map((o: any, idx: number) => {
-                        const curLv = selectedItem.enhancement || 0;
-                        const curVal = (o.value + curLv * 0.1).toFixed(1);
-                        const unit = (o.label.includes("%") || o.stat.endsWith("_pct") || o.stat.includes("rate")) ? "%" : "";
-                        return (
-                          <div key={idx} style={{ fontSize: 11, color: "#fff", padding: "2px 0" }}>
-                            🔹 {o.label} <span style={{ color: "#00f0ff", fontWeight: "bold" }}>+{curVal}{unit}</span>
-                          </div>
-                        );
-                      })
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {selectedItem.randomOptions.map((o: any, idx: number) => {
+                          const curLv = selectedItem.enhancement || 0;
+                          const curVal = (o.value + curLv * 0.1).toFixed(1);
+                          const unit = (o.label.includes("%") || o.stat.endsWith("_pct") || o.stat.includes("rate")) ? "%" : "";
+                          const isLocked = lockedOptionIdx === idx;
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => setLockedOptionIdx(isLocked ? null : idx)}
+                              style={{ 
+                                display: "flex", 
+                                alignItems: "center", 
+                                gap: 8, 
+                                fontSize: 11, 
+                                color: isLocked ? "#ffd700" : "#fff", 
+                                padding: "6px 8px",
+                                background: isLocked ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.03)",
+                                borderRadius: 8,
+                                border: isLocked ? "1px solid rgba(255,215,0,0.3)" : "1px solid transparent",
+                                cursor: "pointer",
+                                transition: "all 0.2s"
+                              }}
+                            >
+                              <div style={{ 
+                                width: 14, 
+                                height: 14, 
+                                borderRadius: 4, 
+                                border: "1px solid", 
+                                borderColor: isLocked ? "#ffd700" : "#555",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: isLocked ? "#ffd700" : "transparent"
+                              }}>
+                                {isLocked && <span style={{ fontSize: 10, color: "#000" }}>✓</span>}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                🔹 {o.label} <span style={{ color: isLocked ? "#ffd700" : "#00f0ff", fontWeight: "bold" }}>+{curVal}{unit}</span>
+                              </div>
+                              {isLocked && <span style={{ fontSize: 8, opacity: 0.8 }}>고정됨</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <div style={{ fontSize: 11, color: "#666" }}>부여된 옵션이 없습니다.</div>
                     )}

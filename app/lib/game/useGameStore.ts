@@ -183,20 +183,6 @@ export const TUTORIAL_STEPS: Record<string, any> = {
     actionType: "any"
   },
 
-  select_item_inventory: {
-    id: "select_item_inventory",
-    title: "아이템 선택",
-    message: "방금 구입한 무기를 선택하세요.",
-    targetId: "inv-item-list-first",
-    actionType: "click"
-  },
-  click_equip_button: {
-    id: "click_equip_button",
-    title: "장착 완료",
-    message: "[장착하기] 버튼을 눌러 무기를 착용합니다.",
-    targetId: "inv-equip-btn",
-    actionType: "click"
-  },
   explain_auto_battle: {
     id: "explain_auto_battle",
     title: "자동 전투",
@@ -215,7 +201,7 @@ export const TUTORIAL_STEPS: Record<string, any> = {
     id: "forge_unlock",
     title: "대장간 개방",
     message: "허수아비 30번 처치 보상으로 [대장간]이 열렸습니다! 장비를 마련하여 더 강해질 시간입니다.",
-    targetId: "nav-forge",
+    targetId: null,
     actionType: "any"
   },
   goto_forge_click: {
@@ -312,7 +298,7 @@ export const TUTORIAL_STEPS: Record<string, any> = {
   check_current_options: {
     id: "check_current_options",
     title: "현재 옵션 확인",
-    message: "재연마를 하기 전, 현재 장비에 부여된 옵션들을 확인해보세요. 마음에 들지 않는 옵션이 있다면 [재연마 시작]을 통해 새롭게 바꿀 수 있습니다.",
+    message: "재연마를 하기전, 현재 장비에 부여된 옵션들을 확인해보세요. 유지하고 싶은 옵션이 있다면 옆에 박스를 체크하면 그 옵션은 유지됩니다.",
     targetId: "forge-item-options-list",
     actionType: "any"
   },
@@ -756,7 +742,7 @@ interface GameState {
   getInnBonus: () => { name: string; atk: number; gold: number; exp: number; critDmg: number };
   triggerMovementBuff: () => void;
   enhanceWeapon: (itemId: string, useBlessedOil: boolean, useHeavenlyTalisman: boolean) => { success: boolean; message: string };
-  rerollWeaponOptions: (itemId: string) => { success: boolean; message: string };
+  rerollWeaponOptions: (itemId: string, lockedOptionIndex?: number) => { success: boolean; message: string };
   infuseSoul: (itemId: string, type: string) => { success: boolean; message: string };
   applyOil: (itemId: string, oilId: ConsumableId) => { success: boolean; message: string };
   triggerOilEffects: () => { hitCount: number; ohk: boolean; buffsTriggered: string[] };
@@ -883,9 +869,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       };
     });
-    if (s.game.tutorialProgress.currentStepId === "click_refine_start") {
-      get().setTutorialStep("select_reroll_tab");
-    }
     get().triggerSave(true);
     return true;
   },
@@ -4544,6 +4527,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setActiveTab: (tab: any) =>
     set((s: any) => {
+      // Tutorial Logic
       if (s.game.tutorialProgress.isActive) {
         const { currentStepId } = s.game.tutorialProgress;
         if (tab === "quest" && currentStepId === "start_faction") {
@@ -4560,7 +4544,34 @@ export const useGameStore = create<GameState>((set, get) => ({
           setTimeout(() => get().completeTutorialStep("final_back_to_training"), 100);
         }
       }
-      return { game: { ...s.game, activeTab: tab } };
+
+      // State Cleanup
+      const game = s.game;
+      let nextMD = { ...game.masterDuel };
+      let nextTower = { ...(game.tower || {}) };
+      let nextIsMini = game.isMinigameActive;
+
+      if (tab !== "master") {
+        nextMD.streakCount = 0;
+        nextMD.isPlaying = false;
+      }
+      if (tab !== "tower") {
+        nextTower.isInside = false;
+      }
+      if (tab !== "inn") {
+        nextIsMini = false;
+      }
+
+      return {
+        game: {
+          ...game,
+          activeTab: tab,
+          showInnVictoryEffect: false,
+          masterDuel: nextMD,
+          tower: nextTower,
+          isMinigameActive: nextIsMini
+        }
+      };
     }),
 
   visitGiru: () => {
@@ -4880,35 +4891,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
     })),
 
-  setActiveTab: (tab: any) =>
-    set((s: any) => {
-      const game = s.game;
-      let nextMD = { ...game.masterDuel };
-      let nextTower = { ...(game.tower || {}) };
-      let nextIsMini = game.isMinigameActive;
 
-      if (tab !== "master") {
-        nextMD.streakCount = 0;
-        nextMD.isPlaying = false;
-      }
-      if (tab !== "tower") {
-        nextTower.isInside = false;
-      }
-      if (tab !== "inn") {
-        nextIsMini = false;
-      }
-
-      return {
-        game: {
-          ...game,
-          activeTab: tab,
-          showInnVictoryEffect: false,
-          masterDuel: nextMD,
-          tower: nextTower,
-          isMinigameActive: nextIsMini
-        }
-      };
-    }),
 
   startFootworkGame: () => {
     set((s: any) => {
@@ -5189,11 +5172,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextGifts = { ...(s.game.giruGifts || {}) };
     nextGifts[giftId] = (nextGifts[giftId] || 0) + count;
     if (nextGifts[giftId] <= 0) delete nextGifts[giftId];
-    if (stepId === "actual_final_back_to_training") {
-      // 튜토리얼 종료 처리 (필요시)
-    } else if (stepId === "select_oil") {
-      // 오일 지급 (이미 위에서 처리되지만 명시적으로 확인)
-    }
     return { game: { ...s.game, giruGifts: nextGifts } };
   }),
   acceptQuest: (questId: string) => set((s: any) => {
