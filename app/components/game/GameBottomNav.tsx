@@ -55,20 +55,13 @@ export default function GameBottomNav({
         // 퀘스트 하이라이트 중 수련 탭 어둡게 처리 로직 (start_faction 단계에서만)
         const isTrainingDarkened = item.key === "training" && currentStepId === "start_faction";
         
-        // 튜토리얼 중에는 임무 탭 하이라이트를 완전히 제거하고 회색톤으로 유지 (단, 초기 3단계는 하이라이트 허용)
-        const isQuestTutorialMuted = item.key === "quest" && 
-                                    !!currentStepId && 
-                                    !["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
-        const isQuestHighlighted = item.key === "quest" && 
-                                   !!currentStepId && ["start_faction", "explain_quest_list", "check_quest"].includes(currentStepId);
-        
         // 수련 탭 하이라이트 (제외 요청에 따라 일반 컬러로)
         const isTrainingHighlighted = false;
         
         // 밤의 활동 안내 단계에서 기루/도박 탭 강조
         const isNightContentHighlighted = (item.key === "giru" || item.key === "gambling") && currentStepId === "explain_night_only";
         
-        const shouldShowActiveStyle = (active || isQuestHighlighted || isTrainingHighlighted) && !isQuestTutorialMuted;
+        const shouldShowActiveStyle = (active || isTrainingHighlighted);
 
         return (
           <button
@@ -81,19 +74,19 @@ export default function GameBottomNav({
             style={{
               position: "relative",
               borderRadius: 12,
-              border: (shouldShowActiveStyle && !isTrainingDarkened && !isQuestTutorialMuted) || isNightContentHighlighted
+              border: (shouldShowActiveStyle && !isTrainingDarkened) || isNightContentHighlighted
                 ? "1px solid rgba(255,215,120,0.85)"
                 : "1px solid rgba(255,255,255,0.08)",
-              background: (shouldShowActiveStyle && !isTrainingDarkened && !isQuestTutorialMuted) || isNightContentHighlighted
+              background: (shouldShowActiveStyle && !isTrainingDarkened) || isNightContentHighlighted
                 ? "linear-gradient(135deg, #fff1a8 0%, #f3c969 35%, #d4a23c 65%, #fff1a8 100%)"
-                : (isTrainingDarkened || isQuestTutorialMuted)
+                : isTrainingDarkened
                   ? "rgba(0,0,0,0.6)"
                   : unlocked 
                     ? "rgba(255,255,255,0.05)"
                     : "rgba(0,0,0,0.4)",
-              color: (shouldShowActiveStyle && !isTrainingDarkened && !isQuestTutorialMuted) || isNightContentHighlighted
+              color: (shouldShowActiveStyle && !isTrainingDarkened) || isNightContentHighlighted
                 ? "#2b1d00" 
-                : (isTrainingDarkened || isQuestTutorialMuted)
+                : isTrainingDarkened
                   ? "#444"
                   : unlocked ? "white" : "#666",
               padding: "10px 2px",

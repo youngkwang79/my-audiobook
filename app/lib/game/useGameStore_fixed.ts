@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { create } from "zustand";
 import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource, NextDayEvent, Quest } from "./types";
 import { FACTIONS } from "./factions";
@@ -24,29 +24,29 @@ export function formatCompactNumber(num: number): string {
   if (num < 0) return "0";
   if (num < 10000) return Math.floor(num).toLocaleString();
   if (num < 100000000) {
-    return (num / 10000).toFixed(1).replace(/\.0$/, "") + "만";
+    return (num / 10000).toFixed(1).replace(/\.0$/, "") + "留?;
   }
   if (num < 1000000000000) {
-    return (num / 100000000).toFixed(1).replace(/\.0$/, "") + "억";
+    return (num / 100000000).toFixed(1).replace(/\.0$/, "") + "??;
   }
   if (num < 10000000000000000) {
-    return (num / 1000000000000).toFixed(1).replace(/\.0$/, "") + "조";
+    return (num / 1000000000000).toFixed(1).replace(/\.0$/, "") + "議?;
   }
-  return (num / 10000000000000000).toFixed(1).replace(/\.0$/, "") + "경";
+  return (num / 10000000000000000).toFixed(1).replace(/\.0$/, "") + "寃?;
 }
 
 export const REALM_SETTINGS: Record<string, any> = {
-  필부: { bonus: 1.0, minTouches: 0, dummyHp: 300, dummyType: "straw", label: "낡은 짚더미", hp: 150, mp: 300, goldMultiplier: 1 },
-  삼류: { bonus: 1.0, minTouches: 30000, dummyHp: 50000, dummyType: "straw", label: "말라비틀어진 짚더미", hp: 300, mp: 800, goldMultiplier: 3 },
-  이류: { bonus: 1.5, minTouches: 2500000, dummyHp: 400000, dummyType: "wood", label: "통나무 목인", hp: 600, mp: 2000, goldMultiplier: 8 },
-  일류: { bonus: 2.5, minTouches: 15000000, dummyHp: 3500000, dummyType: "leather", label: "가죽 목격인", hp: 1200, mp: 5000, goldMultiplier: 20 },
-  절정: { bonus: 4.5, minTouches: 100000000, dummyHp: 25000000, dummyType: "iron", label: "청강철 목인", hp: 2500, mp: 12000, goldMultiplier: 50 },
-  초절정: { bonus: 8.0, minTouches: 500000000, dummyHp: 200000000, dummyType: "spirit", label: "기운 서린 목격인", hp: 5000, mp: 30000, goldMultiplier: 150 },
-  화경: { bonus: 15.0, minTouches: 2500000000, dummyHp: 1500000000, dummyType: "master", label: "화경의 환영", hp: 12000, mp: 70000, goldMultiplier: 400 },
-  현경: { bonus: 40.0, minTouches: 15000000000, dummyHp: 12000000000, dummyType: "legend", label: "현경의 전설", hp: 25000, mp: 150000, goldMultiplier: 1000 },
-  생사경: { bonus: 100.0, minTouches: 100000000000, dummyHp: 100000000000, dummyType: "life-death", label: "생사의 문턱", hp: 50000, mp: 400000, goldMultiplier: 2500 },
-  신화경: { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: "myth", label: "신화의 형상", hp: 120000, mp: 1000000, goldMultiplier: 7000 },
-  천인합일: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: "heaven", label: "천인합일의 경지", hp: 300000, mp: 3000000, goldMultiplier: 20000 },
+  ?꾨?: { bonus: 1.0, minTouches: 0, dummyHp: 300, dummyType: "straw", label: "?≪? 吏싲뜑誘?, hp: 150, mp: 300, goldMultiplier: 1 },
+  ?쇰쪟: { bonus: 1.0, minTouches: 30000, dummyHp: 50000, dummyType: "straw", label: "留먮씪鍮꾪??댁쭊 吏싲뜑誘?, hp: 300, mp: 800, goldMultiplier: 3 },
+  ?대쪟: { bonus: 1.5, minTouches: 2500000, dummyHp: 400000, dummyType: "wood", label: "?듬굹臾?紐⑹씤", hp: 600, mp: 2000, goldMultiplier: 8 },
+  ?쇰쪟: { bonus: 2.5, minTouches: 15000000, dummyHp: 3500000, dummyType: "leather", label: "媛二?紐⑷꺽??, hp: 1200, mp: 5000, goldMultiplier: 20 },
+  ?덉젙: { bonus: 4.5, minTouches: 100000000, dummyHp: 25000000, dummyType: "iron", label: "泥?컯泥?紐⑹씤", hp: 2500, mp: 12000, goldMultiplier: 50 },
+  珥덉젅?? { bonus: 8.0, minTouches: 500000000, dummyHp: 200000000, dummyType: "spirit", label: "湲곗슫 ?쒕┛ 紐⑷꺽??, hp: 5000, mp: 30000, goldMultiplier: 150 },
+  ?붽꼍: { bonus: 15.0, minTouches: 2500000000, dummyHp: 1500000000, dummyType: "master", label: "?붽꼍???섏쁺", hp: 12000, mp: 70000, goldMultiplier: 400 },
+  ?꾧꼍: { bonus: 40.0, minTouches: 15000000000, dummyHp: 12000000000, dummyType: "legend", label: "?꾧꼍???꾩꽕", hp: 25000, mp: 150000, goldMultiplier: 1000 },
+  ?앹궗寃? { bonus: 100.0, minTouches: 100000000000, dummyHp: 100000000000, dummyType: "life-death", label: "?앹궗??臾명꽦", hp: 50000, mp: 400000, goldMultiplier: 2500 },
+  ?좏솕寃? { bonus: 300.0, minTouches: 800000000000, dummyHp: 800000000000, dummyType: "myth", label: "?좏솕???뺤긽", hp: 120000, mp: 1000000, goldMultiplier: 7000 },
+  泥쒖씤?⑹씪: { bonus: 1000.0, minTouches: 5000000000000, dummyHp: 5000000000000, dummyType: "heaven", label: "泥쒖씤?⑹씪??寃쎌?", hp: 300000, mp: 3000000, goldMultiplier: 20000 },
 };
 
 export function getInnStageConfig(stage: number) {
@@ -81,20 +81,20 @@ export function getInnStageConfig(stage: number) {
   };
 }
 
-export const REALM_ORDER = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+export const REALM_ORDER = ["?꾨?", "?쇰쪟", "?대쪟", "?쇰쪟", "?덉젙", "珥덉젅??, "?붽꼍", "?꾧꼍", "?앹궗寃?, "?좏솕寃?, "泥쒖씤?⑹씪"];
 
 export const STAT_UPGRADE_CONFIG: Record<string, { name: string; resources: string[] }> = {
-  hpRec: { name: "생명력", resources: ["gold"] },
-  hpRecovery: { name: "재생", resources: ["gold"] },
-  mpRec: { name: "내공", resources: ["gold"] },
-  atk: { name: "공격력", resources: ["gold"] },
-  def: { name: "방어력", resources: ["gold"] },
-  critRate: { name: "치명타 확률", resources: ["gold", "reputation"] },
-  critDmg: { name: "치명타 피해", resources: ["gold", "reputation"] },
-  eva: { name: "회피율", resources: ["gold", "reputation"] },
-  luck: { name: "기운/행운", resources: ["gold", "reputation"] },
-  autoGain: { name: "수련 효율", resources: ["gold", "reputation"] },
-  offlineLimit: { name: "수련 시간", resources: ["gold", "reputation"] },
+  hpRec: { name: "?앸챸??, resources: ["gold"] },
+  hpRecovery: { name: "?ъ깮", resources: ["gold"] },
+  mpRec: { name: "?닿났", resources: ["gold"] },
+  atk: { name: "怨듦꺽??, resources: ["gold"] },
+  def: { name: "諛⑹뼱??, resources: ["gold"] },
+  critRate: { name: "移섎챸? ?뺣쪧", resources: ["gold", "reputation"] },
+  critDmg: { name: "移섎챸? ?쇳빐", resources: ["gold", "reputation"] },
+  eva: { name: "?뚰뵾??, resources: ["gold", "reputation"] },
+  luck: { name: "湲곗슫/?됱슫", resources: ["gold", "reputation"] },
+  autoGain: { name: "?섎젴 ?⑥쑉", resources: ["gold", "reputation"] },
+  offlineLimit: { name: "?섎젴 ?쒓컙", resources: ["gold", "reputation"] },
 };
 
 export const STAT_INCREMENTS: Record<string, number> = {
@@ -114,310 +114,310 @@ export const STAT_INCREMENTS: Record<string, number> = {
 export const TUTORIAL_STEPS: Record<string, any> = {
   start_faction: {
     id: "start_faction",
-    title: "강호 입성",
-    message: "문파를 선택하고 강호에 발을 들였습니다. 먼저 [임무] 탭을 확인하여 앞으로의 방향을 잡으세요.",
+    title: "媛뺥샇 ?낆꽦",
+    message: "臾명뙆瑜??좏깮?섍퀬 媛뺥샇??諛쒖쓣 ?ㅼ??듬땲?? 癒쇱? [?꾨Т] ??쓣 ?뺤씤?섏뿬 ?욎쑝濡쒖쓽 諛⑺뼢???≪쑝?몄슂.",
     targetId: "nav-quest",
     actionType: "click"
   },
   check_quest: {
     id: "check_quest",
-    title: "임무 확인",
-    message: "임무를 수행하고 강해져서 강호에 이름을 날리세요. 이제 수련장으로 이동합시다.",
+    title: "?꾨Т ?뺤씤",
+    message: "?꾨Т瑜??섑뻾?섍퀬 媛뺥빐?몄꽌 媛뺥샇???대쫫???좊━?몄슂. ?댁젣 ?섎젴?μ쑝濡??대룞?⑹떆??",
     targetId: "nav-training",
     actionType: "click"
   },
   explain_quest_list: {
     id: "explain_quest_list",
-    title: "임무 상세",
-    message: "임무 내용과 보상 내역을 이곳에서 확인할 수 있습니다. 첫 번째 임무인 '허수아비 100마리 처치'를 확인하고 수련장으로 이동해봅시다.",
+    title: "?꾨Т ?곸꽭",
+    message: "?꾨Т ?댁슜怨?蹂댁긽 ?댁뿭???닿납?먯꽌 ?뺤씤?????덉뒿?덈떎. 泥?踰덉㎏ ?꾨Т??'?덉닔?꾨퉬 100留덈━ 泥섏튂'瑜??뺤씤?섍퀬 ?섎젴?μ쑝濡??대룞?대큶?쒕떎.",
     targetId: "quest-item-first",
     actionType: "any"
   },
   start_training: {
     id: "start_training",
-    title: "기초 수련",
-    message: "수련장에서 허수아비를 처치하여 깨달음을 얻으세요. 화면을 터치해 공격할 수 있습니다.",
+    title: "湲곗큹 ?섎젴",
+    message: "?섎젴?μ뿉???덉닔?꾨퉬瑜?泥섏튂?섏뿬 源⑤떖?뚯쓣 ?살쑝?몄슂. ?붾㈃???곗튂??怨듦꺽?????덉뒿?덈떎.",
     targetId: "training-area",
     actionType: "click"
   },
   explain_mission_bar: {
     id: "explain_mission_bar",
-    title: "임무 및 상태 확인",
-    message: "하단의 임무 포시창에서는 현재 진행중인 임무를 확인할 수 있습니다. 상단은 상태를 바로 확인할 수 있는 창입니다. 순서는 금화,명성,수련치,공격력입니다.",
+    title: "?꾨Т 諛??곹깭 ?뺤씤",
+    message: "?섎떒???꾨Т ?ъ떆李쎌뿉?쒕뒗 ?꾩옱 吏꾪뻾以묒씤 ?꾨Т瑜??뺤씤?????덉뒿?덈떎. ?곷떒? ?곹깭瑜?諛붾줈 ?뺤씤?????덈뒗 李쎌엯?덈떎. ?쒖꽌??湲덊솕,紐낆꽦,?섎젴移?怨듦꺽?μ엯?덈떎.",
     targetId: "player-status-button",
     actionType: "any"
   },
   click_status_detailed: {
     id: "click_status_detailed",
-    title: "상태창 확인",
-    message: "상태창 버튼을 눌러 상세 정보를 확인하세요.",
+    title: "?곹깭李??뺤씤",
+    message: "?곹깭李?踰꾪듉???뚮윭 ?곸꽭 ?뺣낫瑜??뺤씤?섏꽭??",
     targetId: "player-status-button",
     actionType: "click"
   },
   explain_status_panel: {
     id: "explain_status_panel",
-    title: "성취도 상세",
-    message: "개인 능력치와 전투력, 그리고 다음 깨달음(경지)까지의 상세한 정보를 확인할 수 있습니다.",
+    title: "?깆랬???곸꽭",
+    message: "媛쒖씤 ?λ젰移섏? ?꾪닾?? 洹몃━怨??ㅼ쓬 源⑤떖??寃쎌?)源뚯????곸꽭???뺣낫瑜??뺤씤?????덉뒿?덈떎.",
     targetId: null,
     actionType: "any"
   },
   auto_training_info: {
     id: "auto_training_info",
-    title: "자동 수련 안내",
-    message: "초당 5번의 자동 수련이 진행 중입니다. 경지가 높아질수록 허수아비의 생명력도 높아지니, 직접 터치해야 더 빨리 강해질 수 있습니다!",
+    title: "?먮룞 ?섎젴 ?덈궡",
+    message: "珥덈떦 5踰덉쓽 ?먮룞 ?섎젴??吏꾪뻾 以묒엯?덈떎. 寃쎌?媛 ?믪븘吏덉닔濡??덉닔?꾨퉬???앸챸?λ룄 ?믪븘吏?? 吏곸젒 ?곗튂?댁빞 ??鍮⑤━ 媛뺥빐吏????덉뒿?덈떎!",
     targetId: "training-area",
     actionType: "any"
   },
   explain_time_cycle: {
     id: "explain_time_cycle",
-    title: "시간의 흐름",
-    message: "하루는 낮(5분) 그리고 황혼(1분) 그리고 밤(5분) 그리고 새벽(1분)으로 돌아갑니다.",
+    title: "?쒓컙???먮쫫",
+    message: "?섎（????5遺? 洹몃━怨??⑺샎(1遺? 洹몃━怨?諛?5遺? 洹몃━怨??덈꼍(1遺??쇰줈 ?뚯븘媛묐땲??",
     targetId: "time-status-bar",
     actionType: "any"
   },
   explain_night_only: {
     id: "explain_night_only",
-    title: "밤의 활동",
-    message: "기루와 도박은 밤에만 이용할 수 있습니다.",
+    title: "諛ㅼ쓽 ?쒕룞",
+    message: "湲곕（? ?꾨컯? 諛ㅼ뿉留??댁슜?????덉뒿?덈떎.",
     targetId: "nav-giru",
     actionType: "any"
   },
 
   explain_auto_battle: {
     id: "explain_auto_battle",
-    title: "자동 전투",
-    message: "자동 전투(수련)는 직접 터치하지 않아도 지속적으로 성장을 도와줍니다.",
+    title: "?먮룞 ?꾪닾",
+    message: "?먮룞 ?꾪닾(?섎젴)??吏곸젒 ?곗튂?섏? ?딆븘??吏?띿쟻?쇰줈 ?깆옣???꾩?以띾땲??",
     targetId: "training-area",
     actionType: "any"
   },
   trance_achieved: {
     id: "trance_achieved",
-    title: "무아지경 진입",
-    message: "축하합니다! 무아지경 상태에서는 공격력이 10배로 상승합니다. 더 빠르게 허수아비를 처단하세요.",
+    title: "臾댁븘吏寃?吏꾩엯",
+    message: "異뺥븯?⑸땲?? 臾댁븘吏寃??곹깭?먯꽌??怨듦꺽?μ씠 10諛곕줈 ?곸듅?⑸땲?? ??鍮좊Ⅴ寃??덉닔?꾨퉬瑜?泥섎떒?섏꽭??",
     targetId: null,
     actionType: "any"
   },
   forge_unlock: {
     id: "forge_unlock",
-    title: "대장간 개방",
-    message: "허수아비 30번 처치 보상으로 [대장간]이 열렸습니다! 장비를 마련하여 더 강해질 시간입니다.",
+    title: "??κ컙 媛쒕갑",
+    message: "?덉닔?꾨퉬 30踰?泥섏튂 蹂댁긽?쇰줈 [??κ컙]???대졇?듬땲?? ?λ퉬瑜?留덈젴?섏뿬 ??媛뺥빐吏??쒓컙?낅땲??",
     targetId: null,
     actionType: "any"
   },
   goto_forge_click: {
     id: "goto_forge_click",
-    title: "대장간 이동",
-    message: "무림은 위험한 곳입니다. 자신을 보호하고 강화하기 위한 필수 장소입니다.",
+    title: "??κ컙 ?대룞",
+    message: "臾대┝? ?꾪뿕??怨녹엯?덈떎. ?먯떊??蹂댄샇?섍퀬 媛뺥솕?섍린 ?꾪븳 ?꾩닔 ?μ냼?낅땲??",
     targetId: "nav-forge",
     actionType: "click"
   },
   buy_weapon: {
     id: "buy_weapon",
-    title: "장비 구입",
-    message: "먼저 [무명철검]을 구입하세요. 튜토리얼 진행을 위해 특별히 [명품] 등급의 장비가 준비될 것입니다.",
-    targetId: "forge-buy-weapon-필부_mainWeapon",
+    title: "?λ퉬 援ъ엯",
+    message: "癒쇱? [臾대챸泥좉?]??援ъ엯?섏꽭?? ?쒗넗由ъ뼹 吏꾪뻾???꾪빐 ?밸퀎??[紐낇뭹] ?깃툒???λ퉬媛 以鍮꾨맆 寃껋엯?덈떎.",
+    targetId: "forge-buy-weapon-?꾨?_mainWeapon",
     actionType: "click"
   },
   goto_inventory: {
     id: "goto_inventory",
-    title: "가방 확인",
-    message: "장비를 눌러서 구입한 장비를 착용하러 갑니다.",
+    title: "媛諛??뺤씤",
+    message: "?λ퉬瑜??뚮윭??援ъ엯???λ퉬瑜?李⑹슜?섎윭 媛묐땲??",
     targetId: "nav-inventory",
     actionType: "click"
   },
   select_item_inventory: {
     id: "select_item_inventory",
-    title: "아이템 선택",
-    message: "방금 구입한 무기를 선택하세요.",
+    title: "?꾩씠???좏깮",
+    message: "諛⑷툑 援ъ엯??臾닿린瑜??좏깮?섏꽭??",
     targetId: "inv-item-list-first",
     actionType: "click"
   },
   click_equip_button: {
     id: "click_equip_button",
-    title: "장착하기",
-    message: "[장착하기] 버튼을 눌러 무기를 착용합니다.",
+    title: "?μ갑?섍린",
+    message: "[?μ갑?섍린] 踰꾪듉???뚮윭 臾닿린瑜?李⑹슜?⑸땲??",
     targetId: "inv-equip-btn",
     actionType: "click"
   },
   goto_forge_refine: {
     id: "goto_forge_refine",
-    title: "장비 제련 유도",
-    message: "이제 장비를 제련하여 성능을 극한으로 끌어올려 봅시다. 다시 대장간으로 이동하세요.",
+    title: "?λ퉬 ?쒕젴 ?좊룄",
+    message: "?댁젣 ?λ퉬瑜??쒕젴?섏뿬 ?깅뒫??洹뱁븳?쇰줈 ?뚯뼱?щ젮 遊낆떆?? ?ㅼ떆 ??κ컙?쇰줈 ?대룞?섏꽭??",
     targetId: "nav-forge",
     actionType: "click"
   },
   select_refine_tab: {
     id: "select_refine_tab",
-    title: "장비 제련",
-    message: "[장비 제련] 메뉴를 선택하세요.",
+    title: "?λ퉬 ?쒕젴",
+    message: "[?λ퉬 ?쒕젴] 硫붾돱瑜??좏깮?섏꽭??",
     targetId: "forge-main-tab-enhance",
     actionType: "click"
   },
   select_item_to_refine: {
     id: "select_item_to_refine",
-    title: "대상 선택",
-    message: "제련할 아이템(현재 착용 중인 무기)을 선택하세요.",
+    title: "????좏깮",
+    message: "?쒕젴???꾩씠???꾩옱 李⑹슜 以묒씤 臾닿린)???좏깮?섏꽭??",
     targetId: "forge-refine-target-slot",
     actionType: "click"
   },
   check_refine_preview: {
     id: "check_refine_preview",
-    title: "강화 수치 확인",
-    message: "장비를 제련하면 공격력을 포함한 기본 능력치가 크게 상승합니다. 현재 수치와 제련 후 예상 수치를 확인해보세요.",
+    title: "媛뺥솕 ?섏튂 ?뺤씤",
+    message: "?λ퉬瑜??쒕젴?섎㈃ 怨듦꺽?μ쓣 ?ы븿??湲곕낯 ?λ젰移섍? ?ш쾶 ?곸듅?⑸땲?? ?꾩옱 ?섏튂? ?쒕젴 ???덉긽 ?섏튂瑜??뺤씤?대낫?몄슂.",
     targetId: "forge-refine-stat-preview",
     actionType: "any"
   },
   click_refine_start: {
     id: "click_refine_start",
-    title: "제련 시작",
-    message: "[제련 시작]을 눌러 장비를 강화합니다. 공격력이 상승합니다.",
+    title: "?쒕젴 ?쒖옉",
+    message: "[?쒕젴 ?쒖옉]???뚮윭 ?λ퉬瑜?媛뺥솕?⑸땲?? 怨듦꺽?μ씠 ?곸듅?⑸땲??",
     targetId: "forge-refine-start-btn",
     actionType: "click"
   },
   check_refine_result: {
     id: "check_refine_result",
-    title: "제련 결과 확인",
-    message: "제련이 성공하여 장비의 강화 수치가 상승했습니다! +1강당 장비의 기본 능력치가 10%씩 중첩되어 증가합니다. 이제 더 강력해진 공격력을 확인해보세요.",
+    title: "?쒕젴 寃곌낵 ?뺤씤",
+    message: "?쒕젴???깃났?섏뿬 ?λ퉬??媛뺥솕 ?섏튂媛 ?곸듅?덉뒿?덈떎! +1媛뺣떦 ?λ퉬??湲곕낯 ?λ젰移섍? 10%??以묒꺽?섏뼱 利앷??⑸땲?? ?댁젣 ??媛뺣젰?댁쭊 怨듦꺽?μ쓣 ?뺤씤?대낫?몄슂.",
     targetId: "forge-info-box-header",
     actionType: "any"
   },
   select_reroll_tab: {
     id: "select_reroll_tab",
-    title: "재연마 선택",
-    message: "다음은 [재연마]입니다. 장비의 효과를 무작위로 새롭게 변경할 수 있습니다.",
+    title: "?ъ뿰留??좏깮",
+    message: "?ㅼ쓬? [?ъ뿰留??낅땲?? ?λ퉬???④낵瑜?臾댁옉?꾨줈 ?덈∼寃?蹂寃쏀븷 ???덉뒿?덈떎.",
     targetId: "forge-tab-reroll",
     actionType: "click"
   },
   select_item_to_reroll: {
     id: "select_item_to_reroll",
-    title: "대상 선택",
-    message: "재연마할 아이템을 다시 한번 선택해주세요.",
+    title: "????좏깮",
+    message: "?ъ뿰留덊븷 ?꾩씠?쒖쓣 ?ㅼ떆 ?쒕쾲 ?좏깮?댁＜?몄슂.",
     targetId: "forge-refine-target-slot",
     actionType: "click"
   },
   check_current_options: {
     id: "check_current_options",
-    title: "현재 옵션 확인",
-    message: "재연마를 하기전, 현재 장비에 부여된 옵션들을 확인해보세요. 유지하고 싶은 옵션이 있다면 옆에 박스를 체크하면 그 옵션은 유지됩니다.",
+    title: "?꾩옱 ?듭뀡 ?뺤씤",
+    message: "?ъ뿰留덈? ?섍린?? ?꾩옱 ?λ퉬??遺?щ맂 ?듭뀡?ㅼ쓣 ?뺤씤?대낫?몄슂. ?좎??섍퀬 ?띠? ?듭뀡???덈떎硫??놁뿉 諛뺤뒪瑜?泥댄겕?섎㈃ 洹??듭뀡? ?좎??⑸땲??",
     targetId: "forge-item-options-list",
     actionType: "any"
   },
   click_reroll_start: {
     id: "click_reroll_start",
-    title: "재연마 실행",
-    message: "[재연마 시작] 버튼을 눌러 새로운 옵션을 획득해보세요.",
+    title: "?ъ뿰留??ㅽ뻾",
+    message: "[?ъ뿰留??쒖옉] 踰꾪듉???뚮윭 ?덈줈???듭뀡???띾뱷?대낫?몄슂.",
     targetId: "forge-reroll-start-btn",
     actionType: "click"
   },
   check_reroll_result: {
     id: "check_reroll_result",
-    title: "재연마 결과 확인",
-    message: "재연마를 통해 장비에 새로운 옵션들이 부여되었습니다! 어떤 효과들이 추가되었는지 확인해보세요.",
+    title: "?ъ뿰留?寃곌낵 ?뺤씤",
+    message: "?ъ뿰留덈? ?듯빐 ?λ퉬???덈줈???듭뀡?ㅼ씠 遺?щ릺?덉뒿?덈떎! ?대뼡 ?④낵?ㅼ씠 異붽??섏뿀?붿? ?뺤씤?대낫?몄슂.",
     targetId: "forge-item-options-list",
     actionType: "any"
   },
   select_infuse_tab: {
     id: "select_infuse_tab",
-    title: "연마 탭 선택",
-    message: "마지막으로 [연마]입니다. 특수 재료인 기름을 발라 장비에 특별한 효과를 부여합니다.",
+    title: "?곕쭏 ???좏깮",
+    message: "留덉?留됱쑝濡?[?곕쭏]?낅땲?? ?뱀닔 ?щ즺??湲곕쫫??諛쒕씪 ?λ퉬???밸퀎???④낵瑜?遺?ы빀?덈떎.",
     targetId: "forge-tab-infuse",
     actionType: "click"
   },
   select_item_to_infuse: {
     id: "select_item_to_infuse",
-    title: "대상 선택",
-    message: "연마할 아이템을 선택하세요.",
+    title: "????좏깮",
+    message: "?곕쭏???꾩씠?쒖쓣 ?좏깮?섏꽭??",
     targetId: "forge-refine-target-slot",
     actionType: "click"
   },
   select_oil: {
     id: "select_oil",
-    title: "연마제 선택",
-    message: "공격력을 대폭 높여주는 [광폭유] 외 2종을 미리 지급해드렸습니다. 광폭유를 눌러 연마하세요.",
+    title: "?곕쭏???좏깮",
+    message: "怨듦꺽?μ쓣 ????믪뿬二쇰뒗 [愿묓룺?? ??2醫낆쓣 誘몃━ 吏湲됲빐?쒕졇?듬땲?? 愿묓룺?좊? ?뚮윭 ?곕쭏?섏꽭??",
     targetId: "forge-oil-item-oil_atk_3",
     actionType: "click"
   },
   click_infuse_start: {
     id: "click_infuse_start",
-    title: "연마 시작",
-    message: "[연마하기] 버튼을 눌러 무기에 효과를 적용합니다.",
+    title: "?곕쭏 ?쒖옉",
+    message: "[?곕쭏?섍린] 踰꾪듉???뚮윭 臾닿린???④낵瑜??곸슜?⑸땲??",
     targetId: "forge-infuse-start-btn",
     actionType: "click"
   },
   check_forge_result: {
     id: "check_forge_result",
-    title: "연마 완료",
-    message: "연마제가 무기에 성공적으로 스며들었습니다. 이제 하단의 [장비] 탭을 눌러 효과를 확인해볼까요?",
+    title: "?곕쭏 ?꾨즺",
+    message: "?곕쭏?쒓? 臾닿린???깃났?곸쑝濡??ㅻŉ?ㅼ뿀?듬땲?? ?댁젣 ?섎떒??[?λ퉬] ??쓣 ?뚮윭 ?④낵瑜??뺤씤?대낵源뚯슂?",
     targetId: "nav-inventory",
     actionType: "click"
   },
   goto_inventory_final: {
     id: "goto_inventory_final",
-    title: "장비 확인",
-    message: "[장비] 탭으로 이동하여 아이템을 확인합니다.",
+    title: "?λ퉬 ?뺤씤",
+    message: "[?λ퉬] ??쑝濡??대룞?섏뿬 ?꾩씠?쒖쓣 ?뺤씤?⑸땲??",
     targetId: "nav-inventory",
     actionType: "click"
   },
   select_infused_item: {
     id: "select_infused_item",
-    title: "아이템 클릭",
-    message: "연마한 무기를 클릭하여 상세 정보를 확인하세요.",
+    title: "?꾩씠???대┃",
+    message: "?곕쭏??臾닿린瑜??대┃?섏뿬 ?곸꽭 ?뺣낫瑜??뺤씤?섏꽭??",
     targetId: "inv-item-list-first",
     actionType: "click"
   },
   check_final_infused_options: {
     id: "check_final_infused_options",
-    title: "효과 적용 확인",
-    message: "아이템 설명 하단에 [광폭유] 효과가 적용된 것이 보이시나요? 이제 다시 강해진 상태로 수련을 시작합시다! 하단의 [수련] 탭을 클릭하세요.",
+    title: "?④낵 ?곸슜 ?뺤씤",
+    message: "?꾩씠???ㅻ챸 ?섎떒??[愿묓룺?? ?④낵媛 ?곸슜??寃껋씠 蹂댁씠?쒕굹?? ?댁젣 ?ㅼ떆 媛뺥빐吏??곹깭濡??섎젴???쒖옉?⑹떆?? ?섎떒??[?섎젴] ??쓣 ?대┃?섏꽭??",
     targetId: "nav-training",
     actionType: "click"
   },
   actual_final_back_to_training: {
     id: "actual_final_back_to_training",
-    title: "수련 복귀",
-    message: "[수련] 탭을 눌러 메인 화면으로 돌아갑니다.",
+    title: "?섎젴 蹂듦?",
+    message: "[?섎젴] ??쓣 ?뚮윭 硫붿씤 ?붾㈃?쇰줈 ?뚯븘媛묐땲??",
     targetId: "main-nav-training",
     actionType: "click"
   },
   restart_training: {
     id: "restart_training",
-    title: "수련 재개",
-    message: "이제 [수련 시작] 버튼을 눌러 다시 강해질 시간입니다!",
+    title: "?섎젴 ?ш컻",
+    message: "?댁젣 [?섎젴 ?쒖옉] 踰꾪듉???뚮윭 ?ㅼ떆 媛뺥빐吏??쒓컙?낅땲??",
     targetId: "training-start-btn",
     actionType: "click"
   },
   select_potion_category: {
     id: "select_potion_category",
-    title: "회복제 선택",
-    message: "대장간에서는 무기뿐만 아니라 회복제도 제작할 수 있습니다. [회복제] 카테고리를 선택하세요.",
-    targetId: "forge-realm-회복제",
+    title: "?뚮났???좏깮",
+    message: "??κ컙?먯꽌??臾닿린肉먮쭔 ?꾨땲???뚮났?쒕룄 ?쒖옉?????덉뒿?덈떎. [?뚮났?? 移댄뀒怨좊━瑜??좏깮?섏꽭??",
+    targetId: "forge-realm-?뚮났??,
     actionType: "click"
   },
   buy_hp_potion: {
     id: "buy_hp_potion",
-    title: "회복제 구입",
-    message: "생존에 필수적인 [생명력 회복제(소)]를 구입해 봅시다.",
+    title: "?뚮났??援ъ엯",
+    message: "?앹〈???꾩닔?곸씤 [?앸챸???뚮났????]瑜?援ъ엯??遊낆떆??",
     targetId: "forge-buy-potion-potion_hp_1",
     actionType: "click"
   },
   goto_inventory_potion: {
     id: "goto_inventory_potion",
-    title: "장비탭 이동",
-    message: "구입한 물약을 장착하러 다시 가방(장비) 탭으로 이동합니다.",
+    title: "?λ퉬???대룞",
+    message: "援ъ엯??臾쇱빟???μ갑?섎윭 ?ㅼ떆 媛諛??λ퉬) ??쑝濡??대룞?⑸땲??",
     targetId: "nav-inventory",
     actionType: "click"
   },
   select_medicine_tab: {
     id: "select_medicine_tab",
-    title: "행낭 선택",
-    message: "소모품을 확인할 수 있는 [행낭] 메뉴를 선택하세요.",
+    title: "?됰궘 ?좏깮",
+    message: "?뚮え?덉쓣 ?뺤씤?????덈뒗 [?됰궘] 硫붾돱瑜??좏깮?섏꽭??",
     targetId: "inv-slot-medicine",
     actionType: "click"
   },
   guide_potion_setup: {
     id: "guide_potion_setup",
-    title: "물약 장착",
-    message: "소형회복제를 꾹 눌러서 아래의 [물약 장착] 슬롯으로 끌어다 놓으면 장착됩니다. 대결 시 자동으로 사용되어 생존을 돕습니다.",
+    title: "臾쇱빟 ?μ갑",
+    message: "?뚰삎?뚮났?쒕? 袁??뚮윭???꾨옒??[臾쇱빟 ?μ갑] ?щ’?쇰줈 ?뚯뼱???볦쑝硫??μ갑?⑸땲?? ?寃????먮룞?쇰줈 ?ъ슜?섏뼱 ?앹〈???뺤뒿?덈떎.",
     targetId: "inv-medicine-item-first",
     secondTargetId: "inv-quick-slot-0",
     actionType: "any"
@@ -425,112 +425,112 @@ export const TUTORIAL_STEPS: Record<string, any> = {
 
   upgrade_unlock: {
     id: "upgrade_unlock",
-    title: "강화 개방",
-    message: "허수아비 50번 처치 보상으로 [강화]가 열렸습니다. 획득한 금화와 명성으로 능력치를 영구히 상승시키세요.",
+    title: "媛뺥솕 媛쒕갑",
+    message: "?덉닔?꾨퉬 50踰?泥섏튂 蹂댁긽?쇰줈 [媛뺥솕]媛 ?대졇?듬땲?? ?띾뱷??湲덊솕? 紐낆꽦?쇰줈 ?λ젰移섎? ?곴뎄???곸듅?쒗궎?몄슂.",
     targetId: "nav-upgrade",
     actionType: "click"
   },
   upgrade_guide_info: {
     id: "upgrade_guide_info",
-    title: "상세 정보 확인",
-    message: "각 항목을 누르면 그 무공이 가진 깊은 뜻과 자세한 정보를 볼 수 있습니다. [공격력] 항목을 눌러보세요.",
+    title: "?곸꽭 ?뺣낫 ?뺤씤",
+    message: "媛???ぉ???꾨Ⅴ硫?洹?臾닿났??媛吏?源딆? ?산낵 ?먯꽭???뺣낫瑜?蹂????덉뒿?덈떎. [怨듦꺽?? ??ぉ???뚮윭蹂댁꽭??",
     targetId: "upgrade-item-atk",
     actionType: "click"
   },
   upgrade_popup_any: {
     id: "upgrade_popup_any",
-    title: "정보 확인 완료",
-    message: "능력의 설명을 확인하셨나요? 설명창을 눌러 닫고 수련을 계속하세요.",
+    title: "?뺣낫 ?뺤씤 ?꾨즺",
+    message: "?λ젰???ㅻ챸???뺤씤?섏뀲?섏슂? ?ㅻ챸李쎌쓣 ?뚮윭 ?リ퀬 ?섎젴??怨꾩냽?섏꽭??",
     targetId: "upgrade-description-popup",
     actionType: "click"
   },
   upgrade_mult_10: {
     id: "upgrade_mult_10",
-    title: "수련의 가속",
-    message: "한 단계씩 오르는 수련으로는 부족합니다. 이제 한 번에 10단계씩 성장의 속도를 끌어올려 보십시오. [x10]을 선택하세요.",
+    title: "?섎젴??媛??,
+    message: "???④퀎???ㅻⅤ???섎젴?쇰줈??遺議깊빀?덈떎. ?댁젣 ??踰덉뿉 10?④퀎???깆옣???띾룄瑜??뚯뼱?щ젮 蹂댁떗?쒖삤. [x10]???좏깮?섏꽭??",
     targetId: "upgrade-mult-10",
     actionType: "click"
   },
   upgrade_atk_gold: {
     id: "upgrade_atk_gold",
-    title: "공격력 강화",
-    message: "효율이 극대화되었으니, 이제 공격력을 대폭 상승시킬 차례입니다. [공격력] 강화 버튼을 눌러보세요.",
+    title: "怨듦꺽??媛뺥솕",
+    message: "?⑥쑉??洹밸??붾릺?덉쑝?? ?댁젣 怨듦꺽?μ쓣 ????곸듅?쒗궗 李⑤??낅땲?? [怨듦꺽?? 媛뺥솕 踰꾪듉???뚮윭蹂댁꽭??",
     targetId: "upgrade-btn-atk-gold",
     actionType: "click"
   },
   upgrade_hp_gold: {
     id: "upgrade_hp_gold",
-    title: "생명력 강화",
-    message: "강인한 육체는 무인의 근본입니다. [생명력]을 강화하여 끊임없는 타격에도 굴하지 않는 신체를 만드세요.",
+    title: "?앸챸??媛뺥솕",
+    message: "媛뺤씤???≪껜??臾댁씤??洹쇰낯?낅땲?? [?앸챸????媛뺥솕?섏뿬 ?딆엫?녿뒗 ?寃⑹뿉??援댄븯吏 ?딅뒗 ?좎껜瑜?留뚮뱶?몄슂.",
     targetId: "upgrade-btn-hpRec-gold",
     secondTargetId: "upgrade-mult-10",
     actionType: "click"
   },
   upgrade_tab_technique: {
     id: "upgrade_tab_technique",
-    title: "심화 연마",
-    message: "기초를 닦았다면 이제 변칙적인 무공을 익힐 차례입니다. [심화 연마] 탭을 눌러 치명타와 회피 등의 신묘한 기술들을 확인하세요.",
+    title: "?ы솕 ?곕쭏",
+    message: "湲곗큹瑜???븯?ㅻ㈃ ?댁젣 蹂移숈쟻??臾닿났???듯옄 李⑤??낅땲?? [?ы솕 ?곕쭏] ??쓣 ?뚮윭 移섎챸?? ?뚰뵾 ?깆쓽 ?좊쵖??湲곗닠?ㅼ쓣 ?뺤씤?섏꽭??",
     targetId: "upgrade-tab-technique",
     actionType: "click"
   },
   upgrade_tab_mastery: {
     id: "upgrade_tab_mastery",
-    title: "천명 비전",
-    message: "진정한 고수는 하늘의 뜻을 읽는 법입니다. [천명 비전]에서 강호의 기연과 수행의 효율을 극한으로 끌어올리는 법을 배우세요.",
+    title: "泥쒕챸 鍮꾩쟾",
+    message: "吏꾩젙??怨좎닔???섎뒛???살쓣 ?쎈뒗 踰뺤엯?덈떎. [泥쒕챸 鍮꾩쟾]?먯꽌 媛뺥샇??湲곗뿰怨??섑뻾???⑥쑉??洹뱁븳?쇰줈 ?뚯뼱?щ━??踰뺤쓣 諛곗슦?몄슂.",
     targetId: "upgrade-tab-mastery",
     actionType: "click"
   },
   upgrade_finish_goto_training: {
     id: "upgrade_finish_goto_training",
-    title: "수련 재개",
-    message: "환골탈태의 기연을 얻어 기맥이 뚫렸으니, 이제 무도의 극의를 향해 정진할 때입니다. 더욱 강성해진 신법과 내공으로 천하제일을 향한 수련을 이어가십시오.",
+    title: "?섎젴 ?ш컻",
+    message: "?섍낏?덊깭??湲곗뿰???살뼱 湲곕㎘???ル졇?쇰땲, ?댁젣 臾대룄??洹뱀쓽瑜??ν빐 ?뺤쭊???뚯엯?덈떎. ?붿슧 媛뺤꽦?댁쭊 ?좊쾿怨??닿났?쇰줈 泥쒗븯?쒖씪???ν븳 ?섎젴???댁뼱媛??떆??",
     actionType: "any"
   },
   tower_unlock: {
     id: "tower_unlock",
-    title: "무한의 탑",
-    message: "허수아비 100번 처치 보상으로 [탑]이 열렸습니다. 자신의 한계를 시험하고 보상을 획득하세요.",
+    title: "臾댄븳????,
+    message: "?덉닔?꾨퉬 100踰?泥섏튂 蹂댁긽?쇰줈 [?????대졇?듬땲?? ?먯떊???쒓퀎瑜??쒗뿕?섍퀬 蹂댁긽???띾뱷?섏꽭??",
     targetId: "nav-tower",
     actionType: "click"
   },
   master_unlock: {
     id: "master_unlock",
-    title: "고수와의 대결",
-    message: "허수아비 150번 처치 보상으로 [대결]이 열렸습니다. 강력한 고수들을 처단하고 명성을 쌓으세요.",
+    title: "怨좎닔????寃?,
+    message: "?덉닔?꾨퉬 150踰?泥섏튂 蹂댁긽?쇰줈 [?寃????대졇?듬땲?? 媛뺣젰??怨좎닔?ㅼ쓣 泥섎떒?섍퀬 紐낆꽦???볦쑝?몄슂.",
     targetId: "nav-master",
     actionType: "click"
   },
   inn_event: {
     id: "inn_event",
-    title: "객잔 무뢰배",
-    message: "허수아비 300번 처치 시 [객잔]에서 무뢰배들이 나타납니다! [객잔]으로 이동하여 그들을 추격하세요.",
+    title: "媛앹옍 臾대ː諛?,
+    message: "?덉닔?꾨퉬 300踰?泥섏튂 ??[媛앹옍]?먯꽌 臾대ː諛곕뱾???섑??⑸땲?? [媛앹옍]?쇰줈 ?대룞?섏뿬 洹몃뱾??異붽꺽?섏꽭??",
     targetId: "nav-inn",
     actionType: "click"
   }
 };
 
 export const TOWER_BUFF_POOL = [
-  { id: "atk_up", name: "천마의 힘", description: "공격력 +20% / 방어력 -10%", bonus: { atk: 1.2 }, penalty: { def: 0.9 } },
-  { id: "eva_up", name: "허공답보", description: "회피율 +15% / 체력 -10%", bonus: { eva: 15 }, penalty: { hp: 0.9 } },
-  { id: "crit_up", name: "살수지각", description: "치명타 확률 +15% / 받는 피해 +10%", bonus: { critRate: 15 }, penalty: { dmgTaken: 1.1 } },
-  { id: "def_up", name: "금강불괴", description: "방어력 +25% / 공격력 -10%", bonus: { def: 1.25 }, penalty: { atk: 0.9 } },
-  { id: "vamp_up", name: "흡성대법", description: "흡혈 5% / 최대 체력 -15%", bonus: { vamp: 5 }, penalty: { maxHp: 0.85 } },
+  { id: "atk_up", name: "泥쒕쭏????, description: "怨듦꺽??+20% / 諛⑹뼱??-10%", bonus: { atk: 1.2 }, penalty: { def: 0.9 } },
+  { id: "eva_up", name: "?덇났?듬낫", description: "?뚰뵾??+15% / 泥대젰 -10%", bonus: { eva: 15 }, penalty: { hp: 0.9 } },
+  { id: "crit_up", name: "?댁닔吏媛?, description: "移섎챸? ?뺣쪧 +15% / 諛쏅뒗 ?쇳빐 +10%", bonus: { critRate: 15 }, penalty: { dmgTaken: 1.1 } },
+  { id: "def_up", name: "湲덇컯遺덇눼", description: "諛⑹뼱??+25% / 怨듦꺽??-10%", bonus: { def: 1.25 }, penalty: { atk: 0.9 } },
+  { id: "vamp_up", name: "?≪꽦?踰?, description: "?≫삁 5% / 理쒕? 泥대젰 -15%", bonus: { vamp: 5 }, penalty: { maxHp: 0.85 } },
 ];
 
 export const TOWER_ARTIFACT_POOL = [
-  { id: "art_thunder", name: "뇌전의 정수", tier: "RARE", description: "10콤보마다 적에게 공격력 5배의 낙뢰 피해", effect: { type: "COMBO_BOLT", value: 5, chance: 1 } },
-  { id: "art_vamp", name: "흡혈 귀면", tier: "COMMON", description: "공격 시 피해량의 3%를 생명력으로 흡수", effect: { type: "LIFE_STEAL", value: 3 } },
-  { id: "art_shield", name: "황금 갑주", tier: "RARE", description: "피격 시 10% 확률로 무적 보호막 생성 (3초)", effect: { type: "SHIELD", value: 3, chance: 10 } },
-  { id: "art_mp", name: "영천의 이슬", tier: "COMMON", description: "탭할 때마다 내공 2% 회복", effect: { type: "MP_RESTORE", value: 2 } },
-  { id: "art_inst_hp", name: "만년삼", tier: "LEGENDARY", description: "사망 위기 시 즉시 체력 100% 회복 (층당 1회)", effect: { type: "INSTANT_HP", value: 100 } },
+  { id: "art_thunder", name: "?뚯쟾???뺤닔", tier: "RARE", description: "10肄ㅻ낫留덈떎 ?곸뿉寃?怨듦꺽??5諛곗쓽 ?숇ː ?쇳빐", effect: { type: "COMBO_BOLT", value: 5, chance: 1 } },
+  { id: "art_vamp", name: "?≫삁 洹硫?, tier: "COMMON", description: "怨듦꺽 ???쇳빐?됱쓽 3%瑜??앸챸?μ쑝濡??≪닔", effect: { type: "LIFE_STEAL", value: 3 } },
+  { id: "art_shield", name: "?⑷툑 媛묒＜", tier: "RARE", description: "?쇨꺽 ??10% ?뺣쪧濡?臾댁쟻 蹂댄샇留??앹꽦 (3珥?", effect: { type: "SHIELD", value: 3, chance: 10 } },
+  { id: "art_mp", name: "?곸쿇???댁뒳", tier: "COMMON", description: "??븷 ?뚮쭏???닿났 2% ?뚮났", effect: { type: "MP_RESTORE", value: 2 } },
+  { id: "art_inst_hp", name: "留뚮뀈??, tier: "LEGENDARY", description: "?щ쭩 ?꾧린 ??利됱떆 泥대젰 100% ?뚮났 (痢듬떦 1??", effect: { type: "INSTANT_HP", value: 100 } },
 ];
 
 export const TOWER_THEMES: Record<number, any> = {
-  1: { name: "석조의 시련", color: "#64748b", effect: "none", desc: "고요한 돌의 기운이 감도는 층입니다." },
-  21: { name: "혹한의 감옥", color: "#38bdf8", effect: "slow", desc: "뼈를 깎는 추위가 공격 속도를 늦춥니다." },
-  41: { name: "염화의 지옥", color: "#f87171", effect: "burn", desc: "타오르는 열기가 매초 체력을 깎습니다." },
-  61: { name: "독무의 미궁", color: "#a855f7", effect: "poison", desc: "독안개가 회복 효율을 방해합니다." },
-  81: { name: "무극의 심연", color: "#1e293b", effect: "void", desc: "모든 기운이 억제되는 극한의 공간입니다." },
+  1: { name: "?앹“???쒕젴", color: "#64748b", effect: "none", desc: "怨좎슂???뚯쓽 湲곗슫??媛먮룄??痢듭엯?덈떎." },
+  21: { name: "?뱁븳??媛먯삦", color: "#38bdf8", effect: "slow", desc: "堉덈? 源롫뒗 異붿쐞媛 怨듦꺽 ?띾룄瑜???땅?덈떎." },
+  41: { name: "?쇳솕??吏??, color: "#f87171", effect: "burn", desc: "??ㅻⅤ???닿린媛 留ㅼ큹 泥대젰??源롮뒿?덈떎." },
+  61: { name: "?낅Т??誘멸턿", color: "#a855f7", effect: "poison", desc: "?낆븞媛쒓? ?뚮났 ?⑥쑉??諛⑺빐?⑸땲??" },
+  81: { name: "臾닿레???ъ뿰", color: "#1e293b", effect: "void", desc: "紐⑤뱺 湲곗슫???듭젣?섎뒗 洹뱁븳??怨듦컙?낅땲??" },
 };
 
 export function getTowerTheme(floor: number) {
@@ -546,14 +546,14 @@ export function generateTowerEnemy(floor: number) {
   const baseStats = getTargetPlayerStats(level + 10);
 
   let traits: string[] = [];
-  if (isBoss) traits.push("보스", "피해 상한");
-  if (theme.effect === "slow") traits.push("한기 (공속 저하)");
-  if (theme.effect === "burn") traits.push("화염 (지속 피해)");
-  if (theme.effect === "poison") traits.push("맹독 (치유 저하)");
-  if (theme.effect === "void") traits.push("공허 (능력 억제)");
+  if (isBoss) traits.push("蹂댁뒪", "?쇳빐 ?곹븳");
+  if (theme.effect === "slow") traits.push("?쒓린 (怨듭냽 ???");
+  if (theme.effect === "burn") traits.push("?붿뿼 (吏???쇳빐)");
+  if (theme.effect === "poison") traits.push("留밸룆 (移섏쑀 ???");
+  if (theme.effect === "void") traits.push("怨듯뿀 (?λ젰 ?듭젣)");
 
   let hpMult = isBoss ? 3.0 : 1.0;
-  // 초반 층 난이도 완화 (1층 30% 하향, 7층부터 정상화)
+  // 珥덈컲 痢??쒖씠???꾪솕 (1痢?30% ?섑뼢, 7痢듬????뺤긽??
   if (!isBoss) {
     hpMult *= Math.min(1.0, 0.7 + (floor - 1) * 0.05);
   }
@@ -570,7 +570,7 @@ export function generateTowerEnemy(floor: number) {
   const def = Math.floor(baseStats.def * 0.3 * defMult);
 
   return {
-    name: isBoss ? `[층 보스] ${floor}층 ${theme.name} 수호자` : `${floor}층 시험자`,
+    name: isBoss ? `[痢?蹂댁뒪] ${floor}痢?${theme.name} ?섑샇?? : `${floor}痢??쒗뿕??,
     maxHp: hp,
     hp: hp,
     maxMp: 100,
@@ -600,39 +600,39 @@ export const STAT_UPGRADE_BASES: Record<string, { gold: number; rep: number }> =
 };
 
 const DUEL_TIERS = [
-  { name: "무명소졸", min: 0 },
-  { name: "초출강호", min: 200 },
-  { name: "일류고수", min: 500 },
-  { name: "절정고수", min: 1000 },
-  { name: "초절정", min: 2000 },
-  { name: "화경", min: 4000 },
-  { name: "현경", min: 8000 },
-  { name: "생사경", min: 15000 },
-  { name: "신화경", min: 30000 },
-  { name: "천인합일", min: 60000 },
+  { name: "臾대챸?뚯「", min: 0 },
+  { name: "珥덉텧媛뺥샇", min: 200 },
+  { name: "?쇰쪟怨좎닔", min: 500 },
+  { name: "?덉젙怨좎닔", min: 1000 },
+  { name: "珥덉젅??, min: 2000 },
+  { name: "?붽꼍", min: 4000 },
+  { name: "?꾧꼍", min: 8000 },
+  { name: "?앹궗寃?, min: 15000 },
+  { name: "?좏솕寃?, min: 30000 },
+  { name: "泥쒖씤?⑹씪", min: 60000 },
 ];
 
 function getDuelTier(rating: number) {
   for (let i = DUEL_TIERS.length - 1; i >= 0; i--) {
     if (rating >= DUEL_TIERS[i].min) return DUEL_TIERS[i].name;
   }
-  return "무명소졸";
+  return "臾대챸?뚯「";
 }
 
-// --- 악적 생성 및 밸런스 상수 ---
+// --- ?낆쟻 ?앹꽦 諛?諛몃윴???곸닔 ---
 const DUEL_BALANCING = {
-  COMBAT_TIME: 40,        // 전체 전투 시간
-  BASELINE_TIME: 35,      // 밸런스 기준 시간 (유저에게 5초 여유)
-  USER_TAP_PER_SEC: 3,    // 초당 유저 공격 횟수 기준
-  TOTAL_BASELINE_HITS: 105, // 35초 * 3회 = 105회 타격 기준
-  BERSERK_TIME: 30,       // 광폭화 발동 시간 (시작 후 30초)
+  COMBAT_TIME: 40,        // ?꾩껜 ?꾪닾 ?쒓컙
+  BASELINE_TIME: 35,      // 諛몃윴??湲곗? ?쒓컙 (?좎??먭쾶 5珥??ъ쑀)
+  USER_TAP_PER_SEC: 3,    // 珥덈떦 ?좎? 怨듦꺽 ?잛닔 湲곗?
+  TOTAL_BASELINE_HITS: 105, // 35珥?* 3??= 105???寃?湲곗?
+  BERSERK_TIME: 30,       // 愿묓룺??諛쒕룞 ?쒓컙 (?쒖옉 ??30珥?
   NORMAL_BERSERK: { atk: 1.35, spd: 1.5 },
   BOSS_BERSERK: { atk: 1.5, spd: 1.75 }
 };
 
 /**
- * 유저 강화 레벨별 목표 스탯 계산 (밸런스 기준점)
- * @param level 강화 레벨
+ * ?좎? 媛뺥솕 ?덈꺼蹂?紐⑺몴 ?ㅽ꺈 怨꾩궛 (諛몃윴??湲곗???
+ * @param level 媛뺥솕 ?덈꺼
  */
 function getTargetPlayerStats(level: number) {
   return {
@@ -647,11 +647,11 @@ function getTargetPlayerStats(level: number) {
 
 function generateEnemy(level: number) {
   const rivalIdx = (level - 1) % MASTER_RIVALS.length;
-  const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: `이름 없는 고수 (Lv.${level})`, hpMult: 1, atkMult: 1 };
+  const rivalTemplate = MASTER_RIVALS[rivalIdx] || { name: `?대쫫 ?녿뒗 怨좎닔 (Lv.${level})`, hpMult: 1, atkMult: 1 };
   const isBoss = (level % 10 === 0);
 
   const refPlayer = getTargetPlayerStats(level + 1);
-  const rivalDef = Math.floor(refPlayer.atk * 0.01); // 기존 20%에서 1%로 대폭 축소 (타격감 강화)
+  const rivalDef = Math.floor(refPlayer.atk * 0.01); // 湲곗〈 20%?먯꽌 1%濡????異뺤냼 (?寃⑷컧 媛뺥솕)
   const defMultiplier = 100 / (100 + rivalDef);
   const avgDmgPerHitRaw = refPlayer.atk * defMultiplier;
   const avgDmgPerHit = avgDmgPerHitRaw * (1 + (refPlayer.critRate / 100) * (refPlayer.critDmg / 100 - 1));
@@ -668,7 +668,7 @@ function generateEnemy(level: number) {
   const rivalAtk = Math.floor((requiredDmgPerHit / playerDefMultiplier) * atkMult * (isBoss ? 1.5 : 1.0));
 
   return {
-    name: isBoss ? `[보스] ${rivalTemplate.name}` : rivalTemplate.name,
+    name: isBoss ? `[蹂댁뒪] ${rivalTemplate.name}` : rivalTemplate.name,
     hp: rivalHp,
     maxHp: rivalHp,
     atk: rivalAtk,
@@ -692,13 +692,13 @@ function getDummyStats(realm: string, star: number, totalAtk: number = 10) {
     const settings = REALM_SETTINGS[realm];
     baseHp = settings.dummyHp;
     atkBase = 10 * Math.pow(2, currentRealmIndex);
-    // 방어력: 경지가 오를수록 기하급수적으로 상승 (전투력 인플레이션 대비)
+    // 諛⑹뼱?? 寃쎌?媛 ?ㅻ??섎줉 湲고븯湲됱닔?곸쑝濡??곸듅 (?꾪닾???명뵆?덉씠???鍮?
     defBase = currentRealmIndex > 0 ? 50 * Math.pow(7, currentRealmIndex - 1) : 0;
-    // 회피율: 경지당 1.2%, 성당 0.2% 추가
+    // ?뚰뵾?? 寃쎌???1.2%, ?깅떦 0.2% 異붽?
     evaBase = currentRealmIndex * 1.2;
-  } else if (realm.startsWith("환골탈퇴")) {
+  } else if (realm.startsWith("?섍낏?덊눜")) {
     const level = parseInt(realm.split(" ")[1]) || 1;
-    baseHp = REALM_SETTINGS["천인합일"].dummyHp * Math.pow(2.5, level);
+    baseHp = REALM_SETTINGS["泥쒖씤?⑹씪"].dummyHp * Math.pow(2.5, level);
     atkBase = 10 * Math.pow(2, 10) * Math.pow(1.5, level);
     defBase = 50 * Math.pow(7, 9) * Math.pow(1.8, level);
     evaBase = 12 + level * 0.5;
@@ -706,10 +706,10 @@ function getDummyStats(realm: string, star: number, totalAtk: number = 10) {
 
   let hp = Math.floor(baseHp * Math.pow(1.5, star - 1));
   const def = Math.floor(defBase * (1 + (star - 1) * 0.15));
-  const eva = Math.min(25, evaBase + (star - 1) * 0.2); // 최대 25% 제한
+  const eva = Math.min(25, evaBase + (star - 1) * 0.2); // 理쒕? 25% ?쒗븳
 
-  // 유저의 실제 전투력을 반영한 동적 스케일링 (한방컷 방지)
-  // 유저 공격력이 상승하면 악적의 최소 HP도 비례하여 상승 (최소 6~10타 버티도록)
+  // ?좎????ㅼ젣 ?꾪닾?μ쓣 諛섏쁺???숈쟻 ?ㅼ??쇰쭅 (?쒕갑而?諛⑹?)
+  // ?좎? 怨듦꺽?μ씠 ?곸듅?섎㈃ ?낆쟻??理쒖냼 HP??鍮꾨??섏뿬 ?곸듅 (理쒖냼 6~10? 踰꾪떚?꾨줉)
   const expectedHitSurvive = 8;
   const minimumHp = totalAtk * expectedHitSurvive;
   if (hp < minimumHp) {
@@ -721,12 +721,12 @@ function getDummyStats(realm: string, star: number, totalAtk: number = 10) {
 
 export function getRealmSettings(realm: string) {
   if (REALM_SETTINGS[realm]) return REALM_SETTINGS[realm];
-  if (realm.startsWith("환골탈퇴")) {
+  if (realm.startsWith("?섍낏?덊눜")) {
     const level = parseInt(realm.split(" ")[1]) || 1;
-    const base = REALM_SETTINGS["천인합일"];
-    return { bonus: base.bonus * Math.pow(1.5, level), minTouches: base.minTouches + (level * 10000000000000), dummyHp: base.dummyHp * Math.pow(2.5, level), dummyType: "heaven", label: `환골탈퇴 ${level}성의 경지`, hp: base.hp * Math.pow(1.3, level), mp: base.mp * Math.pow(1.3, level), goldMultiplier: base.goldMultiplier * Math.pow(1.5, level) };
+    const base = REALM_SETTINGS["泥쒖씤?⑹씪"];
+    return { bonus: base.bonus * Math.pow(1.5, level), minTouches: base.minTouches + (level * 10000000000000), dummyHp: base.dummyHp * Math.pow(2.5, level), dummyType: "heaven", label: `?섍낏?덊눜 ${level}?깆쓽 寃쎌?`, hp: base.hp * Math.pow(1.3, level), mp: base.mp * Math.pow(1.3, level), goldMultiplier: base.goldMultiplier * Math.pow(1.5, level) };
   }
-  return REALM_SETTINGS["필부"];
+  return REALM_SETTINGS["?꾨?"];
 }
 
 interface GameState {
@@ -830,7 +830,7 @@ interface GameState {
   toggleEquipSkill: (skillName: string) => void;
   triggerCombatTrap: (multiplier: number) => void;
   visitGiru: () => void;
-  interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string }) => { success: boolean; message: string; event?: any };
+  interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string, infoTier?: "low" | "mid" | "high" | "special" }) => { success: boolean; message: string; event?: any };
   setLowPowerMode: (enabled: boolean) => void;
   setAutoFps: (enabled: boolean) => void;
   setActiveUpgradeDesc: (desc: any) => void;
@@ -897,7 +897,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         game: {
           ...s.game,
           gamblingTokens: s.game.gamblingTokens - 1,
-          yabawiEvent: null // 이벤트 성공적으로 사용 시 팝업 닫힘
+          yabawiEvent: null // ?대깽???깃났?곸쑝濡??ъ슜 ???앹뾽 ?ロ옒
         }
       }));
       get().triggerSave(true);
@@ -941,8 +941,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       const item = game.ownedWeapons.find(w => w.id === id);
       if (item?.setGroupId) {
         // Only count pieces of the same realm to trigger the set effect?
-        // User said: "같은 '경지' 기준으로 묶임".
-        // But also said "공격 세트", "생존 세트".
+        // User said: "媛숈? '寃쎌?' 湲곗??쇰줈 臾띠엫".
+        // But also said "怨듦꺽 ?명듃", "?앹〈 ?명듃".
         // So we count setGroupId.
         counts[item.setGroupId] = (counts[item.setGroupId] || 0) + 1;
       }
@@ -1012,12 +1012,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const gearAtk = eq.reduce((s, i) => s + (i.attackBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     const realmMult = REALM_SETTINGS[game.realm]?.bonus || 1;
 
-    // [재설계] 단계별 공격력 성장 공식 적용
+    // [?ъ꽕怨? ?④퀎蹂?怨듦꺽???깆옣 怨듭떇 ?곸슜
     let upgradeAtk = get().getStatUpgradeBonus("atk");
 
     const mWeapon = game.ownedWeapons.find(w => w.id === (game.equippedGear?.mainWeapon || game.equippedWeaponId));
     const innBonus = get().getInnBonus();
-    // 아이템 공격력% 보너스 (상한 200%)
+    // ?꾩씠??怨듦꺽?? 蹂대꼫??(?곹븳 200%)
     const optionAtkPct = Math.min(200, get().getOptionSum("atk_pct"));
     const optionAtkFlat = get().getOptionSum("atk");
 
@@ -1054,7 +1054,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       final *= (1 + (specLevel * 0.002)); // 0.2% per level
     }
 
-    // 연마유 광폭 버프 (공격력 3배)
+    // ?곕쭏??愿묓룺 踰꾪봽 (怨듦꺽??3諛?
     if (game.oilBuffs?.oil_atk_3 > 0) {
       final *= 3;
     }
@@ -1070,7 +1070,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       final *= game.nextHitMultiplier;
     }
 
-    if (game.faction === "무당") { const combo = (game.lastAttackTime && (Date.now() - game.lastAttackTime < 1500)) ? game.comboCount : 0; final *= (1 + Math.min(combo * 0.05, 1.0)); }
+    if (game.faction === "臾대떦") { const combo = (game.lastAttackTime && (Date.now() - game.lastAttackTime < 1500)) ? game.comboCount : 0; final *= (1 + Math.min(combo * 0.05, 1.0)); }
     return Math.floor(final);
   },
   getStableAttack: () => {
@@ -1099,10 +1099,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const breakthroughCrit = game.breakthroughStats?.critRate || 0;
     let finalCrit = (game.critRate || 5) + eq.reduce((s, i) => s + (i.critBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + get().getStatUpgradeBonus("critRate") + get().getOptionSum("crit_rate") + breakthroughCrit + skillBonus + setCrit + nightBuffs.crit;
 
-    // 최종 상한 적용 (50%)
+    // 理쒖쥌 ?곹븳 ?곸슜 (50%)
     finalCrit = Math.min(50, finalCrit);
 
-    // 연마유 영안 버프 (치명타 50% 상승 - 감쇠 및 상한 이후 합산)
+    // ?곕쭏???곸븞 踰꾪봽 (移섎챸? 50% ?곸듅 - 媛먯뇿 諛??곹븳 ?댄썑 ?⑹궛)
     if (game.oilBuffs?.oil_eye > 0) {
       finalCrit = Math.min(100, finalCrit + 50);
     }
@@ -1135,10 +1135,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let finalCritDmg = (base + bonus + setBonus + auraBonus) * moveMult;
 
-    // 최종 상한 적용 (280%)
+    // 理쒖쥌 ?곹븳 ?곸슜 (280%)
     finalCritDmg = Math.min(280, finalCritDmg);
 
-    // 연마유 파천 버프 (치명 피해 3배)
+    // ?곕쭏???뚯쿇 踰꾪봽 (移섎챸 ?쇳빐 3諛?
     if (game.oilBuffs?.oil_crit_3 > 0) {
       finalCritDmg *= 3;
     }
@@ -1150,7 +1150,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const maxHp = get().getTotalHp();
     const baseRegen = Math.max(1, Math.floor(maxHp * 0.01));
 
-    // [재설계] 단계당 고정 회복 추가
+    // [?ъ꽕怨? ?④퀎??怨좎젙 ?뚮났 異붽?
     const upgradeRegen = get().getStatUpgradeBonus("hpRecovery");
 
     let specBonus = 0;
@@ -1186,7 +1186,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const faction = FACTIONS.find(f => f.name === game.faction);
     const optionDefPct = Math.min(180, get().getOptionSum("def_pct"));
 
-    // [재설계] 방어력 성장 공식: 무기 공격력 기준 비율 적용 (도포)
+    // [?ъ꽕怨? 諛⑹뼱???깆옣 怨듭떇: 臾닿린 怨듦꺽??湲곗? 鍮꾩쑉 ?곸슜 (?꾪룷)
     const mWeapon = game.ownedWeapons.find(w => w.id === game.equippedGear?.mainWeapon);
     const baseWeaponAtk = mWeapon?.attackBonus || 10;
     
@@ -1260,16 +1260,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     });
 
-    // 최종 상한 적용 (기본 50%, 무당은 80%)
+    // 理쒖쥌 ?곹븳 ?곸슜 (湲곕낯 50%, 臾대떦? 80%)
     let cap = 50;
-    if (game.faction === "무당") {
+    if (game.faction === "臾대떦") {
       cap = 80;
-      eva += 25; // 무당 기본 회피 보너스 (상향!)
+      eva += 25; // 臾대떦 湲곕낯 ?뚰뵾 蹂대꼫??(?곹뼢!)
     }
 
     if (game.movementBuff && game.movementBuff.data.evaCap) cap = game.movementBuff.data.evaCap;
     
-    // 연마유 무영 버프 (회피율 3배)
+    // ?곕쭏??臾댁쁺 踰꾪봽 (?뚰뵾??3諛?
     if (game.oilBuffs?.oil_eva_3 > 0) {
       eva = Math.min(100, eva * 3);
     }
@@ -1286,16 +1286,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const breakthroughSpeed = game.breakthroughStats?.speed || 0;
     const baseSpeed = 100 + equippedWeapons.reduce((s, i) => s + (i.speedBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0) + breakthroughSpeed;
 
-    // 아이템 공속% 보너스
+    // ?꾩씠??怨듭냽% 蹂대꼫??
     let speedPct = get().getOptionSum("speed_pct");
     const speedOptionCount = get().getOptionCount("speed_pct");
 
-    // 중복 패널티 (1 - 0.04 * (count - 1))
+    // 以묐났 ?⑤꼸??(1 - 0.04 * (count - 1))
     if (speedOptionCount > 1) {
       speedPct *= (1 - 0.04 * (speedOptionCount - 1));
     }
 
-    // 최종 공속 증가 상한 (100%)
+    // 理쒖쥌 怨듭냽 利앷? ?곹븳 (100%)
     speedPct = Math.min(100, speedPct);
 
     let finalSpeed = baseSpeed * (1 + speedPct / 100);
@@ -1325,24 +1325,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   getInnBonus: () => {
     const r = get().game.duel.rating || 0;
-    if (r >= 60000) return { name: "천인합일", atk: 0.5, gold: 1.0, exp: 1.0, critDmg: 300, critRate: 15 };
-    if (r >= 30000) return { name: "신화경", atk: 0.35, gold: 0.8, exp: 0.8, critDmg: 200, critRate: 10 };
-    if (r >= 15000) return { name: "생사경", atk: 0.25, gold: 0.6, exp: 0.6, critDmg: 150, critRate: 8 };
-    if (r >= 8000) return { name: "현경", atk: 0.2, gold: 0.5, exp: 0.5, critDmg: 100, critRate: 5 };
-    if (r >= 4000) return { name: "화경", atk: 0.15, gold: 0.35, exp: 0.35, critDmg: 60, critRate: 3 };
-    if (r >= 2000) return { name: "초절정", atk: 0.1, gold: 0.25, exp: 0.25, critDmg: 40, critRate: 2 };
-    if (r >= 1000) return { name: "절정고수", atk: 0.05, gold: 0.2, exp: 0.2, critDmg: 20, critRate: 0 };
-    if (r >= 500) return { name: "일류고수", atk: 0, gold: 0.15, exp: 0.15, critDmg: 10, critRate: 0 };
-    if (r >= 200) return { name: "초출강호", atk: 0, gold: 0.1, exp: 0.05, critDmg: 0, critRate: 0 };
-    return { name: "무명소졸", atk: 0, gold: 0, exp: 0, critDmg: 0, critRate: 0 };
+    if (r >= 60000) return { name: "泥쒖씤?⑹씪", atk: 0.5, gold: 1.0, exp: 1.0, critDmg: 300, critRate: 15 };
+    if (r >= 30000) return { name: "?좏솕寃?, atk: 0.35, gold: 0.8, exp: 0.8, critDmg: 200, critRate: 10 };
+    if (r >= 15000) return { name: "?앹궗寃?, atk: 0.25, gold: 0.6, exp: 0.6, critDmg: 150, critRate: 8 };
+    if (r >= 8000) return { name: "?꾧꼍", atk: 0.2, gold: 0.5, exp: 0.5, critDmg: 100, critRate: 5 };
+    if (r >= 4000) return { name: "?붽꼍", atk: 0.15, gold: 0.35, exp: 0.35, critDmg: 60, critRate: 3 };
+    if (r >= 2000) return { name: "珥덉젅??, atk: 0.1, gold: 0.25, exp: 0.25, critDmg: 40, critRate: 2 };
+    if (r >= 1000) return { name: "?덉젙怨좎닔", atk: 0.05, gold: 0.2, exp: 0.2, critDmg: 20, critRate: 0 };
+    if (r >= 500) return { name: "?쇰쪟怨좎닔", atk: 0, gold: 0.15, exp: 0.15, critDmg: 10, critRate: 0 };
+    if (r >= 200) return { name: "珥덉텧媛뺥샇", atk: 0, gold: 0.1, exp: 0.05, critDmg: 0, critRate: 0 };
+    return { name: "臾대챸?뚯「", atk: 0, gold: 0, exp: 0, critDmg: 0, critRate: 0 };
   },
   getTotalCombatPower: () => Math.floor((get().getTotalAttack() * 2 + get().getTotalHp() / 10 + get().getTotalDefense() * 5) * (1 + get().getTotalCritRate() / 100)),
 
   addExp: (amount: number, isAuto = false, manualDamage?: number) => {
     const { game } = get();
-    // 사용자 요청에 따라 무뢰배 이벤트 대기 중에는 모든 수련(터치 포함) 중단
+    // ?ъ슜???붿껌???곕씪 臾대ː諛??대깽???湲?以묒뿉??紐⑤뱺 ?섎젴(?곗튂 ?ы븿) 以묐떒
     if (game.pendingInnEntry || game.timingMission.available) return;
-    // 전투 중이거나 탑 내부일 때 중단
+    // ?꾪닾 以묒씠嫄곕굹 ???대?????以묐떒
     if (game.masterDuel.isPlaying || game.tower?.isInside) return;
     const totalAtk = get().getTotalAttack(); const autoLv = game.upgradeLevels.autoGain || 0;
     const expB = 1 + (autoLv * 0.0003); const goldB = 1 + (autoLv * 0.0005);
@@ -1369,11 +1369,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       let lastR = s.game.lastReward;
       const nTouches = s.game.touches + (nightTouchMult + eq.reduce((a, i) => a + (i.touchMultiplier || 0), 0)) * amount;
 
-      // [추가] 튜토리얼 마지막 단계에서 터치 발생 시 튜토리얼 강제 종료
+      // [異붽?] ?쒗넗由ъ뼹 留덉?留??④퀎?먯꽌 ?곗튂 諛쒖깮 ???쒗넗由ъ뼹 媛뺤젣 醫낅즺
       if (s.game.tutorialProgress.isActive && 
          (s.game.tutorialProgress.currentStepId === "restart_training" || 
           s.game.tutorialProgress.currentStepId === "check_final_infused_options")) {
-        // 타이머 없이 즉시 종료 처리하여 터치 반응성 보장
+        // ??대㉧ ?놁씠 利됱떆 醫낅즺 泥섎━?섏뿬 ?곗튂 諛섏쓳??蹂댁옣
         s.game.tutorialProgress.isActive = false;
         s.game.tutorialProgress.currentStepId = "";
       }
@@ -1425,12 +1425,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           let kG = (s.game.attackMultiplier > 1 ? 50 * rG : 25 * rG) * finalGoldB;
           if (isTreasureForecast) {
             kG *= 3;
-            lastR = "💰 TREASURE!";
+            lastR = "?뮥 TREASURE!";
           }
           eGold += kG;
           currentDummyHp = stats.hp;
         }
-        if (isHitDodged) lastR = "빗나감!";
+        if (isHitDodged) lastR = "鍮쀫굹媛?";
       }
 
       const intervals = [300, 400, 500, 600, 700, 800, 900, 1000];
@@ -1444,7 +1444,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const miniGames = ["breath", "dodge", "puzzle", "pulse"];
         const gameIdx = iEV % 4;
         const selectedGame = miniGames[gameIdx];
-        const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
+        const RIVAL_NAMES = ["?묓뭾??씤", "?낃퀬??, "泥좉텒留덉썒", "?댁닔 臾댁쁺", "泥?룄諛?臾대ː諛?, "?덇? 洹??, "?숈뼇 留앸굹??, "?곗쟻 ?먮ぉ", "鍮꾨룄 媛덉쿇", "愿묐쭏 ?쒓구", "?띻?媛?, "臾댁젙??, "?덈옉??, "泥좉린諛?議멸컻", "鍮꾩뿰??, "湲덇컯沅?];
         const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
 
         pIE = true;
@@ -1453,7 +1453,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ...nTM,
           available: true,
           selectedGameType: selectedGame as any,
-          rivalName: `${randomRivalName} (${iEV}차)`,
+          rivalName: `${randomRivalName} (${iEV}李?`,
           requiredHits: 1,
           isPractice: false,
           currentStage: 1,
@@ -1496,50 +1496,50 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (finalKills >= qT_val) {
         if (qT_val === 10) {
           qT_val = 30;
-          cMT_val = "허수아비 누적 처치 30번\n[개방: 대장간/장비]";
+          cMT_val = "?덉닔?꾨퉬 ?꾩쟻 泥섏튂 30踰?n[媛쒕갑: ??κ컙/?λ퉬]";
           uET_val = null;
-          aM_val = 10; bTL_val = 30; aB_val = "무아지경";
+          aM_val = 10; bTL_val = 30; aB_val = "臾댁븘吏寃?;
           milestoneToTrigger = "trance_achieved";
         } else if (qT_val === 30) {
           qT_val = 50;
-          cMT_val = "허수아비 누적 처치 50번\n[개방: 강화]";
+          cMT_val = "?덉닔?꾨퉬 ?꾩쟻 泥섏튂 50踰?n[媛쒕갑: 媛뺥솕]";
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "forge", "inventory"]));
           milestoneToTrigger = "forge_unlock";
         } else if (qT_val === 50) {
           qT_val = 80;
-          cMT_val = "허수아비 누적 처치 80번\n[개방: 비급/기루/도박]";
+          cMT_val = "?덉닔?꾨퉬 ?꾩쟻 泥섏튂 80踰?n[媛쒕갑: 鍮꾧툒/湲곕（/?꾨컯]";
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "upgrade"]));
           milestoneToTrigger = "upgrade_unlock";
         } else if (qT_val === 80) {
           qT_val = 100;
-          cMT_val = "허수아비 누적 처치 100번\n[개방: 무한의 탑]";
+          cMT_val = "?덉닔?꾨퉬 ?꾩쟻 泥섏튂 100踰?n[媛쒕갑: 臾댄븳????";
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "library", "giru", "gambling"]));
           milestoneToTrigger = "library_unlock";
         } else if (qT_val === 100) {
           qT_val = 150;
-          cMT_val = "허수아비 누적 처치 150번\n[개방: 대결]";
+          cMT_val = "?덉닔?꾨퉬 ?꾩쟻 泥섏튂 150踰?n[媛쒕갑: ?寃?";
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "tower"]));
           milestoneToTrigger = "tower_unlock";
         } else if (qT_val === 150) {
           qT_val = 290;
-          cMT_val = "허수아비 누적 처치 290번\n[개방: 객잔]";
+          cMT_val = "?덉닔?꾨퉬 ?꾩쟻 泥섏튂 290踰?n[媛쒕갑: 媛앹옍]";
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "master"]));
           milestoneToTrigger = "master_unlock";
         } else if (qT_val === 290) {
           qT_val = targetInterval;
-          cMT_val = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
+          cMT_val = `媛앹옍 臾대ː諛?異붽꺽 (${iEV + 1}李?\n?덉닔?꾨퉬瑜?${targetInterval}????泥섎떒?섏꽭??`;
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "inn"]));
           pIE = false;
           milestoneToTrigger = "inn_event";
         } else if (qT_val >= targetInterval) {
           qT_val = targetInterval;
-          cMT_val = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
+          cMT_val = `媛앹옍 臾대ː諛?異붽꺽 (${iEV + 1}李?\n?덉닔?꾨퉬瑜?${targetInterval}????泥섎떒?섏꽭??`;
           uET_val = null;
         }
         if (uET_val) lastR = uET_val;
@@ -1590,13 +1590,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       let changed = false;
       const nextQuests = s.game.activeQuests.map((q: any) => {
         if (q.status === "active") {
-          // 목표 유형별 특별 처리
+          // 紐⑺몴 ?좏삎蹂??밸퀎 泥섎━
           if (q.targetType === "reach_upgrade_level") {
              const key = q.id.split("_")[2]; // q_stat_atk_5 -> atk
              const currentLv = s.game.upgradeLevels?.[key] || 0;
              if (currentLv >= q.targetCount) {
                 changed = true;
-                setTimeout(() => alert(`[임무 완료] ${q.title}`), 500);
+                setTimeout(() => alert(`[?꾨Т ?꾨즺] ${q.title}`), 500);
                 return { ...q, currentCount: q.targetCount, status: "completed" };
              }
           }
@@ -1604,23 +1604,23 @@ export const useGameStore = create<GameState>((set, get) => ({
              const currentRating = s.game.duel?.rating || 0;
              if (currentRating >= q.targetCount) {
                 changed = true;
-                setTimeout(() => alert(`[임무 완료] ${q.title}`), 500);
+                setTimeout(() => alert(`[?꾨Т ?꾨즺] ${q.title}`), 500);
                 return { ...q, currentCount: q.targetCount, status: "completed" };
              }
           }
 
-          // 도박 승리 (판돈 조건 체크)
+          // ?꾨컯 ?밸━ (?먮룉 議곌굔 泥댄겕)
           if (targetType === "gamble_win") {
-             const betAmount = amount; // gamble_win 시에는 amount를 판돈으로 전달한다고 가정
+             const betAmount = amount; // gamble_win ?쒖뿉??amount瑜??먮룉?쇰줈 ?꾨떖?쒕떎怨?媛??
              if (q.id === "q_chowoon_1") {
                 if (betAmount >= 5000000) {
                    const nextCount = q.currentCount + 1;
                    const isDone = nextCount >= q.targetCount;
-                   if (isDone) setTimeout(() => alert(`[퀘스트 완료] ${q.title}`), 500);
+                   if (isDone) setTimeout(() => alert(`[?섏뒪???꾨즺] ${q.title}`), 500);
                    changed = true;
                    return { ...q, currentCount: Math.min(q.targetCount, nextCount), status: isDone ? "completed" : "active" };
                 } else {
-                   return q; // 조건 미달 시 무시
+                   return q; // 議곌굔 誘몃떖 ??臾댁떆
                 }
              }
           }
@@ -1630,7 +1630,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             const isDone = nextCount >= q.targetCount;
             if (isDone) {
               setTimeout(() => {
-                alert(`[퀘스트 완료] ${q.title}\n월향루에서 보상을 받으세요!`);
+                alert(`[?섏뒪???꾨즺] ${q.title}\n?뷀뼢猷⑥뿉??蹂댁긽??諛쏆쑝?몄슂!`);
               }, 500);
             }
             changed = true;
@@ -1661,7 +1661,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const reward = quest.reward;
       const nextConsumables = { ...(s.game.consumables || {}) };
       
-      // 특별 보상 처리 (아이템 등)
+      // ?밸퀎 蹂댁긽 泥섎━ (?꾩씠????
       if (reward.item === "oil_box") {
         nextConsumables.oil_box = (nextConsumables.oil_box || 0) + 1;
       }
@@ -1669,7 +1669,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         s.game.gearPieces = (s.game.gearPieces || 0) + 10;
       }
 
-      // 퀘스트 제거 (또는 상태 변경 후 필터링)
+      // ?섏뒪???쒓굅 (?먮뒗 ?곹깭 蹂寃????꾪꽣留?
       const nextQuests = s.game.activeQuests.filter((q: any) => q.id !== questId);
 
       return {
@@ -1682,8 +1682,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           npcFavors: (() => {
              const nextFavors = { ...(s.game.npcFavors || {}) };
              if (quest.npcId && reward.favor) {
-                // 한글 이름 매칭 (임시)
-                const nameMap: any = { yeonhwa: "연화", seolmae: "설매", chowoon: "초운", sohee: "소희", oldman: "백노인" };
+                // ?쒓? ?대쫫 留ㅼ묶 (?꾩떆)
+                const nameMap: any = { yeonhwa: "?고솕", seolmae: "?ㅻℓ", chowoon: "珥덉슫", sohee: "?뚰씗", oldman: "諛깅끂?? };
                 const kname = nameMap[quest.npcId] || quest.npcId;
                 nextFavors[kname] = (nextFavors[kname] || 0) + reward.favor;
              }
@@ -1695,17 +1695,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     });
 
-    // 보상 수령 후 즉시 새로운 퀘스트 보충
+    // 蹂댁긽 ?섎졊 ??利됱떆 ?덈줈???섏뒪??蹂댁땐
     refreshQuests();
     get().triggerSave(true);
-    alert(`[임무 보상 수령 완료]`);
+    alert(`[?꾨Т 蹂댁긽 ?섎졊 ?꾨즺]`);
   },
 
   rerollQuest: (questId: string) => {
     const { game, refreshQuests } = get();
     const count = game.questRerollCount || 0;
     if (count >= 2) {
-      alert("오늘은 더 이상 임무를 갱신할 수 없습니다. (일일 최대 2회)");
+      alert("?ㅻ뒛? ???댁긽 ?꾨Т瑜?媛깆떊?????놁뒿?덈떎. (?쇱씪 理쒕? 2??");
       return;
     }
 
@@ -1720,10 +1720,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     });
 
-    // 제거 후 즉시 새로운 퀘스트 보충
+    // ?쒓굅 ??利됱떆 ?덈줈???섏뒪??蹂댁땐
     refreshQuests();
     get().triggerSave(true);
-    alert(`임무를 갱신했습니다. (남은 횟수: ${1 - count}회)`);
+    alert(`?꾨Т瑜?媛깆떊?덉뒿?덈떎. (?⑥? ?잛닔: ${1 - count}??`);
   },
 
   addWeapon: (w: any) => {
@@ -1853,11 +1853,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     let nextHp = s.game.hp;
     let nextMp = s.game.mp;
 
-    // 무당 태극보: 완전 면역
+    // 臾대떦 ?쒓레蹂? ?꾩쟾 硫댁뿭
     if (s.game.movementBuff && s.game.movementBuff.data.invincible) amount = 0;
     if (amount <= 0) return s;
 
-    // 사마세가 마영보(압기보): 내력 방어막
+    // ?щ쭏?멸? 留덉쁺蹂??뺢린蹂?: ?대젰 諛⑹뼱留?
     if (s.game.movementBuff && s.game.movementBuff.data.manaShield) {
       const shieldRate = s.game.movementBuff.data.manaShield;
       const mpDmg = Math.floor(amount * shieldRate);
@@ -1877,28 +1877,28 @@ export const useGameStore = create<GameState>((set, get) => ({
   openPaewangBox: () => {
     const { game } = get();
     if ((game.bossTokens || 0) < 500) {
-      return { success: false, message: "혈투의 징표가 부족합니다." };
+      return { success: false, message: "?덊닾??吏뺥몴媛 遺議깊빀?덈떎." };
     }
 
-    const realms = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+    const realms = ["?꾨?", "?쇰쪟", "?대쪟", "?쇰쪟", "?덉젙", "珥덉젅??, "?붽꼍", "?꾧꼍", "?앹궗寃?, "?좏솕寃?, "泥쒖씤?⑹씪"];
     const rIdx = Math.max(0, realms.indexOf(game.realm));
     const randAcce = Math.random();
     const slot: EquipSlot = randAcce < 0.33 ? "necklace" : (randAcce < 0.66 ? "ring" : "bracelet");
-    const baseName = slot === "necklace" ? "목걸이" : (slot === "ring" ? "반지" : "팔찌");
+    const baseName = slot === "necklace" ? "紐⑷구?? : (slot === "ring" ? "諛섏?" : "?붿컡");
 
-    // Base stats: 사용자 요청 반영 (기본 공3000, 생3000, 내1500)
+    // Base stats: ?ъ슜???붿껌 諛섏쁺 (湲곕낯 怨?000, ??000, ??500)
     const rFactor = 1 + rIdx * 0.2;
     const baseItem: any = {
       id: `paewang_${slot}_${Date.now()}`,
-      name: `[패왕] ${game.realm}의 ${baseName}`,
+      name: `[?⑥솗] ${game.realm}??${baseName}`,
       slot,
       realm: game.realm as any,
       attackBonus: Math.floor(3000 * rFactor),
       mpBonus: Math.floor(1500 * rFactor),
       hpBonus: Math.floor(3000 * rFactor),
       price: 10000000,
-      icon: slot === "necklace" ? "📿" : (slot === "ring" ? "💍" : "📿"),
-      description: "패왕의 보물상자에서 획득한 신기 장신구입니다."
+      icon: slot === "necklace" ? "?벩" : (slot === "ring" ? "?뭾" : "?벩"),
+      description: "?⑥솗??蹂대Ъ?곸옄?먯꽌 ?띾뱷???좉린 ?μ떊援ъ엯?덈떎."
     };
 
     const divineItem = rollPaewangItem(baseItem, 20, game.upgradeLevels?.luck || 0, rIdx);
@@ -1942,7 +1942,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   getMultiUpgradeCost: (k: string, c: number, m: string) => {
     const cL = (get().game.upgradeLevels as any)[k] || 0;
     const base = m === 'gold' ? (STAT_UPGRADE_BASES[k]?.gold || 1500) : (STAT_UPGRADE_BASES[k]?.rep || 400);
-    // 등비수열의 합 공식: a * (r^n - 1) / (r - 1)
+    // ?깅퉬?섏뿴????怨듭떇: a * (r^n - 1) / (r - 1)
     const r = 1.28;
     const a = base * Math.pow(r, cL);
     return Math.floor(a * (Math.pow(r, c) - 1) / (r - 1));
@@ -1995,21 +1995,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     const list = Object.keys(REALM_SETTINGS);
     const realmIdx = list.indexOf(game.realm);
     
-    // 누적 돌파 횟수 계산 (필부 1성->2성이 첫 돌파)
+    // ?꾩쟻 ?뚰뙆 ?잛닔 怨꾩궛 (?꾨? 1??>2?깆씠 泥??뚰뙆)
     const breakthroughCount = (realmIdx * 10) + game.star;
     const rewardAmount = 40000 + (breakthroughCount * 10000);
 
-    // --- [신규] 모든 능력치 +5% 보상 계산 (장비 기준) ---
+    // --- [?좉퇋] 紐⑤뱺 ?λ젰移?+5% 蹂댁긽 怨꾩궛 (?λ퉬 湲곗?) ---
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     
-    // 1. 장비 기본 스탯 + 강화 보너스
+    // 1. ?λ퉬 湲곕낯 ?ㅽ꺈 + 媛뺥솕 蹂대꼫??
     const gearAtk = eq.reduce((s, i) => s + (i.attackBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     const gearDef = eq.reduce((s, i) => s + (i.defenseBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     const gearHp = eq.reduce((s, i) => s + (i.hpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     const gearMp = eq.reduce((s, i) => s + (i.mpBonus || 0) * getEnhancementMultiplier(i.enhancement || 0), 0);
     
-    // 2. 옵션 스탯 합산
+    // 2. ?듭뀡 ?ㅽ꺈 ?⑹궛
     const optAtk = get().getOptionSum("atk");
     const optDef = get().getOptionSum("def");
     const optHp = get().getOptionSum("hp");
@@ -2020,7 +2020,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const optSpeed = get().getOptionSum("speed");
     const optHpRec = get().getOptionSum("hp_rec");
 
-    // 3. 5% 보너스 계산 (정수형 변환)
+    // 3. 5% 蹂대꼫??怨꾩궛 (?뺤닔??蹂??
     const bonusAtk = Math.floor((gearAtk + optAtk) * 0.05);
     const bonusDef = Math.floor((gearDef + optDef) * 0.05);
     const bonusHp = Math.floor((gearHp + optHp) * 0.05);
@@ -2057,7 +2057,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           breakthroughStats: nextBreakthroughStats
         }
       }));
-      alert(`✨ 돌파 성공! [${game.realm} ${nV}성]에 도달했습니다!\n보상: ${rewardAmount.toLocaleString()}냥, 명성 ${rewardAmount.toLocaleString()}\n추가 보상: 모든 능력치 +5% (각성 보너스 누적)`);
+      alert(`???뚰뙆 ?깃났! [${game.realm} ${nV}?????꾨떖?덉뒿?덈떎!\n蹂댁긽: ${rewardAmount.toLocaleString()}?? 紐낆꽦 ${rewardAmount.toLocaleString()}\n異붽? 蹂댁긽: 紐⑤뱺 ?λ젰移?+5% (媛곸꽦 蹂대꼫???꾩쟻)`);
     }
     else {
       const nxt = get().getNextRealmName();
@@ -2065,8 +2065,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         const st = getDummyStats(nxt, 1);
         const nextTabs = [...game.unlockedTabs];
         if (game.totalDummyKills >= 400 && !nextTabs.includes("tower")) nextTabs.push("tower");
-        if (nxt !== "필부" && !nextTabs.includes("giru")) nextTabs.push("giru");
-        if (nxt !== "필부" && !nextTabs.includes("gambling")) nextTabs.push("gambling");
+        if (nxt !== "?꾨?" && !nextTabs.includes("giru")) nextTabs.push("giru");
+        if (nxt !== "?꾨?" && !nextTabs.includes("gambling")) nextTabs.push("gambling");
 
         set((s: any) => ({
           game: {
@@ -2084,9 +2084,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         }));
 
-        alert(`✨ 경지 돌파! 새로운 경지 [${nxt}]에 도달했습니다!\n보상: ${rewardAmount.toLocaleString()}냥, 명성 ${rewardAmount.toLocaleString()}\n추가 보상: 모든 능력치 +5% (각성 보너스 누적)`);
+        alert(`??寃쎌? ?뚰뙆! ?덈줈??寃쎌? [${nxt}]???꾨떖?덉뒿?덈떎!\n蹂댁긽: ${rewardAmount.toLocaleString()}?? 紐낆꽦 ${rewardAmount.toLocaleString()}\n異붽? 蹂댁긽: 紐⑤뱺 ?λ젰移?+5% (媛곸꽦 蹂대꼫???꾩쟻)`);
 
-        // 경지 돌파 시 투전판 이벤트 확정 발생
+        // 寃쎌? ?뚰뙆 ???ъ쟾???대깽???뺤젙 諛쒖깮
         if (!get().game.yabawiEvent?.active) {
           setTimeout(() => get().triggerYabawiEvent(), 500);
         }
@@ -2096,7 +2096,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().triggerSave(true);
   },
   canBreakthrough: () => { const { game } = get(); const list = Object.keys(REALM_SETTINGS); const idx = list.indexOf(game.realm); const cur = REALM_SETTINGS[game.realm]; const nxt = REALM_SETTINGS[list[idx + 1]] || cur; return game.touches >= (cur.minTouches + Math.floor(((nxt.minTouches - cur.minTouches) / 10) * game.star)); },
-  getNextRealmName: () => { const list = Object.keys(REALM_SETTINGS); const idx = list.indexOf(get().game.realm); return idx < list.length - 1 ? list[idx + 1] : (get().game.realm === "천인합일" ? "환골탈퇴 1성" : null); },
+  getNextRealmName: () => { const list = Object.keys(REALM_SETTINGS); const idx = list.indexOf(get().game.realm); return idx < list.length - 1 ? list[idx + 1] : (get().game.realm === "泥쒖씤?⑹씪" ? "?섍낏?덊눜 1?? : null); },
   updateBuffs: (dt: number) => set((s: any) => {
     const nextSkillCooldowns = { ...s.game.skillCooldowns };
     let hasCooldown = false;
@@ -2118,7 +2118,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const newBuffTimeLeft = Math.max(0, s.game.buffTimeLeft - dt);
 
-    // 신법(보법) 버프 업데이트
+    // ?좊쾿(蹂대쾿) 踰꾪봽 ?낅뜲?댄듃
     let nextMoveBuff = s.game.movementBuff;
     let nextManaShield = s.game.isManaShieldActive;
     let nextHitMult = s.game.nextHitMultiplier;
@@ -2134,8 +2134,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
-    // --- Global Regeneration (1초 단위 정산) ---
-    // dt는 초 단위입니다. (보통 0.04 ~ 0.2초 사이)
+    // --- Global Regeneration (1珥??⑥쐞 ?뺤궛) ---
+    // dt??珥??⑥쐞?낅땲?? (蹂댄넻 0.04 ~ 0.2珥??ъ씠)
     const regenAccumulator = (s.game.regenAccumulator || 0) + dt;
     let nextHp = s.game.hp;
     let nextMp = s.game.mp;
@@ -2149,11 +2149,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       finalAccumulator -= 1.0;
     }
 
-    // 이전에 이미 버프가 없고 쿨다운도 없다면 일찍 반환
+    // ?댁쟾???대? 踰꾪봽媛 ?녾퀬 荑⑤떎?대룄 ?녿떎硫??쇱컢 諛섑솚
     if (s.game.buffTimeLeft <= 0 && !s.game.activeBuff && !hasCooldown && !hasOilBuff && !s.game.movementBuff &&
       nextHp === s.game.hp && nextMp === s.game.mp && finalAccumulator === s.game.regenAccumulator) return s;
 
-    // --- 도전권 충전 (5분당 1개, 최대치까지) ---
+    // --- ?꾩쟾沅?異⑹쟾 (5遺꾨떦 1媛? 理쒕?移섍퉴吏) ---
     const md = s.game.masterDuel;
     let newTickets = md.challengeTickets;
     let newChargeTime = md.lastChargeTime;
@@ -2231,7 +2231,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     else if (id === "mp_medium") nextMp = Math.min(maxMp, nextMp + maxMp * 0.5);
     else if (id === "mp_large") nextMp = maxMp;
 
-    // 전투 중 물약 사용 퀘스트 추적
+    // ?꾪닾 以?臾쇱빟 ?ъ슜 ?섏뒪??異붿쟻
     const isCombat = s.game.masterDuel.isPlaying || s.game.tower?.isInside;
     if (isCombat) {
        get().updateQuestProgress("use_potion_combat", 1);
@@ -2242,18 +2242,18 @@ export const useGameStore = create<GameState>((set, get) => ({
         game: {
           ...s.game,
           attackMultiplier: multiplier,
-          buffTimeLeft: 10, // 10초간 지속
-          activeBuff: "무아지경",
+          buffTimeLeft: 10, // 10珥덇컙 吏??
+          activeBuff: "臾댁븘吏寃?,
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 }
         }
       };
     }
     else if (id === "paewang_box") {
-      const baseList = FORGE_ITEMS.filter(i => i.realm === "천인합일" || i.realm === "신화경");
+      const baseList = FORGE_ITEMS.filter(i => i.realm === "泥쒖씤?⑹씪" || i.realm === "?좏솕寃?);
       const base = baseList[Math.floor(Math.random() * baseList.length)];
       const newItem = rollPaewangItem({ ...base, id: `paewang_${Date.now()}` }, 1, s.game.upgradeLevels?.luck || 0, 10);
 
-      const slotNames: any = { mainWeapon: "무기", subWeapon: "보조", gloves: "장갑", shoes: "신발", robe: "도포", necklace: "목걸이", ring: "반지", bracelet: "팔찌" };
+      const slotNames: any = { mainWeapon: "臾닿린", subWeapon: "蹂댁“", gloves: "?κ컩", shoes: "?좊컻", robe: "?꾪룷", necklace: "紐⑷구??, ring: "諛섏?", bracelet: "?붿컡" };
 
       return {
         game: {
@@ -2261,7 +2261,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ownedWeapons: [...s.game.ownedWeapons, newItem],
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
           pendingReward: {
-            title: "패왕의 유물 개봉",
+            title: "?⑥솗???좊Ъ 媛쒕큺",
             items: [{ 
               icon: newItem.icon, 
               name: newItem.name, 
@@ -2279,8 +2279,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           enhancementStones: (s.game.enhancementStones || 0) + 30,
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
           pendingReward: {
-            title: "상자 개봉 완료",
-            items: [{ icon: "🪨", name: "현철 강화석", count: 30, color: "#6ad7ff" }]
+            title: "?곸옄 媛쒕큺 ?꾨즺",
+            items: [{ icon: "?え", name: "?꾩쿋 媛뺥솕??, count: 30, color: "#6ad7ff" }]
           }
         }
       };
@@ -2288,12 +2288,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     else if (id === "rare_box_tujeon" || id === "night_gear_box") {
       const luck = s.game.statUpgrades?.luck || 0;
       const newItem = generateRandomGear(s.game.realm, 0, luck);
-      // 등급 보정 (희귀/영웅)
-      if (id === "rare_box_tujeon") newItem.tier = "명품";
-      else newItem.tier = "보구";
+      // ?깃툒 蹂댁젙 (?ш?/?곸썒)
+      if (id === "rare_box_tujeon") newItem.tier = "紐낇뭹";
+      else newItem.tier = "蹂닿뎄";
       
-      const tierColor = newItem.tier === "보구" ? "#a822f3" : "#4facfe";
-      const slotNames: any = { mainWeapon: "무기", subWeapon: "보조", gloves: "장갑", shoes: "신발", robe: "도포", necklace: "목걸이", ring: "반지", bracelet: "팔찌" };
+      const tierColor = newItem.tier === "蹂닿뎄" ? "#a822f3" : "#4facfe";
+      const slotNames: any = { mainWeapon: "臾닿린", subWeapon: "蹂댁“", gloves: "?κ컩", shoes: "?좊컻", robe: "?꾪룷", necklace: "紐⑷구??, ring: "諛섏?", bracelet: "?붿컡" };
 
       return {
         game: {
@@ -2301,7 +2301,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ownedWeapons: [...s.game.ownedWeapons, newItem],
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
           pendingReward: {
-            title: "새로운 장비 획득",
+            title: "?덈줈???λ퉬 ?띾뱷",
             items: [{ 
               icon: newItem.icon, 
               name: newItem.name, 
@@ -2319,8 +2319,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           gearPieces: (s.game.gearPieces || 0) + 5,
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
           pendingReward: {
-            title: "조각 묶음 해제",
-            items: [{ icon: "⚔️", name: "야행 장비 조각", count: 5, color: "#ff6bd6" }]
+            title: "議곌컖 臾띠쓬 ?댁젣",
+            items: [{ icon: "?뷂툘", name: "?쇳뻾 ?λ퉬 議곌컖", count: 5, color: "#ff6bd6" }]
           }
         }
       };
@@ -2338,7 +2338,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? targetSkills[Math.floor(Math.random() * targetSkills.length)]
         : MARTIAL_COMPENDIUM[0];
         
-      const fragId = randomSkill.grade === "common" ? "common_fragment" : `${randomSkill.id}_조각`;
+      const fragId = randomSkill.grade === "common" ? "common_fragment" : `${randomSkill.id}_議곌컖`;
       const fragCount = 10;
 
       return {
@@ -2350,10 +2350,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           },
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
           pendingReward: {
-            title: "비급 주머니 해제",
+            title: "鍮꾧툒 二쇰㉧???댁젣",
             items: [{ 
-              icon: "📜", 
-              name: `${randomSkill.name} 조각`, 
+              icon: "?뱶", 
+              name: `${randomSkill.name} 議곌컖`, 
               count: fragCount, 
               color: "#ffd700" 
             }]
@@ -2385,7 +2385,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   sellItem: (id: string) => set((s: any) => {
     const it = s.game.ownedWeapons.find((w: any) => w.id === id);
     if (!it) return s;
-    const p = (it.name.includes("[패왕]") || it.tier === "신기") ? 40000000 : Math.floor((it.price || 0) * 0.25);
+    const p = (it.name.includes("[?⑥솗]") || it.tier === "?좉린") ? 40000000 : Math.floor((it.price || 0) * 0.25);
     return { game: { ...s.game, coins: s.game.coins + p, ownedWeapons: s.game.ownedWeapons.filter((w: any) => w.id !== id) } };
   }),
   dismantleItem: (id: string) => set((s: any) => {
@@ -2395,14 +2395,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     const userRealmIdx = REALM_ORDER.indexOf(s.game.realm);
     let materials = 0;
     
-    if (userRealmIdx >= 4) { // 절정 이상
-      if (it.tier === "국보") materials = 25;
-      else if (it.tier === "신기" || it.name.includes("[패왕]")) materials = 100;
-    } else { // 절정 미만
-      if (it.tier === "명품") materials = 2;
-      else if (it.tier === "보구") materials = 8;
-      else if (it.tier === "국보") materials = 30;
-      else if (it.tier === "신기" || it.name.includes("[패왕]")) materials = 150;
+    if (userRealmIdx >= 4) { // ?덉젙 ?댁긽
+      if (it.tier === "援?낫") materials = 25;
+      else if (it.tier === "?좉린" || it.name.includes("[?⑥솗]")) materials = 100;
+    } else { // ?덉젙 誘몃쭔
+      if (it.tier === "紐낇뭹") materials = 2;
+      else if (it.tier === "蹂닿뎄") materials = 8;
+      else if (it.tier === "援?낫") materials = 30;
+      else if (it.tier === "?좉린" || it.name.includes("[?⑥솗]")) materials = 150;
     }
 
     const nextMaterials = (s.game.advancedMaterials || 0) + materials;
@@ -2432,10 +2432,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const touchesPerSec = (1 + lv * 0.01) * expB;
     const eTouches = Math.floor(touchesPerSec * offSec);
 
-    // 명상 효율: 오프라인 시간 비례 (최대 100%)
+    // 紐낆긽 ?⑥쑉: ?ㅽ봽?쇱씤 ?쒓컙 鍮꾨? (理쒕? 100%)
     const efficiency = Math.min(100, Math.floor((offSec / (3600 + (game.upgradeLevels.offlineLimit || 0) * 30)) * 100));
 
-    // 다음 경지까지 예상 시간
+    // ?ㅼ쓬 寃쎌?源뚯? ?덉긽 ?쒓컙
     const curR = REALM_SETTINGS[game.realm];
     const nxtR = get().getNextRealmName() ? (REALM_SETTINGS[get().getNextRealmName()!] || curR) : curR;
     const reqTouches = (curR.minTouches + Math.floor(((nxtR.minTouches - curR.minTouches) / 10) * game.star));
@@ -2445,7 +2445,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const eGold = Math.floor((0.08 + lv * 0.005) * goldB * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1) * offSec);
       const touchesPerSec = (1 + lv * 0.01) * expB;
-      // [수정] 오프라인 수련치 보상 1/10 효율 적용
+      // [?섏젙] ?ㅽ봽?쇱씤 ?섎젴移?蹂댁긽 1/10 ?⑥쑉 ?곸슜
       const eTouches = Math.floor(touchesPerSec * offSec * 0.04);
       const eExp = Math.floor((0.15 + lv * 0.005) * expB * offSec);
 
@@ -2483,33 +2483,33 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { game } = get();
     if (p.success) {
       if (game.timingMission.isPractice) {
-        // 연습 보상 정산 및 수련장 복춘
+        // ?곗뒿 蹂댁긽 ?뺤궛 諛??섎젴??蹂듭텣
         const r = 300 * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1);
         set((s: any) => ({ game: { ...s.game, coins: s.game.coins + r, timingMission: { ...s.game.timingMission, available: false }, activeTab: "training" } }));
       } else {
-        // 실제 임무 보상 정산 및 수련장 복귀
+        // ?ㅼ젣 ?꾨Т 蹂댁긽 ?뺤궛 諛??섎젴??蹂듦?
         const actualStage = Math.min(15, p.maxStage || 0);
         const r = p.gold || (1000 * Math.pow(1.4, actualStage) * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1));
         const repGain = p.rep || (50 + actualStage * 30);
 
         let newConsumables = { ...game.consumables };
         if (p.item) {
-          const itemKey = (p.item === "체력 환약" ? "hp_medium" : (p.item === "내력 환약" ? "mp_medium" : "hp_small")) as keyof typeof newConsumables;
+          const itemKey = (p.item === "泥대젰 ?섏빟" ? "hp_medium" : (p.item === "?대젰 ?섏빟" ? "mp_medium" : "hp_small")) as keyof typeof newConsumables;
           newConsumables[itemKey] = (newConsumables[itemKey] || 0) + 1;
         }
 
-        // 객잔 등급 정산
+        // 媛앹옍 ?깃툒 ?뺤궛
         const ratingGain = 10 + actualStage * 3;
         const newRating = (game.duel.rating || 100) + ratingGain;
         const newTier = getDuelTier(newRating);
 
-        // 투전판 명패 드롭 (첫 판 무료, 이후 5% 확률)
+        // ?ъ쟾??紐낇뙣 ?쒕∼ (泥???臾대즺, ?댄썑 5% ?뺣쪧)
         const isFirstWin = (game.duel.totalWins || 0) === 0;
         let tokenGained = isFirstWin ? 1 : (Math.random() < 0.05 ? 1 : 0);
 
-        // 투전판 이벤트 발생 확률 0.1%
+        // ?ъ쟾???대깽??諛쒖깮 ?뺣쪧 0.1%
         if (Math.random() < 0.001 && !game.yabawiEvent?.active) {
-          setTimeout(() => get().triggerYabawiEvent(), 500); // 딜레이를 주어 상태 업데이트 후 실행
+          setTimeout(() => get().triggerYabawiEvent(), 500); // ?쒕젅?대? 二쇱뼱 ?곹깭 ?낅뜲?댄듃 ???ㅽ뻾
         }
 
         const score = p.score || 0;
@@ -2537,9 +2537,9 @@ export const useGameStore = create<GameState>((set, get) => ({
             enhancementStones: (s.game.enhancementStones || 0) + stoneGain,
             wisdom: (s.game.wisdom || 0) + wisdomGain,
             consumables: newConsumables,
-            activeBuff: tranceMultiplier > 1 ? "무아지경" : s.game.activeBuff,
+            activeBuff: tranceMultiplier > 1 ? "臾댁븘吏寃? : s.game.activeBuff,
             attackMultiplier: tranceMultiplier > 1 ? tranceMultiplier : s.game.attackMultiplier,
-            buffTimeLeft: tranceMultiplier > 1 ? 15 : s.game.buffTimeLeft, // 무아지경 지속시간 15초
+            buffTimeLeft: tranceMultiplier > 1 ? 15 : s.game.buffTimeLeft, // 臾댁븘吏寃?吏?띿떆媛?15珥?
             showInnVictoryEffect: true,
             lastInnScore: score,
             innHighScore: Math.max(game.innHighScore || 0, score),
@@ -2557,13 +2557,13 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         }));
 
-        // 3초 후 승리 이펙트 종료
+        // 3珥????밸━ ?댄럺??醫낅즺
         setTimeout(() => {
           set((s: any) => ({ game: { ...s.game, showInnVictoryEffect: false } }));
         }, 3000);
       }
     } else {
-      // 실패/후퇴 시 수련장으로 즉시 복귀
+      // ?ㅽ뙣/?꾪눜 ???섎젴?μ쑝濡?利됱떆 蹂듦?
       set((s: any) => ({ game: { ...s.game, timingMission: { ...s.game.timingMission, available: false }, pendingInnEntry: false, activeTab: "training" } }));
     }
     get().triggerSave(true);
@@ -2594,7 +2594,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const baseEnemy = generateEnemy(game.masterDuel.selectedLevel + 20);
       e = {
         ...baseEnemy,
-        name: `🔥 특수 보스: ${game.nextDayEvent.bossId}`,
+        name: `?뵦 ?뱀닔 蹂댁뒪: ${game.nextDayEvent.bossId}`,
         hp: baseEnemy.hp * 3,
         atk: baseEnemy.atk * 1.5,
         isBoss: true
@@ -2602,19 +2602,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       e = generateEnemy(game.masterDuel.selectedLevel);
     }
-    const isZhuge = game.faction === "제갈세가";
+    const isZhuge = game.faction === "?쒓컝?멸?";
     const statMult = isZhuge ? 1.05 : 1.0;
 
-    // 사마세가 보호막 초기화
-    const isSama = game.faction === "사마세가";
+    // ?щ쭏?멸? 蹂댄샇留?珥덇린??
+    const isSama = game.faction === "?щ쭏?멸?";
     const initialShield = isSama ? get().getTotalMp() * 0.2 : 0;
 
     const now = Date.now();
-    // 10분 이상 지났으면 연속 처치 초기화
+    // 10遺??댁긽 吏?ъ쑝硫??곗냽 泥섏튂 珥덇린??
     let streak = game.masterDuel.streakCount || 0;
     if (now - (game.masterDuel.lastAttackTime || 0) > 10 * 60 * 1000) {
       streak = 0;
     }
+
+    const rewards = game.nextDayEvent?.rewards || null;
 
     set((s: any) => ({
       game: {
@@ -2638,6 +2640,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           damageTakenAccumulator: 0,
           isBerserk: false,
           rivalDebuffs: {},
+          rewards: rewards, // Transfer rewards here
           factionState: {
             comboCount: 0,
             counterReady: false,
@@ -2648,10 +2651,12 @@ export const useGameStore = create<GameState>((set, get) => ({
             nextCritBonus: 0,
             evasionBuff: 0,
             internalCDs: {},
-            statMult: statMult // 제갈세가 버프용
+            statMult: statMult // ?쒓컝?멸? 踰꾪봽??
           }
         },
-        nextDayEvent: isSpecialBoss ? { ...s.game.nextDayEvent, isUsed: true } : s.game.nextDayEvent
+        nextDayEvent: (game.nextDayEvent && (game.nextDayEvent.type === "GIRU_INFO_EVENT" || game.nextDayEvent.type === "BOSS_RAID_CLUE")) 
+          ? { ...game.nextDayEvent, isUsed: true } 
+          : game.nextDayEvent
       }
     }));
   },
@@ -2663,18 +2668,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     const faction = s.game.faction;
     let fState = { ...(masterDuel.factionState || {}) };
 
-    // 스턴 타이머 처리
+    // ?ㅽ꽩 ??대㉧ 泥섎━
     let nextStunTimer = Math.max(0, (masterDuel.stunTimer || 0) - dt);
     let nextIsStunned = nextStunTimer > 0;
     let rivalHp = masterDuel.rivalHp;
 
-    // 제갈세가 팔괘보: 적 시간 정지 혹은 스턴 상태인 경우 타이머 정지
+    // ?쒓컝?멸? ?붽킌蹂? ???쒓컙 ?뺤? ?뱀? ?ㅽ꽩 ?곹깭??寃쎌슦 ??대㉧ ?뺤?
     const isFrozen = s.game.movementBuff && s.game.movementBuff.data.freeze;
     const isTargetPaused = isFrozen || nextIsStunned;
 
     const tLeft = Math.max(0, masterDuel.timeLeft - dt);
 
-    // 30초 광폭화 체크
+    // 30珥?愿묓룺??泥댄겕
     const duelDuration = 40 - tLeft;
     const isBerserk = duelDuration >= 30;
     const berserkAtkMult = isBerserk ? 1.5 : 1.0;
@@ -2684,12 +2689,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rivalSpeed = 1.0 * berserkSpeedMult;
     const attackInterval = 1 / rivalSpeed;
 
-    // 시간 초과 패배 처리
+    // ?쒓컙 珥덇낵 ?⑤같 泥섎━
     if (tLeft <= 0) {
       return {
         game: {
           ...s.game,
-          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "시간 초과 (패배)", damageTakenAccumulator: 0, lastEffect: null }
+          masterDuel: { ...masterDuel, isPlaying: false, timeLeft: 0, lastWinReward: "?쒓컙 珥덇낵 (?⑤같)", damageTakenAccumulator: 0, lastEffect: null }
         }
       };
     }
@@ -2699,7 +2704,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     let dmgAccum = 0;
     let effect = masterDuel.lastEffect;
 
-    // 1. 적 공격 타이머 처리 (일반 공격)
+    // 1. ??怨듦꺽 ??대㉧ 泥섎━ (?쇰컲 怨듦꺽)
     let nextRivalTimer = (masterDuel.rivalAttackTimer || 0) + (isTargetPaused ? 0 : dt * rivalSpeed);
 
     if (!isTargetPaused && nextRivalTimer >= 1.0) {
@@ -2724,12 +2729,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
-    // 2. 적 강력한 공격 충전 타이머 (보스인 경우)
+    // 2. ??媛뺣젰??怨듦꺽 異⑹쟾 ??대㉧ (蹂댁뒪??寃쎌슦)
     let nextChargeTimer = (masterDuel.chargeTimer || 0);
     if (!isTargetPaused && masterDuel.isBoss) {
       nextChargeTimer += dt;
       if (nextChargeTimer >= 5.0) {
-        // 5초 도달 시 강력한 공격
+        // 5珥??꾨떖 ??媛뺣젰??怨듦꺽
         const bossDmg = Math.floor(rivalAtk * 1.5);
         nextHp = Math.max(0, nextHp - bossDmg);
         dmgAccum = bossDmg;
@@ -2752,66 +2757,80 @@ export const useGameStore = create<GameState>((set, get) => ({
           timeLeft: tLeft,
           isPlaying: !isPlayerDead,
           rivalHp: rivalHp,
-          lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : masterDuel.lastWinReward,
-          rivalAttackTimer: nextRivalTimer,
-          chargeTimer: nextChargeTimer,
-          damageTakenAccumulator: dmgAccum,
-          lastEffect: effect,
-          isBerserk,
-          isStunned: nextIsStunned,
-          stunTimer: nextStunTimer,
-          factionState: fState,
-          ultimateGauge: masterDuel.ultimateGauge || 0
+          lastWinReward: isPlayerDead ? "湲곗슫???ㅽ뻽?듬땲??(?⑤같)" : masterDuel.lastWinReward,
+          rivalAttackTi        const nextFragments = { ...(s.game.manualFragments || {}) };
+        const nextBonds = { ...(s.game.factionBonds || {}) };
+        let nextMaterials = s.game.advancedMaterials || 0;
+        let nextLegendaryGearFragments = s.game.legendaryGearFragments || 0;
+        let nextDivineWeaponShards = s.game.divineWeaponShards || 0;
+        let nextWisdom = s.game.wisdom || 0;
+
+        // --- 湲곕（ 湲곗뿰(Info) 蹂댁긽 吏湲?---
+        if (masterDuel.rewards) {
+          const r = masterDuel.rewards;
+          if (r.gold) {
+             msg += `\n[湲곗뿰] 異붽? 湲덊솕 +${r.gold.toLocaleString()}`;
+             // Gold is handled in the final return by adding it to goldGain if needed, 
+             // but here we can just update a local variable and add it to the final gold.
+          }
+          if (r.advancedMaterials) {
+            nextMaterials += r.advancedMaterials;
+            msg += `\n[?띾뱷] ?곴툒 ?щ즺 +${r.advancedMaterials}媛?;
+          }
+          if (r.legendaryGearFragments) {
+            nextLegendaryGearFragments += r.legendaryGearFragments;
+            msg += `\n[?띾뱷] ?꾩꽕 ?λ퉬 議곌컖 +${r.legendaryGearFragments}媛?;
+          }
+          if (r.divineWeaponShards) {
+            nextDivineWeaponShards += r.divineWeaponShards;
+            msg += `\n[?띾뱷] ?좊퀝?닿린 ?뚰렪 +${r.divineWeaponShards}媛?;
+          }
+          if (r.wisdom) {
+            nextWisdom += r.wisdom;
+            msg += `\n[?띾뱷] ?щ뱷(吏?? +${r.wisdom}`;
+          }
+          if (r.factionBonds) {
+            Object.entries(r.factionBonds).forEach(([f, v]: any) => {
+              nextBonds[f] = (nextBonds[f] || 0) + v;
+              msg += `\n[?띾뱷] ${f} ?몄뿰 +${v}`;
+            });
+          }
+          if (r.manualFragments) {
+            Object.entries(r.manualFragments).forEach(([k, v]: any) => {
+              if (k === "random_faction") {
+                const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
+                const randomSkill = targetSkills[Math.floor(Math.random() * targetSkills.length)];
+                const fragId = `manual_fragment_${randomSkill.grade}`;
+                nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
+                const gradeName = ({ common: "?쇰컲", rare: "吏꾪뭹", epic: "紐낇뭹", legendary: "?꾩꽕", mythic: "?좏솕" } as any)[randomSkill.grade] || "???";
+                msg += `\n[?띾뱷] ${gradeName} 鍮꾧툒 議곌컖 ${v}媛?;
+              } else if (k === "all_faction") {
+                const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
+                const grades = Array.from(new Set(targetSkills.map(s => s.grade)));
+                grades.forEach(grade => {
+                  const fragId = `manual_fragment_${grade}`;
+                  nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
+                });
+                msg += `\n[?띾뱷] 臾명뙆 ?깃툒蹂?鍮꾧툒 議곌컖 媛?${v}媛쒖뵫`;
+              } else {
+                nextFragments[k] = (nextFragments[k] || 0) + v;
+                const gradeKey = k.replace("manual_fragment_", "");
+                const gradeName = ({ common: "?쇰컲", rare: "吏꾪뭹", epic: "紐낇뭹", legendary: "?꾩꽕", mythic: "?좏솕" } as any)[gradeKey] || "鍮꾧툒";
+                msg += `\n[?띾뱷] ${gradeName} 議곌컖 +${v}媛?;
+              }
+            });
+          }
         }
-      }
-    };
-  }),
-  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => {
-    const { game } = get();
-    if (!game.masterDuel.isPlaying) return { totalDamage: 0, isCrit: false, effect: null, isCounter: false };
-
-    let result = { totalDamage: 0, isCrit: false, effect: null as any, isCounter: false };
-
-    set((s: any) => {
-      if (!s.game.masterDuel.isPlaying) return s;
-
-      const masterDuel = s.game.masterDuel;
-      const faction = s.game.faction;
-      let fState = { ...(masterDuel.factionState || {}) };
-      const now = Date.now();
-
-      const statMult = fState.statMult || 1.0;
-      let playerAtk = get().getTotalAttack() * statMult;
-      let playerCritRate = get().getTotalCritRate();
-      let playerCritDmg = get().getTotalCritDmg() / 100;
-
-      let rivalDef = masterDuel.rivalDef;
-      let rivalHp = masterDuel.rivalHp;
-      let playerHp = s.game.hp;
-      let playerMp = s.game.mp;
-
-      let damageMultiplier = 1.0;
-      let bonusFlatDamage = (bonusDmg || 0);
-
-      if (s.game.movementBuff && s.game.movementBuff.data.weakness) {
-        damageMultiplier *= s.game.movementBuff.data.weakness;
-      }
-
-      // 1. 회피 판정 (사용자 기획 ✅ 5)
-      const rivalEva = (masterDuel.isBoss ? 15 : 10) / 100; // 보스 15%, 일반 10%
-      if (Math.random() < rivalEva) {
-        result = { totalDamage: 0, isCrit: false, effect: "DODGE" as any, isCounter: false };
-        return { game: { ...s.game, masterDuel: { ...masterDuel, lastEffect: "DODGE", damageTakenAccumulator: 0, factionState: fState } } };
-      }
-
-      // 2. 기본 대미지 및 방어력 적용 (사용자 기획 ✅ 3)
-      // [재설계] 방어력 공식: 피해 감소 = 방어력 / (방어력 + 1000)
+        
+        const finalGoldGain = goldGain + (masterDuel.rewards?.gold || 0);
+궗?⑹옄 湲고쉷 ??3)
+      // [?ъ꽕怨? 諛⑹뼱??怨듭떇: ?쇳빐 媛먯냼 = 諛⑹뼱??/ (諛⑹뼱??+ 1000)
       const damageReduction = rivalDef / (rivalDef + 1000);
       let baseDamage = Math.floor(playerAtk * (1 - damageReduction));
 
-      // 3. 치명타 판정 (사용자 기획 ✅ 4)
+      // 3. 移섎챸? ?먯젙 (?ъ슜??湲고쉷 ??4)
       let isCrit = false;
-      const finalCritRate = faction === "점창파" ? playerCritRate + (fState.critStack || 0) : playerCritRate;
+      const finalCritRate = faction === "?먯갹?? ? playerCritRate + (fState.critStack || 0) : playerCritRate;
       if (Math.random() < finalCritRate / 100) {
         isCrit = true;
         baseDamage = Math.floor(baseDamage * playerCritDmg);
@@ -2820,18 +2839,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       let totalDamage = baseDamage;
       let effect = isCrit ? "CRITICAL" : null;
 
-      // --- 반격 타이밍 체크 (추가 ✅) ---
+      // --- 諛섍꺽 ??대컢 泥댄겕 (異붽? ?? ---
       const timing = masterDuel.rivalAttackTimer || 0;
       let isCounter = false;
-      // 0.85 ~ 1.0 사이 (맨끝 허용된 부분)
+      // 0.85 ~ 1.0 ?ъ씠 (留⑤걹 ?덉슜??遺遺?
       if (timing >= 0.85 && timing <= 1.0) {
         isCounter = true;
-        totalDamage = Math.floor(totalDamage * 3.5); // 추가 250% = 3.5배
-        effect = "PARRY"; // UI에서 반격으로 표시
+        totalDamage = Math.floor(totalDamage * 3.5); // 異붽? 250% = 3.5諛?
+        effect = "PARRY"; // UI?먯꽌 諛섍꺽?쇰줈 ?쒖떆
       }
 
-      // 4. 문파 특수 효과 적용 (사용자 기획 ✅ 8, 9)
-      if (faction === "화산파") {
+      // 4. 臾명뙆 ?뱀닔 ?④낵 ?곸슜 (?ъ슜??湲고쉷 ??8, 9)
+      if (faction === "?붿궛??) {
         fState.comboCount = (fState.comboCount || 0) + 1;
         if (fState.comboCount >= 4) {
           totalDamage *= 2.0;
@@ -2840,19 +2859,19 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (isCrit) totalDamage += baseDamage * 0.8;
       }
 
-      if (faction === "무당" && fState.counterReady) {
+      if (faction === "臾대떦" && fState.counterReady) {
         totalDamage *= 2.0;
         fState.counterReady = false;
       }
-      if (faction === "점창파") {
+      if (faction === "?먯갹??) {
         fState.critStack = Math.min(10, (fState.critStack || 0) + 2);
         if (Math.random() < 0.3) totalDamage += baseDamage * 0.5;
       }
-      if (faction === "공동파" && Math.random() < 0.15) {
+      if (faction === "怨듬룞?? && Math.random() < 0.15) {
         masterDuel.isStunned = true;
         masterDuel.stunTimer = 1.0;
       }
-      if (faction === "곤륜파") {
+      if (faction === "怨ㅻ쪣??) {
         fState.slowStack = (fState.slowStack || 0) + 1;
         if (fState.slowStack >= 5) {
           masterDuel.isStunned = true;
@@ -2861,7 +2880,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           effect = "STUN";
         }
       }
-      if (faction === "사천당가") {
+      if (faction === "?ъ쿇?밴?") {
         fState.poisonStack = (fState.poisonStack || 0) + 1;
       }
 
@@ -2869,9 +2888,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       totalDamage *= damageMultiplier;
       totalDamage = Math.max(totalDamage, playerAtk * 0.05);
 
-      // 보스 피해 감쇠 (한방컷 방지 및 타격감 유지)
+      // 蹂댁뒪 ?쇳빐 媛먯뇿 (?쒕갑而?諛⑹? 諛??寃⑷컧 ?좎?)
       const bossMaxHp = masterDuel.rivalMaxHp || rivalHp;
-      const bossSoftCap = bossMaxHp * 0.15; // 1타격당 보스 체력의 15%까지만 정상 데미지
+      const bossSoftCap = bossMaxHp * 0.15; // 1?寃⑸떦 蹂댁뒪 泥대젰??15%源뚯?留??뺤긽 ?곕?吏
       if (totalDamage > bossSoftCap) {
         totalDamage = bossSoftCap + (totalDamage - bossSoftCap) * 0.1;
       }
@@ -2889,7 +2908,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         totalDamage += rivalHp * 0.1;
       }
 
-      // 반격 성공 시 이펙트 추가 통보용 결과 데이터 확장
+      // 諛섍꺽 ?깃났 ???댄럺??異붽? ?듬낫??寃곌낵 ?곗씠???뺤옣
       result = { totalDamage, isCrit, effect, isCounter };
 
       finalOilRes.buffsTriggered.forEach((k: string) => {
@@ -2903,7 +2922,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         } else nextBuffs[k] = 10;
       });
 
-      if (faction === "일월신교") {
+      if (faction === "?쇱썡?좉탳") {
         playerHp = Math.min(get().getTotalHp(), playerHp + totalDamage * 0.1);
         playerMp = Math.min(get().getTotalMp(), playerMp + totalDamage * 0.05);
       }
@@ -2915,18 +2934,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       const nGauge = Math.min(100, (masterDuel.ultimateGauge || 0) + (isWeakness ? 5 : 2));
 
       if (nHp <= 0) {
-        // 연속 처치 보너스 계산
+        // ?곗냽 泥섏튂 蹂대꼫??怨꾩궛
         let streakBonus = 1.0;
         const currentStreak = masterDuel.streakCount || 0;
-        if (currentStreak >= 9) streakBonus = 1.2; // 이번이 10회째가 됨
-        else if (currentStreak >= 4) streakBonus = 1.1; // 이번이 5회째가 됨
-        else if (currentStreak >= 2) streakBonus = 1.05; // 이번이 3회째가 됨
+        if (currentStreak >= 9) streakBonus = 1.2; // ?대쾲??10?뚯㎏媛 ??
+        else if (currentStreak >= 4) streakBonus = 1.1; // ?대쾲??5?뚯㎏媛 ??
+        else if (currentStreak >= 2) streakBonus = 1.05; // ?대쾲??3?뚯㎏媛 ??
 
         const level = masterDuel.selectedLevel;
-        // 기본 보상 2배 상향 (900 -> 1800)
+        // 湲곕낯 蹂댁긽 2諛??곹뼢 (900 -> 1800)
         const baseGold = 1800 * Math.pow(level, 1.2);
         const goldGain = Math.floor(baseGold * streakBonus * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.05));
-        const reputationGain = goldGain; // 명성도 동일하게 적용
+        const reputationGain = goldGain; // 紐낆꽦???숈씪?섍쾶 ?곸슜
 
         const expGain = Math.floor(90 * Math.pow(level, 1.1) * (1 + (s.game.upgradeLevels.autoGain || 0) * 0.1));
         const rewardBase = 5 + (level - 1) * 0.7;
@@ -2936,18 +2955,18 @@ export const useGameStore = create<GameState>((set, get) => ({
         const oilKeys = ["oil_atk_3", "oil_crit_3", "oil_thunder", "oil_poison", "oil_bleed", "oil_eva_3", "oil_def_3", "oil_reflect", "oil_vajra", "oil_vampire", "oil_speed_3", "oil_luck_3", "oil_clarity", "oil_eye", "oil_demon", "oil_triple_hit", "oil_formless", "oil_blessed"];
         const oilId = oilChance ? oilKeys[Math.floor(Math.random() * oilKeys.length)] : null;
 
-        const oilNameMap: Record<string, string> = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유", oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유", oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "청명유", oil_eye: "영안유", oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유" };
+        const oilNameMap: Record<string, string> = { oil_atk_3: "愿묓룺??, oil_crit_3: "?뚯쿇??, oil_thunder: "?뚯쟾??, oil_poison: "留뚮룆??, oil_bleed: "?덉뿼??, oil_eva_3: "臾댁쁺??, oil_def_3: "媛뺤쿋??, oil_reflect: "諛섑깂??, oil_vajra: "湲덇컯??, oil_vampire: "?≪꽦??, oil_speed_3: "吏덊뭾??, oil_luck_3: "湲곗뿰??, oil_clarity: "泥?챸??, oil_eye: "?곸븞??, oil_demon: "泥쒕쭏??, oil_triple_hit: "?쇱뿰??, oil_formless: "臾댁긽?? };
 
-        let bonusText = streakBonus > 1 ? ` (보너스 +${Math.round((streakBonus - 1) * 100)}%)` : "";
-        let msg = `[처단 완료] 연속 ${currentStreak + 1}회${bonusText}\n금화 +${goldGain.toLocaleString()}\n명성 +${reputationGain.toLocaleString()}\n징표 ${bossTokenGain.toLocaleString()}\n심득 +${wisdomGain.toLocaleString()}\n수련 정진 +${expGain.toLocaleString()}`;
-        if (oilId) msg += `\n[획득] ${oilNameMap[oilId] || oilId}`;
+        let bonusText = streakBonus > 1 ? ` (蹂대꼫??+${Math.round((streakBonus - 1) * 100)}%)` : "";
+        let msg = `[泥섎떒 ?꾨즺] ?곗냽 ${currentStreak + 1}??{bonusText}\n湲덊솕 +${goldGain.toLocaleString()}\n紐낆꽦 +${reputationGain.toLocaleString()}\n吏뺥몴 ${bossTokenGain.toLocaleString()}\n?щ뱷 +${wisdomGain.toLocaleString()}\n?섎젴 ?뺤쭊 +${expGain.toLocaleString()}`;
+        if (oilId) msg += `\n[?띾뱷] ${oilNameMap[oilId] || oilId}`;
         
-        // 타임 어택 퀘스트 추적 (20초 이내 승리)
+        // ????댄깮 ?섏뒪??異붿쟻 (20珥??대궡 ?밸━)
         if (masterDuel.timeLeft >= 20) {
            get().updateQuestProgress("time_attack_win", 1);
         }
 
-        get().updateQuestProgress("reach_duel_rating", 0); // 등급 도달 체크용
+        get().updateQuestProgress("reach_duel_rating", 0); // ?깃툒 ?꾨떖 泥댄겕??
 
         const nextConsumables = { ...s.game.consumables };
         if (oilId) nextConsumables[oilId] = (nextConsumables[oilId] || 0) + 1;
@@ -2956,7 +2975,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const nextBonds = { ...(s.game.factionBonds || {}) };
         let nextMaterials = s.game.advancedMaterials || 0;
 
-        // --- 기루 기연(Info) 보상 지급 ---
+        // --- 湲곕（ 湲곗뿰(Info) 蹂댁긽 吏湲?---
         if (masterDuel.rewards) {
           const r = masterDuel.rewards;
           if (r.advancedMaterials) nextMaterials += r.advancedMaterials;
@@ -2972,20 +2991,20 @@ export const useGameStore = create<GameState>((set, get) => ({
                 const randomSkill = targetSkills[Math.floor(Math.random() * targetSkills.length)];
                 const fragId = `manual_fragment_${randomSkill.grade}`;
                 nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
-                const gradeName = ({ common: "일반", rare: "진품", epic: "명품", legendary: "전설", mythic: "신화" } as any)[randomSkill.grade] || "???";
-                msg += `\n[획득] ${gradeName} 비급 조각 ${v}개`;
+                const gradeName = ({ common: "?쇰컲", rare: "吏꾪뭹", epic: "紐낇뭹", legendary: "?꾩꽕", mythic: "?좏솕" } as any)[randomSkill.grade] || "???";
+                msg += `\n[?띾뱷] ${gradeName} 鍮꾧툒 議곌컖 ${v}媛?;
               } else if (k === "all_faction") {
                 const targetSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
-                // 모든 등급에 대해 조각 지급 (중복 제거)
+                // 紐⑤뱺 ?깃툒?????議곌컖 吏湲?(以묐났 ?쒓굅)
                 const grades = Array.from(new Set(targetSkills.map(s => s.grade)));
                 grades.forEach(grade => {
                   const fragId = `manual_fragment_${grade}`;
                   nextFragments[fragId] = (nextFragments[fragId] || 0) + v;
                 });
-                msg += `\n[획득] 문파 등급별 비급 조각 각 ${v}개씩`;
+                msg += `\n[?띾뱷] 臾명뙆 ?깃툒蹂?鍮꾧툒 議곌컖 媛?${v}媛쒖뵫`;
               } else {
                 nextFragments[k] = (nextFragments[k] || 0) + v;
-                msg += `\n[획득] 비급 조각 ${v}개`;
+                msg += `\n[?띾뱷] 鍮꾧툒 議곌컖 ${v}媛?;
               }
             });
           }
@@ -3012,7 +3031,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             masterDuel: {
               ...nextMD,
               isPlaying: false,
-              isGiruEncounter: false, // 기연 종료
+              isGiruEncounter: false, // 湲곗뿰 醫낅즺
               currentLevel: nextMaxLevel,
               selectedLevel: nextLevel,
               rivalHp: nextEnemy.hp,
@@ -3025,7 +3044,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               ultimateGauge: 0,
               factionState: { ...fState, comboCount: 0, shield: 0, slowStack: 0, poisonStack: 0 },
               lastDefeatTimes: { ...(nextMD.lastDefeatTimes || {}), [level]: now },
-              streakCount: (masterDuel.challengeTickets === 0) ? 0 : currentStreak + 1, // 0개가 되면 초기화
+              streakCount: (masterDuel.challengeTickets === 0) ? 0 : currentStreak + 1, // 0媛쒓? ?섎㈃ 珥덇린??
               lastAttackTime: now
             }
           }
@@ -3080,7 +3099,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const playerDef = get().getTotalDefense();
     const defenseMultiplier = 100 / (100 + playerDef);
 
-    // 함정 대미지: 악적 공격력 * 배수 * 방어력 보정
+    // ?⑥젙 ?誘몄?: ?낆쟻 怨듦꺽??* 諛곗닔 * 諛⑹뼱??蹂댁젙
     const rawDmg = Math.floor(rivalAtk * multiplier * defenseMultiplier);
     const finalDmg = Math.max(rawDmg, Math.floor(rivalAtk * 0.5));
 
@@ -3091,17 +3110,17 @@ export const useGameStore = create<GameState>((set, get) => ({
         masterDuel: {
           ...s.game.masterDuel,
           damageTakenAccumulator: finalDmg,
-          lastEffect: "BLEED" // 시각적으로 붉게 반짝이도록 설정
+          lastEffect: "BLEED" // ?쒓컖?곸쑝濡?遺됯쾶 諛섏쭩?대룄濡??ㅼ젙
         }
       }
     }));
 
-    // 승패 체크
+    // ?뱁뙣 泥댄겕
     if (get().game.hp <= 0) {
       set((s: any) => ({
         game: {
           ...s.game,
-          masterDuel: { ...s.game.masterDuel, isPlaying: false, lastWinReward: "함정에 빠져 치명상을 입었습니다 (패배)" }
+          masterDuel: { ...s.game.masterDuel, isPlaying: false, lastWinReward: "?⑥젙??鍮좎졇 移섎챸?곸쓣 ?낆뿀?듬땲??(?⑤같)" }
         }
       }));
     }
@@ -3154,17 +3173,17 @@ export const useGameStore = create<GameState>((set, get) => ({
         const rIdx = realms.indexOf(s.game.realm);
 
         let percent = 0.5;
-        if (s.game.realm === "필부") percent = 8;
-        else if (s.game.realm === "삼류") percent = 6.5;
-        else if (s.game.realm === "이류") percent = 5;
-        else if (s.game.realm === "일류") percent = 3;
-        else if (s.game.realm === "절정") percent = 1;
+        if (s.game.realm === "?꾨?") percent = 8;
+        else if (s.game.realm === "?쇰쪟") percent = 6.5;
+        else if (s.game.realm === "?대쪟") percent = 5;
+        else if (s.game.realm === "?쇰쪟") percent = 3;
+        else if (s.game.realm === "?덉젙") percent = 1;
         else percent = 0.5;
 
         const cur = REALM_SETTINGS[s.game.realm];
         const nxt = REALM_SETTINGS[realms[rIdx + 1]] || cur;
 
-        // [수정] 다음 '성'이 아니라 다음 '경지' 도달까지 필요한 잔여 숙련도 기준으로 변경
+        // [?섏젙] ?ㅼ쓬 '?????꾨땲???ㅼ쓬 '寃쎌?' ?꾨떖源뚯? ?꾩슂???붿뿬 ?숇젴??湲곗??쇰줈 蹂寃?
         const target = nxt.minTouches;
 
         const remaining = Math.max(0, target - s.game.touches);
@@ -3192,7 +3211,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const learned = game.martialArtsSkills.filter(s =>
       s.unlocked &&
-      (s.skillId.includes("보법") || s.skillId.includes("신법") || s.skillId.includes("보")) &&
+      (s.skillId.includes("蹂대쾿") || s.skillId.includes("?좊쾿") || s.skillId.includes("蹂?)) &&
       s.skillId.includes(game.faction as string)
     );
 
@@ -3231,18 +3250,18 @@ export const useGameStore = create<GameState>((set, get) => ({
   enhanceWeapon: (itemId: string, useBlessedOil: boolean, useHeavenlyTalisman: boolean) => {
     const { game } = get();
     const item = game.ownedWeapons.find(w => w.id === itemId);
-    if (!item) return { success: false, message: "장비를 찾을 수 없습니다." };
+    if (!item) return { success: false, message: "?λ퉬瑜?李얠쓣 ???놁뒿?덈떎." };
 
     const curLv = item.enhancement || 0;
-    const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const rSettings = REALM_SETTINGS[item.realm || "필부"] || REALM_SETTINGS["필부"];
+    const realmIdx = REALM_ORDER.indexOf(item.realm || "?꾨?");
+    const rSettings = REALM_SETTINGS[item.realm || "?꾨?"] || REALM_SETTINGS["?꾨?"];
     const rMult = rSettings.rewardMultiplier || 1;
     const starFactor = 1 + (game.star - 1) * 0.1;
 
-    const tierMultiplier = item.tier === "신기" ? 5 : item.tier === "보구" ? 2.5 : item.tier === "명품" ? 1.5 : 1;
+    const tierMultiplier = item.tier === "?좉린" ? 5 : item.tier === "蹂닿뎄" ? 2.5 : item.tier === "紐낇뭹" ? 1.5 : 1;
 
     let goldCost, repCost, stoneCost;
-    if ((item.realm || "필부") === "필부") {
+    if ((item.realm || "?꾨?") === "?꾨?") {
       goldCost = 5000;
       repCost = 5000;
       stoneCost = 5;
@@ -3258,12 +3277,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isTutorial = stepId === "click_refine_start" || stepId === "check_refine_result";
 
     if (!isTutorial) {
-      if (game.coins < goldCost) return { success: false, message: "금화가 부족합니다." };
-      if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
-      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+      if (game.coins < goldCost) return { success: false, message: "湲덊솕媛 遺議깊빀?덈떎." };
+      if (game.reputation < repCost) return { success: false, message: "紐낆꽦??遺議깊빀?덈떎." };
+      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "媛뺥솕?앹씠 遺議깊빀?덈떎." };
     }
-    if (useBlessedOil && (game.consumables["oil_blessed"] || 0) <= 0) return { success: false, message: "축복받은 기름이 부족합니다." };
-    if (useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0) return { success: false, message: "천운의 부적이 부족합니다." };
+    if (useBlessedOil && (game.consumables["oil_blessed"] || 0) <= 0) return { success: false, message: "異뺣났諛쏆? 湲곕쫫??遺議깊빀?덈떎." };
+    if (useHeavenlyTalisman && (game.consumables["charm_luck"] || 0) <= 0) return { success: false, message: "泥쒖슫??遺?곸씠 遺議깊빀?덈떎." };
 
     const successRates: Record<number, number> = {
       0: 100, 1: 100, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100,
@@ -3289,12 +3308,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (w.id === itemId) {
           if (success) {
             const nextLv = curLv + 1;
-            // 모든 능력치에 대해 추천 1번 공식 (* 1.15 + 5) 적용
+            // 紐⑤뱺 ?λ젰移섏뿉 ???異붿쿇 1踰?怨듭떇 (* 1.15 + 5) ?곸슜
             const nextAtk = w.attackBonus ? Math.floor(w.attackBonus * 1.15) + 5 : w.attackBonus;
             const nextDef = w.defenseBonus ? Math.floor(w.defenseBonus * 1.15) + 5 : w.defenseBonus;
             const nextHp = w.hpBonus ? Math.floor(w.hpBonus * 1.15) + 5 : w.hpBonus;
             
-            // 랜덤 옵션들은 0.1%씩 정직하게 증가
+            // ?쒕뜡 ?듭뀡?ㅼ? 0.1%???뺤쭅?섍쾶 利앷?
             const nextOptions = (w.randomOptions || []).map((o: any) => {
               const nextVal = Number(((o.value || 0) + 0.1).toFixed(1));
               const baseLabel = o.label.split(" +")[0];
@@ -3313,7 +3332,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               hpBonus: nextHp,
               randomOptions: nextOptions,
               options: nextOptions,
-              description: nextAtk ? `공격 +${nextAtk}` : w.description
+              description: nextAtk ? `怨듦꺽 +${nextAtk}` : w.description
             };
           } else if (curLv >= 21 && !useHeavenlyTalisman) {
             return { ...w, enhancement: curLv - 1 };
@@ -3337,31 +3356,31 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
-    // 튜토리얼 단계 자동 전환은 TutorialOverlay 또는 ForgePanel에서 처리하도록 제거 (결과 확인 단계를 위해)
+    // ?쒗넗由ъ뼹 ?④퀎 ?먮룞 ?꾪솚? TutorialOverlay ?먮뒗 ForgePanel?먯꽌 泥섎━?섎룄濡??쒓굅 (寃곌낵 ?뺤씤 ?④퀎瑜??꾪빐)
 
     get().updateQuestProgress("enhance_item", 1);
-    let failMsg = "강화에 실패했습니다.";
+    let failMsg = "媛뺥솕???ㅽ뙣?덉뒿?덈떎.";
     if (curLv >= 11) {
       failMsg = useHeavenlyTalisman
-        ? "강화에 실패했으나 천운의 부적이 단계 하락을 방어했습니다."
-        : "강화에 실패하여 강화 단계가 하락했습니다.";
+        ? "媛뺥솕???ㅽ뙣?덉쑝??泥쒖슫??遺?곸씠 ?④퀎 ?섎씫??諛⑹뼱?덉뒿?덈떎."
+        : "媛뺥솕???ㅽ뙣?섏뿬 媛뺥솕 ?④퀎媛 ?섎씫?덉뒿?덈떎.";
     }
     const successMsg = isTutorial 
-      ? `무명철검 +${curLv + 1}강 강화 성공! (공격력 10 → 22)`
-      : `${curLv + 1}강 강화 성공!`;
+      ? `臾대챸泥좉? +${curLv + 1}媛?媛뺥솕 ?깃났! (怨듦꺽??10 ??22)`
+      : `${curLv + 1}媛?媛뺥솕 ?깃났!`;
     return { success, message: success ? successMsg : failMsg };
   },
 
   rerollWeaponOptions: (itemId: string, lockedOptionIndex?: number) => {
     const { game } = get();
     const item = game.ownedWeapons.find(w => w.id === itemId);
-    if (!item) return { success: false, message: "장비를 찾을 수 없습니다." };
+    if (!item) return { success: false, message: "?λ퉬瑜?李얠쓣 ???놁뒿?덈떎." };
 
-    const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    const realmIdx = REALM_ORDER.indexOf(item.realm || "?꾨?");
+    const isPaewang = item.tier === "?좉린" || item.name.includes("[?⑥솗]");
 
     let repCost, stoneCost;
-    if ((item.realm || "필부") === "필부") {
+    if ((item.realm || "?꾨?") === "?꾨?") {
       repCost = 5000;
       stoneCost = 5;
     } else {
@@ -3371,7 +3390,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       stoneCost = Math.round(10 * stoneScale);
     }
 
-    // 옵션 고정 시 비용 2배
+    // ?듭뀡 怨좎젙 ??鍮꾩슜 2諛?
     if (lockedOptionIndex !== undefined) {
       repCost *= 2;
       stoneCost *= 2;
@@ -3381,29 +3400,29 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isTutorial = stepId === "click_reroll_start" || stepId === "check_reroll_result";
     
     if (!isTutorial) {
-      if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
-      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+      if (game.reputation < repCost) return { success: false, message: "紐낆꽦??遺議깊빀?덈떎." };
+      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "媛뺥솕?앹씠 遺議깊빀?덈떎." };
     }
 
     set((s: any) => {
       const nextWeapons = s.game.ownedWeapons.map((w: any) => {
         if (w.id === itemId) {
-          // 튜토리얼 중에는 무조건 신기 등급 수준의 행운(500) 부여하여 최상급 옵션 3개 이상 보장
+          // ?쒗넗由ъ뼹 以묒뿉??臾댁“嫄??좉린 ?깃툒 ?섏????됱슫(500) 遺?ы븯??理쒖긽湲??듭뀡 3媛??댁긽 蹂댁옣
           let rolled = rollTierAndOptions(
             w, 
             realmIdx, 
             isTutorial ? 500 : get().getTotalLuck(), 
             realmIdx,
-            isTutorial ? "명품" : undefined,
-            lockedOptionIndex // 고정 옵션 인덱스 전달
+            isTutorial ? "紐낇뭹" : undefined,
+            lockedOptionIndex // 怨좎젙 ?듭뀡 ?몃뜳???꾨떖
           );
           
-          // 튜토리얼 중이면 확실히 옵션이 바뀐 것을 보여주기 위해 강제로 새로운 옵션 세트 주입
+          // ?쒗넗由ъ뼹 以묒씠硫??뺤떎???듭뀡??諛붾?寃껋쓣 蹂댁뿬二쇨린 ?꾪빐 媛뺤젣濡??덈줈???듭뀡 ?명듃 二쇱엯
           if (isTutorial) {
             rolled.randomOptions = [
-              { stat: "atk_pct", label: "공격력", value: 15, grade: "최상급" },
-              { stat: "crit_rate", label: "치명타 확률", value: 5, grade: "최상급" },
-              { stat: "crit_dmg", label: "치명타 피해", value: 20, grade: "최상급" }
+              { stat: "atk_pct", label: "怨듦꺽??, value: 15, grade: "理쒖긽湲? },
+              { stat: "crit_rate", label: "移섎챸? ?뺣쪧", value: 5, grade: "理쒖긽湲? },
+              { stat: "crit_dmg", label: "移섎챸? ?쇳빐", value: 20, grade: "理쒖긽湲? }
             ];
           }
           return { ...rolled, enhancement: w.enhancement };
@@ -3423,20 +3442,20 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     get().triggerSave(true);
     get().updateQuestProgress("refine_item", 1);
-    return { success: true, message: "기연 재연마 성공!" };
+    return { success: true, message: "湲곗뿰 ?ъ뿰留??깃났!" };
   },
 
   infuseSoul: (itemId: string, type: string) => {
     const { game } = get();
     const item = game.ownedWeapons.find(w => w.id === itemId);
-    if (!item) return { success: false, message: "장비를 찾을 수 없습니다." };
-    if ((item.enhancement || 0) < 10) return { success: false, message: "10강 이상 장비만 가능합니다." };
+    if (!item) return { success: false, message: "?λ퉬瑜?李얠쓣 ???놁뒿?덈떎." };
+    if ((item.enhancement || 0) < 10) return { success: false, message: "10媛??댁긽 ?λ퉬留?媛?ν빀?덈떎." };
 
-    const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    const realmIdx = REALM_ORDER.indexOf(item.realm || "?꾨?");
+    const isPaewang = item.tier === "?좉린" || item.name.includes("[?⑥솗]");
 
     let repCost, stoneCost;
-    if ((item.realm || "필부") === "필부") {
+    if ((item.realm || "?꾨?") === "?꾨?") {
       repCost = 5000;
       stoneCost = 5;
     } else {
@@ -3446,13 +3465,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       stoneCost = Math.round(100 * stoneScale);
     }
 
-    if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
-    if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+    if (game.reputation < repCost) return { success: false, message: "紐낆꽦??遺議깊빀?덈떎." };
+    if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "媛뺥솕?앹씠 遺議깊빀?덈떎." };
 
     const souls: Record<string, any> = {
-      vampire: { name: "흡성대법", desc: "공격 시 HP의 2% 회복" },
-      haste: { name: "신법가속", desc: "스킬 쿨타임 20% 감소" },
-      destruct: { name: "파멸의 일격", desc: "방어력 무시 피해 발생" }
+      vampire: { name: "?≪꽦?踰?, desc: "怨듦꺽 ??HP??2% ?뚮났" },
+      haste: { name: "?좊쾿媛??, desc: "?ㅽ궗 荑⑦???20% 媛먯냼" },
+      destruct: { name: "?뚮㈇???쇨꺽", desc: "諛⑹뼱??臾댁떆 ?쇳빐 諛쒖깮" }
     };
 
     set((s: any) => {
@@ -3472,20 +3491,20 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
-    return { success: true, message: `${souls[type].name} 영혼 주입 성공!` };
+    return { success: true, message: `${souls[type].name} ?곹샎 二쇱엯 ?깃났!` };
   },
 
   applyOil: (itemId: string, oilId: ConsumableId) => {
     const { game } = get();
     const item = game.ownedWeapons.find(w => w.id === itemId);
-    if (!item) return { success: false, message: "장비를 찾을 수 없습니다." };
-    if ((game.consumables[oilId] || 0) <= 0) return { success: false, message: "기름이 부족합니다." };
+    if (!item) return { success: false, message: "?λ퉬瑜?李얠쓣 ???놁뒿?덈떎." };
+    if ((game.consumables[oilId] || 0) <= 0) return { success: false, message: "湲곕쫫??遺議깊빀?덈떎." };
 
-    const realmIdx = REALM_ORDER.indexOf(item.realm || "필부");
-    const isPaewang = item.tier === "신기" || item.name.includes("[패왕]");
+    const realmIdx = REALM_ORDER.indexOf(item.realm || "?꾨?");
+    const isPaewang = item.tier === "?좉린" || item.name.includes("[?⑥솗]");
 
     let repCost, stoneCost;
-    if ((item.realm || "필부") === "필부") {
+    if ((item.realm || "?꾨?") === "?꾨?") {
       repCost = 5000;
       stoneCost = 5;
     } else {
@@ -3499,42 +3518,42 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isTutorial = stepId === "click_infuse_start" || stepId === "check_forge_result";
 
     if (!isTutorial) {
-      if (game.reputation < repCost) return { success: false, message: "명성이 부족합니다." };
-      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "강화석이 부족합니다." };
+      if (game.reputation < repCost) return { success: false, message: "紐낆꽦??遺議깊빀?덈떎." };
+      if ((game.enhancementStones || 0) < stoneCost) return { success: false, message: "媛뺥솕?앹씠 遺議깊빀?덈떎." };
     }
 
     const oilNames: Record<string, string> = {
-      oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유", oil_poison: "만독유", oil_bleed: "혈염유",
-      oil_eva_3: "무영유", oil_def_3: "강철유", oil_reflect: "반탄유", oil_vajra: "금강유", oil_vampire: "흡성유",
-      oil_speed_3: "질풍유", oil_luck_3: "기연유", oil_clarity: "천명유", oil_eye: "영안유",
-      oil_demon: "천마유", oil_triple_hit: "삼연유", oil_formless: "무상유"
+      oil_atk_3: "愿묓룺??, oil_crit_3: "?뚯쿇??, oil_thunder: "?뚯쟾??, oil_poison: "留뚮룆??, oil_bleed: "?덉뿼??,
+      oil_eva_3: "臾댁쁺??, oil_def_3: "媛뺤쿋??, oil_reflect: "諛섑깂??, oil_vajra: "湲덇컯??, oil_vampire: "?≪꽦??,
+      oil_speed_3: "吏덊뭾??, oil_luck_3: "湲곗뿰??, oil_clarity: "泥쒕챸??, oil_eye: "?곸븞??,
+      oil_demon: "泥쒕쭏??, oil_triple_hit: "?쇱뿰??, oil_formless: "臾댁긽??
     };
 
     const oilDetails: Record<string, { chance: number, desc: string }> = {
-      oil_atk_3: { chance: 2, desc: "2% 확률로 공격력 3배 (5초)" },
-      oil_crit_3: { chance: 2, desc: "2% 확률로 치댐 3배 (5초)" },
-      oil_thunder: { chance: 5, desc: "5% 확률로 500% 대미지 + 기절" },
-      oil_poison: { chance: 5, desc: "5% 확률로 적 방어력 50% 감소 (10초)" },
-      oil_bleed: { chance: 5, desc: "5% 확률로 출혈 (최대 HP 10% 지속피해)" },
-      oil_eva_3: { chance: 5, desc: "5% 확률로 회피율 3배 (10초)" },
-      oil_def_3: { chance: 7, desc: "7% 확률로 모든 피해 50% 감소 (10초)" },
-      oil_reflect: { chance: 7, desc: "7% 확률로 받은 피해 200% 반사 (10초)" },
-      oil_vajra: { chance: 5, desc: "5% 확률로 5초간 무적 상태" },
-      oil_vampire: { chance: 5, desc: "5% 확률로 대미지 50% 흡혈" },
-      oil_speed_3: { chance: 5, desc: "5% 확률로 공속 2배 (10초)" },
-      oil_luck_3: { chance: 5, desc: "5% 확률로 전리품 등급 상승 확률 증가" },
-      oil_clarity: { chance: 8, desc: "8% 확률로 상이상 즉시 해제" },
-      oil_eye: { chance: 15, desc: "15% 확률로 적의 공격 반드시 회피" },
-      oil_demon: { chance: 2, desc: "2% 확률로 일격필살(1000% 대미지) 발동" },
-      oil_triple_hit: { chance: 5, desc: "5% 확률로 3배 연타 공격 발동" },
-      oil_formless: { chance: 3, desc: "3% 확률로 적 현재 체력 10% 즉시 삭감" }
+      oil_atk_3: { chance: 2, desc: "2% ?뺣쪧濡?怨듦꺽??3諛?(5珥?" },
+      oil_crit_3: { chance: 2, desc: "2% ?뺣쪧濡?移섎뙋 3諛?(5珥?" },
+      oil_thunder: { chance: 5, desc: "5% ?뺣쪧濡?500% ?誘몄? + 湲곗젅" },
+      oil_poison: { chance: 5, desc: "5% ?뺣쪧濡???諛⑹뼱??50% 媛먯냼 (10珥?" },
+      oil_bleed: { chance: 5, desc: "5% ?뺣쪧濡?異쒗삁 (理쒕? HP 10% 吏?랁뵾??" },
+      oil_eva_3: { chance: 5, desc: "5% ?뺣쪧濡??뚰뵾??3諛?(10珥?" },
+      oil_def_3: { chance: 7, desc: "7% ?뺣쪧濡?紐⑤뱺 ?쇳빐 50% 媛먯냼 (10珥?" },
+      oil_reflect: { chance: 7, desc: "7% ?뺣쪧濡?諛쏆? ?쇳빐 200% 諛섏궗 (10珥?" },
+      oil_vajra: { chance: 5, desc: "5% ?뺣쪧濡?5珥덇컙 臾댁쟻 ?곹깭" },
+      oil_vampire: { chance: 5, desc: "5% ?뺣쪧濡??誘몄? 50% ?≫삁" },
+      oil_speed_3: { chance: 5, desc: "5% ?뺣쪧濡?怨듭냽 2諛?(10珥?" },
+      oil_luck_3: { chance: 5, desc: "5% ?뺣쪧濡??꾨━???깃툒 ?곸듅 ?뺣쪧 利앷?" },
+      oil_clarity: { chance: 8, desc: "8% ?뺣쪧濡??곸씠??利됱떆 ?댁젣" },
+      oil_eye: { chance: 15, desc: "15% ?뺣쪧濡??곸쓽 怨듦꺽 諛섎뱶???뚰뵾" },
+      oil_demon: { chance: 2, desc: "2% ?뺣쪧濡??쇨꺽?꾩궡(1000% ?誘몄?) 諛쒕룞" },
+      oil_triple_hit: { chance: 5, desc: "5% ?뺣쪧濡?3諛??고? 怨듦꺽 諛쒕룞" },
+      oil_formless: { chance: 3, desc: "3% ?뺣쪧濡????꾩옱 泥대젰 10% 利됱떆 ??컧" }
     };
 
     set((s: any) => {
       const nextConsumables = { ...s.game.consumables, [oilId]: s.game.consumables[oilId] - 1 };
       const updatedWeapons = s.game.ownedWeapons.map((w: any) => {
         if (w.id === itemId) {
-          const detail = oilDetails[oilId] || { chance: 15, desc: "발동 시 특수 효과" };
+          const detail = oilDetails[oilId] || { chance: 15, desc: "諛쒕룞 ???뱀닔 ?④낵" };
           return {
             ...w,
             oilEffect: {
@@ -3544,14 +3563,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             }
           };
         }
-        // [마이그레이션] 기존 천마유/삼연유 아이템들 수치 최신화
+        // [留덉씠洹몃젅?댁뀡] 湲곗〈 泥쒕쭏???쇱뿰???꾩씠?쒕뱾 ?섏튂 理쒖떊??
         if (w.oilEffect?.key === "oil_demon") {
           return {
             ...w,
             oilEffect: {
               ...w.oilEffect,
               chance: 2,
-              label: "천마유: [천마] 공격 시 2% 확률로 일격필살(1000% 대미지) 발동"
+              label: "泥쒕쭏?? [泥쒕쭏] 怨듦꺽 ??2% ?뺣쪧濡??쇨꺽?꾩궡(1000% ?誘몄?) 諛쒕룞"
             }
           };
         }
@@ -3561,7 +3580,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             oilEffect: {
               ...w.oilEffect,
               chance: 5,
-              label: "삼연유: 5% 확률로 3배 연타 공격 발동"
+              label: "?쇱뿰?? 5% ?뺣쪧濡?3諛??고? 怨듦꺽 諛쒕룞"
             }
           };
         }
@@ -3580,10 +3599,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     get().triggerSave(true);
-    // 튜토리얼 단계 자동 전환은 TutorialOverlay 또는 ForgePanel에서 처리하도록 제거
+    // ?쒗넗由ъ뼹 ?④퀎 ?먮룞 ?꾪솚? TutorialOverlay ?먮뒗 ForgePanel?먯꽌 泥섎━?섎룄濡??쒓굅
 
     get().updateQuestProgress("apply_oil", 1);
-    return { success: true, message: `${oilNames[oilId]} 주입 성공!` };
+    return { success: true, message: `${oilNames[oilId]} 二쇱엯 ?깃났!` };
   },
 
   triggerOilEffects: () => {
@@ -3599,60 +3618,60 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (!w.oilEffect) return;
       const oil = w.oilEffect;
 
-      // 스크린샷 기준 공식 확률 적용
+      // ?ㅽ겕由곗꺑 湲곗? 怨듭떇 ?뺣쪧 ?곸슜
 
-      // 무상유: 3% 확률 적 현재 체력 10% 삭감
+      // 臾댁긽?? 3% ?뺣쪧 ???꾩옱 泥대젰 10% ??컧
       if (oil.key === "oil_formless" && Math.random() < 0.03) buffsToTrigger.push("oil_formless");
 
-      // 삼연유: 5% 확률 3연타
+      // ?쇱뿰?? 5% ?뺣쪧 3?고?
       if (oil.key === "oil_triple_hit" && Math.random() < 0.05) {
         hitCount = 3;
         buffsToTrigger.push("oil_triple_hit");
       }
 
-      // 천마유: 2% 확률로 1000% 대미지
+      // 泥쒕쭏?? 2% ?뺣쪧濡?1000% ?誘몄?
       if (oil.key === "oil_demon" && Math.random() < 0.02) buffsToTrigger.push("oil_demon");
 
-      // 파천유(치명3배): 2%
+      // ?뚯쿇??移섎챸3諛?: 2%
       if (oil.key === "oil_crit_3" && Math.random() < 0.02) buffsToTrigger.push("oil_crit_3");
 
-      // 광폭유(공격3배): 2%
+      // 愿묓룺??怨듦꺽3諛?: 2%
       if (oil.key === "oil_atk_3" && Math.random() < 0.02) buffsToTrigger.push("oil_atk_3");
 
-      // 무영유(회피3배): 5%
+      // 臾댁쁺???뚰뵾3諛?: 5%
       if (oil.key === "oil_eva_3" && Math.random() < 0.05) buffsToTrigger.push("oil_eva_3");
 
-      // 강철유(피해감소 50%): 7%
+      // 媛뺤쿋???쇳빐媛먯냼 50%): 7%
       if (oil.key === "oil_def_3" && Math.random() < 0.07) buffsToTrigger.push("oil_def_3");
 
-      // 반탄유(200% 반사): 7%
+      // 諛섑깂??200% 諛섏궗): 7%
       if (oil.key === "oil_reflect" && Math.random() < 0.07) buffsToTrigger.push("oil_reflect");
 
-      // 질풍유(공속 2배): 5%
+      // 吏덊뭾??怨듭냽 2諛?: 5%
       if (oil.key === "oil_speed_3" && Math.random() < 0.05) buffsToTrigger.push("oil_speed_3");
 
-      // 기연유: 5%
+      // 湲곗뿰?? 5%
       if (oil.key === "oil_luck_3" && Math.random() < 0.05) buffsToTrigger.push("oil_luck_3");
 
-      // 뇌전유: 5% 확률로 500% 대미지 + 기절
+      // ?뚯쟾?? 5% ?뺣쪧濡?500% ?誘몄? + 湲곗젅
       if (oil.key === "oil_thunder" && Math.random() < 0.05) buffsToTrigger.push("oil_thunder");
 
-      // 만독유: 5% 확률 적 방어력 50% 감소
+      // 留뚮룆?? 5% ?뺣쪧 ??諛⑹뼱??50% 媛먯냼
       if (oil.key === "oil_poison" && Math.random() < 0.05) buffsToTrigger.push("oil_poison");
 
-      // 혈염유: 5% 확률 출혈
+      // ?덉뿼?? 5% ?뺣쪧 異쒗삁
       if (oil.key === "oil_bleed" && Math.random() < 0.05) buffsToTrigger.push("oil_bleed");
 
-      // 금강유: 5% 확률 5초 무적
+      // 湲덇컯?? 5% ?뺣쪧 5珥?臾댁쟻
       if (oil.key === "oil_vajra" && Math.random() < 0.05) buffsToTrigger.push("oil_vajra");
 
-      // 흡성유: 5% 확률 50% 흡혈
+      // ?≪꽦?? 5% ?뺣쪧 50% ?≫삁
       if (oil.key === "oil_vampire" && Math.random() < 0.05) buffsToTrigger.push("oil_vampire");
 
-      // 영안유: 15% 확률로 적 공격 회피
+      // ?곸븞?? 15% ?뺣쪧濡???怨듦꺽 ?뚰뵾
       if (oil.key === "oil_eye" && Math.random() < 0.15) buffsToTrigger.push("oil_eye");
 
-      // 청명유: 8% 확률 즉시 회복
+      // 泥?챸?? 8% ?뺣쪧 利됱떆 ?뚮났
       if (oil.key === "oil_clarity" && Math.random() < 0.08) {
         buffsToTrigger.push("oil_clarity");
       }
@@ -3706,7 +3725,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const skBase = game.learnedSkills.find((s: any) => s.name === name);
     if (!skBase) return;
 
-    // 도감에서 원본 데이터 가져오기 (타입 판별 정확도 향상)
+    // ?꾧컧?먯꽌 ?먮낯 ?곗씠??媛?몄삤湲?(????먮퀎 ?뺥솗???μ긽)
     const sk = MARTIAL_COMPENDIUM.find(m => m.name === name && m.factionName === game.faction) || skBase;
 
     const mpCost = sk.mpCost || 50;
@@ -3721,8 +3740,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }));
 
-    // 보법/신법 계열인 경우 버프 트리거 (이름에 '보'나 '신법'이 포함된 경우도 포함하여 어택 로직 완전 차단)
-    const isMovement = (sk as any).skillType === "movement" || (sk as any).type === "movement" || (sk as any).category === "movement" || name.includes("보") || name.includes("신법");
+    // 蹂대쾿/?좊쾿 怨꾩뿴??寃쎌슦 踰꾪봽 ?몃━嫄?(?대쫫??'蹂???'?좊쾿'???ы븿??寃쎌슦???ы븿?섏뿬 ?댄깮 濡쒖쭅 ?꾩쟾 李⑤떒)
+    const isMovement = (sk as any).skillType === "movement" || (sk as any).type === "movement" || (sk as any).category === "movement" || name.includes("蹂?) || name.includes("?좊쾿");
 
     if (isMovement) {
       get().triggerMovementBuff();
@@ -3739,13 +3758,13 @@ export const useGameStore = create<GameState>((set, get) => ({
               lastEffect: "DODGE",
               skillEffect: {
                 name: name,
-                description: buffData ? buffData.description : "보법 발동",
+                description: buffData ? buffData.description : "蹂대쾿 諛쒕룞",
                 timeLeft: buffData ? buffData.duration : 3.0
               }
             }
           }
         }));
-        // 1초 후 이펙트 제거
+        // 1珥????댄럺???쒓굅
         setTimeout(() => {
           set((s: any) => ({
             game: {
@@ -3758,48 +3777,48 @@ export const useGameStore = create<GameState>((set, get) => ({
       return;
     }
 
-    // 공격 무공인 경우 대미지 적용 및 연마유 효과 트리거
+    // 怨듦꺽 臾닿났??寃쎌슦 ?誘몄? ?곸슜 諛??곕쭏???④낵 ?몃━嫄?
     if (game.masterDuel.isPlaying) {
       const oilRes = get().triggerOilEffects();
       const faction = game.faction;
       const masterDuel = game.masterDuel;
       const fState = { ...(masterDuel.factionState || {}) };
 
-      // 1. 기초 공격력 및 스탯 보정
+      // 1. 湲곗큹 怨듦꺽??諛??ㅽ꺈 蹂댁젙
       const statMult = fState.statMult || 1.0;
       let playerAtk = get().getTotalAttack() * statMult;
       let playerCritRate = get().getTotalCritRate();
       let playerCritDmg = get().getTotalCritDmg() / 100;
 
-      // 2. 무공 자체 배수 및 성급(Refinement) 보정
+      // 2. 臾닿났 ?먯껜 諛곗닔 諛??깃툒(Refinement) 蹂댁젙
       const learned = game.martialArtsSkills.find(ms => ms.skillId === (sk as any).id || ms.skillId === (sk as any).skillId);
       const stars = learned?.stars || 0;
       const refineMult = getRefineBonusMultiplier(stars);
       const baseMultiplier = sk.multiplier || 3;
       const totalMultiplier = baseMultiplier * refineMult;
 
-      // 3. 방어력 및 관통 보정
+      // 3. 諛⑹뼱??諛?愿??蹂댁젙
       let rivalDef = masterDuel.rivalDef || 0;
-      if (faction === "남궁세가") rivalDef = 0; // 남궁세가: 무공 시 방어 무시
-      if (faction === "일월신교") rivalDef *= 0.5;
+      if (faction === "?④턿?멸?") rivalDef = 0; // ?④턿?멸?: 臾닿났 ??諛⑹뼱 臾댁떆
+      if (faction === "?쇱썡?좉탳") rivalDef *= 0.5;
       const defenseMultiplier = 100 / (100 + Math.max(0, rivalDef));
 
       let dmg = playerAtk * totalMultiplier * defenseMultiplier;
 
-      // 4. 치명타 판정
-      if (faction === "청성파") playerCritRate += (fState.nextCritBonus || 0);
+      // 4. 移섎챸? ?먯젙
+      if (faction === "泥?꽦??) playerCritRate += (fState.nextCritBonus || 0);
       let isCrit = Math.random() < playerCritRate / 100;
       if (isCrit) dmg *= playerCritDmg;
 
-      // 5. 문파별 특수 보정
+      // 5. 臾명뙆蹂??뱀닔 蹂댁젙
       let damageMultiplier = 1.0;
-      if (faction === "천마신교") {
-        damageMultiplier *= 5.0; // 천마신교: 무공 발동 시 피해 5배
-        fState.nextCritBonus = 20; // 5초간 치명타율 +20% (간략화)
+      if (faction === "泥쒕쭏?좉탳") {
+        damageMultiplier *= 5.0; // 泥쒕쭏?좉탳: 臾닿났 諛쒕룞 ???쇳빐 5諛?
+        fState.nextCritBonus = 20; // 5珥덇컙 移섎챸???+20% (媛꾨왂??
       }
-      if (faction === "하북팽가") damageMultiplier *= 1.5; // 하북팽가: 무공 피해 증가
+      if (faction === "?섎턿?쎄?") damageMultiplier *= 1.5; // ?섎턿?쎄?: 臾닿났 ?쇳빐 利앷?
 
-      // 6. 연마유 특수 효과
+      // 6. ?곕쭏???뱀닔 ?④낵
       let ohkMult = 1;
       if (oilRes.buffsTriggered.includes("oil_thunder")) ohkMult += 5;
       if (oilRes.buffsTriggered.includes("oil_demon")) ohkMult += 10;
@@ -3810,7 +3829,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const nextBuffs = { ...(s.game.oilBuffs || {}) };
         const nextMD = { ...s.game.masterDuel };
 
-        // 연마유 버프 적용 (스킬에서도 동일하게 버프 발생)
+        // ?곕쭏??踰꾪봽 ?곸슜 (?ㅽ궗?먯꽌???숈씪?섍쾶 踰꾪봽 諛쒖깮)
         oilRes.buffsTriggered.forEach((k: string) => {
           if (k === "oil_thunder") {
             nextMD.isStunned = true;
@@ -3912,7 +3931,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         nextCombat.phase = "finisher";
         nextCombat.dialogue = {
           actor: "player",
-          text: "받아라. 오늘이 네 마지막 밤이다.",
+          text: "諛쏆븘?? ?ㅻ뒛????留덉?留?諛ㅼ씠??",
           duration: 1800
         };
       }
@@ -4049,7 +4068,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         nextCombat.counterCooldownRemainSec = stageConfig.counterCooldownSec;
         nextCombat.dialogue = {
           actor: "enemy",
-          text: "하찮은 수로는 날 꺾지 못한다!",
+          text: "?섏갖? ?섎줈????爰얠? 紐삵븳??",
           duration: 1800
         };
         setTimeout(() => {
@@ -4088,12 +4107,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Firebase Firestore에 직접 저장
+      // Firebase Firestore??吏곸젒 ???
       await saveGameToFirebase(user.id, get().game);
-      console.log("클라우드(Firebase) 동기화 성공");
+      console.log("?대씪?곕뱶(Firebase) ?숆린???깃났");
     } catch (e) {
-      console.warn("클라우드 동기화 중 에러 발생:", e);
-      get().triggerSave(true); // 실패 시 로컬에라도 저장
+      console.warn("?대씪?곕뱶 ?숆린??以??먮윭 諛쒖깮:", e);
+      get().triggerSave(true); // ?ㅽ뙣 ??濡쒖뺄?먮씪?????
     }
   },
   syncFromCloud: async () => {
@@ -4106,48 +4125,48 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (cloudData && cloudData.realm) {
         set((s: any) => ({ game: { ...s.game, ...cloudData, isInitialized: true } }));
         saveGame(get().game);
-        console.log("클라우드(Firebase) 데이터 로드 성공");
+        console.log("?대씪?곕뱶(Firebase) ?곗씠??濡쒕뱶 ?깃났");
       } else {
-        // 클라우드에 데이터가 없는 경우 (신규 유저)
-        // 로컬 데이터가 이미 있다면(경지나 처치수가 있다면) 초기화하지 않고 클라우드로 업로드 시도
+        // ?대씪?곕뱶???곗씠?곌? ?녿뒗 寃쎌슦 (?좉퇋 ?좎?)
+        // 濡쒖뺄 ?곗씠?곌? ?대? ?덈떎硫?寃쎌???泥섏튂?섍? ?덈떎硫? 珥덇린?뷀븯吏 ?딄퀬 ?대씪?곕뱶濡??낅줈???쒕룄
         const currentLocal = get().game;
-        if (currentLocal.totalDummyKills > 0 || currentLocal.realm !== "필부") {
-          console.log("클라우드 데이터 없음 - 현재 로컬 데이터를 클라우드에 보존합니다.");
+        if (currentLocal.totalDummyKills > 0 || currentLocal.realm !== "?꾨?") {
+          console.log("?대씪?곕뱶 ?곗씠???놁쓬 - ?꾩옱 濡쒖뺄 ?곗씠?곕? ?대씪?곕뱶??蹂댁〈?⑸땲??");
           await saveGameToFirebase(user.id, currentLocal);
         } else {
-          console.log("신규 유저로 감지되어 초기화합니다.");
+          console.log("?좉퇋 ?좎?濡?媛먯??섏뼱 珥덇린?뷀빀?덈떎.");
           set((s: any) => ({ game: { ...defaultGameData, isInitialized: true } }));
           saveGame(get().game);
         }
       }
     } catch (e) {
-      console.warn("데이터 불러오기 중 에러 발생:", e);
+      console.warn("?곗씠??遺덈윭?ㅺ린 以??먮윭 諛쒖깮:", e);
     } finally {
       set({ isSyncingFromCloud: false });
     }
   }, resetGame: async () => {
     if (typeof window !== "undefined") {
-      // 1. 클라우드 데이터 초기화 시도
+      // 1. ?대씪?곕뱶 ?곗씠??珥덇린???쒕룄
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await saveGameToFirebase(user.id, defaultGameData);
-          console.log("클라우드 데이터 초기화 성공");
+          console.log("?대씪?곕뱶 ?곗씠??珥덇린???깃났");
         }
       } catch (e) {
-        console.error("클라우드 초기화 실패:", e);
+        console.error("?대씪?곕뱶 珥덇린???ㅽ뙣:", e);
       }
 
-      // 2. 메모리 상태 초기화
+      // 2. 硫붾え由??곹깭 珥덇린??
       set({ game: { ...defaultGameData, isInitialized: true } });
 
-      // 3. 모든 버전의 세이브 키 삭제
+      // 3. 紐⑤뱺 踰꾩쟾???몄씠釉?????젣
       for (let i = 1; i <= 20; i++) {
         localStorage.removeItem(`murimbook-game-save-v${i}`);
       }
       localStorage.removeItem("murimbook-game-save");
 
-      // 4. 페이지 새로고침
+      // 4. ?섏씠吏 ?덈줈怨좎묠
       setTimeout(() => {
         window.location.reload();
       }, 300);
@@ -4304,17 +4323,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       const enemy = t.enemy!;
       const now = Date.now();
 
-      // 콤보 로직 (1.5초 이내 탭 시 콤보 유지)
+      // 肄ㅻ낫 濡쒖쭅 (1.5珥??대궡 ????肄ㅻ낫 ?좎?)
       let nextCombo = (now - t.lastTapTime < 1500) ? t.combo + 1 : 1;
 
-      // 무한탑 능력치 정상화: Baseline에 현재 층수 가중치 부여
+      // 臾댄븳???λ젰移??뺤긽?? Baseline???꾩옱 痢듭닔 媛以묒튂 遺??
       let atk = 2500 + (t.currentFloor * 200);
       let critRate = 15;
       let critDmg = 2.0;
       let vamp = 0;
       let mpRecover = 0;
 
-      // 1. 버프 효과 적용
+      // 1. 踰꾪봽 ?④낵 ?곸슜
       t.activeBuffs.forEach((b: any) => {
         if (b.bonus.atk) atk *= b.bonus.atk;
         if (b.bonus.critRate) critRate += b.bonus.critRate;
@@ -4322,7 +4341,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (b.penalty.atk) atk *= b.penalty.atk;
       });
 
-      // 2. 유물 효과 적용 (Artifacts)
+      // 2. ?좊Ъ ?④낵 ?곸슜 (Artifacts)
       let extraDmg = 0;
       t.artifacts.forEach((art: any) => {
         if (art.effect.type === "LIFE_STEAL") vamp += art.effect.value;
@@ -4333,14 +4352,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
 
       if (Math.random() < (enemy.eva - (enemy.ignoreEva || 0)) / 100) {
-        return { game: { ...s.game, tower: { ...t, lastTapTime: now, combo: nextCombo, lastReward: "빗나감!" } } };
+        return { game: { ...s.game, tower: { ...t, lastTapTime: now, combo: nextCombo, lastReward: "鍮쀫굹媛?" } } };
       }
 
       const defenseMultiplier = 100 / (100 + enemy.def);
       let isCrit = Math.random() < (critRate - (enemy.critRes || 0)) / 100;
       let damage = Math.floor(atk * defenseMultiplier * (isCrit ? critDmg : 1)) + (bonusDmg || 0) + extraDmg;
 
-      if (enemy.traits.includes("피해 상한")) {
+      if (enemy.traits.includes("?쇳빐 ?곹븳")) {
         damage = Math.min(damage, enemy.maxHp * 0.1);
       }
 
@@ -4365,7 +4384,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         let pendingBuffs: any = null;
         let pendingArtifacts: any = null;
 
-        // 보상 분기: 10층마다 유물, 5층마다 버프, 그 외 랜덤 이벤트
+        // 蹂댁긽 遺꾧린: 10痢듬쭏???좊Ъ, 5痢듬쭏??踰꾪봽, 洹????쒕뜡 ?대깽??
         if (floor % 10 === 0) {
           const luck = get().getTotalLuck();
           const getWeight = (art: any) => {
@@ -4416,7 +4435,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               eventRoom: event,
               pendingBuffChoices: pendingBuffs,
               pendingArtifactChoices: pendingArtifacts,
-              lastReward: `제 ${floor}층 돌파! 금화 +${goldReward.toLocaleString()}`,
+              lastReward: `??${floor}痢??뚰뙆! 湲덊솕 +${goldReward.toLocaleString()}`,
               lastClearFloor: floor
             }
           }
@@ -4447,17 +4466,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       const enemy = t.enemy!;
       const theme = getTowerTheme(t.currentFloor);
 
-      // 실드 타이머 처리
+      // ?ㅻ뱶 ??대㉧ 泥섎━
       const nextShieldTimer = Math.max(0, (t.shieldTimer || 0) - dt);
 
-      // 환경 대미지/효과 적용 (dt마다 누적)
+      // ?섍꼍 ?誘몄?/?④낵 ?곸슜 (dt留덈떎 ?꾩쟻)
       let envDmg = 0;
       if (theme.effect === "burn" && nextShieldTimer <= 0) envDmg = t.maxHp * 0.005 * dt;
 
       const attackTimer = (s.towerAttackTimer || 0) + dt;
       if (attackTimer < 1.5) {
         if (envDmg > 0) {
-          const nHp = Math.max(1, t.hp - envDmg); // 환경 대미지로는 죽지 않음
+          const nHp = Math.max(1, t.hp - envDmg); // ?섍꼍 ?誘몄?濡쒕뒗 二쎌? ?딆쓬
           return { towerAttackTimer: attackTimer, game: { ...s.game, tower: { ...t, hp: nHp } } };
         }
         return { towerAttackTimer: attackTimer };
@@ -4473,10 +4492,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (b.penalty.dmgTaken) finalDmg *= b.penalty.dmgTaken;
       });
 
-      // 실드 활성화 중이면 대미지 무효
+      // ?ㅻ뱶 ?쒖꽦??以묒씠硫??誘몄? 臾댄슚
       if (nextShieldTimer > 0) finalDmg = 0;
 
-      // 실드 유물(황금 갑주) 트리거 체크
+      // ?ㅻ뱶 ?좊Ъ(?⑷툑 媛묒＜) ?몃━嫄?泥댄겕
       let triggerShield = false;
       const shieldArt = t.artifacts.find((a: any) => a.effect.type === "SHIELD");
       if (shieldArt && nextShieldTimer <= 0 && finalDmg > 0) {
@@ -4493,19 +4512,19 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       let nextHp = Math.max(0, t.hp - finalDmg - envDmg);
       let reward = t.lastReward;
-      if (triggerShield) reward = "황금 갑주의 기운이 보호막을 형성했습니다!";
+      if (triggerShield) reward = "?⑷툑 媛묒＜??湲곗슫??蹂댄샇留됱쓣 ?뺤꽦?덉뒿?덈떎!";
 
-      // 부활 유물(만년삼) 체크
+      // 遺???좊Ъ(留뚮뀈?? 泥댄겕
       if (nextHp <= 0) {
         const artifact = t.artifacts.find((a: any) => a.effect.type === "INSTANT_HP");
         if (artifact) {
           nextHp = t.maxHp;
-          // 한 번 쓰면 제거? 혹은 쿨다운? 여기서는 층당 1회이므로 일단 artifacts에서 해당 층에서만 쓸 수 있게 flag 처리하거나...
-          // 여기서는 간단하게 artifacts에서 제거하는 것으로 구현 (소모품성 유물)
+          // ??踰??곕㈃ ?쒓굅? ?뱀? 荑⑤떎?? ?ш린?쒕뒗 痢듬떦 1?뚯씠誘濡??쇰떒 artifacts?먯꽌 ?대떦 痢듭뿉?쒕쭔 ?????덇쾶 flag 泥섎━?섍굅??..
+          // ?ш린?쒕뒗 媛꾨떒?섍쾶 artifacts?먯꽌 ?쒓굅?섎뒗 寃껋쑝濡?援ы쁽 (?뚮え?덉꽦 ?좊Ъ)
           const nextArtifacts = t.artifacts.filter((a: any) => a.id !== artifact.id);
           return {
             towerAttackTimer: 0,
-            game: { ...s.game, lastActivityHeartbeat: now, tower: { ...t, hp: nextHp, artifacts: nextArtifacts, lastReward: "만년삼의 기운으로 부활했습니다!" } }
+            game: { ...s.game, lastActivityHeartbeat: now, tower: { ...t, hp: nextHp, artifacts: nextArtifacts, lastReward: "留뚮뀈?쇱쓽 湲곗슫?쇰줈 遺?쒗뻽?듬땲??" } }
           };
         }
       }
@@ -4523,7 +4542,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             shieldTimer: shieldDuration,
             isInside: !isDead,
             enemy: isDead ? null : enemy,
-            lastReward: isDead ? "도전 종료 (사망)" : reward
+            lastReward: isDead ? "?꾩쟾 醫낅즺 (?щ쭩)" : reward
           }
         }
       };
@@ -4557,16 +4576,16 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       if (type === "REST") {
         nextHp = Math.min(t.maxHp, nextHp + t.maxHp * 0.3);
-        nextReward = "휴식을 취해 체력을 30% 회복했습니다.";
+        nextReward = "?댁떇??痍⑦빐 泥대젰??30% ?뚮났?덉뒿?덈떎.";
       } else if (type === "BUFF") {
-        nextReward = "특별한 기운을 받아 공격력이 일시적으로 상승합니다.";
+        nextReward = "?밸퀎??湲곗슫??諛쏆븘 怨듦꺽?μ씠 ?쇱떆?곸쑝濡??곸듅?⑸땲??";
       } else if (type === "DANGER") {
         nextHp = Math.max(1, nextHp - t.maxHp * 0.2);
-        nextReward = "위험한 함정에 빠졌지만 기연을 얻었습니다.";
+        nextReward = "?꾪뿕???⑥젙??鍮좎죱吏留?湲곗뿰???살뿀?듬땲??";
       } else if (type === "MERCHANT") {
-        // 비밀 상인 조우 시 보상 (체력 풀 회복 등)
+        // 鍮꾨? ?곸씤 議곗슦 ??蹂댁긽 (泥대젰 ? ?뚮났 ??
         nextHp = t.maxHp;
-        nextReward = "비밀 상인을 만나 비약을 마시고 체력을 모두 회복했습니다.";
+        nextReward = "鍮꾨? ?곸씤??留뚮굹 鍮꾩빟??留덉떆怨?泥대젰??紐⑤몢 ?뚮났?덉뒿?덈떎.";
       }
 
       const nextEnemy = generateTowerEnemy(t.currentFloor);
@@ -4684,19 +4703,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   visitGiru: () => {
     set((s: any) => ({ game: { ...s.game, activeTab: "giru" } }));
   },
-  interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string }) => {
+  interactGiru: (npcId: string, actionId: string, extra?: { giftId?: string, infoTier?: "low" | "mid" | "high" | "special" }) => {
     const { game } = get();
 
     // --- Gift Action Special Handling ---
     if (actionId === "gift") {
       const giftId = extra?.giftId;
-      if (!giftId) return { success: false, message: "선물을 선택해주세요." };
+      if (!giftId) return { success: false, message: "?좊Ъ???좏깮?댁＜?몄슂." };
 
       const giftItem = GIRU_GIFT_ITEMS.find(g => g.id === giftId);
-      if (!giftItem) return { success: false, message: "존재하지 않는 선물입니다." };
+      if (!giftItem) return { success: false, message: "議댁옱?섏? ?딅뒗 ?좊Ъ?낅땲??" };
 
       if ((game.giruGifts?.[giftId] || 0) <= 0) {
-        return { success: false, message: "해당 선물을 가지고 있지 않습니다." };
+        return { success: false, message: "?대떦 ?좊Ъ??媛吏怨??덉? ?딆뒿?덈떎." };
       }
 
       const npcData = GIRU_NPCS.find(n => n.id === npcId);
@@ -4728,31 +4747,91 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         success: true,
         message: isPreferred
-          ? `${npcData?.name}님이 선물을 매우 기뻐하며 받습니다! (호감도 +${favorGain})`
-          : `${npcData?.name}님에게 선물을 주었습니다. (호감도 +${favorGain})`
+          ? `${npcData?.name}?섏씠 ?좊Ъ??留ㅼ슦 湲곕퍙?섎ŉ 諛쏆뒿?덈떎! (?멸컧??+${favorGain})`
+          : `${npcData?.name}?섏뿉寃??좊Ъ??二쇱뿀?듬땲?? (?멸컧??+${favorGain})`
       };
     }
 
     const action = GIRU_ACTIONS.find(a => a.id === actionId);
-    if (!action) return { success: false, message: "잘못된 요청입니다." };
+    if (!action) return { success: false, message: "?섎せ???붿껌?낅땲??" };
 
-    // 밤 행동 제한 체크
+    // 諛??됰룞 ?쒗븳 泥댄겕
     const limits = game.nightLimits || { giluActionLeft: 5, npcTalkCount: {}, infoTradeUsed: false };
 
     if (limits.giluActionLeft <= 0) {
-      return { success: false, message: "오늘 밤에는 더 이상 월향루에서 시간을 보낼 수 없습니다." };
+      return { success: false, message: "?ㅻ뒛 諛ㅼ뿉?????댁긽 ?뷀뼢猷⑥뿉???쒓컙??蹂대궪 ???놁뒿?덈떎." };
     }
 
     if (actionId === "info" && limits.infoTradeUsed) {
-      return { success: false, message: "정보 거래는 하룻밤에 한 번만 가능합니다." };
+      return { success: false, message: "?뺣낫 嫄곕옒???섎；諛ㅼ뿉 ??踰덈쭔 媛?ν빀?덈떎." };
+    }
+
+    if (actionId === "info" && npcId === "yeonhwa") {
+      const tier = extra?.infoTier || "low";
+      const conf = INFO_TIER_CONFIG[tier];
+      const rBonus = REALM_BONUS_CONFIG[game.realm || "?꾨?"] || { priceMult: 1 };
+      const actualCost = Math.floor(conf.basePrice * rBonus.priceMult * getFavorDiscount(favor));
+
+      if (game.coins < actualCost) return { success: false, message: "湲덉쟾??遺議깊빀?덈떎." };
+
+      set((s: any) => {
+        // Create NextDayEvent based on tier
+        const areas = ["?숈뼇", "?μ븞", "??＜", "?깅룄", "媛쒕큺", "?좎＜"];
+        const area = areas[Math.floor(Math.random() * areas.length)];
+        const nextDayEvent: any = {
+          type: "GIRU_INFO_EVENT",
+          tierId: tier,
+          tierName: tier === "low" ? "?섍툒 ?뺣낫" : tier === "mid" ? "以묎툒 ?뺣낫" : tier === "high" ? "怨좉툒 ?뺣낫" : "?밴툒 ?뺣낫",
+          targetArea: area,
+          isUsed: false,
+          rewards: {}
+        };
+
+        // 蹂댁긽 ?ㅼ젙 (?ъ슜??媛?대뱶 諛섏쁺)
+        const rewards: any = {};
+        if (tier === "low") {
+          rewards.gold = Math.floor(10000 * Math.random() + 5000);
+          rewards.advancedMaterials = 2;
+          rewards.manualFragments = { manual_fragment_common: 10 };
+          nextDayEvent.clueText = `?댁씪 ${area} 吏??뿉???섍툒 鍮꾧툒???⑥꽌瑜?李얠쓣 ???덉쓣 寃껋엯?덈떎.`;
+        } else if (tier === "mid") {
+          rewards.advancedMaterials = 5;
+          rewards.factionBonds = { [game.faction || "臾댁냼??]: 1 };
+          rewards.manualFragments = { manual_fragment_rare: 15 };
+          nextDayEvent.clueText = `?댁씪 ${area} 吏??뿉??臾명뙆 鍮꾧툒 議곌컖怨??몄뿰???ㅻ쭏由ш? 諛쒓껄???덉젙?낅땲??`;
+        } else if (tier === "high") {
+          rewards.manualFragments = { manual_fragment_epic: 30 };
+          rewards.legendaryGearFragments = 2;
+          rewards.wisdom = 50;
+          nextDayEvent.clueText = `?댁씪 ${area} 吏??뿉???ш? 鍮꾧툒 議곌컖怨??꾩꽕?곸씤 ?λ퉬???뚰렪???섑???寃껋엯?덈떎.`;
+        } else if (tier === "special") {
+          rewards.manualFragments = { manual_fragment_legendary: 20 };
+          rewards.divineWeaponShards = 1;
+          nextDayEvent.clueText = `?댁씪 ${area} 吏??뿉 ?꾩꽕?곸씤 蹂댁뒪? ?좊퀝?닿린???됰갑???쒕윭??寃껋엯?덈떎.`;
+        }
+        nextDayEvent.rewards = rewards;
+
+        return {
+          game: {
+            ...s.game,
+            coins: s.game.coins - actualCost,
+            nextDayEvent: nextDayEvent,
+            npcFavors: { ...s.game.npcFavors, [npcId]: Math.min(100, (s.game.npcFavors[npcId] || 0) + 5) },
+            nightLimits: { ...s.game.nightLimits, giluActionLeft: s.game.nightLimits.giluActionLeft - 1, infoTradeUsed: true }
+          }
+        };
+      });
+
+      get().triggerSave(true);
+      return { success: true, message: "鍮꾨? ?뺣낫瑜?援щℓ?덉뒿?덈떎. ?댁씪??湲곕??섏꽭??" };
     }
 
     const talkCount = (limits.npcTalkCount && limits.npcTalkCount[npcId]) || 0;
     if (actionId === "talk" && talkCount >= 2) {
-      return { success: false, message: "이 NPC와는 오늘 밤 충분히 대화를 나눴습니다." };
+      return { success: false, message: "??NPC????ㅻ뒛 諛?異⑸텇????붾? ?섎댋?듬땲??" };
     }
 
-    if (game.coins < action.cost) return { success: false, message: "금전이 부족합니다." };
+    if (game.coins < action.cost) return { success: false, message: "湲덉쟾??遺議깊빀?덈떎." };
 
     const npcEvents = GIRU_EVENTS.filter(e => e.npcId === npcId && e.action === actionId);
     const favor = (game.npcFavors && game.npcFavors[npcId]) || 0;
@@ -4784,14 +4863,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         let nextFragments = { ...(s.game.manualFragments || {}) };
         let nextClaimed = { ...claimed };
 
-        // 100 호감도 보상
+        // 100 ?멸컧??蹂댁긽
         if (nextFavors[npcId] >= 100 && !claimed[npcId]) {
           const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
           pendingReward = {
-            title: `[호감] ${npcName}의 증표`,
+            title: `[?멸컧] ${npcName}??利앺몴`,
             items: [
-              { icon: "🎁", name: "패왕의 보물상자", count: 2, color: "#ffd700" },
-              { icon: "📜", name: "신화 비급 조각", count: 50, color: "#ff3e3e", slotName: "재료" }
+              { icon: "?럞", name: "?⑥솗??蹂대Ъ?곸옄", count: 2, color: "#ffd700" },
+              { icon: "?뱶", name: "?좏솕 鍮꾧툒 議곌컖", count: 50, color: "#ff3e3e", slotName: "?щ즺" }
             ]
           };
           nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 2;
@@ -4813,7 +4892,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         };
       });
       get().triggerSave(true);
-      return { success: true, message: "대화를 나눴습니다." };
+      return { success: true, message: "??붾? ?섎댋?듬땲??" };
     }
 
     const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
@@ -4823,7 +4902,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextFavors = { ...(get().game.npcFavors || {}) };
     nextFavors[npcId] = (nextFavors[npcId] || 0) + gainedFavor;
 
-    // 호감도 보상 체크 (100점 달성 시)
+    // ?멸컧??蹂댁긽 泥댄겕 (100???ъ꽦 ??
     let pendingReward = get().game.pendingReward;
     const claimed = get().game.giruRewardsClaimed || {};
     let nextClaimed = { ...claimed };
@@ -4833,10 +4912,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (nextFavors[npcId] >= 100 && !claimed[npcId]) {
       const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
       pendingReward = {
-        title: `[호감] ${npcName}의 증표`,
+        title: `[?멸컧] ${npcName}??利앺몴`,
         items: [
-          { icon: "🎁", name: "패왕의 보물상자", count: 2, color: "#ffd700" },
-          { icon: "📜", name: "신화 비급 조각", count: 50, color: "#ff3e3e", slotName: "재료" }
+          { icon: "?럞", name: "?⑥솗??蹂대Ъ?곸옄", count: 2, color: "#ffd700" },
+          { icon: "?뱶", name: "?좏솕 鍮꾧툒 議곌컖", count: 50, color: "#ff3e3e", slotName: "?щ즺" }
         ]
       };
       nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 2;
@@ -4885,7 +4964,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const tier = (extra as any).infoTier;
         const faction = s.game.faction;
         
-        let rivalName = "신비한 고수";
+        let rivalName = "?좊퉬??怨좎닔";
         let rivalHpMult = 1.0;
         let rivalAtkMult = 1.0;
         let rivalRewards: any = {};
@@ -4895,33 +4974,33 @@ export const useGameStore = create<GameState>((set, get) => ({
         const lowRewardScale = 1 + (realmIdx * 0.2);
 
         if (tier === "low") {
-          rivalName = "월향루 무뢰배 대장";
+          rivalName = "?뷀뼢猷?臾대ː諛????;
           rivalHpMult = 1.5; rivalAtkMult = 1.2;
           rivalRewards = { manualFragments: { "manual_fragment_common": 5 } };
-          infoMsg = "\n[기연] 월향루 근처에 무뢰배 대장이 나타났습니다!";
+          infoMsg = "\n[湲곗뿰] ?뷀뼢猷?洹쇱쿂??臾대ː諛???μ씠 ?섑??ъ뒿?덈떎!";
         } else if (tier === "mid") {
-          rivalName = `${faction} 배신자`;
+          rivalName = `${faction} 諛곗떊??;
           rivalHpMult = 3.0; rivalAtkMult = 1.8;
           rivalRewards = { manualFragments: { "random_faction": 10 } };
-          infoMsg = `\n[기연] ${faction}의 기술을 훔친 배신자가 인근에 숨어들었습니다!`;
+          infoMsg = `\n[湲곗뿰] ${faction}??湲곗닠???붿튇 諛곗떊?먭? ?멸렐???⑥뼱?ㅼ뿀?듬땲??`;
         } else if (tier === "high") {
-          rivalName = "은둔 고수";
+          rivalName = "???怨좎닔";
           rivalHpMult = 6.0; rivalAtkMult = 3.5;
           rivalRewards = { 
             advancedMaterials: Math.floor(5 * lowRewardScale), 
             factionBonds: { [faction]: 1 }, 
             manualFragments: { "random_faction": 25 } 
           };
-          infoMsg = `\n[기연] 소문의 은둔 고수가 강호에 모습을 드러냈습니다!`;
+          infoMsg = `\n[湲곗뿰] ?뚮Ц?????怨좎닔媛 媛뺥샇??紐⑥뒿???쒕윭?덉뒿?덈떎!`;
         } else if (tier === "special") {
-          rivalName = "강호의 전설";
+          rivalName = "媛뺥샇???꾩꽕";
           rivalHpMult = 15.0; rivalAtkMult = 8.0;
           rivalRewards = { 
             advancedMaterials: Math.floor(20 * rewardScale), 
             factionBonds: { [faction]: 3 }, 
             manualFragments: { "all_faction": 10 } 
           };
-          infoMsg = `\n[기연] 전설적인 고수와 대결할 절호의 기회가 생겼습니다!`;
+          infoMsg = `\n[湲곗뿰] ?꾩꽕?곸씤 怨좎닔? ?寃고븷 ?덊샇??湲고쉶媛 ?앷꼈?듬땲??`;
         }
 
         return {
@@ -5064,7 +5143,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       const generateNextLane = (prev: number, count: number) => {
-        // 40% chance to repeat the same lane to create '연타' (spam) clusters
+        // 40% chance to repeat the same lane to create '?고?' (spam) clusters
         if (Math.random() < 0.4) return prev;
         return Math.floor(Math.random() * count);
       };
@@ -5119,13 +5198,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const { activeTab, isMinigameActive, masterDuel, tower, lastActivityHeartbeat } = s.game;
       
-      // 1. 실제 시간 정지가 필요한 상황인지 엄격하게 판단 (탭 위치 + 플래그 + 하트비트)
+      // 1. ?ㅼ젣 ?쒓컙 ?뺤?媛 ?꾩슂???곹솴?몄? ?꾧꺽?섍쾶 ?먮떒 (???꾩튂 + ?뚮옒洹?+ ?섑듃鍮꾪듃)
       const isHeartbeatActive = (Date.now() - (lastActivityHeartbeat || 0)) < 10000; 
       const isActuallyPlayingMinigame = isMinigameActive && activeTab === "inn" && isHeartbeatActive;
       const isActuallyInMasterDuel = masterDuel.isPlaying && activeTab === "master" && isHeartbeatActive;
       const isActuallyInTower = tower?.isInside && activeTab === "tower" && isHeartbeatActive;
 
-      // 2. 다른 탭에 있는데 플래그가 남아있는 경우 (Stuck) 복구 로직 변수 계산
+      // 2. ?ㅻⅨ ??뿉 ?덈뒗???뚮옒洹멸? ?⑥븘?덈뒗 寃쎌슦 (Stuck) 蹂듦뎄 濡쒖쭅 蹂??怨꾩궛
       let nextIsMini = isMinigameActive;
       let nextMasterIsPlaying = masterDuel.isPlaying;
       let nextTowerIsInside = tower?.isInside;
@@ -5141,7 +5220,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         nextTowerIsInside = (activeTab === "tower" && tower) ? tower.isInside : false;
       }
 
-      // 3. 진짜 플레이 중인 경우에만 중단 (복구 로직이 수행된 경우 반영하여 리턴)
+      // 3. 吏꾩쭨 ?뚮젅??以묒씤 寃쎌슦?먮쭔 以묐떒 (蹂듦뎄 濡쒖쭅???섑뻾??寃쎌슦 諛섏쁺?섏뿬 由ы꽩)
       if (isActuallyPlayingMinigame || isActuallyInMasterDuel || isActuallyInTower) {
         if (!needsRecovery) return s;
         return {
@@ -5154,7 +5233,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         };
       }
 
-      // 4. 시간 흐름 로직 (복구된 플래그와 함께 적용)
+      // 4. ?쒓컙 ?먮쫫 濡쒖쭅 (蹂듦뎄???뚮옒洹몄? ?④퍡 ?곸슜)
       let nextTimeState = s.game.timeState || "day";
       
       let currentTR = s.game.timeRemaining;
@@ -5246,21 +5325,21 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let nextEvent: any;
     if (type === "TREASURE_FORECAST") {
-      const areas = ["낙양", "장안", "항주", "성도"];
+      const areas = ["?숈뼇", "?μ븞", "??＜", "?깅룄"];
       const area = areas[Math.floor(Math.random() * areas.length)];
       nextEvent = {
         type: "TREASURE_FORECAST",
         targetArea: area,
-        clueText: `내일 ${area} 지역에 보물 무뢰배들이 나타날 것입니다.`,
+        clueText: `?댁씪 ${area} 吏??뿉 蹂대Ъ 臾대ː諛곕뱾???섑???寃껋엯?덈떎.`,
         isUsed: false
       };
     } else {
-      const bosses = ["어둠의 검객", "피의 군주", "무영객"];
+      const bosses = ["?대몺??寃媛?, "?쇱쓽 援곗＜", "臾댁쁺媛?];
       const boss = bosses[Math.floor(Math.random() * bosses.length)];
       nextEvent = {
         type: "BOSS_RAID_CLUE",
         bossId: boss,
-        clueText: `내일 보스 [${boss}]의 은신처가 발견될 것입니다.`,
+        clueText: `?댁씪 蹂댁뒪 [${boss}]????좎쿂媛 諛쒓껄??寃껋엯?덈떎.`,
         isUsed: false
       };
     }
@@ -5386,7 +5465,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const findTutorialTargetId = (game: any) => {
       return game.selectedForgeItemId || 
              game.equippedGear?.mainWeapon || 
-             game.ownedWeapons.find((w: any) => w.id?.includes("tutorial") || w.name?.includes("무명철검"))?.id ||
+             game.ownedWeapons.find((w: any) => w.id?.includes("tutorial") || w.name?.includes("臾대챸泥좉?"))?.id ||
              game.ownedWeapons[0]?.id;
     };
 
@@ -5414,12 +5493,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (stepId === "forge_unlock") {
       nextStepId = "goto_forge_click";
       extraState.ownedWeapons = s.game.ownedWeapons.filter((w: any) => 
-        !(w.name?.includes("무명철검")) || w.id === "필부_mainWeapon_tutorial_fixed"
+        !(w.name?.includes("臾대챸泥좉?")) || w.id === "?꾨?_mainWeapon_tutorial_fixed"
       );
-      extraState.equippedWeaponId = s.game.equippedWeaponId?.includes("무명철검") ? null : s.game.equippedWeaponId;
+      extraState.equippedWeaponId = s.game.equippedWeaponId?.includes("臾대챸泥좉?") ? null : s.game.equippedWeaponId;
       extraState.equippedGear = {
         ...s.game.equippedGear,
-        mainWeapon: s.game.equippedGear?.mainWeapon?.name?.includes("무명철검") ? null : s.game.equippedGear?.mainWeapon
+        mainWeapon: s.game.equippedGear?.mainWeapon?.name?.includes("臾대챸泥좉?") ? null : s.game.equippedGear?.mainWeapon
       };
     }
 
@@ -5427,14 +5506,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     if (stepId === "buy_weapon") {
       nextStepId = "goto_inventory";
-      const tid = "필부_mainWeapon_tutorial_fixed";
-      const others = s.game.ownedWeapons.filter((w: any) => w.id !== tid && !(w.name?.includes("무명철검")));
+      const tid = "?꾨?_mainWeapon_tutorial_fixed";
+      const others = s.game.ownedWeapons.filter((w: any) => w.id !== tid && !(w.name?.includes("臾대챸泥좉?")));
       const item = {
-        id: tid, name: "무명철검", slot: "mainWeapon", icon: "⚔️", type: "weapon", realm: "필부", tier: "보구",
-        price: 5000, attackBonus: 10, description: "공격 +10", enhancement: 0,
+        id: tid, name: "臾대챸泥좉?", slot: "mainWeapon", icon: "?뷂툘", type: "weapon", realm: "?꾨?", tier: "蹂닿뎄",
+        price: 5000, attackBonus: 10, description: "怨듦꺽 +10", enhancement: 0,
         randomOptions: [
-          { stat: "atk_pct", label: "공격력 +10%", value: 10, grade: "최상급" },
-          { stat: "crit_rate", label: "치명타 확률 +4%", value: 4, grade: "최상급" }
+          { stat: "atk_pct", label: "怨듦꺽??+10%", value: 10, grade: "理쒖긽湲? },
+          { stat: "crit_rate", label: "移섎챸? ?뺣쪧 +4%", value: 4, grade: "理쒖긽湲? }
         ]
       };
       extraState.ownedWeapons = [...others, item];
@@ -5470,7 +5549,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             attackBonus: nextAtk, 
             randomOptions: nextOptions,
             options: nextOptions,
-            description: `공격 +${nextAtk}` 
+            description: `怨듦꺽 +${nextAtk}` 
           };
         });
       }
@@ -5491,13 +5570,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (tid) {
         const targetW = s.game.ownedWeapons.find((w: any) => w.id === tid);
         const count = targetW?.randomOptions?.length || 2;
-        // 튜토리얼 재연마 시에는 변화를 확실히 보여주기 위해 다른 옵션(치명타 피해, 생명력)이 나오도록 설정
+        // ?쒗넗由ъ뼹 ?ъ뿰留??쒖뿉??蹂?붾? ?뺤떎??蹂댁뿬二쇨린 ?꾪빐 ?ㅻⅨ ?듭뀡(移섎챸? ?쇳빐, ?앸챸?????섏삤?꾨줉 ?ㅼ젙
         const pool = [
-          { stat: "crit_dmg", label: "치명타 피해", val: 20 }, 
-          { stat: "hp_pct", label: "생명력", val: 25 },
-          { stat: "atk_pct", label: "공격력", val: 10 }
+          { stat: "crit_dmg", label: "移섎챸? ?쇳빐", val: 20 }, 
+          { stat: "hp_pct", label: "?앸챸??, val: 25 },
+          { stat: "atk_pct", label: "怨듦꺽??, val: 10 }
         ];
-        const opts = pool.slice(0, count).map(o => ({ stat: o.stat, label: `${o.label} +${o.val}%`, value: o.val, grade: "최상급" }));
+        const opts = pool.slice(0, count).map(o => ({ stat: o.stat, label: `${o.label} +${o.val}%`, value: o.val, grade: "理쒖긽湲? }));
         extraState.ownedWeapons = (extraState.ownedWeapons || s.game.ownedWeapons).map((w: any) => 
           w.id === tid ? { ...w, randomOptions: opts, options: opts } : w
         );
@@ -5520,9 +5599,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       const tid = findTutorialTargetId(s.game);
       const oilId = s.game.selectedForgeOilId || "oil_atk_3";
       if (tid) {
-        const names: any = { oil_atk_3: "광폭유", oil_crit_3: "파천유", oil_thunder: "뇌전유" };
+        const names: any = { oil_atk_3: "愿묓룺??, oil_crit_3: "?뚯쿇??, oil_thunder: "?뚯쟾?? };
         extraState.ownedWeapons = (extraState.ownedWeapons || s.game.ownedWeapons).map((w: any) => 
-          w.id === tid ? { ...w, oilEffect: { label: `${names[oilId]}: 효과 적용`, id: oilId, active: true } } : w
+          w.id === tid ? { ...w, oilEffect: { label: `${names[oilId]}: ?④낵 ?곸슜`, id: oilId, active: true } } : w
         );
       }
     }
@@ -5547,7 +5626,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       isMinigameActive: true,
     },
   }));
-        // 튜토리얼 완전 종료
+        // ?쒗넗由ъ뼹 ?꾩쟾 醫낅즺
         set((s: any) => ({
           game: {
             ...s.game,

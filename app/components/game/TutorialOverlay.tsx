@@ -207,42 +207,39 @@ export default function TutorialOverlay() {
                             "auto_training_info",
                           ].includes(step.id)
                         ? "28%"
-                        : [
-                            "upgrade_mult_10",
-                            "upgrade_hp_gold",
-                          ].includes(step.id)
-                        ? "32%"
-                        : step.id === "upgrade_atk_gold"
-                          ? "58%"
-                        : step.id === "explain_night_only"
-                          ? "55%"
-                          : step.id === "click_equip_button"
-                            ? "65%"
-                            : [
-                                  "select_oil",
-                                ].includes(step.id)
-                              ? "58%"
-                              : step.id === "check_forge_result"
-                                ? "45%"
-                                : [
-                                  "check_refine_result",
-                                  "check_reroll_result",
-                                  "check_current_options",
-                                  "check_refine_preview",
-                                  "select_item_to_infuse",
-                                  "check_final_infused_options",
-                                ].includes(step.id)
-                              ? "65%"
-                              : [
-                                  "check_refine_result",
-                                  "check_reroll_result",
-                                  "check_current_options",
-                                  "check_refine_preview",
-                                  "select_item_to_infuse",
-                                  "upgrade_popup_any",
-                                ].includes(step.id)
-                              ? "70%"
-                              : "50%",
+                        : ["upgrade_mult_10", "upgrade_hp_gold"].includes(
+                              step.id,
+                            )
+                          ? "32%"
+                          : step.id === "upgrade_atk_gold"
+                            ? "58%"
+                            : step.id === "explain_night_only"
+                              ? "55%"
+                              : step.id === "click_equip_button"
+                                ? "65%"
+                                : ["select_oil"].includes(step.id)
+                                  ? "58%"
+                                  : step.id === "check_forge_result"
+                                    ? "45%"
+                                    : [
+                                          "check_refine_result",
+                                          "check_reroll_result",
+                                          "check_current_options",
+                                          "check_refine_preview",
+                                          "select_item_to_infuse",
+                                          "check_final_infused_options",
+                                        ].includes(step.id)
+                                      ? "65%"
+                                      : [
+                                            "check_refine_result",
+                                            "check_reroll_result",
+                                            "check_current_options",
+                                            "check_refine_preview",
+                                            "select_item_to_infuse",
+                                            "upgrade_popup_any",
+                                          ].includes(step.id)
+                                        ? "70%"
+                                        : "50%",
             transform: "translateY(-50%)",
             width: "90%",
             maxWidth: "320px",
@@ -314,6 +311,37 @@ export default function TutorialOverlay() {
           >
             {step.message}
           </div>
+
+          {/* 👉 팝업 내부 유도 손가락 */}
+          {[
+            "library_cost_guide",
+            "library_basic_free",
+            "library_complete",
+            "library_to_training",
+          ].includes(step.id) && (
+            <motion.div
+              animate={{
+                y: [0, 8, 0],
+                scale: [1, 1.15, 1],
+                opacity: [1, 0.75, 1],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              style={{
+                fontSize: "34px",
+                textAlign: "center",
+                marginTop: "-8px",
+                marginBottom: "10px",
+                filter: "drop-shadow(0 0 8px #ffd700)",
+                pointerEvents: "none",
+              }}
+            >
+              👇
+            </motion.div>
+          )}
 
           {(step.actionType === "any" || step.id === "click_equip_button") && (
             <button
@@ -392,53 +420,59 @@ export default function TutorialOverlay() {
                           "restart_training",
                           "library_unlock",
                         ].includes(step.id)
-                      ? (["check_forge_result", "check_final_infused_options", "library_unlock"].includes(step.id) ? hole.top - 50 : hole.top - 85)
+                      ? [
+                          "check_forge_result",
+                          "check_final_infused_options",
+                          "library_unlock",
+                        ].includes(step.id)
+                        ? hole.top - 50
+                        : hole.top - 85
                       : step.id === "click_infuse_start"
                         ? hole.top - 50
                         : step.id === "select_oil"
-                        ? hole.top + 65
-                        : hole.top +
-                        hole.height / 2 +
-                        ([
-                          "select_item_inventory",
-                          "click_equip_button",
-                          "select_item_to_refine",
-                          "select_item_to_reroll",
-                          "select_item_to_infuse",
-                          "select_infused_item",
-                        ].includes(step.id) ||
-                        [
-                          "select_refine_tab",
-                          "select_reroll_tab",
-                          "select_infuse_tab",
-                        ].includes(step.id)
-                          ? 30
-                          : 5) +
-                        (step.targetId === "training-area"
-                          ? 40
-                          : step.id === "explain_mission_bar" ||
-                              step.id === "click_status_detailed"
-                            ? -10
-                            : step.id === "explain_quest_list"
-                              ? 110
-                              : step.id === "explain_time_cycle"
-                                ? 40
-                                : [
-                                      "check_current_options",
-                                      "check_reroll_result",
-                                      "check_forge_result",
-                                      "upgrade_guide_info",
-                                      "upgrade_popup_any",
-                                      "upgrade_atk_gold",
-                                      "upgrade_mult_10",
-                                      "upgrade_hp_gold",
-                                    ].includes(step.id)
-                                  ? 40 // 결과 확인 시 손가락이 텍스트를 가리지 않도록 적절히 이동
-                                  : step.id === "explain_night_only"
-                                    ? -60
-                                    : step.id === "library_unlock"
-                                      ? -15
-                                      : 0),
+                          ? hole.top + 65
+                          : hole.top +
+                            hole.height / 2 +
+                            ([
+                              "select_item_inventory",
+                              "click_equip_button",
+                              "select_item_to_refine",
+                              "select_item_to_reroll",
+                              "select_item_to_infuse",
+                              "select_infused_item",
+                            ].includes(step.id) ||
+                            [
+                              "select_refine_tab",
+                              "select_reroll_tab",
+                              "select_infuse_tab",
+                            ].includes(step.id)
+                              ? 30
+                              : 5) +
+                            (step.targetId === "training-area"
+                              ? 40
+                              : step.id === "explain_mission_bar" ||
+                                  step.id === "click_status_detailed"
+                                ? -10
+                                : step.id === "explain_quest_list"
+                                  ? 110
+                                  : step.id === "explain_time_cycle"
+                                    ? 40
+                                    : [
+                                          "check_current_options",
+                                          "check_reroll_result",
+                                          "check_forge_result",
+                                          "upgrade_guide_info",
+                                          "upgrade_popup_any",
+                                          "upgrade_atk_gold",
+                                          "upgrade_mult_10",
+                                          "upgrade_hp_gold",
+                                        ].includes(step.id)
+                                      ? 40 // 결과 확인 시 손가락이 텍스트를 가리지 않도록 적절히 이동
+                                      : step.id === "explain_night_only"
+                                        ? -60
+                                        : step.id === "library_unlock"
+                                          ? -15
+                                          : 0),
             width: 50,
             height: 50,
             display: "flex",

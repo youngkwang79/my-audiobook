@@ -111,7 +111,13 @@ export type OwnedWeapon = {
   legendaryOptions?: LegendaryOption[];
   enhancement?: number; // New: Enhancement level (+1, +2, ...)
   soulEffect?: { name: string; desc: string; key: string }; // New: Soul infusion effect
-  oilEffect?: { key: string; label: string; chance: number; }; // New: Oil enhancement effect
+  oilEffect?: {
+  key: ConsumableId;
+  id?: ConsumableId;
+  label: string;
+  chance: number;
+  duration?: number;
+}; // New: Oil enhancement effect
   baseQuality?: number; // New: Luck-influenced quality multiplier
 };
 

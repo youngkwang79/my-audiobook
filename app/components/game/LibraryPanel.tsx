@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, REALM_SETTINGS, REALM_ORDER, formatCompactNumber } from "@/app/lib/game/useGameStore";
 import { FACTIONS } from "@/app/lib/game/factions";
@@ -637,10 +637,10 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
                          currentBonds >= reqs.requiredBonds &&
                          game.coins >= reqs.goldCost;
 
-        const ReqItem = ({ label, current, required, icon, hideCurrent }: any) => {
+        const ReqItem = ({ id, label, current, required, icon, hideCurrent }: any) => {
           const isOk = current >= required;
           return (
-            <div style={{ 
+            <div id={id} style={{ 
               display: "flex", 
               justifyContent: "space-between", 
               alignItems: "center",
@@ -676,14 +676,15 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
             border: "1px solid rgba(255,255,255,0.05)"
           }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "4px" }}>
-              <ReqItem icon="📜" label="비급 조각" current={currentFragments} required={reqs.requiredFragments} />
-              <ReqItem icon="💎" label="특수 재료" current={currentAdvanced} required={reqs.requiredAdvancedMaterials} />
-              <ReqItem icon="🤝" label="문파 인연" current={currentBonds} required={reqs.requiredBonds} />
-              <ReqItem icon="💰" label="비용" current={game.coins} required={reqs.goldCost} hideCurrent />
+              <ReqItem id="tutorial-fragment-box" icon="📜" label="비급 조각" current={currentFragments} required={reqs.requiredFragments} />
+              <ReqItem id="tutorial-material-box" icon="💎" label="특수 재료" current={currentAdvanced} required={reqs.requiredAdvancedMaterials} />
+              <ReqItem id="tutorial-bond-box" icon="🤝" label="문파 인연" current={currentBonds} required={reqs.requiredBonds} />
+              <ReqItem id="tutorial-cost-box" icon="💰" label="비용" current={game.coins} required={reqs.goldCost} hideCurrent />
             </div>
             
             <div style={{ display: "flex", gap: "6px", marginTop: "4px", width: "100%" }}>
               <button
+                id="tutorial-info-btn"
                 onClick={() => alert(`[${skill.name}] 획득처:\n- 기루 연화의 '비밀 정보' 구매\n- 특정 지역 사냥터 드롭`)}
                 style={{
                   flex: 1,
@@ -693,6 +694,7 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
                 획득 정보
               </button>
               <button
+                id="tutorial-craft-btn"
                 disabled={!canCraft}
                 onClick={onLearn}
                 style={{

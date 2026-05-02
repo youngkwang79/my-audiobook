@@ -1614,12 +1614,38 @@ export default function InventoryPanel(props: Props) {
                     }}
                   >
                     <span>⏱️ 효과 지속시간</span>
-                    <span style={{ color: "#00f2ff" }}>
-                      {popupItem.oilEffect.duration ? `${popupItem.oilEffect.duration}초` : 
-                       (getPotionDesc(popupItem.oilEffect.key || (popupItem.oilEffect as any).id).includes("초") ? 
-                        getPotionDesc(popupItem.oilEffect.key || (popupItem.oilEffect as any).id).split("(").pop()?.split(")")[0] : 
-                        "즉시 발동")}
-                    </span>
+<span style={{ color: "#00f2ff" }}>
+  {(() => {
+    const oilId = popupItem.oilEffect.key;
+    const desc = getPotionDesc(oilId);
+
+    if (popupItem.oilEffect.duration) {
+      return `${popupItem.oilEffect.duration}초`;
+    }
+
+    if (desc.includes("초")) {
+      return desc.split("(").pop()?.split(")")[0];
+    }
+
+    return "즉시 발동";
+  })()}
+</span><span>⏱️ 효과 지속시간</span>
+<span style={{ color: "#00f2ff" }}>
+  {(() => {
+    const oilId = popupItem.oilEffect.key;
+    const desc = getPotionDesc(oilId);
+
+    if (popupItem.oilEffect.duration) {
+      return `${popupItem.oilEffect.duration}초`;
+    }
+
+    if (desc.includes("초")) {
+      return desc.split("(").pop()?.split(")")[0];
+    }
+
+    return "즉시 발동";
+  })()}
+</span>
                   </div>
                 </div>
               )}
