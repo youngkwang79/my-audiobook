@@ -1533,7 +1533,6 @@ export default function InventoryPanel(props: Props) {
                 </div>
               )}
 
-              {/* 연마 효과 상세 표시 */}
               {popupItem.oilEffect && (
                 <div
                   style={{
@@ -1543,8 +1542,20 @@ export default function InventoryPanel(props: Props) {
                     background: "rgba(0, 242, 255, 0.05)",
                     border: "1px solid rgba(0, 242, 255, 0.2)",
                     boxShadow: "inset 0 0 10px rgba(0, 242, 255, 0.1)",
+                    ...(useGameStore.getState().game.tutorialProgress?.currentStepId === "check_final_infused_options" ? {
+                      animation: "blink-highlight 1.5s infinite ease-in-out",
+                      border: "2px solid #00f2ff",
+                      background: "rgba(0, 242, 255, 0.15)",
+                      boxShadow: "0 0 20px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(0, 242, 255, 0.2)",
+                    } : {})
                   }}
                 >
+                  <style>{`
+                    @keyframes blink-highlight {
+                      0%, 100% { opacity: 1; transform: scale(1); filter: brightness(1.2); }
+                      50% { opacity: 0.7; transform: scale(1.02); filter: brightness(1.8); }
+                    }
+                  `}</style>
                   <div
                     style={{
                       color: "#00f2ff",
@@ -1579,18 +1590,17 @@ export default function InventoryPanel(props: Props) {
                         marginLeft: "auto",
                       }}
                     >
-                      발동확률: {popupItem.oilEffect.chance}%
+                      발동확률: {popupItem.oilEffect.chance || 2}%
                     </span>
                   </div>
                   <div
-                    style={{ color: "#caf9ff", fontSize: 11, lineHeight: 1.5 }}
+                    style={{ color: "#caf9ff", fontSize: 11, lineHeight: 1.5, marginBottom: 4 }}
                   >
-                    {popupItem.oilEffect.label.includes(":")
+                    {getPotionDesc(
+                      popupItem.oilEffect.key || (popupItem.oilEffect as any).id,
+                    ) || (popupItem.oilEffect.label.includes(":")
                       ? popupItem.oilEffect.label.split(": ")[1]
-                      : getPotionDesc(
-                          popupItem.oilEffect.key ||
-                            (popupItem.oilEffect as any).id,
-                        )}
+                      : popupItem.oilEffect.label)}
                   </div>
                   <div
                     style={{
@@ -1599,15 +1609,17 @@ export default function InventoryPanel(props: Props) {
                       color: "rgba(202, 249, 255, 0.6)",
                       borderTop: "1px dashed rgba(0, 242, 255, 0.2)",
                       paddingTop: 4,
+                      display: "flex",
+                      justifyContent: "space-between"
                     }}
                   >
-                    ⏱️ 효과 지속시간:{" "}
-                    {popupItem.oilEffect.label.includes("초")
-                      ? popupItem.oilEffect.label
-                          .split("(")
-                          .pop()
-                          ?.split(")")[0]
-                      : "즉시 발동"}
+                    <span>⏱️ 효과 지속시간</span>
+                    <span style={{ color: "#00f2ff" }}>
+                      {popupItem.oilEffect.duration ? `${popupItem.oilEffect.duration}초` : 
+                       (getPotionDesc(popupItem.oilEffect.key || (popupItem.oilEffect as any).id).includes("초") ? 
+                        getPotionDesc(popupItem.oilEffect.key || (popupItem.oilEffect as any).id).split("(").pop()?.split(")")[0] : 
+                        "즉시 발동")}
+                    </span>
                   </div>
                 </div>
               )}

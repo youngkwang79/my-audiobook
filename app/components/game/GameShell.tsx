@@ -71,9 +71,10 @@ export default function GameShell() {
         setTutorialStep("select_potion_category");
       } else if (
         val === "training" &&
-        stepId === "actual_final_back_to_training"
+        (stepId === "actual_final_back_to_training" ||
+          stepId === "check_final_infused_options")
       ) {
-        setTutorialStep(""); // End or complete
+        setTutorialStep("restart_training");
       }
     }
   };

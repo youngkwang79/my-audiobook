@@ -88,7 +88,7 @@ export default function TutorialOverlay() {
             inset: 0,
             background:
               step.actionType === "any" ? "rgba(0,0,0,0.7)" : "transparent",
-            pointerEvents: "auto",
+            pointerEvents: step.id === "restart_training" ? "none" : "auto",
           }}
           onClick={(e) => {
             e.preventDefault();
@@ -219,13 +219,26 @@ export default function TutorialOverlay() {
                           : step.id === "click_equip_button"
                             ? "65%"
                             : [
-                                  "check_forge_result",
+                                  "select_oil",
+                                ].includes(step.id)
+                              ? "58%"
+                              : step.id === "check_forge_result"
+                                ? "45%"
+                                : [
                                   "check_refine_result",
                                   "check_reroll_result",
                                   "check_current_options",
                                   "check_refine_preview",
                                   "select_item_to_infuse",
-                                  "select_oil",
+                                  "check_final_infused_options",
+                                ].includes(step.id)
+                              ? "65%"
+                              : [
+                                  "check_refine_result",
+                                  "check_reroll_result",
+                                  "check_current_options",
+                                  "check_refine_preview",
+                                  "select_item_to_infuse",
                                   "upgrade_popup_any",
                                 ].includes(step.id)
                               ? "70%"
@@ -372,9 +385,19 @@ export default function TutorialOverlay() {
                           "upgrade_tab_mastery",
                           "goto_inventory",
                           "goto_inventory_potion",
+                          "check_forge_result",
+                          "check_final_infused_options",
+                          "goto_inventory_final",
+                          "actual_final_back_to_training",
+                          "restart_training",
+                          "library_unlock",
                         ].includes(step.id)
-                      ? hole.top - 85
-                      : hole.top +
+                      ? (["check_forge_result", "check_final_infused_options", "library_unlock"].includes(step.id) ? hole.top - 50 : hole.top - 85)
+                      : step.id === "click_infuse_start"
+                        ? hole.top - 50
+                        : step.id === "select_oil"
+                        ? hole.top + 65
+                        : hole.top +
                         hole.height / 2 +
                         ([
                           "select_item_inventory",
@@ -382,6 +405,7 @@ export default function TutorialOverlay() {
                           "select_item_to_refine",
                           "select_item_to_reroll",
                           "select_item_to_infuse",
+                          "select_infused_item",
                         ].includes(step.id) ||
                         [
                           "select_refine_tab",
@@ -412,7 +436,9 @@ export default function TutorialOverlay() {
                                   ? 40 // 결과 확인 시 손가락이 텍스트를 가리지 않도록 적절히 이동
                                   : step.id === "explain_night_only"
                                     ? -60
-                                    : 0),
+                                    : step.id === "library_unlock"
+                                      ? -15
+                                      : 0),
             width: 50,
             height: 50,
             display: "flex",
@@ -433,7 +459,11 @@ export default function TutorialOverlay() {
           step.id === "upgrade_tab_mastery" ||
           step.id === "forge_unlock" ||
           step.id === "goto_inventory" ||
-          step.id === "goto_forge_refine"
+          step.id === "goto_forge_refine" ||
+          step.id === "click_infuse_start" ||
+          step.id === "check_forge_result" ||
+          step.id === "check_final_infused_options" ||
+          step.id === "library_unlock"
             ? "👇"
             : "👆"}
         </motion.div>

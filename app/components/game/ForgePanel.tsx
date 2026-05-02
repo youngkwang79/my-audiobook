@@ -427,8 +427,8 @@ export default function ForgePanel(props: Props) {
       .filter((k: any) => (item as any)[k] > 0)
       .map((k: any) => {
         const isPct = percentageStats.includes(k);
-        const bVal = (item as any)[k] * getEnhancementMultiplier(curLv);
-        const aVal = (item as any)[k] * getEnhancementMultiplier(curLv + 1);
+        const bVal = (item as any)[k];
+        const aVal = Math.floor(bVal * 1.15) + 5;
 
         return {
           label: statLabels[k],
@@ -438,9 +438,22 @@ export default function ForgePanel(props: Props) {
         };
       });
 
+    const optionChanges = (item.randomOptions || []).map((o: any) => {
+      const bVal = o.value || 0;
+      const aVal = Number((bVal + 0.1).toFixed(1));
+      const baseLabel = o.label.split(" +")[0];
+      return {
+        label: baseLabel,
+        before: `${bVal}%`,
+        after: `${aVal}%`,
+        suffix: "",
+        isOption: true
+      };
+    });
+
     return {
       selectedItem: item,
-      statChanges: changes,
+      statChanges: [...changes, ...optionChanges],
       goldCost: gold,
       repCost: rep,
       stoneCost: stone,
@@ -1030,7 +1043,7 @@ export default function ForgePanel(props: Props) {
                                 {isLocked && <span style={{ fontSize: 10, color: "#000" }}>✓</span>}
                               </div>
                               <div style={{ flex: 1 }}>
-                                🔹 {o.label} <span style={{ color: isLocked ? "#ffd700" : "#00f0ff", fontWeight: "bold" }}>+{curVal}{unit}</span>
+                                🔹 {o.label}
                               </div>
                               {isLocked && <span style={{ fontSize: 8, opacity: 0.8 }}>고정됨</span>}
                             </div>

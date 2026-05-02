@@ -333,7 +333,7 @@ export default function TrainingPanel() {
     
     // 튜토리얼 중 특정 조작이 필요한 단계(대장간 등)에서는 허수아비 타격 방지
     const isRestrictedTutorialStep = tutorialProgress?.isActive && 
-      !!tutorialProgress.currentStepId && !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training"].includes(tutorialProgress.currentStepId);
+      !!tutorialProgress.currentStepId && !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training", "check_final_infused_options", "restart_training"].includes(tutorialProgress.currentStepId);
     
     if (showBreakthroughPopup || pendingInnEntry || timingMission?.available || isRestrictedTutorialStep) return;
 

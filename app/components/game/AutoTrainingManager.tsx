@@ -40,7 +40,9 @@ export default function AutoTrainingManager() {
         currentStepId === "auto_training_info" || 
         currentStepId === "explain_auto_battle" || 
         currentStepId === "trance_achieved" ||
-        currentStepId === "start_training";
+        currentStepId === "start_training" ||
+        currentStepId === "check_final_infused_options" ||
+        currentStepId === "restart_training";
 
       if (tutorialProgress.isActive && !isAutoTrainingAllowedStep) return;
 

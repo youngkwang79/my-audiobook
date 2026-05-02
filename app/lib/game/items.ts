@@ -210,6 +210,8 @@ export const RANDOM_OPTION_POOL = [
   { stat: "eva", label: "회피율", values: { "하급": 0.5, "중급": 1, "상급": 2, "최상급": 4 } },
   { stat: "hp_pct", label: "생명력", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 25 } },
   { stat: "def_pct", label: "방어력", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 25 } },
+  { stat: "crit_dmg", label: "치명타 피해", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 20 } },
+  { stat: "hp_regen", label: "재생력", values: { "하급": 10, "중급": 15, "상급": 22, "최상급": 30 } },
 ];
 
 export const LEGENDARY_OPTIONS: any[] = [
@@ -232,7 +234,7 @@ export function rollTierAndOptions(
   luckLevel: number, 
   baseGrade: number, 
   forcedTier?: ItemTier,
-  lockedOptionIndex?: number // 추가: 고정할 옵션 인덱스
+  lockedOptionIndex?: number
 ): OwnedWeapon {
   const item = { ...baseItem };
   const prevOptions = baseItem.randomOptions || [];
@@ -242,7 +244,6 @@ export function rollTierAndOptions(
   if (forcedTier) {
     item.tier = forcedTier;
   } else {
-    // 기존 등급보다 낮아지지 않게 보정 (재연마 시 등급 하락 방지 옵션으로 활용 가능)
     const tierRoll = Math.random() * 100 + luckLevel * 0.5;
     let newTier: ItemTier = "평범";
     if (tierRoll > 99.5) newTier = "신기";
@@ -251,7 +252,6 @@ export function rollTierAndOptions(
     else if (tierRoll > 70) newTier = "명품";
     else newTier = "평범";
 
-    // 재연마 시 등급이 이미 존재한다면, 더 높은 것만 취함 (최소 등급 유지)
     if (baseItem.tier) {
       const tierOrder: ItemTier[] = ["평범", "명품", "보구", "국보", "신기"];
       const oldIdx = tierOrder.indexOf(baseItem.tier);
@@ -262,20 +262,20 @@ export function rollTierAndOptions(
     }
   }
 
-  // 2. 랜덤 옵션 개수 결정 (등급에 따라 최소 개수 보장)
-  let optCount = 1;
-  if (item.tier === "신기") optCount = 4;
-  else if (item.tier === "국보") optCount = 3;
-  else if (item.tier === "보구") optCount = 3;
-  else if (item.tier === "명품") optCount = 2;
-  else optCount = 1;
+  // 2. 랜덤 옵션 개수 결정 (기존 개수가 있다면 유지, 없다면 등급별 기본 개수 부여)
+  let optCount = prevOptCount > 0 ? prevOptCount : 1;
+  
+  if (prevOptCount === 0) {
+    if (item.tier === "신기") optCount = 4;
+    else if (item.tier === "국보") optCount = 3;
+    else if (item.tier === "보구") optCount = 3;
+    else if (item.tier === "명품") optCount = 2;
+    else optCount = 1;
 
-  // [수정] 기존 옵션 개수보다 줄어들지 않도록 보장
-  optCount = Math.max(optCount, prevOptCount);
-
-  // 튜토리얼 등 강제 보정 시
-  if (forcedTier) {
-    optCount = Math.max(optCount, 3);
+    // 튜토리얼 등 강제 보정 시 최소 개수 보장
+    if (forcedTier) {
+      optCount = Math.max(optCount, 2);
+    }
   }
   
   const options: RandomOption[] = [];
@@ -418,8 +418,9 @@ export function generateRandomGear(realm: RealmType, baseGrade: number, luck: nu
 }
 
 export function getEnhancementMultiplier(level: number): number {
-  // +1강당 10%씩 단리 증가
-  return 1 + (level * 0.1);
+  // 이제 강화 시 아이템의 기본 수치(attackBonus 등)를 직접 수정하므로, 
+  // 중복 계산을 방지하기 위해 배율은 항상 1을 반환합니다.
+  return 1;
 }
 
 export const REALM_SET_OPTIONS: any = {};
