@@ -26,7 +26,9 @@ export default function TowerPanel() {
     selectTowerArtifact, 
     handleTowerEvent, 
     startTower,
-    tapTower
+    tapTower,
+    toggleTowerAuto,
+    useTowerComboSkill
   } = useGameStore();
   
   const tower = game.tower;
@@ -38,7 +40,7 @@ export default function TowerPanel() {
   // Combat loop
   useEffect(() => {
     if (!tower.isInside) return;
-    const intervalMs = game.options?.lowPowerMode ? 3000 : 500;
+    const intervalMs = game.options?.lowPowerMode ? 1000 : 100;
 
     const interval = setInterval(() => {
       if (shouldPauseHeavyLoop()) return;
@@ -110,7 +112,8 @@ export default function TowerPanel() {
     );
   }
 
-  const enemy = tower.enemy;
+  const enemies = tower.enemies || [];
+  const enemy = enemies[0];
   const hpRate = (tower.hp / tower.maxHp) * 100;
   const mpRate = (tower.mp / tower.maxMp) * 100;
   const enemyHpRate = enemy ? (enemy.hp / enemy.maxHp) * 100 : 0;
@@ -160,6 +163,14 @@ export default function TowerPanel() {
              <span className="text-xs font-medium px-2 py-0.5 bg-white/10 rounded-full border border-white/10 text-white/80">
                {theme.name}
              </span>
+             <span className="text-[10px] font-black px-2 py-0.5 bg-red-600/20 border border-red-500/50 rounded text-red-400">
+               WAVE {tower.currentWave}/{tower.totalWaves}
+             </span>
+             {game.towerFirstClearFloors.includes(tower.currentFloor) ? (
+               <span className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-800/80 border border-slate-700 rounded text-slate-500">완료됨</span>
+             ) : (
+               <span className="text-[9px] font-bold px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-yellow-400 animate-pulse">초회 보상 가능</span>
+             )}
           </h2>
           <div className="flex flex-wrap gap-1 mt-2">
             {tower.activeBuffs.map((b: any, i: number) => (
@@ -174,12 +185,20 @@ export default function TowerPanel() {
             ))}
           </div>
         </div>
-        <button 
-          onClick={leaveTower}
-          className="px-3 py-1 bg-slate-800/80 border border-white/10 rounded text-xs text-slate-400 hover:bg-red-900/40 hover:text-white transition-colors"
-        >
-          포기하기
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={toggleTowerAuto}
+            className={`px-3 py-1 rounded text-[10px] font-black transition-all ${tower.isAutoMode ? 'bg-yellow-500 text-black shadow-[0_0_10px_rgba(255,215,0,0.4)]' : 'bg-slate-800/80 text-slate-400 border border-white/10'}`}
+          >
+            {tower.isAutoMode ? "AUTO ON" : "AUTO OFF"}
+          </button>
+          <button 
+            onClick={leaveTower}
+            className="px-3 py-1 bg-slate-800/80 border border-white/10 rounded text-[10px] font-black text-slate-400 hover:bg-red-900/40 hover:text-white transition-colors"
+          >
+            포기하기
+          </button>
+        </div>
       </div>
 
       {/* Combat Arena */}
@@ -217,24 +236,53 @@ export default function TowerPanel() {
           {/* Central Combat Visuals */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-               {/* Enemy Avatar */}
-               <AnimatePresence mode="wait">
-                 {enemy && (
-                   <motion.div
-                     key={enemy.name}
-                     initial={{ opacity: 0, scale: 0.8, x: 100 }}
-                     animate={{ opacity: 1, scale: 1, x: 0 }}
-                     exit={{ opacity: 0, scale: 1.2, x: -100 }}
-                     className="absolute"
-                   >
-                     <img 
-                       src={`https://api.dicebear.com/7.x/bottts/svg?seed=${enemy.name}`} 
-                       className="w-48 h-48 drop-shadow-[0_0_30px_rgba(255,0,0,0.4)] opacity-80" 
-                       alt="enemy" 
-                     />
-                   </motion.div>
-                 )}
-               </AnimatePresence>
+               {/* Enemy Horde Avatars */}
+               <div className="relative w-full h-full flex items-center justify-center">
+                 <AnimatePresence mode="popLayout">
+                   {enemies.map((e: any, idx: number) => {
+                     const isFront = idx === 0;
+                     const offset = idx * 25;
+                     const scale = isFront ? 1 : 0.6;
+                     const opacity = isFront ? 1 : 0.4;
+                     
+                     return (
+                       <motion.div
+                         key={e.id || idx}
+                         initial={{ opacity: 0, scale: 0.5, x: 200 }}
+                         animate={{ 
+                           opacity, 
+                           scale, 
+                           x: isFront ? 0 : (idx % 2 === 0 ? offset : -offset),
+                           y: isFront ? 0 : -offset * 0.5,
+                           zIndex: 20 - idx
+                         }}
+                         exit={{ opacity: 0, scale: 1.5, x: -200, filter: "brightness(2) blur(10px)" }}
+                         transition={{ type: "spring", stiffness: 100, damping: 15 }}
+                         className="absolute"
+                       >
+                         <div className="relative">
+                            <img 
+                              src={`https://api.dicebear.com/7.x/bottts/svg?seed=${e.name}`} 
+                              className={`${isFront ? 'w-48 h-48' : 'w-32 h-32'} drop-shadow-[0_0_30px_rgba(255,0,0,0.3)] transition-all`} 
+                              style={{ 
+                                filter: e.type === "boss" ? "hue-rotate(290deg) saturate(1.5)" : 
+                                        e.type === "elite" ? "hue-rotate(180deg) saturate(1.2)" : "none"
+                              }}
+                              alt="enemy" 
+                            />
+                            {/* Individual Mini HP Bar for each enemy in the horde */}
+                            <div className="absolute -bottom-2 left-0 w-full h-1 bg-black/50 rounded-full overflow-hidden border border-white/10">
+                               <motion.div 
+                                 animate={{ width: `${(e.hp / e.maxHp) * 100}%` }}
+                                 className={`h-full ${e.type === "boss" ? 'bg-purple-500' : e.type === "elite" ? 'bg-yellow-500' : 'bg-red-500'}`}
+                               />
+                            </div>
+                         </div>
+                       </motion.div>
+                     );
+                   })}
+                 </AnimatePresence>
+               </div>
 
                {/* Hit Visuals (Flashes) */}
                <motion.div 
@@ -285,6 +333,35 @@ export default function TowerPanel() {
                   className={`h-full rounded-full bg-gradient-to-r transition-all duration-300 ${hpRate < 30 ? 'from-red-600 to-red-400' : 'from-blue-600 to-cyan-400'}`}
                  />
               </div>
+           </div>
+
+           {/* Player Ki Gauge */}
+           <div className="w-full">
+              <div className="flex justify-between items-center mb-1 px-1">
+                 <div className="flex items-center gap-2">
+                   <div className={`w-2 h-2 rounded-full ${tower.kiGauge >= 100 ? 'bg-yellow-400 animate-pulse' : 'bg-slate-600'}`} />
+                   <span className="text-[10px] text-yellow-500/80 font-black tracking-widest uppercase">Ki Energy</span>
+                 </div>
+                 <span className="text-[10px] text-white font-mono font-bold">{Math.floor(tower.kiGauge)} / 100</span>
+              </div>
+              <div className="h-2 bg-black/80 rounded-full border border-white/5 overflow-hidden p-[1px]">
+                 <motion.div 
+                  animate={{ width: `${tower.kiGauge}%` }}
+                  className="h-full rounded-full bg-gradient-to-r from-yellow-600 to-yellow-300 transition-all duration-300"
+                 />
+              </div>
+              {tower.kiGauge >= 100 && (
+                <motion.button
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={useTowerComboSkill}
+                  className="mt-3 w-full py-2 bg-gradient-to-r from-red-600 via-yellow-600 to-red-600 bg-[length:200%_100%] animate-gradient rounded-lg text-white text-xs font-black shadow-[0_0_15px_rgba(255,165,0,0.4)]"
+                >
+                  초식 발동 (COMBO SKILL)
+                </motion.button>
+              )}
            </div>
 
            {/* Quick Stats */}
@@ -339,26 +416,76 @@ export default function TowerPanel() {
             className="absolute inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6"
           >
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-black text-blue-400 mb-2 tracking-tighter italic">고대의 영물 (靈物)</h3>
-              <p className="text-slate-400 text-sm">탑의 수호자가 남긴 전설적인 유물입니다.</p>
+              <h3 className="text-3xl font-black text-blue-400 mb-2 tracking-tighter italic uppercase">Ancient Relics</h3>
+              <p className="text-slate-400 text-sm">Choose a powerful buff to shape your destiny.</p>
             </div>
             <div className="grid gap-4 w-full max-w-sm">
-              {tower.pendingArtifactChoices.map((art: any) => (
-                <div
-                  key={art.id}
-                  onClick={() => selectTowerArtifact(art)}
-                  className="bg-slate-900 border border-blue-500/30 p-5 rounded-2xl cursor-pointer hover:border-blue-400 transition-all group"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="text-xl font-bold text-blue-400">{art.name}</div>
-                    <span className="text-[10px] px-2 py-0.5 bg-blue-600 rounded text-white font-black">{art.tier}</span>
-                  </div>
-                  <div className="text-sm text-slate-300 leading-relaxed">{art.description}</div>
-                </div>
-              ))}
+              {tower.pendingArtifactChoices.map((art: any) => {
+                const tierStyles: Record<string, string> = {
+                  "하급": "border-slate-700 text-slate-400 bg-slate-900",
+                  "중하급": "border-blue-900/50 text-blue-300 bg-blue-950/20",
+                  "중급": "border-green-800/50 text-green-300 bg-green-950/20",
+                  "중상급": "border-yellow-700/50 text-yellow-300 bg-yellow-950/20",
+                  "상급": "border-red-800/50 text-red-300 bg-red-950/20",
+                  "최상급": "border-purple-800/50 text-purple-300 bg-purple-950/20",
+                  "신화": "border-pink-500/50 text-pink-300 bg-pink-950/30 animate-pulse-glow",
+                  "우주": "border-cyan-400/60 text-cyan-200 bg-cyan-950/40 animate-cosmic-glow",
+                };
+                const tierLabels: Record<string, string> = {
+                  "하급": "bg-slate-700",
+                  "중하급": "bg-blue-800",
+                  "중급": "bg-green-700",
+                  "중상급": "bg-yellow-600",
+                  "상급": "bg-red-700",
+                  "최상급": "bg-purple-700",
+                  "신화": "bg-pink-600",
+                  "우주": "bg-cyan-600",
+                };
+
+                return (
+                  <motion.div
+                    key={art.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => selectTowerArtifact(art)}
+                    className={`border-2 p-5 rounded-2xl cursor-pointer transition-all relative overflow-hidden group ${tierStyles[art.tier] || tierStyles["하급"]}`}
+                    style={{
+                      boxShadow: art.tier === "신화" ? "0 0 15px rgba(236, 72, 153, 0.2)" : art.tier === "우주" ? "0 0 25px rgba(34, 211, 238, 0.3)" : "none"
+                    }}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-xl font-black italic">{art.name}</div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded text-white font-black ${tierLabels[art.tier] || "bg-slate-600"}`}>{art.tier}</span>
+                    </div>
+                    <div className="text-sm opacity-80 leading-relaxed font-medium">{art.description}</div>
+                    
+                    {/* Decorative Background Icon */}
+                    <div className="absolute -right-2 -bottom-2 text-4xl opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity">
+                      {art.type === "공격" ? "⚔️" : art.type === "방어" ? "🛡️" : art.type === "신법" ? "⚡" : "✨"}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         )}
+
+        <style jsx global>{`
+          @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(236, 72, 153, 0.2); border-color: rgba(236, 72, 153, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(236, 72, 153, 0.5); border-color: rgba(236, 72, 153, 0.8); }
+          }
+          @keyframes cosmic-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); border-color: rgba(34, 211, 238, 0.5); transform: scale(1); }
+            50% { box-shadow: 0 0 40px rgba(34, 211, 238, 0.6); border-color: rgba(34, 211, 238, 1); transform: scale(1.01); }
+          }
+          .animate-pulse-glow {
+            animation: pulse-glow 2s infinite ease-in-out;
+          }
+          .animate-cosmic-glow {
+            animation: cosmic-glow 3s infinite ease-in-out;
+          }
+        `}</style>
 
         {/* Event Room */}
         {tower.eventRoom && (
@@ -417,14 +544,14 @@ export default function TowerPanel() {
 
       {/* Floating Reward/Feedback */}
       <AnimatePresence>
-        {tower.lastReward && (
+        {tower.lastReward && !tower.pendingBuffChoices && !tower.pendingArtifactChoices && !tower.eventRoom && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute bottom-44 left-0 w-full text-center z-50 pointer-events-none"
+            className="absolute top-24 left-0 w-full text-center z-50 pointer-events-none"
           >
-            <span className="bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black shadow-lg uppercase">
+            <span className="bg-yellow-500/90 backdrop-blur-sm text-black px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg uppercase border border-yellow-400/50">
               {tower.lastReward}
             </span>
           </motion.div>

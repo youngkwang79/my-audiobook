@@ -292,6 +292,28 @@ export const GIRU_QUESTS: GiruQuest[] = [
     status: "active",
     targetType: "refine_skill",
     reward: { gold: 150000, token: 2, favor: 7 }
+  },
+  {
+    id: "q_tower_floor_10",
+    npcId: "yeonhwa",
+    title: "탑의 수호자 (10층)",
+    desc: "무한의 탑 10층을 돌파하여 기량을 증명하세요.",
+    targetCount: 10,
+    currentCount: 0,
+    status: "active",
+    targetType: "tower_floor_milestone",
+    reward: { gold: 50000, favor: 10, token: 5 }
+  },
+  {
+    id: "q_tower_floor_20",
+    npcId: "yeonhwa",
+    title: "탑의 수호자 (20층)",
+    desc: "무한의 탑 20층의 수호자를 꺾고 전설의 연마유를 획득하세요.",
+    targetCount: 20,
+    currentCount: 0,
+    status: "active",
+    targetType: "tower_floor_milestone",
+    reward: { gold: 200000, favor: 20, token: 5, item: "oil_box" }
   }
 ];
 
@@ -428,10 +450,20 @@ export function getNextAdaptiveQuests(game: any) {
 
   // 1. 기초 가이드 연계 (강화, 재연마, 연마유, 탑, 무공)
   // 완료되지 않은 튜토리얼 성격의 고정 임무들 우선 노출
-  const fixedIds = ["q_tutorial_forge", "q_tutorial_refine", "q_tutorial_oil", "q_daily_tower", "q_daily_study"];
+  const fixedIds = ["q_tutorial_forge", "q_tutorial_refine", "q_tutorial_oil", "q_daily_tower", "q_daily_study", "q_tower_floor_10", "q_tower_floor_20"];
   fixedIds.forEach(id => {
     const q = GIRU_QUESTS.find(fq => fq.id === id);
-    if (q && quests.length < 3) quests.push({ ...q });
+    if (q && quests.length < 3) {
+      // For milestone quests, check if already cleared
+      const floorNum = parseInt(id.split('_').pop() || "0");
+      if (id.includes("tower_floor_milestone") || id.startsWith("q_tower_floor_")) {
+          if ((game.tower?.highestFloor || 0) < floorNum) {
+             quests.push({ ...q, currentCount: game.tower?.highestFloor || 0 });
+          }
+      } else {
+         quests.push({ ...q });
+      }
+    }
   });
 
   if (quests.length >= 3) return quests;

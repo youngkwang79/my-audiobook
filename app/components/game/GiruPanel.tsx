@@ -25,6 +25,7 @@ export default function GiruPanel() {
   const [rewardData, setRewardData] = useState<any>(null);
   const [currentIllustrationIndex, setCurrentIllustrationIndex] = useState(0);
   const [showBuffs, setShowBuffs] = useState(false);
+  const [questIndex, setQuestIndex] = useState(0);
   const favor = (game.npcFavors && game.npcFavors[selectedNpc?.id || GIRU_NPCS[activeNpcIndex].id]) || 0;
 
   const ownedGifts = game.giruGifts || {};
@@ -533,7 +534,7 @@ export default function GiruPanel() {
           <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
               <button
-                onClick={() => { setSelectedNpc(null); setDialogue(null); setLastEvent(null); }}
+                onClick={() => { setSelectedNpc(null); setDialogue(null); setLastEvent(null); setQuestIndex(0); }}
                 style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", cursor: "pointer", fontSize: "18px" }}
               >
                 ←
@@ -608,97 +609,117 @@ export default function GiruPanel() {
                 )}
               </div>
 
-              {/* 퀘스트 섹션 */}
+              {/* 퀘스트 섹션 (단일 카드 표시) */}
               {(() => {
                 const npcQuests = GIRU_QUESTS.filter(q => q.npcId === selectedNpc.id);
-                const activeQuests = (game.activeQuests || []).filter((q: any) => q.npcId === selectedNpc.id);
-                const availableQuests = npcQuests.filter(nq => !activeQuests.some((aq: any) => aq.id === nq.id));
+                const activeQuests = (game.activeQuests || []).filter((q: any) => q.npcId === selectedNpc.id && q.status !== "rewarded");
+                const availableQuests = npcQuests.filter(nq => !activeQuests.some((aq: any) => (aq.templateId || aq.id) === nq.id));
 
-                if (activeQuests.length === 0 && availableQuests.length === 0) return null;
+                const allDisplayQuests = [...activeQuests, ...availableQuests];
+                if (allDisplayQuests.length === 0) return null;
+
+                const currentIdx = questIndex % allDisplayQuests.length;
+                const q = allDisplayQuests[currentIdx];
+                const isAvailable = !activeQuests.some((aq: any) => (aq.templateId || aq.id) === (q.templateId || q.id));
 
                 return (
-                  <div style={{ marginBottom: "10px" }}>
-                    <div style={{ fontSize: "12px", color: "#ffd700", fontWeight: 800, marginBottom: "8px", opacity: 0.8 }}>📋 임무 정보</div>
-                    <div style={{ display: "grid", gap: "8px" }}>
-                      {/* 수락 가능한 퀘스트 */}
-                      {availableQuests.map(q => (
-                        <div key={q.id} style={{
-                          padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px dashed rgba(255,215,0,0.3)", borderRadius: "12px"
-                        }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontWeight: 800, fontSize: "14px" }}>{q.title}</span>
+                  <div style={{ marginBottom: "15px", position: "relative" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div style={{ fontSize: "12px", color: "#ffd700", fontWeight: 800, opacity: 0.8 }}>
+                        📋 {isAvailable ? "수락 가능한 임무" : "진행 중인 임무"} ({currentIdx + 1}/{allDisplayQuests.length})
+                      </div>
+                      {allDisplayQuests.length > 1 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuestIndex(prev => prev + 1);
+                          }}
+                          style={{
+                            width: "28px", height: "28px", borderRadius: "50%",
+                            background: "rgba(255,215,0,0.15)", border: "1px solid #ffd700",
+                            color: "#ffd700", display: "flex", alignItems: "center", justifyContent: "center",
+                            cursor: "pointer", fontSize: "14px", boxShadow: "0 0 10px rgba(255,215,0,0.2)"
+                          }}
+                          title="다른 임무 보기"
+                        >
+                          🔄
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{
+                      padding: "12px",
+                      background: q.status === "completed" ? "rgba(77,255,138,0.1)" : (isAvailable ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.08)"),
+                      border: q.status === "completed" ? "1px solid #4dff8a" : (isAvailable ? "1px dashed rgba(255,215,0,0.3)" : "1px solid rgba(255,255,255,0.1)"),
+                      borderRadius: "12px",
+                      position: "relative",
+                      boxShadow: "0 4px 15px rgba(0,0,0,0.2)"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: "14px", color: q.status === "completed" ? "#4dff8a" : "#fff", marginBottom: "4px" }}>
+                            {q.title} {q.status === "completed" ? "(완료)" : ""}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#aaa", lineHeight: "1.4" }}>{q.desc}</div>
+                        </div>
+                        
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                          {isAvailable ? (
                             <button
                               onClick={() => {
                                 const { acceptQuest } = useGameStore.getState() as any;
                                 acceptQuest(q.id);
                                 setDialogue(`[${q.title}] 임무를 수락했습니다!`);
                               }}
-                              style={{ padding: "4px 10px", background: "#ffd700", color: "#000", border: "none", borderRadius: "6px", fontSize: "11px", fontWeight: 900, cursor: "pointer" }}>
+                              style={{ padding: "6px 12px", background: "#ffd700", color: "#000", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 900, cursor: "pointer" }}>
                               수락
                             </button>
-                          </div>
-                          <div style={{ fontSize: "11px", color: "#aaa", marginTop: "4px" }}>{q.desc}</div>
-                          <div style={{ fontSize: "10px", color: "#ffd700", marginTop: "4px", fontWeight: 700 }}>
-                            보상: {q.id === "q_yeonhwa_1" 
-                              ? `${formatCompactNumber(ROGUE_QUEST_REWARDS[game.realm]?.gold || 100000)}냥, 투전패 ${ROGUE_QUEST_REWARDS[game.realm]?.token || 2}개`
-                              : `${formatCompactNumber(q.reward.gold || 0)}냥, 투전패 ${q.reward.token || 0}개`}
-                          </div>
+                          ) : q.status === "completed" ? (
+                            <button
+                              onClick={() => {
+                                const { completeQuest } = useGameStore.getState() as any;
+                                let finalReward = { ...q.reward };
+                                const tid = q.templateId || q.id;
+                                if (tid === "q_yeonhwa_1") {
+                                  const realmRewards = ROGUE_QUEST_REWARDS[game.realm] || ROGUE_QUEST_REWARDS["필부"];
+                                  finalReward.gold = realmRewards.gold;
+                                  finalReward.token = realmRewards.token;
+                                }
+                                setRewardData(finalReward);
+                                setShowRewardPopup(true);
+                                completeQuest(q.id);
+                                setDialogue(`임무를 완수하셨군요! 여기 보상입니다.`);
+                              }}
+                              style={{ padding: "6px 12px", background: "#4dff8a", color: "#000", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 900, cursor: "pointer" }}>
+                              보상 받기
+                            </button>
+                          ) : null}
                         </div>
-                      ))}
+                      </div>
 
-                      {/* 진행 중인 퀘스트 */}
-                      {activeQuests.map((q: any) => (
-                        <div key={q.id} style={{
-                          padding: "12px",
-                          background: q.status === "completed" ? "rgba(77,255,138,0.1)" : "rgba(255,255,255,0.08)",
-                          border: q.status === "completed" ? "1px solid #4dff8a" : "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "12px"
-                        }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontWeight: 800, fontSize: "14px", color: q.status === "completed" ? "#4dff8a" : "#fff" }}>
-                              {q.title} {q.status === "completed" ? "(완료)" : ""}
-                            </span>
-                            <div style={{ fontSize: "10px", color: "#ffd700", fontWeight: 700 }}>
-                              {q.id === "q_yeonhwa_1" 
-                                ? `${formatCompactNumber(ROGUE_QUEST_REWARDS[game.realm]?.gold || 100000)}냥, 투전패 ${ROGUE_QUEST_REWARDS[game.realm]?.token || 2}개`
-                                : `${formatCompactNumber(q.reward.gold || 0)}냥, 투전패 ${q.reward.token || 0}개`}
-                            </div>
-                            {q.status === "completed" && (
-                              <button
-                                onClick={() => {
-                                  const { completeQuest } = useGameStore.getState() as any;
-                                  let finalReward = { ...q.reward };
-                                  if (q.id === "q_yeonhwa_1") {
-                                    const realmRewards = ROGUE_QUEST_REWARDS[game.realm] || ROGUE_QUEST_REWARDS["필부"];
-                                    finalReward.gold = realmRewards.gold;
-                                    finalReward.token = realmRewards.token;
-                                  }
-                                  setRewardData(finalReward);
-                                  setShowRewardPopup(true);
-                                  completeQuest(q.id);
-                                  setDialogue(`임무를 완수하셨군요! 여기 보상입니다.`);
-                                }}
-                                style={{ padding: "4px 10px", background: "#4dff8a", color: "#000", border: "none", borderRadius: "6px", fontSize: "11px", fontWeight: 900, cursor: "pointer" }}>
-                                보상 받기
-                              </button>
-                            )}
-                            {q.status === "rewarded" && (
-                              <span style={{ fontSize: "11px", color: "#888" }}>완료됨</span>
-                            )}
+                      <div style={{ fontSize: "10px", color: "#ffd700", marginTop: "8px", fontWeight: 700 }}>
+                        💰 보상: {(q.templateId || q.id) === "q_yeonhwa_1" 
+                          ? `${formatCompactNumber(ROGUE_QUEST_REWARDS[game.realm]?.gold || 100000)}냥, 투전패 ${ROGUE_QUEST_REWARDS[game.realm]?.token || 2}개`
+                          : `${formatCompactNumber(q.reward?.gold || 0)}냥, 투전패 ${q.reward?.token || 0}개`}
+                      </div>
+
+                      {q.status === "active" && (
+                        <div style={{ marginTop: "10px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", marginBottom: "4px" }}>
+                            <span>진행도</span>
+                            <span>{q.currentCount || 0} / {q.targetCount || 0}</span>
                           </div>
-                          {q.status === "active" && (
-                            <div style={{ marginTop: "6px" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", marginBottom: "3px" }}>
-                                <span>진행도</span>
-                                <span>{q.currentCount} / {q.targetCount}</span>
-                              </div>
-                              <div style={{ height: "4px", background: "rgba(255,255,255,0.1)", borderRadius: "2px", overflow: "hidden" }}>
-                                <div style={{ height: "100%", width: `${(q.currentCount / q.targetCount) * 100}%`, background: "#ffd700" }} />
-                              </div>
-                            </div>
-                          )}
+                          <div style={{ height: "6px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", overflow: "hidden" }}>
+                            <div 
+                              style={{ 
+                                height: "100%", 
+                                width: `${Math.min(100, ((q.currentCount || 0) / (q.targetCount || 1)) * 100)}%`, 
+                                background: "#ffd700"
+                              }} 
+                            />
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 );

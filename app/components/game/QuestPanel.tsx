@@ -58,7 +58,7 @@ export default function QuestPanel() {
         <AnimatePresence>
           {sortedQuests.map((quest: Quest, idx: number) => (
             <motion.div
-              key={quest.id}
+              key={`${quest.id}_${idx}`}
               id={idx === 0 ? "quest-item-first" : undefined}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -118,12 +118,12 @@ export default function QuestPanel() {
                 <div style={{ margin: "15px 0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "4px", color: "#888" }}>
                     <span>진행도</span>
-                    <span>{quest.currentCount} / {quest.targetCount}</span>
+                    <span>{(quest.currentCount || 0)} / {(quest.targetCount || 1)}</span>
                   </div>
                   <div style={{ width: "100%", height: "6px", background: "rgba(0,0,0,0.3)", borderRadius: "3px", overflow: "hidden" }}>
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, (quest.currentCount / quest.targetCount) * 100)}%` }}
+                      animate={{ width: `${Math.min(100, ((quest.currentCount || 0) / (quest.targetCount || 1)) * 100)}%` }}
                       style={{ height: "100%", background: quest.status === "completed" ? "#4caf50" : "#ffd700" }}
                     />
                   </div>
@@ -133,13 +133,13 @@ export default function QuestPanel() {
               {/* Rewards */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "10px" }}>
                 <div style={{ display: "flex", gap: "10px" }}>
-                  {quest.reward.gold && (
+                  {quest.reward?.gold && (
                     <div style={{ fontSize: "11px", color: "#ffd700" }}>💰 {formatCompactNumber(quest.reward.gold)}냥</div>
                   )}
-                  {quest.reward.exp && (
+                  {quest.reward?.exp && (
                     <div style={{ fontSize: "11px", color: "#4caf50" }}>✨ 수련치 +{formatCompactNumber(quest.reward.exp)}</div>
                   )}
-                  {quest.reward.favor && (
+                  {quest.reward?.favor && (
                     <div style={{ fontSize: "11px", color: "#ff7eb3" }}>🤝 호감도 +{quest.reward.favor}</div>
                   )}
                 </div>

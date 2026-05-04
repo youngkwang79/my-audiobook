@@ -280,6 +280,10 @@ export type MasterDuelState = {
   damageTakenAccumulator?: number;
   isBerserk?: boolean;
   lastEffect?: "DODGE" | "CRITICAL" | "BLEED" | "STUN" | "PARRY" | "WEAKNESS" | "ULTIMATE" | null;
+  charges: number;
+  maxCharges: number;
+  overcharges: number;
+  lastRechargeTime: number;
   chargeTimer?: number;
   isStunned?: boolean;
   stunTimer?: number;
@@ -308,14 +312,10 @@ export type MasterDuelState = {
   isGiruEncounter?: boolean;
 
   // --- 도전권 시스템 (Challenge Ticket System) ---
-  challengeTickets: number;
-  maxChallengeTickets: number;
-  overChargeMaxTickets: number;
-  lastChargeTime: number;
   streakCount: number;
   lastAttackTime: number;
   rivalAttackGauge: number; // 0-1 (1초 게이지)
-};
+}
 
 export type FootworkGameState = {
   timeLeft: number;
@@ -350,16 +350,21 @@ export type TowerArtifact = {
   id: string;
   name: string;
   description: string;
-  tier: "COMMON" | "RARE" | "LEGENDARY";
+  tier: "하급" | "중하급" | "중급" | "중상급" | "상급" | "최상급" | "신화" | "우주";
+  type?: "공격" | "방어" | "신법" | "특수";
   effect: {
-    type: "COMBO_BOLT" | "LIFE_STEAL" | "SHIELD" | "CRIT_SLOW" | "MP_RESTORE" | "INSTANT_HP";
+    type: string;
     value: number;
     chance?: number;
+    duration?: number;
   };
+  synergyId?: string;
+  tags?: string[];
 };
 
 export interface Quest {
   id: string;
+  templateId?: string; // Original ID for logic reference
   npcId: string;
   title: string;
   desc: string;
@@ -376,13 +381,32 @@ export interface Quest {
   targetType?: string;
 }
 
+export type TowerEnemy = {
+  id: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  mp: number;
+  maxMp: number;
+  atk: number;
+  def: number;
+  eva: number;
+  critRes?: number;
+  reflect?: number;
+  lifeSteal?: number;
+  ignoreEva?: number;
+  traits: string[];
+  type: "small" | "elite" | "boss";
+  icon?: string;
+};
+
 export type TowerState = {
   currentFloor: number;
   highestFloor: number;
   hp: number;
   maxHp: number;
   mp: number;
-maxMp: number;
+  maxMp: number;
   isInside: boolean;
   activeBuffs: TowerBuff[];
   artifacts: TowerArtifact[];
@@ -392,26 +416,17 @@ maxMp: number;
   lastTapTime: number;
   shieldTimer: number;
   bestClearTimes: Record<number, number>; // floor -> ms
-  enemy: {
-    name: string;
-    hp: number;
-    maxHp: number;
-    mp: number;
-  maxMp: number;
-    atk: number;
-    traits: string[];
-    def: number;
-    eva: number;
-    critRes?: number;
-    reflect?: number;
-    lifeSteal?: number;
-    ignoreEva?: number;
-  } | null;
+  currentWave: number;
+  totalWaves: number;
+  enemies: TowerEnemy[];
   eventRoom: "REST" | "BUFF" | "DANGER" | "MERCHANT" | null;
   pendingBuffChoices: TowerBuff[] | null;
   pendingArtifactChoices: TowerArtifact[] | null;
   lastClearFloor: number;
   stairs: number[];
+  isAutoMode: boolean;
+  kiGauge: number;
+  autoAttackTimer: number;
 };
 
 export type MovementBuffStatus = {
@@ -501,7 +516,10 @@ export type GameSaveData = {
   masterDuel: MasterDuelState;
   footworkGame: FootworkGameState;
   tower: TowerState;
-  unlockedContents: string[]; // New: list of unlocked features/secrets
+  unlockedContents: string[];
+  towerFirstClearFloors: number[];
+  duelTokens: number;
+  duelTokenFragments: number;
   pendingReward: {
     title: string;
     items: { icon: string; name: string; count?: number; color?: string; slotName?: string }[];
@@ -589,8 +607,6 @@ export type GameSaveData = {
   activeQuests: Quest[];
   giruRewardsClaimed?: Record<string, boolean>;
   regenAccumulator: number;
-  gamblingTokens: number;
-  gamblingTokenFragments: number; // New: 5 fragments = 1 token
   questRerollCount: number; // New: max 2 per day
   yabawiEvent: { active: boolean; expiresAt: number } | null;
   pendingYabawiPlay?: boolean;

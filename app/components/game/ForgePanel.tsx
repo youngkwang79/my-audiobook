@@ -297,7 +297,7 @@ export default function ForgePanel(props: Props) {
     addWeapon(rolledItem);
 
     // 튜토리얼 강제 진행 보장 (무명철검 구매 시 무조건 가방으로 안내)
-    if (isTutorial || itemId === "필부_mainWeapon") {
+    if (isTutorial) {
       setTutorialStep("goto_inventory");
     }
 
@@ -377,6 +377,7 @@ export default function ForgePanel(props: Props) {
       }
       // [추가] 옵션 고정 시 비용 2배
       if (lockedOptionIdx !== null) {
+        gold *= 2;
         rep *= 2;
         stone *= 2;
       }
@@ -443,8 +444,8 @@ export default function ForgePanel(props: Props) {
       const baseLabel = o.label.split(" +")[0];
       return {
         label: baseLabel,
-        before: `${bVal}%`,
-        after: `${aVal}%`,
+        before: `${bVal.toFixed(1)}%`,
+        after: `${aVal.toFixed(1)}%`,
         suffix: "",
         isOption: true
       };
@@ -452,7 +453,7 @@ export default function ForgePanel(props: Props) {
 
     return {
       selectedItem: item,
-      statChanges: [...changes, ...optionChanges],
+      statChanges: changes,
       goldCost: gold,
       repCost: rep,
       stoneCost: stone,
@@ -946,24 +947,40 @@ export default function ForgePanel(props: Props) {
 
                   {/* 추가 옵션들 (랜덤 옵션, 스킬, 영혼) */}
                   {(selectedItem?.randomOptions?.length || selectedItem?.equipmentSkill || selectedItem?.soulEffect) && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "6px 8px", background: "rgba(255,255,255,0.03)", borderRadius: 10, marginBottom: 7, border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 12, marginBottom: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
                       {selectedItem?.randomOptions?.map((o: any, idx: number) => {
                         const curLv = selectedItem.enhancement || 0;
                         const curVal = (o.value + curLv * 0.1).toFixed(1);
                         const nextVal = (o.value + (curLv + 1) * 0.1).toFixed(1);
-                        const unit = o.label.includes("%") ? "%" : "";
+                        const unit = (o.label.includes("%") || o.stat.endsWith("_pct") || o.stat.includes("rate")) ? "%" : "";
                         return (
-                          <div key={idx} style={{ fontSize: 10, color: "#7ee7ff", display: "flex", justifyContent: "space-between" }}>
-                            <span>🔹 {o.label.split("+")[0]}</span>
-                            <span>{curVal}{unit} → <span style={{ color: "#00f0ff" }}>{nextVal}{unit}</span></span>
+                          <div key={idx} style={{ 
+                            fontSize: 12, 
+                            color: "#b0eaff", 
+                            display: "flex", 
+                            justifyContent: "space-between", 
+                            alignItems: "center",
+                            padding: "8px 0",
+                            borderBottom: idx < selectedItem.randomOptions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none"
+                          }}>
+                            <span style={{ fontWeight: 500 }}>🔹 {o.label.split("+")[0].trim()}</span>
+                            <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ color: "#aaa" }}>{curVal}{unit}</span>
+                              <span style={{ color: "#ffd700", fontSize: 10 }}>▶</span>
+                              <span style={{ color: "#00f2ff", textShadow: "0 0 8px rgba(0,242,255,0.3)" }}>{nextVal}{unit}</span>
+                            </div>
                           </div>
                         );
                       })}
                       {selectedItem?.equipmentSkill && (
-                        <div style={{ fontSize: 10, color: "#ffd700" }}>✨ {selectedItem.equipmentSkill.name} (x{selectedItem.equipmentSkill.multiplier})</div>
+                        <div style={{ fontSize: 12, color: "#ffd700", padding: "8px 0", fontWeight: 900 }}>
+                          ✨ {selectedItem.equipmentSkill.name} (x{selectedItem.equipmentSkill.multiplier})
+                        </div>
                       )}
                       {selectedItem?.soulEffect && (
-                        <div style={{ fontSize: 10, color: "#8a2be2" }}>👻 {selectedItem.soulEffect.name}</div>
+                        <div style={{ fontSize: 12, color: "#d0a0ff", padding: "8px 0", fontWeight: 900 }}>
+                          👻 {selectedItem.soulEffect.name}
+                        </div>
                       )}
                     </div>
                   )}

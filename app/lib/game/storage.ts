@@ -31,6 +31,9 @@ const defaultTowerState: any = {
   lastTapTime: 0,
   shieldTimer: 0,
   stairs: [],
+  isAutoMode: false,
+  kiGauge: 0,
+  autoAttackTimer: 0,
 };
 
 export const defaultGameData: GameSaveData = {
@@ -82,6 +85,9 @@ export const defaultGameData: GameSaveData = {
   lastActivityHeartbeat: Date.now(),
   factionBonds: {},
   unlockedContents: [],
+  towerFirstClearFloors: [],
+  duelTokens: 0,
+  duelTokenFragments: 0,
   speedGauge: 0,
 
   reputation: 0,
@@ -207,10 +213,10 @@ export const defaultGameData: GameSaveData = {
     isBoss: false,
 
     // --- 도전권 시스템 (Challenge Ticket System) ---
-    challengeTickets: 10,
-    maxChallengeTickets: 10,
-    overChargeMaxTickets: 12,
-    lastChargeTime: Date.now(),
+    charges: 10,
+    maxCharges: 10,
+    overcharges: 0,
+    lastRechargeTime: Date.now(),
     streakCount: 0,
     lastAttackTime: 0,
     rivalAttackGauge: 0,
@@ -298,8 +304,6 @@ export const defaultGameData: GameSaveData = {
     }
   ],
   regenAccumulator: 0,
-  gamblingTokens: 0,
-  gamblingTokenFragments: 0,
   questRerollCount: 0,
   oilBuffs: {},
   yabawiEvent: null,

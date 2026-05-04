@@ -586,7 +586,7 @@ export default function InnPanel({
     if (success) {
       useGameStore.setState((s: any) => {
         if (!s.game.activeQuests) return s;
-        const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_seolmae_1" && q.status === "active");
+        const qIdx = s.game.activeQuests.findIndex((q: any) => (q.templateId || q.id) === "q_seolmae_1" && q.status === "active");
         if (qIdx === -1) return s;
 
         const q = s.game.activeQuests[qIdx];
@@ -680,7 +680,7 @@ export default function InnPanel({
       // --- Quest Progression (q_chowoon_1: Gamble Wins) ---
       useGameStore.setState((s: any) => {
         if (!s.game.activeQuests) return s;
-        const qIdx = s.game.activeQuests.findIndex((q: any) => q.id === "q_chowoon_1" && q.status === "active");
+        const qIdx = s.game.activeQuests.findIndex((q: any) => (q.templateId || q.id) === "q_chowoon_1" && q.status === "active");
         if (qIdx === -1) return s;
 
         const q = s.game.activeQuests[qIdx];

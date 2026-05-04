@@ -168,11 +168,11 @@ export default function UpgradePanel() {
   });
 
   const formatStatValue = (id: string, val: number) => {
-    if (id === "critDmg") return `+${val.toFixed(2)}%`;
+    if (id === "critDmg") return `+${Number(val.toFixed(1))}%`;
     if (["autoGain", "offlineLimit"].includes(id))
-      return `+${(val * 100).toFixed(2)}%`;
-    if (["critRate", "eva"].includes(id)) return `+${val.toFixed(2)}%`;
-    if (id === "luck") return `${(val * 100).toFixed(4)}%`;
+      return `+${Number((val * 100).toFixed(1))}%`;
+    if (["critRate", "eva"].includes(id)) return `+${Number(val.toFixed(1))}%`;
+    if (id === "luck") return `${Number((val * 100).toFixed(4))}%`;
     return Math.floor(val).toLocaleString();
   };
 

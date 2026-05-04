@@ -500,12 +500,12 @@ export default function CharacterModal({
                 >
                   <StatRow
                     label="치명타 확률"
-                    value={`${totalCritRate.toFixed(1)}%`}
+                    value={`${Number(totalCritRate.toFixed(1))}%`}
                     color="#ffcc00"
                   />
                   <StatRow
                     label="치명타 피해"
-                    value={`${totalCritDmg}%`}
+                    value={`${Number(totalCritDmg.toFixed(1))}%`}
                     color="#ff7e4d"
                   />
                 </div>
@@ -518,12 +518,12 @@ export default function CharacterModal({
                 >
                   <StatRow
                     label="회피율"
-                    value={`${totalEvasion.toFixed(1)}%`}
+                    value={`${Number(totalEvasion.toFixed(1))}%`}
                     color="#7fffd4"
                   />
                   <StatRow
                     label="신법(속도)"
-                    value={`${totalSpeed.toFixed(1)}%`}
+                    value={`${Number(totalSpeed.toFixed(1))}%`}
                     color="#a8ff7e"
                   />
                 </div>

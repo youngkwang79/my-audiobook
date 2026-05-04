@@ -218,7 +218,7 @@ export const RANDOM_OPTION_POOL = [
   { stat: "eva", label: "회피율", values: { "하급": 0.5, "중급": 1, "상급": 2, "최상급": 4 } },
   { stat: "hp_pct", label: "생명력", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 25 } },
   { stat: "def_pct", label: "방어력", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 25 } },
-  { stat: "crit_dmg", label: "치명타 피해", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 20 } },
+  { stat: "crit_dmg_pct", label: "치명타 피해", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 25 } },
   { stat: "hp_regen", label: "재생력", values: { "하급": 10, "중급": 15, "상급": 22, "최상급": 30 } },
   { stat: "speed_pct", label: "신법가속", values: { "하급": 1, "중급": 2, "상급": 3, "최상급": 5 } }, // 기본값은 하급 기준, 실제 값은 등급/희귀도에 따라 보정
 ];
@@ -236,6 +236,16 @@ export const LEGENDARY_OPTIONS: any[] = [
   { id: "leg_gold_double", name: "부호", description: "골드 획득 시 10% 확률로 2배" },
   { id: "leg_boss_drop", name: "탐욕", description: "보스 처치 시 20% 확률로 추가 드랍" },
 ];
+
+export function getItemOptionCount(tier: ItemTier): number {
+  switch (tier) {
+    case "신기": return 5;
+    case "국보": return 4;
+    case "보구": return 3;
+    case "명품": return 2;
+    default: return 1;
+  }
+}
 
 export function rollTierAndOptions(
   baseItem: OwnedWeapon, 
@@ -272,21 +282,7 @@ export function rollTierAndOptions(
   }
 
   // 2. 랜덤 옵션 개수 결정 (등급별로 엄격하게 고정)
-  let optCount = 1;
-  if (item.tier === "신기") optCount = 4;
-  else if (item.tier === "국보") optCount = 4;
-  else if (item.tier === "보구") optCount = 3;
-  else if (item.tier === "명품") optCount = 2;
-  else optCount = 1;
-
-  // 튜토리얼 등 강제 보정 시 최소 개수 보장
-  if (forcedTier) {
-    const tierOrder: ItemTier[] = ["평범", "명품", "보구", "국보", "신기"];
-    const targetIdx = tierOrder.indexOf(forcedTier);
-    if (targetIdx === 1) optCount = Math.max(optCount, 2);
-    else if (targetIdx === 2) optCount = Math.max(optCount, 3);
-    else if (targetIdx >= 3) optCount = Math.max(optCount, 4);
-  }
+  const optCount = getItemOptionCount(item.tier || "평범");
   
   const options: RandomOption[] = [];
   const usedStats = new Set<string>();
@@ -304,6 +300,8 @@ export function rollTierAndOptions(
     const pool = RANDOM_OPTION_POOL.filter(o => {
       // 신법가속은 오직 장갑(gloves)에만 붙을 수 있음
       if (o.stat === "speed_pct" && item.slot !== "gloves") return false;
+      // 재생력은 오직 반지(ring)에만 붙을 수 있음
+      if (o.stat === "hp_regen" && item.slot !== "ring") return false;
       return !usedStats.has(o.stat);
     });
     if (pool.length === 0) break;
@@ -331,7 +329,7 @@ export function rollTierAndOptions(
     options.push({
       stat: picked.stat,
       value: val,
-      label: `${picked.label} +${val}${picked.stat.includes("pct") || picked.stat === "crit_rate" || picked.stat === "eva" ? "%" : ""}`,
+      label: `${picked.label} +${Number(val.toFixed(1))}${picked.stat.includes("pct") || picked.stat === "crit_rate" || picked.stat === "eva" || picked.stat === "crit_dmg_pct" ? "%" : ""}`,
       grade: grade
     });
     usedStats.add(picked.stat);
@@ -368,12 +366,7 @@ export function rollTierAndOptions(
 
 export function fixItemOptions(item: OwnedWeapon): OwnedWeapon {
   const tier = item.tier || "평범";
-  let targetCount = 1;
-  if (tier === "신기") targetCount = 4;
-  else if (tier === "국보") targetCount = 4;
-  else if (tier === "보구") targetCount = 3;
-  else if (tier === "명품") targetCount = 2;
-  else targetCount = 1;
+  const targetCount = getItemOptionCount(tier);
 
   let currentOptions = [...(item.randomOptions || [])];
   
@@ -386,7 +379,14 @@ export function fixItemOptions(item: OwnedWeapon): OwnedWeapon {
     // Add missing
     const usedStats = new Set(currentOptions.map(o => o.stat));
     while (currentOptions.length < targetCount) {
-      const pool = RANDOM_OPTION_POOL.filter(o => !usedStats.has(o.stat));
+      const pool = RANDOM_OPTION_POOL.filter(o => {
+        if (usedStats.has(o.stat)) return false;
+        // 신법가속은 오직 장갑(gloves)에만 붙을 수 있음
+        if (o.stat === "speed_pct" && item.slot !== "gloves") return false;
+        // 재생력은 오직 반지(ring)에만 붙을 수 있음
+        if (o.stat === "hp_regen" && item.slot !== "ring") return false;
+        return true;
+      });
       if (pool.length === 0) break;
       const picked = pool[Math.floor(Math.random() * pool.length)];
       
@@ -400,7 +400,7 @@ export function fixItemOptions(item: OwnedWeapon): OwnedWeapon {
       currentOptions.push({
         stat: picked.stat,
         value: val,
-        label: `${picked.label} +${val}${picked.stat.includes("pct") || picked.stat === "crit_rate" || picked.stat === "eva" ? "%" : ""}`,
+        label: `${picked.label} +${val}${picked.stat.includes("pct") || picked.stat === "crit_rate" || picked.stat === "eva" || picked.stat === "crit_dmg_pct" ? "%" : ""}`,
         grade: grade
       });
       usedStats.add(picked.stat);

@@ -59,8 +59,8 @@ export default function InventoryPanel(props: Props) {
   const getTotalEvasion = useGameStore((s: any) => s.getTotalEvasion);
   const getTotalSpeed = useGameStore((s: any) => s.getTotalSpeed);
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
-  const gamblingTokenFragments = useGameStore(
-    (s: any) => s.game.gamblingTokenFragments || 0,
+  const duelTokenFragments = useGameStore(
+    (s: any) => s.game.duelTokenFragments || 0,
   );
   const synthesizeTujeonTokens = useGameStore(
     (s: any) => s.synthesizeTujeonTokens,
@@ -709,7 +709,7 @@ export default function InventoryPanel(props: Props) {
                     style={{
                       fontSize: 24,
                       filter:
-                        gamblingTokenFragments >= 5
+                        duelTokenFragments >= 10
                           ? "drop-shadow(0 0 5px #ffd700)"
                           : "none",
                     }}
@@ -724,14 +724,14 @@ export default function InventoryPanel(props: Props) {
                       style={{
                         fontSize: "14px",
                         fontWeight: "bold",
-                        color: gamblingTokenFragments >= 5 ? "#4dff8a" : "#eee",
+                        color: duelTokenFragments >= 10 ? "#4dff8a" : "#eee",
                       }}
                     >
-                      {gamblingTokenFragments} / 5
+                      {duelTokenFragments} / 10
                     </div>
                   </div>
                 </div>
-                {gamblingTokenFragments >= 5 && (
+                {duelTokenFragments >= 10 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1475,7 +1475,7 @@ export default function InventoryPanel(props: Props) {
                   >
                     {popupItem.randomOptions.map((opt: any, i: number) => (
                       <div key={i} style={{ color: "#7ee7ff", fontSize: 11 }}>
-                        🔹 {opt.label.replace(" %", "")}
+                        🔹 {opt.label.replace(/(\d+\.\d+)/g, (m: string) => Number(parseFloat(m).toFixed(1)).toString())}
                       </div>
                     ))}
                   </div>
@@ -1774,6 +1774,39 @@ export default function InventoryPanel(props: Props) {
               >
                 판매
               </button>
+
+              {popupItem.tier === "신기" && (
+                <button
+                  onClick={() => {
+                    const dupes = ownedWeapons.filter((w: any) => w.tier === "신기" && w.name === popupItem.name && w.id !== popupItem.id);
+                    if (dupes.length === 0) {
+                      alert("중복된 신기 아이템이 없습니다. (동일 이름의 신기 아이템 2개 필요)");
+                      return;
+                    }
+                    if (confirm(`중복된 [신기] ${popupItem.name} 아이템을 소모하여 새로운 신기 아이템을 제작하시겠습니까? (수동 합성)`)) {
+                      (useGameStore.getState() as any).convertDivineItem(popupItem.id, dupes[0].id, popupItem);
+                      setPopupItem(null);
+                      alert("신기 합성이 완료되었습니다! 새로운 신기 아이템이 인벤토리에 추가되었습니다.");
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    marginTop: 8,
+                    padding: "12px",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: "black",
+                    background: "linear-gradient(135deg, #ff00ff, #7000ff)",
+                    color: "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 0 15px rgba(255,0,255,0.4)",
+                    textShadow: "0 0 5px rgba(255,255,255,0.5)"
+                  }}
+                >
+                  ✨ 신기 아이템 합성 (2:1)
+                </button>
+              )}
 
               <button
                 onClick={() => {

@@ -326,35 +326,6 @@ export default function GameShell() {
           overflow: "hidden",
         }}
       >
-        {/* 최상단 초기화 버튼 (항시 노출) */}
-        <button
-          onClick={() => {
-            if (
-              confirm(
-                "정말 모든 데이터를 초기화하고 처음부터 다시 시작하시겠습니까?",
-              )
-            ) {
-              (useGameStore.getState() as any).resetGame();
-            }
-          }}
-          style={{
-            position: "absolute",
-            top: "4px",
-            right: "4px",
-            zIndex: 100001,
-            padding: "3px 8px",
-            borderRadius: "4px",
-            background: "rgba(255, 0, 0, 0.4)",
-            border: "1px solid rgba(255, 0, 0, 0.6)",
-            color: "#fff",
-            fontSize: "9px",
-            fontWeight: "950",
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,0,0,0.5)",
-          }}
-        >
-          초기화
-        </button>
 
         {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
         {!masterDuelIsPlaying && activeTab !== "master" && (
