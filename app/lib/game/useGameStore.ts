@@ -1469,6 +1469,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       let uTabs = [...(s.game.unlockedTabs || [])];
       let uET = s.game.unlockEffectText;
       let aB = s.game.activeBuff;
+      let aM = s.game.attackMultiplier || 1;
+      let bTL = s.game.buffTimeLeft || 0;
       let extraHitsFromSpeed = 0;
 
       // 자동 수련(Auto Attack)인 경우 게이지 처리

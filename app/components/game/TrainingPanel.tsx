@@ -431,7 +431,7 @@ export default function TrainingPanel() {
     const oilRes = useGameStore.getState().triggerOilEffects();
     useGameStore.getState().applyOilResults(oilRes);
 
-    const baseHitCount = isTriple ? 3 : 1;
+    const baseHitCount = oilRes.hitCount;
     let extraHitsFromSpeed = 0;
     for (let i = 0; i < baseHitCount; i++) {
       extraHitsFromSpeed += useGameStore.getState().processAttackGauge();

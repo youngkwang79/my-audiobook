@@ -12,7 +12,10 @@ import {
   getRefineBonusMultiplier,
   getRefineBonusText,
   getSkillStudyPrice,
-  getCraftingRequirements
+  getCraftingRequirements,
+  getManualFragmentDisplayName,
+  getFactionBondDisplayName,
+  getMaterialDisplayName
 } from "@/app/lib/game/martialArtsSystem";
 import { MARTIAL_SYNTHESIS_RECIPES } from "@/app/lib/game/martialArtsRecipes";
 import { getMovementBuff } from "@/app/lib/game/movementLogic";
@@ -651,11 +654,11 @@ function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string
             {/* 재료 그리드 */}
             {reqs && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "4px", width: "100%" }}>
-                <ResourceRow icon="📜" label="비급 조각" current={currentRes.fragments} required={reqs.requiredFragments} />
-                <ResourceRow icon="💎" label="연마 재료" current={currentRes.materials} required={reqs.requiredMaterials} />
+                <ResourceRow icon="📜" label={getManualFragmentDisplayName(skill.factionName, skill.name)} current={currentRes.fragments} required={reqs.requiredFragments} />
+                <ResourceRow icon="💎" label={getMaterialDisplayName(skill.factionName, skill.realm, skill.name)} current={currentRes.materials} required={reqs.requiredMaterials} />
                 <ResourceRow icon="⚙️" label="장비 조각" current={currentRes.gearFrags} required={reqs.requiredGearFragments} />
                 <ResourceRow icon="✨" label="신기 파편" current={currentRes.divineShards} required={reqs.requiredDivineWeaponShards} />
-                <ResourceRow icon="🤝" label="문파 인연" current={currentRes.bonds} required={reqs.requiredBonds} />
+                <ResourceRow icon="🤝" label={getFactionBondDisplayName(skill.factionName)} current={currentRes.bonds} required={reqs.requiredBonds} />
                 <ResourceRow icon="💡" label="무학 심득" current={currentRes.insights} required={reqs.requiredInsights} />
                 <ResourceRow icon="💰" label="제작 비용" current={currentRes.coins} required={reqs.goldCost} isCost />
               </div>
