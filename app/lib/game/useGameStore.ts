@@ -856,11 +856,12 @@ interface GameState {
   infuseSoul: (itemId: string, type: string) => { success: boolean; message: string };
   applyOil: (itemId: string, oilId: ConsumableId) => { success: boolean; message: string };
   triggerOilEffects: () => { hitCount: number; ohk: boolean; buffsTriggered: string[] };
+  processAttackGauge: () => number;
   toggleAudio: () => void;
   triggerUltimate: () => void;
   buyBossShopItem: (itemType: string) => void;
   parryBossAttack: () => void;
-  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => { totalDamage: number; isCrit: boolean; effect: any; };
+  tapMasterDuel: (bonusDmg?: number, isWeakness?: boolean, oilRes?: any) => { totalDamage: number; isCrit: boolean; effect: any; isCounter: boolean; extraHits: number; };
   restoreMp: (amount: number) => void;
   getSetCounts: () => Record<string, number>;
   openPaewangBox: () => { success: boolean; item?: OwnedWeapon; message?: string };
@@ -2969,7 +2970,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 1. 회피 판정 (사용자 기획 ✅ 5)
       const rivalEva = (masterDuel.isBoss ? 15 : 10) / 100; // 보스 15%, 일반 10%
       if (Math.random() < rivalEva) {
-        result = { totalDamage: 0, isCrit: false, effect: "DODGE" as any, isCounter: false };
+        result = { totalDamage: 0, isCrit: false, effect: "DODGE" as any, isCounter: false, extraHits: extraHitsCount };
         return { game: { ...s.game, masterDuel: { ...masterDuel, lastEffect: "DODGE", damageTakenAccumulator: 0, factionState: fState } } };
       }
 
@@ -3166,7 +3167,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const nextMaxLevel = Math.max(masterDuel.currentLevel, nextLevel);
         const nextEnemy = generateEnemy(nextLevel);
 
-        result = { totalDamage, isCrit, effect, isCounter: false };
+        result = { totalDamage: finalAppliedDamage, isCrit, effect, isCounter: false, extraHits: extraHitsCount };
         return {
           game: {
             ...s.game,
@@ -3209,7 +3210,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         };
       }
 
-      result = { totalDamage, isCrit, effect, isCounter: false };
+      result = { totalDamage: finalAppliedDamage, isCrit, effect, isCounter: false, extraHits: extraHitsCount };
       return {
         game: {
           ...s.game,

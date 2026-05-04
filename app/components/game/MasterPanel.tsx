@@ -413,7 +413,7 @@ export default function MasterPanel() {
     const damagePerHit = Math.floor(totalDamage / hitTotal);
 
     // 타격별 대미지 텍스트 생성
-    const newDamages = [];
+    const newDamages: any[] = [];
     for (let i = 0; i < hitTotal; i++) {
       const isExtra = i > 0;
       newDamages.push({

@@ -21,6 +21,25 @@ export type RealmKey =
   | "신화경"
   | "천인합일";
 
+const FACTION_THEMES: Record<string, string> = {
+  "화산파": "매화",
+  "소림": "금강",
+  "무당": "태극",
+  "개방": "용기",
+  "청성파": "청풍",
+  "점창파": "광영",
+  "공동파": "혼원",
+  "아미파": "수월",
+  "곤륜파": "빙설",
+  "남궁세가": "뇌전",
+  "제갈세가": "천기",
+  "사마세가": "태양",
+  "하북팽가": "파천",
+  "사천당가": "만독",
+  "일월신교": "일월",
+  "천마신교": "마기"
+};
+
 export type SkillCategory =
   | "sword"
   | "fist"
@@ -408,6 +427,33 @@ export function getRefineBonusText(stars: number) {
   if (stars >= 5) return "중성 단계: 핵심 수치 증폭";
   if (stars >= 3) return "초성 단계: 기본 위력 강화";
   return "기본 상태";
+}
+
+export function getManualFragmentDisplayName(factionName: string, martialName: string) {
+  return `${martialName} 조각`;
+}
+
+export function getFactionBondDisplayName(factionName: string) {
+  if (factionName === "강호공용") return "강호 인연";
+  return `${factionName} 인연`;
+}
+
+export function getMaterialDisplayName(factionName: string, realmName: string, martialName: string) {
+  const theme = FACTION_THEMES[factionName];
+  if (!theme) return `${factionName} 비전 재료`;
+
+  const realmIdx = REALM_ORDER_KEYS.indexOf(realmName as RealmKey);
+  const safeIdx = realmIdx === -1 ? 0 : realmIdx;
+
+  if (safeIdx <= 2) { // 필부 to 이류
+    return safeIdx % 2 === 0 ? `탁한 ${theme} 결정` : `응축된 ${theme} 파편`;
+  } else if (safeIdx <= 5) { // 일류 to 초절정
+    return safeIdx % 2 === 0 ? `${theme} 기운 핵` : `${theme} 응축 결정`;
+  } else if (safeIdx <= 8) { // 화경 to 생사경
+    return safeIdx % 2 === 0 ? `${theme} 본원 결정` : `${theme} 응집 핵`;
+  } else { // 신화경 to 천인합일
+    return safeIdx % 2 === 0 ? `${theme} 군림 핵` : `불멸 ${theme} 핵`;
+  }
 }
 
 export function refineLearnedSkill(
