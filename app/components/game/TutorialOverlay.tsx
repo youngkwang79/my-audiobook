@@ -88,7 +88,7 @@ export default function TutorialOverlay() {
             inset: 0,
             background:
               step.actionType === "any" ? "rgba(0,0,0,0.7)" : "transparent",
-            pointerEvents: step.id === "restart_training" ? "none" : "auto",
+            pointerEvents: (step.actionType === "any" || ["tower_unlock", "library_unlock", "library_cost_guide", "library_complete", "master_unlock", "inn_event", "restart_training"].includes(step.id)) ? "none" : "auto",
           }}
           onClick={(e) => {
             e.preventDefault();
@@ -136,7 +136,7 @@ export default function TutorialOverlay() {
               height="100%"
               fill="rgba(0,0,0,0.7)"
               mask="url(#tutorial-mask)"
-              pointerEvents="auto"
+              pointerEvents={(step.actionType === "any" || ["tower_unlock", "library_unlock", "library_cost_guide", "library_complete", "master_unlock", "inn_event"].includes(step.id)) ? "none" : "auto"}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -343,7 +343,8 @@ export default function TutorialOverlay() {
             </motion.div>
           )}
 
-          {(step.actionType === "any" || step.id === "click_equip_button") && (
+          {(step.actionType === "any" || 
+            ["tower_unlock", "library_unlock", "master_unlock", "inn_event", "click_equip_button"].includes(step.id)) && (
             <button
               onClick={() => completeTutorialStep(currentStepId!)}
               style={{
@@ -379,7 +380,10 @@ export default function TutorialOverlay() {
               step.id === "explain_night_only" ||
               step.id === "goto_forge_click" ||
               step.id === "forge_unlock" ||
-              step.id === "goto_inventory"
+              step.id === "goto_inventory" ||
+              step.id === "master_unlock" ||
+              step.id === "tower_unlock" ||
+              step.id === "inn_event"
                 ? [0, 15, 0]
                 : [0, -15, 0],
             scale: [1, 1.1, 1],
@@ -419,6 +423,9 @@ export default function TutorialOverlay() {
                           "actual_final_back_to_training",
                           "restart_training",
                           "library_unlock",
+                          "master_unlock",
+                          "tower_unlock",
+                          "inn_event",
                         ].includes(step.id)
                       ? [
                           "check_forge_result",
@@ -497,7 +504,10 @@ export default function TutorialOverlay() {
           step.id === "click_infuse_start" ||
           step.id === "check_forge_result" ||
           step.id === "check_final_infused_options" ||
-          step.id === "library_unlock"
+          step.id === "library_unlock" ||
+          step.id === "master_unlock" ||
+          step.id === "tower_unlock" ||
+          step.id === "inn_event"
             ? "👇"
             : "👆"}
         </motion.div>

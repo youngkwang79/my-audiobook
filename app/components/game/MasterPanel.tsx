@@ -408,7 +408,26 @@ export default function MasterPanel() {
     const duelResult = tapMasterDuel(0, false, oilRes);
     if (!duelResult || duelResult.totalDamage === 0) return;
 
-    const { totalDamage, isCrit } = duelResult;
+    const { totalDamage, isCrit, extraHits } = duelResult;
+    const hitTotal = 1 + (extraHits || 0);
+    const damagePerHit = Math.floor(totalDamage / hitTotal);
+
+    // 타격별 대미지 텍스트 생성
+    const newDamages = [];
+    for (let i = 0; i < hitTotal; i++) {
+      const isExtra = i > 0;
+      newDamages.push({
+        id: Date.now() + Math.random() + i,
+        damage: damagePerHit,
+        isCritical: isCrit,
+        skillText: i === 0 ? duelResult.effect : "⚡ 신법가속",
+        isCyan: isExtra, // 추가타는 청색으로 표시
+        x: 50 + (Math.random() * 20 - 10) + (i * 5),
+        y: 35 + (Math.random() * 10 - 5) - (i * 2)
+      });
+    }
+
+    setDamages(prev => [...prev, ...newDamages].slice(-20));
     const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
     const isDemon = oilRes.buffsTriggered.includes("oil_demon");
     const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");

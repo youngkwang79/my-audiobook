@@ -1,5 +1,5 @@
 import type { CoinItem, EquippedGear, GameSaveData } from "./types";
-import { REALM_ORDER } from "./useGameStore";
+import { REALM_ORDER, fixItemOptions } from "./items";
 
 const defaultEquippedGear: EquippedGear = {
   mainWeapon: null,
@@ -64,10 +64,10 @@ export const defaultGameData: GameSaveData = {
   baseAttack: 10,
   
   manualFragments: {},
-  advancedMaterials: 0,
-  legendaryGearFragments: 0,
-  divineWeaponShards: 0,
-  gearPieces: 0,
+  materials: {},
+  gearFragments: {},
+  divineWeaponShards: {},
+  insights: 0,
   breakthroughStats: {
     atk: 0,
     def: 0,
@@ -82,6 +82,7 @@ export const defaultGameData: GameSaveData = {
   lastActivityHeartbeat: Date.now(),
   factionBonds: {},
   unlockedContents: [],
+  speedGauge: 0,
 
   reputation: 0,
 
@@ -427,7 +428,7 @@ export function loadGame(): GameSaveData {
       coinDrops: Array.isArray(v12Data.coinDrops) ? v12Data.coinDrops : [],
       unlockedTabs: Array.from(new Set(repairedTabs)) as any, // Deduplicate
       ownedWeapons: Array.isArray(v12Data.ownedWeapons)
-        ? v12Data.ownedWeapons
+        ? v12Data.ownedWeapons.map((w: any) => fixItemOptions(w))
         : [],
       equippedWeaponId:
         v12Data.equippedWeaponId ??

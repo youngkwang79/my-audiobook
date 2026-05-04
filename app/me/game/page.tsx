@@ -124,7 +124,7 @@ export default function MeGamePage() {
       const currentGame = useGameStore.getState().game;
 
       if (!currentGame.isInitialized) return;
-      useGameStore.getState().syncToCloud();
+      useGameStore.getState().syncToCloud(true);
       console.log("🚪 종료 전 저장 시도");
     };
 

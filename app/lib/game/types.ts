@@ -95,6 +95,8 @@ export type OwnedWeapon = {
   critDmgBonus?: number;
   hpBonus?: number;
   mpBonus?: number;
+  hpRegenBonus?: number;
+  hpRegenPctBonus?: number;
   speedBonus?: number;
   price: number;
   touchMultiplier?: number;
@@ -560,11 +562,11 @@ export type GameSaveData = {
   };
   // --- New Acquisition Fields ---
   manualFragments: Record<string, number>;
-  advancedMaterials: number;
-  legendaryGearFragments: number;
-  divineWeaponShards: number;
-  gearPieces: number;
+  materials: Record<string, number>;
+  gearFragments: Record<string, number>;
+  divineWeaponShards: Record<string, number>;
   factionBonds: Record<string, number>;
+  insights: number; // For advanced growth (wisdom)
 
   activeTab: TabType;
   showInnVictoryEffect: boolean;
@@ -594,6 +596,7 @@ export type GameSaveData = {
   pendingYabawiPlay?: boolean;
   breakthroughStats: Record<string, number>; // New: Permanent stats from breakthroughs
   lastActivityHeartbeat: number; // New: To prevent stuck time flags
+  speedGauge: number; // New: For glove-only extra attack system
   
   // --- Night System ---
   timeState: "day" | "dusk" | "night" | "dawn";

@@ -79,17 +79,17 @@ export const SET_GROUPS: SetGroup[] = [
 ];
 
 export const REALM_STATS: Record<RealmType, any> = {
-  "필부": { atk: 10, crit: 1, evade: 1, defRate: 0.1, mp: 10, hp: 20, price: 5000, ring: { gold: 0.05 } },
-  "삼류": { atk: 30, crit: 2, evade: 2, defRate: 0.15, mp: 30, hp: 60, price: 20000, ring: { gold: 0.10 } },
-  "이류": { atk: 80, crit: 3, evade: 3, defRate: 0.25, mp: 80, hp: 160, price: 80000, ring: { drop: 0.10 } },
-  "일류": { atk: 250, crit: 5, evade: 5, defRate: 0.40, mp: 250, hp: 500, price: 300000, ring: { exp: 0.10 } },
-  "절정": { atk: 800, crit: 8, evade: 8, defRate: 0.60, mp: 800, hp: 1600, price: 1200000, ring: { gold: 0.20 } },
-  "초절정": { atk: 2500, crit: 12, evade: 12, defRate: 0.90, mp: 2500, hp: 5000, price: 5000000, ring: { drop: 0.20 } },
-  "화경": { atk: 8000, crit: 16, evade: 16, defRate: 1.30, mp: 8000, hp: 16000, price: 20000000, ring: { exp: 0.20 } },
-  "현경": { atk: 20000, crit: 20, evade: 20, defRate: 1.80, mp: 20000, hp: 40000, price: 80000000, ring: { gold: 0.30 } },
-  "생사경": { atk: 50000, crit: 25, evade: 25, defRate: 2.50, mp: 50000, hp: 100000, price: 300000000, ring: { drop: 0.30 } },
-  "신화경": { atk: 120000, crit: 30, evade: 30, defRate: 3.50, mp: 120000, hp: 250000, price: 1200000000, ring: { exp: 0.30 } },
-  "천인합일": { atk: 300000, crit: 35, evade: 35, defRate: 5.00, mp: 300000, hp: 600000, price: 5000000000, ring: { gold: 0.2, drop: 0.2, exp: 0.2 } },
+  "필부": { atk: 10, crit: 1, evade: 1, defRate: 0.1, mp: 10, hp: 20, price: 5000, ring: { gold: 0.05, hpRegen: 1 } },
+  "삼류": { atk: 30, crit: 2, evade: 2, defRate: 0.15, mp: 30, hp: 60, price: 20000, ring: { gold: 0.10, hpRegen: 2 } },
+  "이류": { atk: 80, crit: 3, evade: 3, defRate: 0.25, mp: 80, hp: 160, price: 80000, ring: { drop: 0.10, hpRegen: 4 } },
+  "일류": { atk: 250, crit: 5, evade: 5, defRate: 0.40, mp: 250, hp: 500, price: 300000, ring: { exp: 0.10, hpRegen: 7 } },
+  "절정": { atk: 800, crit: 8, evade: 8, defRate: 0.60, mp: 800, hp: 1600, price: 1200000, ring: { gold: 0.20, hpRegen: 12 } },
+  "초절정": { atk: 2500, crit: 12, evade: 12, defRate: 0.90, mp: 2500, hp: 5000, price: 5000000, ring: { drop: 0.20, hpRegen: 18, hpRegenPct: 0.002 } },
+  "화경": { atk: 8000, crit: 16, evade: 16, defRate: 1.30, mp: 8000, hp: 16000, price: 20000000, ring: { exp: 0.20, hpRegen: 25, hpRegenPct: 0.005 } },
+  "현경": { atk: 20000, crit: 20, evade: 20, defRate: 1.80, mp: 20000, hp: 40000, price: 80000000, ring: { gold: 0.30, hpRegen: 35, hpRegenPct: 0.01 } },
+  "생사경": { atk: 50000, crit: 25, evade: 25, defRate: 2.50, mp: 50000, hp: 100000, price: 300000000, ring: { drop: 0.30, hpRegen: 50, hpRegenPct: 0.015 } },
+  "신화경": { atk: 120000, crit: 30, evade: 30, defRate: 3.50, mp: 120000, hp: 250000, price: 1200000000, ring: { exp: 0.30, hpRegen: 70, hpRegenPct: 0.02 } },
+  "천인합일": { atk: 300000, crit: 35, evade: 35, defRate: 5.00, mp: 300000, hp: 600000, price: 5000000000, ring: { gold: 0.2, drop: 0.2, exp: 0.2, hpRegen: 100, hpRegenPct: 0.025 } },
 };
 
 export const REALM_ORDER: RealmType[] = [
@@ -129,7 +129,7 @@ function generateForgeItems(): OwnedWeapon[] {
         "초절정": "비취 목걸이", "화경": "만년빙수정", "현경": "태극 목걸이", "생사경": "마안 목걸이", "신화경": "천상의 목걸이", "천인합일": "무극 목걸이" 
       } 
     },
-    { slot: "bracelet", icon: "📿", nameMap: { 
+    { slot: "bracelet", icon: "🧿", nameMap: { 
         "필부": "무명 팔찌", "삼류": "강철 팔찌", "이류": "청동 팔찌", "일류": "은 팔찌", "절정": "금 팔찌", 
         "초절정": "보옥 팔찌", "화경": "현철 팔찌", "현경": "태극 팔찌", "생사경": "마안 팔찌", "신화경": "천신의 팔찌", "천인합일": "무극 팔찌" 
       } 
@@ -153,6 +153,8 @@ function generateForgeItems(): OwnedWeapon[] {
       let goldMult = 0;
       let dropMult = 0;
       let expMult = 0;
+      let hpRegenBonus = 0;
+      let hpRegenPctBonus = 0;
 
       if (s.slot === "mainWeapon") attackBonus = stats.atk;
       else if (s.slot === "subWeapon") attackBonus = Math.floor(stats.atk * 0.6);
@@ -165,6 +167,8 @@ function generateForgeItems(): OwnedWeapon[] {
         if (stats.ring.gold) goldMult = stats.ring.gold;
         if (stats.ring.drop) dropMult = stats.ring.drop;
         if (stats.ring.exp) expMult = stats.ring.exp;
+        hpRegenBonus = stats.ring.hpRegen || 0;
+        hpRegenPctBonus = stats.ring.hpRegenPct || 0;
       }
 
       // 기본적으로 모든 제작 아이템은 '공격' 세트로 시작 (유저가 변경하거나 드랍으로 다른 세트 획득 가능)
@@ -181,6 +185,8 @@ function generateForgeItems(): OwnedWeapon[] {
         defenseBonus,
         hpBonus,
         mpBonus,
+        hpRegenBonus,
+        hpRegenPctBonus,
         price: stats.price,
         icon: s.icon,
         description: [
@@ -189,7 +195,9 @@ function generateForgeItems(): OwnedWeapon[] {
           hpBonus > 0 ? `생명 +${hpBonus}` : "",
           mpBonus > 0 ? `내공 +${mpBonus}` : "",
           critBonus > 0 ? `치명타 +${critBonus}%` : "",
-          evadeBonus > 0 ? `회피 +${evadeBonus}%` : ""
+          evadeBonus > 0 ? `회피 +${evadeBonus}%` : "",
+          hpRegenBonus > 0 ? `재생 +${hpRegenBonus}/s` : "",
+          hpRegenPctBonus > 0 ? `재생 +${(hpRegenPctBonus * 100).toFixed(1)}%/s` : ""
         ].filter(Boolean).join(" | "),
         goldMultiplier: goldMult > 0 ? goldMult : undefined,
         dropMultiplier: dropMult > 0 ? dropMult : undefined,
@@ -212,6 +220,7 @@ export const RANDOM_OPTION_POOL = [
   { stat: "def_pct", label: "방어력", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 25 } },
   { stat: "crit_dmg", label: "치명타 피해", values: { "하급": 5, "중급": 10, "상급": 15, "최상급": 20 } },
   { stat: "hp_regen", label: "재생력", values: { "하급": 10, "중급": 15, "상급": 22, "최상급": 30 } },
+  { stat: "speed_pct", label: "신법가속", values: { "하급": 1, "중급": 2, "상급": 3, "최상급": 5 } }, // 기본값은 하급 기준, 실제 값은 등급/희귀도에 따라 보정
 ];
 
 export const LEGENDARY_OPTIONS: any[] = [
@@ -262,20 +271,21 @@ export function rollTierAndOptions(
     }
   }
 
-  // 2. 랜덤 옵션 개수 결정 (기존 개수가 있다면 유지, 없다면 등급별 기본 개수 부여)
-  let optCount = prevOptCount > 0 ? prevOptCount : 1;
-  
-  if (prevOptCount === 0) {
-    if (item.tier === "신기") optCount = 4;
-    else if (item.tier === "국보") optCount = 3;
-    else if (item.tier === "보구") optCount = 3;
-    else if (item.tier === "명품") optCount = 2;
-    else optCount = 1;
+  // 2. 랜덤 옵션 개수 결정 (등급별로 엄격하게 고정)
+  let optCount = 1;
+  if (item.tier === "신기") optCount = 4;
+  else if (item.tier === "국보") optCount = 4;
+  else if (item.tier === "보구") optCount = 3;
+  else if (item.tier === "명품") optCount = 2;
+  else optCount = 1;
 
-    // 튜토리얼 등 강제 보정 시 최소 개수 보장
-    if (forcedTier) {
-      optCount = Math.max(optCount, 2);
-    }
+  // 튜토리얼 등 강제 보정 시 최소 개수 보장
+  if (forcedTier) {
+    const tierOrder: ItemTier[] = ["평범", "명품", "보구", "국보", "신기"];
+    const targetIdx = tierOrder.indexOf(forcedTier);
+    if (targetIdx === 1) optCount = Math.max(optCount, 2);
+    else if (targetIdx === 2) optCount = Math.max(optCount, 3);
+    else if (targetIdx >= 3) optCount = Math.max(optCount, 4);
   }
   
   const options: RandomOption[] = [];
@@ -291,7 +301,11 @@ export function rollTierAndOptions(
   // 나머지 옵션 생성
   const targetCount = optCount;
   while (options.length < targetCount) {
-    const pool = RANDOM_OPTION_POOL.filter(o => !usedStats.has(o.stat));
+    const pool = RANDOM_OPTION_POOL.filter(o => {
+      // 신법가속은 오직 장갑(gloves)에만 붙을 수 있음
+      if (o.stat === "speed_pct" && item.slot !== "gloves") return false;
+      return !usedStats.has(o.stat);
+    });
     if (pool.length === 0) break;
     const picked = pool[Math.floor(Math.random() * pool.length)];
     
@@ -302,7 +316,18 @@ export function rollTierAndOptions(
     else if (gradeRoll > 80) grade = "상급";
     else if (gradeRoll > 50) grade = "중급";
     
-    const val = (picked.values as any)[grade];
+    let val = (picked.values as any)[grade];
+
+    // 신법가속(speed_pct)인 경우 희귀도별 범위 적용
+    if (picked.stat === "speed_pct") {
+      const tier = item.tier || "평범";
+      if (tier === "평범") val = 1 + Math.floor(Math.random() * 3); // 1~3
+      else if (tier === "명품") val = 2 + Math.floor(Math.random() * 6); // 2~7
+      else if (tier === "보구") val = 3 + Math.floor(Math.random() * 8); // 3~10
+      else if (tier === "국보") val = 5 + Math.floor(Math.random() * 11); // 5~15
+      else if (tier === "신기") val = 10 + Math.floor(Math.random() * 16); // 10~25
+    }
+
     options.push({
       stat: picked.stat,
       value: val,
@@ -340,6 +365,51 @@ export function rollTierAndOptions(
 
   return item;
 }
+
+export function fixItemOptions(item: OwnedWeapon): OwnedWeapon {
+  const tier = item.tier || "평범";
+  let targetCount = 1;
+  if (tier === "신기") targetCount = 4;
+  else if (tier === "국보") targetCount = 4;
+  else if (tier === "보구") targetCount = 3;
+  else if (tier === "명품") targetCount = 2;
+  else targetCount = 1;
+
+  let currentOptions = [...(item.randomOptions || [])];
+  
+  if (currentOptions.length === targetCount) return item;
+
+  if (currentOptions.length > targetCount) {
+    // Trim
+    item.randomOptions = currentOptions.slice(0, targetCount);
+  } else {
+    // Add missing
+    const usedStats = new Set(currentOptions.map(o => o.stat));
+    while (currentOptions.length < targetCount) {
+      const pool = RANDOM_OPTION_POOL.filter(o => !usedStats.has(o.stat));
+      if (pool.length === 0) break;
+      const picked = pool[Math.floor(Math.random() * pool.length)];
+      
+      const gradeRoll = Math.random() * 100;
+      let grade: "하급" | "중급" | "상급" | "최상급" = "하급";
+      if (gradeRoll > 95) grade = "최상급";
+      else if (gradeRoll > 80) grade = "상급";
+      else if (gradeRoll > 50) grade = "중급";
+      
+      const val = (picked.values as any)[grade];
+      currentOptions.push({
+        stat: picked.stat,
+        value: val,
+        label: `${picked.label} +${val}${picked.stat.includes("pct") || picked.stat === "crit_rate" || picked.stat === "eva" ? "%" : ""}`,
+        grade: grade
+      });
+      usedStats.add(picked.stat);
+    }
+    item.randomOptions = currentOptions;
+  }
+  return item;
+}
+
 export function rollPaewangItem(baseItem: OwnedWeapon, optionsCount: number, luck: number, realmIdx: number): OwnedWeapon {
   const item = rollTierAndOptions(baseItem, realmIdx, luck, 10);
   item.tier = "신기";
@@ -366,10 +436,12 @@ export function generateRandomAccessory(realm: RealmType, luck: number): OwnedWe
     slot,
     realm,
     price: stats.price,
-    icon: slot === "necklace" ? "📿" : (slot === "bracelet" ? "📿" : "💍"),
+    icon: slot === "necklace" ? "📿" : (slot === "bracelet" ? "🧿" : "💍"),
     attackBonus: Math.floor(stats.atk * 0.5),
     hpBonus: slot === "bracelet" ? stats.hp : 0,
     mpBonus: slot === "necklace" ? stats.mp : 0,
+    hpRegenBonus: slot === "ring" ? (stats.ring?.hpRegen || 0) : 0,
+    hpRegenPctBonus: slot === "ring" ? (stats.ring?.hpRegenPct || 0) : 0,
   };
   
   return rollTierAndOptions(baseItem, REALM_ORDER.indexOf(realm), luck, 0);
@@ -395,7 +467,7 @@ export function generateRandomGear(realm: RealmType, baseGrade: number, luck: nu
   else if (slot === "necklace") mpBonus = stats.mp;
   else if (slot === "bracelet") hpBonus = stats.hp;
 
-  const iconMap: any = { mainWeapon: "⚔️", subWeapon: "🗡️", gloves: "🧤", shoes: "👟", robe: "👘", necklace: "📿", ring: "💍", bracelet: "📿" };
+  const iconMap: any = { mainWeapon: "⚔️", subWeapon: "🗡️", gloves: "🧤", shoes: "👟", robe: "👘", necklace: "📿", ring: "💍", bracelet: "🧿" };
   const nameMap: any = { mainWeapon: "무기", subWeapon: "보조무기", gloves: "장갑", shoes: "신발", robe: "도포", necklace: "목걸이", ring: "반지", bracelet: "팔찌" };
 
   const baseItem: OwnedWeapon = {
@@ -411,6 +483,8 @@ export function generateRandomGear(realm: RealmType, baseGrade: number, luck: nu
     defenseBonus,
     hpBonus,
     mpBonus,
+    hpRegenBonus: slot === "ring" ? (stats.ring?.hpRegen || 0) : 0,
+    hpRegenPctBonus: slot === "ring" ? (stats.ring?.hpRegenPct || 0) : 0,
     setGroupId: "공격" // 기본 공격 세트
   };
   

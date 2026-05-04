@@ -42,7 +42,13 @@ export default function AutoTrainingManager() {
         currentStepId === "trance_achieved" ||
         currentStepId === "start_training" ||
         currentStepId === "check_final_infused_options" ||
-        currentStepId === "restart_training";
+        currentStepId === "restart_training" ||
+        currentStepId === "library_unlock" ||
+        currentStepId === "library_cost_guide" ||
+        currentStepId === "library_complete" ||
+        currentStepId === "tower_unlock" ||
+        currentStepId === "master_unlock" ||
+        currentStepId === "inn_event";
 
       if (tutorialProgress.isActive && !isAutoTrainingAllowedStep) return;
 

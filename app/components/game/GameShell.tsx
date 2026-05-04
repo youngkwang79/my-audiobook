@@ -123,53 +123,7 @@ export default function GameShell() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    // 튜토리얼 무기 강제 보정 로직
-    if (tutorialProgress?.isActive) {
-      const stepId = tutorialProgress.currentStepId;
-      const pastBuyStep = [
-        "goto_inventory",
-        "select_item_inventory",
-        "click_equip_button",
-        "goto_forge_refine",
-        "select_reroll_tab",
-      ].includes(stepId);
-
-      if (pastBuyStep) {
-        const hasSword = ownedWeapons?.some((w: any) =>
-          w.id.startsWith("필부_mainWeapon"),
-        );
-        if (!hasSword) {
-          console.log("튜토리얼 무기 누락 감지 - 강제 복구 실행");
-          const recoverySword = {
-            id: `필부_mainWeapon_recovery_${Date.now()}`,
-            name: "무명철검",
-            slot: "mainWeapon",
-            realm: "필부",
-            tier: "명품",
-            attackBonus: 10,
-            price: 5000,
-            icon: "⚔️",
-            description: "공격 +10 | 복구된 튜토리얼 장비",
-            randomOptions: [
-              { stat: "atk_pct", label: "공격력", value: 4, grade: "중급" },
-              {
-                stat: "crit_rate",
-                label: "치명타 확률",
-                value: 1,
-                grade: "중급",
-              },
-            ],
-          };
-          addWeapon(recoverySword);
-        }
-      }
-    }
-  }, [
-    tutorialProgress?.currentStepId,
-    ownedWeapons?.length,
-    addWeapon,
-  ]);
+  
 
   useEffect(() => {
     // Avoid synchronous setState in effect warning
@@ -187,7 +141,7 @@ export default function GameShell() {
       if (isSyncingFromCloud) return; // Syncing in progress, skip auto-save
       if (triggerSave) triggerSave(true);
       if (user && syncToCloud) syncToCloud();
-    }, 60000);
+    }, 30000);
 
     // Handle mobile backgrounding / tab closing
     const handleVisibilityChange = () => {
@@ -198,7 +152,7 @@ export default function GameShell() {
           user: storeUser,
         } = useGameStore.getState() as any;
         if (triggerSave) triggerSave(true);
-        if (user && syncToCloud) syncToCloud();
+        if (user && syncToCloud) syncToCloud(true);
       }
     };
 
@@ -211,7 +165,7 @@ export default function GameShell() {
       // Final save attempt on unmount
       const { triggerSave, syncToCloud } = useGameStore.getState() as any;
       if (triggerSave) triggerSave(true);
-      if (user && syncToCloud) syncToCloud();
+      if (user && syncToCloud) syncToCloud(true);
     };
   }, [user]);
 

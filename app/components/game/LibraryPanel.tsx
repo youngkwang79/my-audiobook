@@ -540,196 +540,183 @@ export default function LibraryPanel() {
 
 // 개별 도감 카드 컴포넌트
 function CompendiumCard({ skill, accent, onLearn }: { skill: any, accent: string, onLearn: () => void }) {
+  const game = useGameStore.getState().game;
+  
+  // 1. 상태 판정
+  const isCompleted = skill.unlocked;
   const isLocked = skill.silhouette;
   
+  // 제작 요구사항 계산 (잠기지 않은 경우에만)
+  let reqs = null;
+  let canCraft = false;
+  let currentRes: any = {};
+
+  if (!isCompleted && !isLocked) {
+    reqs = getCraftingRequirements(skill);
+    currentRes = {
+      fragments: game.manualFragments?.[reqs.fragmentId] || 0,
+      materials: game.materials?.["standard_material"] || 0,
+      bonds: game.factionBonds?.[reqs.bondId] || 0,
+      gearFrags: game.gearFragments?.["standard_gear_fragment"] || 0,
+      divineShards: game.divineWeaponShards?.["standard_divine_shard"] || 0,
+      insights: game.insights || 0,
+      coins: game.coins
+    };
+
+    canCraft = currentRes.fragments >= reqs.requiredFragments &&
+               currentRes.materials >= reqs.requiredMaterials &&
+               currentRes.bonds >= reqs.requiredBonds &&
+               currentRes.gearFrags >= (reqs.requiredGearFragments || 0) &&
+               currentRes.divineShards >= (reqs.requiredDivineWeaponShards || 0) &&
+               currentRes.insights >= (reqs.requiredInsights || 0) &&
+               currentRes.coins >= reqs.goldCost;
+  }
+
   return (
     <div style={{
-      background: skill.silhouette ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.03)",
-      border: `1px solid ${skill.unlocked ? accent + "66" : skill.silhouette ? "#222" : accent + "22"}`,
-      borderRadius: "10px",
-      padding: "12px",
+      background: isLocked ? "rgba(0,0,0,0.5)" : isCompleted ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)",
+      border: `1px solid ${isCompleted ? accent + "88" : isLocked ? "#222" : canCraft ? accent + "66" : "#444"}`,
+      borderRadius: "12px",
+      padding: "16px",
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      transition: "transform 0.2s",
-      cursor: "default",
-      filter: skill.silhouette ? "grayscale(1)" : "none",
-      opacity: skill.silhouette ? 0.6 : 1
+      transition: "all 0.3s ease",
+      boxShadow: canCraft && !isCompleted ? `0 0 15px ${accent}22` : "none"
     }}>
+      {/* 좌측 정보 영역 */}
       <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
           <span style={{ 
-            fontSize: "10px", 
-            color: accent, 
-            background: `${accent}15`, 
-            padding: "1px 6px", 
-            borderRadius: "3px",
-            border: `1px solid ${accent}44`
+            fontSize: "10px", color: accent, background: `${accent}15`, padding: "2px 8px", borderRadius: "4px", border: `1px solid ${accent}33`, fontWeight: "bold"
           }}>
             {skill.realm}
           </span>
           <span style={{ 
-            fontSize: "10px", 
-            color: skill.factionName === "강호공용" ? "#ffd700" : "#aaa", 
-            background: "rgba(0,0,0,0.3)", 
-            padding: "1px 5px", 
-            borderRadius: "3px",
-            border: `1px solid ${skill.factionName === "강호공용" ? "#ffd700" : "#444"}`,
-            fontWeight: "bold"
+            fontSize: "10px", color: "#aaa", background: "rgba(0,0,0,0.3)", padding: "2px 8px", borderRadius: "4px", border: "1px solid #333"
           }}>
             {skill.factionName === "강호공용" ? "강호" : "문파"}
           </span>
-          {skill.category === "movement" && (
-            <span style={{ 
-              fontSize: "10px", 
-              color: "#ff4444", 
-              background: "rgba(255,68,68,0.1)", 
-              padding: "1px 5px", 
-              borderRadius: "3px",
-              border: "1px solid rgba(255,68,68,0.3)",
-              fontWeight: "bold"
-            }}>
-              身法
+          <strong style={{ fontSize: "18px", color: isLocked ? "#444" : "#fff", letterSpacing: "-0.5px" }}>
+            {isLocked ? "???" : skill.name}
+          </strong>
+          {isCompleted && (
+            <span style={{ fontSize: "11px", color: accent, background: `${accent}22`, padding: "1px 6px", borderRadius: "4px", marginLeft: "4px" }}>
+              습득 완료 ({skill.stars}성)
             </span>
           )}
-          <strong style={{ fontSize: "16px", color: skill.silhouette ? "#444" : "#fff" }}>
-            {skill.silhouette ? "???" : skill.name}
-          </strong>
-          {skill.unlocked && <span style={{ fontSize: "12px", color: accent }}>{skill.stars}성</span>}
         </div>
         
-        {!skill.silhouette && (
-          <>
-            <div style={{ 
-              fontSize: "13px", 
-              color: "#ccc", 
-              lineHeight: "1.5",
-              margin: "8px 0",
-              padding: "8px",
-              background: "rgba(0,0,0,0.2)",
-              borderRadius: "6px",
-              borderLeft: `3px solid ${accent}`
-            }}>
-              {skill.description}
-            </div>
-            <div style={{ fontSize: "11px", color: "#888", display: "flex", gap: "10px" }}>
-              <span>⚡ 소모 내공: <span style={{ color: "#66ccff" }}>{skill.mpCost?.toLocaleString() || "0"}</span></span>
-              <span>⚔️ 위력: <span style={{ color: "#ff8888" }}>{skill.multiplier}배</span></span>
-            </div>
-          </>
+        {/* 설명 및 경지 알림 */}
+        {!isLocked ? (
+          <div style={{ 
+            fontSize: "13px", color: "#bbb", lineHeight: "1.5", margin: "10px 0", padding: "10px", background: "rgba(0,0,0,0.2)", borderRadius: "8px", borderLeft: `3px solid ${isCompleted ? accent : "#444"}`
+          }}>
+            {skill.description}
+          </div>
+        ) : (
+          <div style={{ fontSize: "12px", color: "#666", marginTop: "12px", fontStyle: "italic", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span>🔒</span>
+            <span>단서 부족: {skill.realm} 경지에 도달하고 기루에서 정보를 수집하십시오.</span>
+          </div>
         )}
-        {skill.silhouette && (
-          <div style={{ fontSize: "11px", color: "#555", marginTop: "10px", fontStyle: "italic" }}>
-            "진전이 부족하여 이 무공의 정체를 알 수 없습니다." (필요 경지: {skill.realm})
+
+        {/* 능력치 요약 */}
+        {!isLocked && (
+          <div style={{ fontSize: "11px", color: "#888", display: "flex", gap: "12px" }}>
+            <span>⚡ 소모 내공: <span style={{ color: "#66ccff" }}>{skill.mpCost?.toLocaleString() || "0"}</span></span>
+            <span>⚔️ 기본 위력: <span style={{ color: "#ff8888" }}>{skill.multiplier}배</span></span>
           </div>
         )}
       </div>
 
-      {!skill.unlocked && !skill.silhouette ? (() => {
-        const reqs = getCraftingRequirements(skill);
-        const game = useGameStore.getState().game;
-        const currentFragments = game.manualFragments?.[reqs.fragmentId] || 0;
-        const currentAdvanced = game.advancedMaterials || 0;
-        const currentBonds = game.factionBonds?.[skill.factionName] || 0;
-        
-        const canCraft = currentFragments >= reqs.requiredFragments &&
-                         currentAdvanced >= reqs.requiredAdvancedMaterials &&
-                         currentBonds >= reqs.requiredBonds &&
-                         game.coins >= reqs.goldCost;
+      {/* 우측 조작 영역 */}
+      <div style={{ marginLeft: "24px", minWidth: "180px" }}>
+        {isLocked ? (
+          /* 1. LOCKED 상태 */
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+            <div style={{ fontSize: "11px", color: "#444", fontWeight: "bold" }}>획득 불가</div>
+            <button
+              onClick={() => alert("기루(妓樓)에서 해당 문파의 비급 정보를 구매하여 단서를 확보하십시오.")}
+              style={{
+                padding: "8px 16px", borderRadius: "8px", border: "1px solid #333", background: "rgba(255,255,255,0.02)", color: "#666", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
+              }}
+            >
+              단서 얻기
+            </button>
+          </div>
+        ) : !isCompleted ? (
+          /* 2 & 3. 제작 진행 중 상태 (UNLOCKED / CRAFTABLE) */
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-end" }}>
+            {/* 재료 그리드 */}
+            {reqs && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "4px", width: "100%" }}>
+                <ResourceRow icon="📜" label="비급 조각" current={currentRes.fragments} required={reqs.requiredFragments} />
+                <ResourceRow icon="💎" label="연마 재료" current={currentRes.materials} required={reqs.requiredMaterials} />
+                <ResourceRow icon="⚙️" label="장비 조각" current={currentRes.gearFrags} required={reqs.requiredGearFragments} />
+                <ResourceRow icon="✨" label="신기 파편" current={currentRes.divineShards} required={reqs.requiredDivineWeaponShards} />
+                <ResourceRow icon="🤝" label="문파 인연" current={currentRes.bonds} required={reqs.requiredBonds} />
+                <ResourceRow icon="💡" label="무학 심득" current={currentRes.insights} required={reqs.requiredInsights} />
+                <ResourceRow icon="💰" label="제작 비용" current={currentRes.coins} required={reqs.goldCost} isCost />
+              </div>
+            )}
 
-        const ReqItem = ({ id, label, current, required, icon, hideCurrent }: any) => {
-          const isOk = current >= required;
-          return (
-            <div id={id} style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              gap: "10px",
-              padding: "4px 8px",
-              background: isOk ? "rgba(76, 175, 80, 0.05)" : "rgba(255, 82, 82, 0.05)",
-              borderRadius: "4px",
-              border: `1px solid ${isOk ? "#4caf5033" : "#ff525233"}`,
-              minWidth: "120px"
-            }}>
-              <span style={{ fontSize: "10px", color: "#aaa" }}>{icon} {label}</span>
-              <span style={{ 
-                fontSize: "11px", 
-                fontWeight: "bold", 
-                color: isOk ? "#81c784" : "#ff8a80" 
-              }}>
-                {hideCurrent ? formatCompactNumber(required) : `${current}/${required}`}
-              </span>
-            </div>
-          );
-        };
-
-        return (
-          <div style={{ 
-            marginLeft: "20px", 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: "8px", 
-            alignItems: "flex-end",
-            padding: "10px",
-            background: "rgba(0,0,0,0.2)",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.05)"
-          }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "4px" }}>
-              <ReqItem id="tutorial-fragment-box" icon="📜" label="비급 조각" current={currentFragments} required={reqs.requiredFragments} />
-              <ReqItem id="tutorial-material-box" icon="💎" label="특수 재료" current={currentAdvanced} required={reqs.requiredAdvancedMaterials} />
-              <ReqItem id="tutorial-bond-box" icon="🤝" label="문파 인연" current={currentBonds} required={reqs.requiredBonds} />
-              <ReqItem id="tutorial-cost-box" icon="💰" label="비용" current={game.coins} required={reqs.goldCost} hideCurrent />
-            </div>
-            
-            <div style={{ display: "flex", gap: "6px", marginTop: "4px", width: "100%" }}>
+            <div style={{ display: "flex", gap: "6px", width: "100%" }}>
               <button
-                id="tutorial-info-btn"
-                onClick={() => alert(`[${skill.name}] 획득처:\n- 기루 연화의 '비밀 정보' 구매\n- 특정 지역 사냥터 드롭`)}
+                onClick={() => alert(`[${skill.name}] 주요 획득처:\n1. 기루 비밀 정보 거래 (필수 단서)\n2. 조각: 정보 거래 중 대결 보상\n3. 재료: 강호 이벤트 및 시련의 탑`)}
                 style={{
-                  flex: 1,
-                  padding: "8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#aaa", fontSize: "11px", cursor: "pointer"
+                  flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#aaa", fontSize: "11px", cursor: "pointer"
                 }}
               >
-                획득 정보
+                획득처
               </button>
               <button
-                id="tutorial-craft-btn"
                 disabled={!canCraft}
                 onClick={onLearn}
                 style={{
-                  flex: 2,
-                  padding: "8px", borderRadius: "6px", border: "none", 
-                  background: canCraft ? accent : "#2a2a2a", 
-                  color: canCraft ? "#000" : "#666", 
-                  fontWeight: "bold", fontSize: "12px", cursor: canCraft ? "pointer" : "default",
-                  boxShadow: canCraft ? `0 0 15px ${accent}66` : "none"
+                  flex: 2, padding: "8px 16px", borderRadius: "8px", border: "none", 
+                  background: canCraft ? accent : "#222", 
+                  color: canCraft ? "#000" : "#555", 
+                  fontWeight: "bold", fontSize: "13px", cursor: canCraft ? "pointer" : "default",
+                  boxShadow: canCraft ? `0 4px 12px ${accent}44` : "none",
+                  transition: "all 0.2s"
                 }}
               >
-                비급 완성
+                {canCraft ? "비급 제작" : "조건 부족"}
               </button>
             </div>
           </div>
-        );
-      })() : skill.silhouette ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
-          <div style={{ fontSize: "10px", color: "#666" }}>필요 경지: {skill.realm}</div>
-          <button
-            onClick={() => alert("기루에서 해당 문파의 단서를 수집해야 합니다.")}
-            style={{
-              padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)", color: "#444", fontSize: "11px", cursor: "pointer"
-            }}
-          >
-            단서 얻기
-          </button>
-        </div>
-      ) : (
-        <div style={{ 
-          padding: "8px 16px", borderRadius: "8px", background: "rgba(255,255,255,0.05)", color: accent, fontWeight: "bold", fontSize: "12px", border: `1px solid ${accent}33`
-        }}>
-          연마 가능
-        </div>
-      )}
+        ) : (
+          /* 4. COMPLETED 상태 */
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+            <div style={{ 
+              padding: "10px 20px", borderRadius: "10px", background: `${accent}11`, color: accent, fontWeight: "bold", fontSize: "14px", border: `1px solid ${accent}33`, display: "flex", alignItems: "center", gap: "6px"
+            }}>
+              <span>✓</span> 습득 완료
+            </div>
+            <div style={{ fontSize: "11px", color: "#666" }}>연마 탭에서 강화 가능</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 재료 행 컴포넌트
+function ResourceRow({ icon, label, current, required, isCost }: { icon: string, label: string, current: number, required?: number, isCost?: boolean }) {
+  if (!required || required <= 0) return null;
+  const isOk = current >= required;
+  
+  return (
+    <div style={{ 
+      display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "4px 10px", background: isOk ? "rgba(76, 175, 80, 0.08)" : "rgba(255, 82, 82, 0.05)", borderRadius: "6px", border: `1px solid ${isOk ? "#4caf5044" : "#ff525222"}`
+    }}>
+      <span style={{ fontSize: "10px", color: "#999", display: "flex", alignItems: "center", gap: "4px" }}>
+        <span>{icon}</span> {label}
+      </span>
+      <span style={{ fontSize: "11px", fontWeight: "bold", color: isOk ? "#81c784" : "#ff8a80" }}>
+        {isCost ? formatCompactNumber(required) : `${formatCompactNumber(current)}/${formatCompactNumber(required)}`}
+      </span>
     </div>
   );
 }

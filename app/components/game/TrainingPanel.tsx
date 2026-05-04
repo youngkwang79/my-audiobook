@@ -333,7 +333,7 @@ export default function TrainingPanel() {
     
     // 튜토리얼 중 특정 조작이 필요한 단계(대장간 등)에서는 허수아비 타격 방지
     const isRestrictedTutorialStep = tutorialProgress?.isActive && 
-      !!tutorialProgress.currentStepId && !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training", "check_final_infused_options", "restart_training"].includes(tutorialProgress.currentStepId);
+      !!tutorialProgress.currentStepId && !["auto_training_info", "explain_auto_battle", "trance_achieved", "start_training", "check_final_infused_options", "restart_training", "library_unlock", "library_cost_guide", "library_complete", "tower_unlock", "master_unlock", "inn_event"].includes(tutorialProgress.currentStepId);
     
     if (showBreakthroughPopup || pendingInnEntry || timingMission?.available || isRestrictedTutorialStep) return;
 
@@ -431,11 +431,16 @@ export default function TrainingPanel() {
     const oilRes = useGameStore.getState().triggerOilEffects();
     useGameStore.getState().applyOilResults(oilRes);
 
-    const hitCount = oilRes.hitCount;
+    const baseHitCount = isTriple ? 3 : 1;
+    let extraHitsFromSpeed = 0;
+    for (let i = 0; i < baseHitCount; i++) {
+      extraHitsFromSpeed += useGameStore.getState().processAttackGauge();
+    }
+    
+    const hitCount = baseHitCount + extraHitsFromSpeed;
     const isThunder = oilRes.buffsTriggered.includes("oil_thunder");
     const isFormless = oilRes.buffsTriggered.includes("oil_formless");
     const isDemon = oilRes.buffsTriggered.includes("oil_demon");
-    const isTriple = oilRes.buffsTriggered.includes("oil_triple_hit");
     
     let ohkMultiplier = isThunder ? 5 : 1;
     if (oilRes.buffsTriggered.includes("oil_demon")) ohkMultiplier = 10;
@@ -443,12 +448,16 @@ export default function TrainingPanel() {
     // 1. 타격 데미지 계산
     for (let i = 0; i < hitCount; i++) {
       let finalDmg = baseFinalDmg * ohkMultiplier;
+      
+      const isExtraFromSpeed = i >= baseHitCount;
 
       if (i === 0) {
         logCombatDamage({ source: 'normal_attack', damage: baseFinalDmg, isCritical });
         if (ohkMultiplier > 1) {
           logCombatDamage({ source: 'extra_hit', skillName: isThunder ? '뇌전일격' : '마신강림', damage: baseFinalDmg * (ohkMultiplier - 1), isCritical: false });
         }
+      } else if (isExtraFromSpeed) {
+        logCombatDamage({ source: 'extra_hit', skillName: '신법가속 추가타', damage: finalDmg, isCritical });
       } else {
         logCombatDamage({ source: 'extra_hit', skillName: '삼연유 추가타', damage: finalDmg, isCritical });
       }
@@ -468,7 +477,8 @@ export default function TrainingPanel() {
         y: dummyY + (Math.random() * 12 - 6) - (i * 3),
         isCritical: isCritical || isThunder || isDemon,
         isRainbow: isDemon,
-        isCyan: isTriple
+        isCyan: i > 0 && !isExtraFromSpeed, // 삼연유는 Cyan
+        isSpeedHit: isExtraFromSpeed // 신법가속 추가타 구분용 (필요 시)
       });
     }
 
@@ -534,7 +544,7 @@ export default function TrainingPanel() {
     }
 
     // 5. 최종 합계 데미지를 스토어에 전달
-    addExp(isTriple ? 3 : 1, false, totalHitDamage);
+    addExp(hitCount, false, totalHitDamage);
 
     setTimeout(() => {
       setHitEffects(h => h.slice(1));

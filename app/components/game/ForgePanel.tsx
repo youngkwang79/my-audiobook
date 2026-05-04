@@ -263,10 +263,9 @@ export default function ForgePanel(props: Props) {
     
     // 튜토리얼 체크 강화: 현재 단계가 buy_weapon이거나, 방금 forge_unlock을 마쳤거나, 혹은 아직 장비를 사지 않은 튜토리얼 상태인 경우
     const isTutorial = tutorialProgress?.isActive && (
-      tutorialProgress.currentStepId === "buy_weapon" || 
-      tutorialProgress.currentStepId === "goto_forge_click" ||
-      (itemId === "필부_mainWeapon" && !ownedWeapons.some((w: any) => w.id.startsWith("필부_mainWeapon")))
-    );
+  tutorialProgress.currentStepId === "buy_weapon" ||
+  tutorialProgress.currentStepId === "goto_forge_click"
+);
 
     const price = isTutorial ? 0 : item.price;
     if (currentCoins < price) {
@@ -356,9 +355,9 @@ export default function ForgePanel(props: Props) {
 
     if (enhanceSubTab === "level") {
       if ((item.realm || "필부") === "필부") {
-        gold = 5000;
-        rep = 5000;
-        stone = 5;
+        gold = 1000;
+        rep = 1000;
+        stone = 1;
       } else {
         const itemPrice = item.price || 5000;
         const growthFactor = Math.pow(1.15, curLv);
@@ -368,9 +367,9 @@ export default function ForgePanel(props: Props) {
       }
     } else if (enhanceSubTab === "reroll") {
       if ((item.realm || "필부") === "필부") {
-        rep = 5000;
-        stone = 5;
-        gold = 0;
+        gold = 1000;
+        rep = 1000;
+        stone = 1;
       } else {
         rep = Math.floor(30000 * repScale);
         stone = Math.round(10 * stoneScale);
@@ -383,9 +382,9 @@ export default function ForgePanel(props: Props) {
       }
     } else if (enhanceSubTab === "soul") {
       if ((item.realm || "필부") === "필부") {
-        rep = 5000;
-        stone = 5;
-        gold = 0;
+        gold = 1000;
+        rep = 1000;
+        stone = 1;
       } else {
         rep = Math.floor(200000 * repScale);
         stone = Math.round(100 * stoneScale);
@@ -393,9 +392,9 @@ export default function ForgePanel(props: Props) {
       }
     } else if (enhanceSubTab === "oil") {
       if ((item.realm || "필부") === "필부") {
-        rep = 5000;
-        stone = 5;
-        gold = 0;
+        gold = 1000;
+        rep = 1000;
+        stone = 1;
       } else {
         rep = Math.floor(80000 * repScale);
         stone = Math.round(20 * stoneScale);
@@ -1224,12 +1223,10 @@ export default function ForgePanel(props: Props) {
 
               {/* 비용 표시 (재추가) */}
               <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                {enhanceSubTab === "level" && (
-                  <div className="forge-cost-box">
-                    <div className="forge-cost-label" style={{ fontSize: "12px" }}>🪙</div>
-                    <div className="forge-cost-value" style={{ color: currentCoins >= goldCost ? "#fff" : "#ff4d4d" }}>{formatCompactNumber(goldCost)}</div>
-                  </div>
-                )}
+                <div className="forge-cost-box">
+                  <div className="forge-cost-label" style={{ fontSize: "12px" }}>🪙</div>
+                  <div className="forge-cost-value" style={{ color: currentCoins >= goldCost ? "#fff" : "#ff4d4d" }}>{formatCompactNumber(goldCost)}</div>
+                </div>
                 <div className="forge-cost-box">
                   <div className="forge-cost-label" style={{ fontSize: "12px" }}>🏆</div>
                   <div className="forge-cost-value" style={{ color: (reputation || 0) >= repCost ? "#ffd700" : "#ff4d4d" }}>{formatCompactNumber(repCost)}</div>
@@ -1261,11 +1258,13 @@ export default function ForgePanel(props: Props) {
                   }
                 }}
                 disabled={
-                  (enhanceSubTab === "level" && (!selectedItem || currentCoins < goldCost || currentStepId === "check_refine_result")) ||
-                  (enhanceSubTab === "reroll" && (!selectedItem || currentStepId === "check_reroll_result")) ||
+                  (!selectedItem) ||
+                  (currentCoins < goldCost) ||
+                  ((reputation || 0) < repCost) ||
+                  (currentStones < stoneCost) ||
+                  (enhanceSubTab === "level" && currentStepId === "check_refine_result") ||
+                  (enhanceSubTab === "reroll" && currentStepId === "check_reroll_result") ||
                   (enhanceSubTab === "oil" && (!selectedOilId || currentStepId === "check_forge_result")) ||
-                  (reputation || 0) < repCost ||
-                  currentStones < stoneCost ||
                   (enhanceSubTab === "level" && useBlessedOil && (consumables["oil_blessed"] || 0) <= 0) ||
                   (enhanceSubTab === "level" && useHeavenlyTalisman && (consumables["charm_luck"] || 0) <= 0)
                 }

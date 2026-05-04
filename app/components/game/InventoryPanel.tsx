@@ -577,7 +577,7 @@ export default function InventoryPanel(props: Props) {
                   }}
                 >
                   <span style={{ fontSize: "11px", color: "#ccc" }}>
-                    ✨ 상급 재료
+                    💎 일반 재료
                   </span>
                   <span
                     style={{
@@ -586,7 +586,73 @@ export default function InventoryPanel(props: Props) {
                       color: "#4dff8a",
                     }}
                   >
-                    {useGameStore.getState().game.advancedMaterials || 0}
+                    {useGameStore.getState().game.materials?.["standard_material"] || 0}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    background: "rgba(255,255,255,0.04)",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "11px", color: "#ccc" }}>
+                    ⚙️ 장비 조각
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      color: "#4facfe",
+                    }}
+                  >
+                    {useGameStore.getState().game.gearFragments?.["standard_gear_fragment"] || 0}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    background: "rgba(255,255,255,0.04)",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "11px", color: "#ccc" }}>
+                    ✨ 신기 파편
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      color: "#ffd700",
+                    }}
+                  >
+                    {useGameStore.getState().game.divineWeaponShards?.["standard_divine_shard"] || 0}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    background: "rgba(255,255,255,0.04)",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "11px", color: "#ccc" }}>
+                    💡 심득 포인트
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      color: "#66ccff",
+                    }}
+                  >
+                    {useGameStore.getState().game.insights || 0}
                   </span>
                 </div>
                 {Object.entries(
@@ -1629,22 +1695,7 @@ export default function InventoryPanel(props: Props) {
 
     return "즉시 발동";
   })()}
-</span><span>⏱️ 효과 지속시간</span>
-<span style={{ color: "#00f2ff" }}>
-  {(() => {
-    const oilId = popupItem.oilEffect.key;
-    const desc = getPotionDesc(oilId);
 
-    if (popupItem.oilEffect.duration) {
-      return `${popupItem.oilEffect.duration}초`;
-    }
-
-    if (desc.includes("초")) {
-      return desc.split("(").pop()?.split(")")[0];
-    }
-
-    return "즉시 발동";
-  })()}
 </span>
                   </div>
                 </div>
@@ -1882,6 +1933,7 @@ function getPotionDesc(id: ConsumableId) {
   if (id === "mp_small") return "내력을 20% 회복합니다.";
   if (id === "mp_medium") return "내력을 50% 회복합니다.";
   if (id === "mp_large") return "내력을 모두 회복합니다.";
+  if (!id) return "";
   if (id.startsWith("trance_"))
     return "잠시 동안 공격력이 대폭 상승하는 무아지경 상태에 빠집니다.";
   if (id === "oil_atk_3")

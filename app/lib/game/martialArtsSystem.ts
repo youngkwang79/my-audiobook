@@ -338,32 +338,43 @@ export function getCraftingRequirements(skill: CompendiumSkill) {
   }
 
   let requiredFragments = 0;
-  let requiredAdvancedMaterials = 0;
+  let requiredMaterials = 0;
   let requiredBonds = 0;
-  let requiredLegendaryGearFragments = 0;
+  let requiredGearFragments = 0;
+  let requiredDivineWeaponShards = 0;
+  let requiredInsights = 0;
   let priceMultiplier = 0.2;
 
   switch (skill.grade) {
     case "common":
       requiredFragments = 10 + order * 10;
-      requiredAdvancedMaterials = 2 + order * 2;
+      requiredMaterials = 2 + order * 2;
       requiredBonds = 1;
       priceMultiplier = 0.2;
       break;
     case "rare":
     case "epic":
       requiredFragments = 20 + order * 15;
-      requiredAdvancedMaterials = 5 + order * 3;
+      requiredMaterials = 5 + order * 3;
       requiredBonds = 2;
       priceMultiplier = 0.25;
       break;
     case "legendary":
-    case "mythic":
       requiredFragments = 50 + order * 20;
-      requiredAdvancedMaterials = 20;
-      requiredLegendaryGearFragments = 5;
+      requiredMaterials = Math.max(20, 10 + order * 5);
+      requiredGearFragments = 5 + Math.floor(order / 2);
       requiredBonds = 5;
+      requiredInsights = 100;
       priceMultiplier = 0.3;
+      break;
+    case "mythic":
+      requiredFragments = 100 + order * 30;
+      requiredMaterials = Math.max(50, 20 + order * 10);
+      requiredGearFragments = 10 + order;
+      requiredDivineWeaponShards = 1 + Math.floor(order / 5);
+      requiredBonds = 10;
+      requiredInsights = 500;
+      priceMultiplier = 0.4;
       break;
   }
 
@@ -373,10 +384,12 @@ export function getCraftingRequirements(skill: CompendiumSkill) {
   return {
     fragmentId: `manual_fragment_${skill.grade}`,
     requiredFragments,
-    requiredAdvancedMaterials,
-    requiredLegendaryGearFragments,
-    bondId: `${skill.factionName}_인연`,
+    requiredMaterials,
+    requiredGearFragments,
+    requiredDivineWeaponShards,
+    bondId: skill.factionName, // Use raw faction name as key for factionBonds
     requiredBonds,
+    requiredInsights,
     goldCost
   };
 }
