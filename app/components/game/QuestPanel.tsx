@@ -23,13 +23,14 @@ export default function QuestPanel() {
 
   return (
     <div style={{
-      padding: "20px",
+      padding: "20px 20px 120px 20px",
       color: "#eee",
       height: "100%",
       display: "flex",
       flexDirection: "column",
       background: "rgba(10,12,20,0.4)",
-      overflowY: "auto"
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch"
     }} className="hide-scrollbar">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
         <h2 style={{ fontSize: "20px", fontWeight: 900, margin: 0, color: "#ffd700", textShadow: "0 0 10px rgba(255,215,120,0.3)" }}>

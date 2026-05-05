@@ -742,6 +742,8 @@ const listAreaStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 9,
+  paddingBottom: "120px",
+  WebkitOverflowScrolling: "touch",
 };
 
 const cardStyle: React.CSSProperties = {

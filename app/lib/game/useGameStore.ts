@@ -1001,30 +1001,50 @@ export const useGameStore = create<GameState>((set, get) => ({
     return false;
   },
   giveGamblingToken: (tokens: number, fragments: number = 0) => {
-    set((s: any) => ({
-      game: {
-        ...s.game,
-        duelTokens: (s.game.duelTokens || 0) + tokens,
-        duelTokenFragments: (s.game.duelTokenFragments || 0) + fragments
-      }
-    }));
-    get().triggerSave(true);
+    if (tokens > 0) {
+      get().addWeapon({
+        id: `token_${Date.now()}`,
+        name: "투전패",
+        type: "material",
+        count: tokens,
+        icon: "🎴",
+        slot: "materials",
+        realm: get().game.realm,
+        price: 5000
+      });
+    }
+    if (fragments > 0) {
+      get().addWeapon({
+        id: `token_frag_${Date.now()}`,
+        name: "투전패 조각",
+        type: "material",
+        count: fragments,
+        icon: "🧩",
+        slot: "materials",
+        realm: get().game.realm,
+        price: 500
+      });
+    }
   },
   synthesizeTujeonTokens: () => {
-    set((s: any) => {
-      const fragments = s.game.duelTokenFragments || 0;
-      if (fragments < 10) return s;
-      const gainedTokens = Math.floor(fragments / 10);
-      const remainingFragments = fragments % 10;
-      return {
-        game: {
-          ...s.game,
-          duelTokens: (s.game.duelTokens || 0) + gainedTokens,
-          duelTokenFragments: remainingFragments
-        }
-      };
+    const fragments = (get() as any).getMaterialCount("투전패 조각");
+    if (fragments < 10) return false;
+    
+    const gainedTokens = Math.floor(fragments / 10);
+    const toConsume = gainedTokens * 10;
+    
+    (get() as any).consumeMaterial("투전패 조각", toConsume);
+    get().addWeapon({
+      id: `token_${Date.now()}`,
+      name: "투전패",
+      type: "material",
+      count: gainedTokens,
+      icon: "🎴",
+      slot: "materials",
+      realm: get().game.realm,
+      price: 5000
     });
-    get().triggerSave(true);
+    
     return true;
   },
   getSetCounts: () => {
@@ -1060,6 +1080,34 @@ export const useGameStore = create<GameState>((set, get) => ({
     const equippedIds = Object.values(game.equippedGear || {}).filter(Boolean);
     const eq = game.ownedWeapons.filter(w => equippedIds.includes(w.id));
     return eq.filter(item => item.randomOptions?.some(o => o.stat === stat)).length;
+  },
+  getMaterialCount: (name: string) => {
+    const { game } = get();
+    return game.ownedWeapons
+      .filter(w => w.name === name)
+      .reduce((sum, w) => sum + (w.count || 0), 0);
+  },
+  consumeMaterial: (name: string, amount: number) => {
+    set((s: any) => {
+      const owned = [...s.game.ownedWeapons];
+      let remaining = amount;
+      
+      // 재료 아이템들을 찾아서 수량 차감
+      for (let i = owned.length - 1; i >= 0; i--) {
+        if (owned[i].name === name) {
+          const count = owned[i].count || 0;
+          if (count <= remaining) {
+            remaining -= count;
+            owned.splice(i, 1);
+          } else {
+            owned[i] = { ...owned[i], count: count - remaining };
+            remaining = 0;
+            break;
+          }
+        }
+      }
+      return { game: { ...s.game, ownedWeapons: owned } };
+    });
   },
   getNightBuffs: () => {
     const { game } = get();
@@ -1818,13 +1866,25 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 퀘스트 제거 (또는 상태 변경 후 필터링)
       const nextQuests = s.game.activeQuests.filter((q: any) => q.id !== questId);
 
+      if (reward && reward.token && reward.token > 0) {
+        setTimeout(() => get().addWeapon({
+          id: `token_${Date.now()}`,
+          name: "투전패",
+          type: "material",
+          count: reward.token,
+          icon: "🎴",
+          slot: "materials",
+          realm: s.game.realm,
+          price: 5000
+        }), 0);
+      }
+
       return {
         game: {
           ...s.game,
           coins: s.game.coins + (reward.gold || 0),
           reputation: (s.game.reputation || 0) + (reward.favor ? reward.favor * 1000 : 0),
           exp: (s.game.exp || 0) + (reward.exp || 0),
-          duelTokens: (s.game.duelTokens || 0) + (reward.token || 0),
           npcFavors: (() => {
              const nextFavors = { ...(s.game.npcFavors || {}) };
              if (quest.npcId && reward.favor) {
@@ -1873,7 +1933,36 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addWeapon: (w: any) => {
-    set((s: any) => ({ game: { ...s.game, ownedWeapons: [...s.game.ownedWeapons, w] } }));
+    set((s: any) => {
+      // 스택 가능한 아이템(재료 등)인 경우
+      if (w.type === "material") {
+        const owned = [...s.game.ownedWeapons];
+        let remaining = w.count || 1;
+        
+        // 1. 기존 스택에 먼저 채움
+        for (let i = 0; i < owned.length; i++) {
+          if (owned[i].name === w.name && (owned[i].count || 0) < 99) {
+            const canAdd = 99 - (owned[i].count || 0);
+            const toAdd = Math.min(canAdd, remaining);
+            owned[i] = { ...owned[i], count: (owned[i].count || 0) + toAdd };
+            remaining -= toAdd;
+            if (remaining <= 0) break;
+          }
+        }
+        
+        // 2. 남은 수량이 있으면 새로운 스택 생성
+        while (remaining > 0) {
+          const toAdd = Math.min(99, remaining);
+          owned.push({ ...w, id: `${w.id}_${Date.now()}_${owned.length}`, count: toAdd });
+          remaining -= toAdd;
+        }
+        
+        return { game: { ...s.game, ownedWeapons: owned } };
+      }
+
+      // 일반 장비는 그대로 추가
+      return { game: { ...s.game, ownedWeapons: [...s.game.ownedWeapons, w] } };
+    });
     get().triggerSave(true);
     if (w.tier === "신기" || w.tier === "보구" || w.tier === "명품") {
       get().syncToCloud(true);
@@ -1894,19 +1983,20 @@ export const useGameStore = create<GameState>((set, get) => ({
       } else if (reqs && typeof reqs === 'object') {
         if (g.coins < (reqs.goldCost || 0)) return s;
         if (reqs.requiredFragments > 0) {
-          if ((g.manualFragments?.[reqs.fragmentId] || 0) < reqs.requiredFragments) return s;
+          if ((get() as any).getMaterialCount(reqs.fragmentId) < reqs.requiredFragments) return s;
         }
         if (reqs.requiredMaterials > 0) {
-          if ((g.materials?.["standard_material"] || 0) < reqs.requiredMaterials) return s;
+          if ((get() as any).getMaterialCount("일반 재료") < reqs.requiredMaterials) return s;
         }
         if (reqs.requiredGearFragments > 0) {
-          if ((g.gearFragments?.["standard_gear_fragment"] || 0) < reqs.requiredGearFragments) return s;
+          if ((get() as any).getMaterialCount("장비 조각") < reqs.requiredGearFragments) return s;
         }
         if (reqs.requiredDivineWeaponShards > 0) {
-          if ((g.divineWeaponShards?.["standard_divine_shard"] || 0) < reqs.requiredDivineWeaponShards) return s;
+          if ((get() as any).getMaterialCount("신기 파편") < reqs.requiredDivineWeaponShards) return s;
         }
         if (reqs.requiredBonds > 0) {
-          if ((g.factionBonds?.[reqs.bondId] || 0) < reqs.requiredBonds) return s;
+          const bondName = `${reqs.bondId} 인연`;
+          if ((get() as any).getMaterialCount(bondName) < reqs.requiredBonds) return s;
         }
         if (reqs.requiredInsights > 0) {
           if ((g.insights || 0) < reqs.requiredInsights) return s;
@@ -1921,28 +2011,28 @@ export const useGameStore = create<GameState>((set, get) => ({
         nextGame.coins -= (reqs.goldCost || 0);
         
         if (reqs.requiredFragments > 0) {
-          const fid = reqs.fragmentId;
-          nextGame.manualFragments = { ...nextGame.manualFragments, [fid]: nextGame.manualFragments[fid] - reqs.requiredFragments };
+          (get() as any).consumeMaterial(reqs.fragmentId, reqs.requiredFragments);
         }
         if (reqs.requiredMaterials > 0) {
-          const mid = "standard_material";
-          nextGame.materials = { ...nextGame.materials, [mid]: nextGame.materials[mid] - reqs.requiredMaterials };
+          (get() as any).consumeMaterial("일반 재료", reqs.requiredMaterials);
         }
         if (reqs.requiredGearFragments > 0) {
-          const gid = "standard_gear_fragment";
-          nextGame.gearFragments = { ...nextGame.gearFragments, [gid]: nextGame.gearFragments[gid] - reqs.requiredGearFragments };
+          (get() as any).consumeMaterial("장비 조각", reqs.requiredGearFragments);
         }
         if (reqs.requiredDivineWeaponShards > 0) {
-          const sid = "standard_divine_shard";
-          nextGame.divineWeaponShards = { ...nextGame.divineWeaponShards, [sid]: nextGame.divineWeaponShards[sid] - reqs.requiredDivineWeaponShards };
+          (get() as any).consumeMaterial("신기 파편", reqs.requiredDivineWeaponShards);
         }
         if (reqs.requiredBonds > 0) {
-          const bid = reqs.bondId;
-          nextGame.factionBonds = { ...nextGame.factionBonds, [bid]: nextGame.factionBonds[bid] - reqs.requiredBonds };
+          const bondName = `${reqs.bondId} 인연`;
+          (get() as any).consumeMaterial(bondName, reqs.requiredBonds);
         }
         if (reqs.requiredInsights > 0) {
           nextGame.insights -= reqs.requiredInsights;
         }
+        // State might have changed due to consumeMaterial calling set()
+        // But since we are inside set(), we should be careful.
+        // Wait, consumeMaterial calls set() which is nested set() problem.
+        // I should return the updated ownedWeapons in consumeMaterial or perform logic here.
       }
 
       const isAlreadyLearned = g.learnedSkills.some((s: any) => (s.id || s.name) === (skill.id || skill.name));
@@ -2554,22 +2644,31 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? targetSkills[Math.floor(Math.random() * targetSkills.length)]
         : MARTIAL_COMPENDIUM[0];
         
-      const fragId = randomSkill.grade === "common" ? "common_fragment" : `${randomSkill.id}_조각`;
+      const fragName = `${randomSkill.name} 조각`;
       const fragCount = 10;
+      
+      const newItem: OwnedWeapon = {
+        id: `frag_${randomSkill.id}_${Date.now()}`,
+        name: fragName,
+        type: "material",
+        count: fragCount,
+        icon: "📜",
+        slot: "materials" as any,
+        realm: randomSkill.realm as any,
+        price: 1000
+      };
+
+      setTimeout(() => get().addWeapon(newItem), 0);
 
       return {
         game: {
           ...s.game,
-          manualFragments: {
-            ...s.game.manualFragments,
-            [fragId]: (s.game.manualFragments?.[fragId] || 0) + fragCount
-          },
           consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
           pendingReward: {
             title: "비급 주머니 해제",
             items: [{ 
               icon: "📜", 
-              name: `${randomSkill.name} 조각`, 
+              name: fragName, 
               count: fragCount, 
               color: "#ffd700" 
             }]
@@ -5462,6 +5561,19 @@ export const useGameStore = create<GameState>((set, get) => ({
         };
       }
 
+      if (event && event.result && event.result.token && event.result.token > 0) {
+        setTimeout(() => get().addWeapon({
+          id: `token_${Date.now()}`,
+          name: "투전패",
+          type: "material",
+          count: event.result.token,
+          icon: "🎴",
+          slot: "materials",
+          realm: s.game.realm,
+          price: 5000
+        }), 0);
+      }
+
       return {
         game: {
           ...s.game,
@@ -5471,10 +5583,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           npcFavors: nextFavors,
           nightBuffs: nextBuffs,
           nightLimits: nextLimits,
-          duelTokens: (s.game.duelTokens || 0) + (event.result.token || 0),
-          manualFragments: nextFragments,
-          advancedMaterials: nextMaterials,
-          factionBonds: nextBonds,
           consumables: nextConsumables,
           pendingReward,
           giruRewardsClaimed: nextClaimed

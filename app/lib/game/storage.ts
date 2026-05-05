@@ -10,6 +10,7 @@ const defaultEquippedGear: EquippedGear = {
   necklace: null,
   ring: null,
   bracelet: null,
+  materials: null,
 };
 
 const defaultTowerState: any = {

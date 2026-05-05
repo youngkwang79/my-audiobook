@@ -59,7 +59,6 @@ export default function LibraryPanel() {
       padding: "0", 
       color: "#eee", 
       height: "100%", 
-      maxHeight: "750px",
       display: "flex",
       flexDirection: "column",
       background: "linear-gradient(135deg, #1a1512 0%, #2c241d 100%)",
@@ -132,7 +131,7 @@ export default function LibraryPanel() {
       </header>
 
       {/* 내부 콘텐츠 */}
-      <main style={{ flex: 1, overflowY: "auto", padding: "15px", zIndex: 1, position: "relative" }}>
+      <main style={{ flex: 1, overflowY: "auto", padding: "15px 15px 120px 15px", zIndex: 1, position: "relative", WebkitOverflowScrolling: "touch" }}>
         <AnimatePresence mode="wait">
           {activeTab === "compendium" && (
             <motion.div

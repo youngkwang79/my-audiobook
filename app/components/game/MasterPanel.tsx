@@ -581,7 +581,8 @@ export default function MasterPanel() {
       color: "#eee",
       boxSizing: "border-box",
       overflowY: "auto",
-      padding: "1px 10px 40px", // Reduced top padding to move content up
+      padding: "1px 10px 120px",
+      WebkitOverflowScrolling: "touch"
     }} className="hide-scrollbar">
       <style>{BOX_ANIM_CSS}</style>
 

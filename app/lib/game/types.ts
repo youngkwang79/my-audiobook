@@ -41,7 +41,8 @@ export type EquipSlot =
   | "robe"
   | "necklace"
   | "ring"
-  | "bracelet";
+  | "bracelet"
+  | "materials";
 
 export type TabType = "training" | "inn" | "master" | "library" | "forge" | "inventory" | "upgrade" | "tower" | "giru" | "gambling" | "quest";
 export type MiniGameType = "breath" | "dodge" | "puzzle" | "pulse";
@@ -79,12 +80,13 @@ export type LegendaryOption = {
 export type OwnedWeapon = {
   id: WeaponId;
   name: string;
-  type?: string;
+  type?: string; // e.g., "weapon", "armor", "material"
+  count?: number; // For stackable items
   tier?: ItemTier;
   randomOptions?: RandomOption[];
   slot: EquipSlot;
   realm?: RealmType;
-  attackBonus: number;
+  attackBonus?: number;
   attackMultiplier?: number;
   expMultiplier?: number;
   goldMultiplier?: number;

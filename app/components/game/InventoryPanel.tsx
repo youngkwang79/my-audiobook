@@ -430,10 +430,11 @@ export default function InventoryPanel(props: Props) {
             borderRadius: 12,
             border: "1px solid rgba(255,255,255,0.08)",
             background: "rgba(255,255,255,0.03)",
-            padding: 6,
+            padding: "6px 6px 120px 6px",
             height: "100%",
             overflowY: "auto",
             touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {isMaterialsSelected ? (
@@ -458,41 +459,39 @@ export default function InventoryPanel(props: Props) {
                   marginBottom: "20px",
                 }}
               >
-                {Object.entries(
-                  useGameStore.getState().game.manualFragments || {},
-                ).map(([id, count]: [string, any]) => {
+                {(() => {
+                  const fragments: Record<string, number> = {};
+                  // Legacy record
+                  Object.entries(useGameStore.getState().game.manualFragments || {}).forEach(([k, v]: any) => {
+                    if (v > 0) fragments[k] = (fragments[k] || 0) + v;
+                  });
+                  // New stack-based items
+                  ownedWeapons.forEach((w: OwnedWeapon) => {
+                    if (w.type === "material" && w.name.endsWith(" 조각") && !w.name.includes("투전패")) {
+                      fragments[w.name] = (fragments[w.name] || 0) + (w.count || 0);
+                    }
+                  });
+                  return Object.entries(fragments);
+                })().map(([id, count]: [string, any]) => {
                   if (count <= 0) return null;
 
-                  // 등급 및 한글 명칭 계산
+                  const fragItem = ownedWeapons.find((w: OwnedWeapon) => w.name === id);
                   let displayName = id;
                   let gradePrefix = "";
-                  const gradeMap: any = {
-                    common: "일반",
-                    rare: "진품",
-                    epic: "명품",
-                    legendary: "전설",
-                    mythic: "신화",
-                  };
-
-                  if (id.startsWith("manual_fragment_")) {
-                    const gradeKey = id.replace("manual_fragment_", "");
-                    const gradeName = gradeMap[gradeKey] || gradeKey;
-                    displayName = `${gradeName} 비급 조각`;
-                    gradePrefix = `[${gradeName}]`;
-                  } else if (id === "common_fragment") {
-                    displayName = "일반 비급 조각";
-                    gradePrefix = "[일반]";
-                  } else {
-                    const skillId = id.replace("_조각", "");
-                    const skill = MARTIAL_COMPENDIUM.find(
-                      (s) => s.id === skillId,
-                    );
-                    if (skill) {
-                      gradePrefix = `[${gradeMap[skill.grade] || "???"}]`;
-                      displayName = `${skill.name} 조각`;
-                    } else {
-                      displayName = id.replace("_조각", "").replace(/.*__/, "");
-                    }
+                  
+                  // 만약 id가 스킬 이름 형태라면 (예: "마기응축 조각")
+                  const skillName = id.replace(" 조각", "");
+                  const skill = MARTIAL_COMPENDIUM.find(s => s.name === skillName);
+                  if (skill) {
+                    const gradeMap: any = {
+                      common: "일반",
+                      rare: "진품",
+                      epic: "명품",
+                      legendary: "전설",
+                      mythic: "신화",
+                    };
+                    gradePrefix = `[${gradeMap[skill.grade] || "???"}]`;
+                    displayName = id;
                   }
 
                   return (
@@ -586,7 +585,7 @@ export default function InventoryPanel(props: Props) {
                       color: "#4dff8a",
                     }}
                   >
-                    {useGameStore.getState().game.materials?.["standard_material"] || 0}
+                    {(useGameStore.getState() as any).getMaterialCount("일반 재료")}
                   </span>
                 </div>
                 <div
@@ -678,7 +677,7 @@ export default function InventoryPanel(props: Props) {
                         color: "#ff7eb3",
                       }}
                     >
-                      {count}
+                      {(useGameStore.getState() as any).getMaterialCount(`${faction} 인연`)}
                     </span>
                   </div>
                 ))}
@@ -724,14 +723,14 @@ export default function InventoryPanel(props: Props) {
                       style={{
                         fontSize: "14px",
                         fontWeight: "bold",
-                        color: duelTokenFragments >= 10 ? "#4dff8a" : "#eee",
+                        color: (useGameStore.getState() as any).getMaterialCount("투전패 조각") >= 10 ? "#4dff8a" : "#eee",
                       }}
                     >
-                      {duelTokenFragments} / 10
+                      {(useGameStore.getState() as any).getMaterialCount("투전패 조각")} / 10
                     </div>
                   </div>
                 </div>
-                {duelTokenFragments >= 10 && (
+                {(useGameStore.getState() as any).getMaterialCount("투전패 조각") >= 10 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -912,27 +911,45 @@ export default function InventoryPanel(props: Props) {
                     >
                       {item.name.split(" ")[0]}
                     </div>
-                    {isEquipped && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 4,
-                          right: 4,
-                          width: 14,
-                          height: 14,
-                          background: "#ffd700",
-                          color: "#000",
-                          borderRadius: 3,
-                          display: "grid",
-                          placeItems: "center",
-                          fontSize: 8,
-                          fontWeight: 950,
-                        }}
-                      >
-                        E
-                      </div>
-                    )}
-                  </button>
+                      {isEquipped && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 4,
+                            right: 4,
+                            width: 14,
+                            height: 14,
+                            background: "#ffd700",
+                            color: "#000",
+                            borderRadius: 3,
+                            display: "grid",
+                            placeItems: "center",
+                            fontSize: 8,
+                            fontWeight: 950,
+                          }}
+                        >
+                          E
+                        </div>
+                      )}
+                      {(item.count || 0) > 1 && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            bottom: 4,
+                            right: 4,
+                            background: "rgba(0,0,0,0.7)",
+                            color: "#fff",
+                            fontSize: 9,
+                            padding: "0 4px",
+                            borderRadius: 4,
+                            fontWeight: "bold",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          x{item.count}
+                        </div>
+                      )}
+                    </button>
                 );
               })}
               {selectedItems.length === 0 && (

@@ -547,7 +547,7 @@ export default function GiruPanel() {
               </div>
             </div>
 
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", paddingTop: "10px" }} className="hide-scrollbar">
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", paddingTop: "10px", paddingBottom: "120px", WebkitOverflowScrolling: "touch" }} className="hide-scrollbar">
 
               <div style={{
                 background: "rgba(0,0,0,0.75)",
