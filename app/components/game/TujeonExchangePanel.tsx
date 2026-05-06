@@ -104,7 +104,7 @@ const UNLOCK_ITEMS = [
 ];
 
 function getTujeon(game: any) {
-  return game.gamblingTokens ?? game.tujeonTokens ?? game.gambleTokens ?? 0;
+  return game.tujeonTokens ?? 0;
 }
 
 function gradeColor(grade: string) {
@@ -122,18 +122,9 @@ export default function TujeonExchangePanel() {
   const bought = game.tujeonExchangeBought ?? {};
   const unlocked = game.unlockedContents ?? [];
 
-  const spendTujeon = (game: any, cost: number) => {
-    const current = getTujeon(game);
-    return {
-      ...game,
-      gamblingTokens: current - cost,
-      tujeonTokens: game.tujeonTokens !== undefined ? current - cost : game.tujeonTokens,
-      gambleTokens: game.gambleTokens !== undefined ? current - cost : game.gambleTokens,
-    };
-  };
+  // Note: spendTujeon local logic replaced by store.subtractTujeonTokens
 
   const showMsg = (msg: string) => {
-
     setMessage(msg);
     setTimeout(() => setMessage(null), 1200);
   };
@@ -151,11 +142,13 @@ export default function TujeonExchangePanel() {
       return;
     }
 
-    useGameStore.setState((s: any) => {
-      const baseGame = spendTujeon(s.game, item.cost);
+    const subtractTujeonTokens = (useGameStore.getState() as any)
+      .subtractTujeonTokens;
+    subtractTujeonTokens(item.cost);
 
+    useGameStore.setState((s: any) => {
       const nextGame: any = {
-        ...baseGame,
+        ...s.game,
         tujeonExchangeBought: {
           ...(s.game.tujeonExchangeBought ?? {}),
           [item.id]: (s.game.tujeonExchangeBought?.[item.id] ?? 0) + 1,
@@ -168,7 +161,9 @@ export default function TujeonExchangePanel() {
         const nextGifts = { ...(s.game.giruGifts || {}) };
         nextGifts[randomGift.id] = (nextGifts[randomGift.id] || 0) + 1;
         nextGame.giruGifts = nextGifts;
-        showMsg(`선물함에서 [${randomGift.icon} ${randomGift.name}]을(를) 획득!`);
+        showMsg(
+          `선물함에서 [${randomGift.icon} ${randomGift.name}]을(를) 획득!`,
+        );
       }
 
       if (item.id === "moon_buff") {
@@ -189,35 +184,36 @@ export default function TujeonExchangePanel() {
       if (item.id === "stone_box") {
         nextGame.consumables = {
           ...(s.game.consumables || {}),
-          stone_box_tujeon: (s.game.consumables?.stone_box_tujeon || 0) + 1
+          stone_box_tujeon: (s.game.consumables?.stone_box_tujeon || 0) + 1,
         };
       }
 
       if (item.id === "rare_box") {
         nextGame.consumables = {
           ...(s.game.consumables || {}),
-          rare_box_tujeon: (s.game.consumables?.rare_box_tujeon || 0) + 1
+          rare_box_tujeon: (s.game.consumables?.rare_box_tujeon || 0) + 1,
         };
       }
 
       if (item.id === "night_gear") {
         nextGame.consumables = {
           ...(s.game.consumables || {}),
-          night_gear_box: (s.game.consumables?.night_gear_box || 0) + 1
+          night_gear_box: (s.game.consumables?.night_gear_box || 0) + 1,
         };
       }
 
       if (item.id === "gear_piece") {
         nextGame.consumables = {
           ...(s.game.consumables || {}),
-          gear_piece_bundle: (s.game.consumables?.gear_piece_bundle || 0) + 1
+          gear_piece_bundle: (s.game.consumables?.gear_piece_bundle || 0) + 1,
         };
       }
 
       if (item.id === "manual_fragment_bundle") {
         nextGame.consumables = {
           ...(s.game.consumables || {}),
-          manual_fragment_bundle: (s.game.consumables?.manual_fragment_bundle || 0) + 1
+          manual_fragment_bundle:
+            (s.game.consumables?.manual_fragment_bundle || 0) + 1,
         };
       }
 
@@ -240,12 +236,14 @@ export default function TujeonExchangePanel() {
       return;
     }
 
-    useGameStore.setState((s: any) => {
-      const baseGame = spendTujeon(s.game, item.cost);
+    const subtractTujeonTokens = (useGameStore.getState() as any)
+      .subtractTujeonTokens;
+    subtractTujeonTokens(item.cost);
 
+    useGameStore.setState((s: any) => {
       return {
         game: {
-          ...baseGame,
+          ...s.game,
           unlockedContents: [...(s.game.unlockedContents ?? []), item.id],
         },
       };
@@ -442,8 +440,8 @@ export default function TujeonExchangePanel() {
                       background: soldOut
                         ? "#333"
                         : lack
-                        ? "#2a2a2a"
-                        : "linear-gradient(180deg, #ffe08a, #d69a2d)",
+                          ? "#2a2a2a"
+                          : "linear-gradient(180deg, #ffe08a, #d69a2d)",
                       color: disabled ? "#777" : "#201203",
                       fontWeight: 950,
                       fontSize: "12px",
@@ -459,9 +457,7 @@ export default function TujeonExchangePanel() {
           })}
         </div>
 
-        <div style={{ ...sectionTitleStyle, marginTop: "20px" }}>
-          영구 해금
-        </div>
+        <div style={{ ...sectionTitleStyle, marginTop: "20px" }}>영구 해금</div>
 
         <div style={{ display: "grid", gap: "10px" }}>
           {UNLOCK_ITEMS.map((item) => {
@@ -521,8 +517,8 @@ export default function TujeonExchangePanel() {
                       background: isUnlocked
                         ? "#2ecc71"
                         : lack
-                        ? "#2a2a2a"
-                        : "linear-gradient(180deg, #d9a7ff, #8c55ff)",
+                          ? "#2a2a2a"
+                          : "linear-gradient(180deg, #d9a7ff, #8c55ff)",
                       color: lack && !isUnlocked ? "#777" : "#fff",
                       fontWeight: 950,
                       fontSize: "12px",
@@ -548,8 +544,7 @@ export default function TujeonExchangePanel() {
           }}
         >
           ※ 교환 보상은 하루 제한이 있고, 영구 해금은 한 번만 구매됩니다.
-          <br />
-          ※ 투전패는 홀짝, 주사위, 야바위 승리와 연승 보너스로 획득합니다.
+          <br />※ 투전패는 홀짝, 주사위, 야바위 승리와 연승 보너스로 획득합니다.
         </div>
       </div>
 
@@ -572,7 +567,7 @@ export default function TujeonExchangePanel() {
               textAlign: "center",
               zIndex: 100,
               fontWeight: 900,
-              pointerEvents: "none"
+              pointerEvents: "none",
             }}
           >
             {message}

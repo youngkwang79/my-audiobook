@@ -400,13 +400,20 @@ export function getCraftingRequirements(skill: CompendiumSkill) {
   const basePrice = getBaseSkillPrice(skill);
   const goldCost = Math.floor(basePrice * priceMultiplier);
 
+  // 경지에 따른 재료 이름 (ID) 결정
+  let materialId = "일반 재료";
+  if (skill.realm === "이류") materialId = "진귀한 재료";
+  else if (skill.realm === "일류") materialId = "영험한 재료";
+  else if (["절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"].includes(skill.realm)) materialId = "천외기보";
+
   return {
     fragmentId: `${skill.name} 조각`,
     requiredFragments,
+    materialId, // 재료 ID 추가
     requiredMaterials,
     requiredGearFragments,
     requiredDivineWeaponShards,
-    bondId: skill.factionName, // Use raw faction name as key for factionBonds
+    bondId: skill.factionName,
     requiredBonds,
     requiredInsights,
     goldCost
@@ -429,8 +436,19 @@ export function getRefineBonusText(stars: number) {
   return "기본 상태";
 }
 
-export function getManualFragmentDisplayName(factionName: string, martialName: string) {
-  return `${martialName} 조각`;
+export function getManualFragmentDisplayName(idOrFaction: string, martialName?: string) {
+  const target = martialName || idOrFaction;
+  const genericMap: Record<string, string> = {
+    "manual_fragment_common": "일반 비급 조각",
+    "manual_fragment_rare": "진귀 비급 조각",
+    "manual_fragment_epic": "명품 비급 조각",
+    "manual_fragment_legendary": "전설 비급 조각",
+    "manual_fragment_mythic": "신화 비급 조각",
+    "manual_fragment_bundle": "비급 조각 주머니"
+  };
+  if (genericMap[target]) return genericMap[target];
+  if (target.endsWith(" 조각")) return target;
+  return `${target} 조각`;
 }
 
 export function getFactionBondDisplayName(factionName: string) {

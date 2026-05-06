@@ -56,7 +56,8 @@ export type ConsumableId =
   | "oil_speed_3" | "oil_luck_3" | "oil_clarity" | "oil_eye"
   | "oil_demon" | "oil_triple_hit" | "oil_formless" | "oil_blessed"
   | "charm_luck" | "exp_scroll" | "paewang_box"
-  | "stone_box_tujeon" | "rare_box_tujeon" | "night_gear_box" | "gear_piece_bundle" | "manual_fragment_bundle";
+  | "stone_box_tujeon" | "rare_box_tujeon" | "night_gear_box" | "gear_piece_bundle" | "manual_fragment_bundle"
+  | "card_cheongryong" | "card_baekho" | "card_hyunmu" | "card_jujak";
 
 export type ItemTier = "평범" | "명품" | "보구" | "국보" | "신기";
 
@@ -520,8 +521,8 @@ export type GameSaveData = {
   tower: TowerState;
   unlockedContents: string[];
   towerFirstClearFloors: number[];
-  duelTokens: number;
-  duelTokenFragments: number;
+  tujeonTokens: number;
+  tujeonTokenFragments: number;
   pendingReward: {
     title: string;
     items: { icon: string; name: string; count?: number; color?: string; slotName?: string }[];
@@ -640,6 +641,8 @@ export type GameSaveData = {
   upgradeMultiplier: number;
   selectedForgeItemId: string | null;
   selectedForgeOilId: string | null;
+  questCompletionCounts: Record<string, number>;
+  trainingRewardAccumulator: { gold: number; rep: number };
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

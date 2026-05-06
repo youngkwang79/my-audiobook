@@ -324,8 +324,23 @@ export default function GameShell() {
           flexDirection: "column",
           position: "relative",
           overflow: "hidden",
+          touchAction: "pan-y", // Only allow vertical scroll globally
         }}
       >
+        <style dangerouslySetInnerHTML={{ __html: `
+          html, body {
+            overflow: hidden;
+            overscroll-behavior: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            -webkit-overflow-scrolling: touch;
+          }
+          #time-status-bar {
+            user-select: none;
+            -webkit-user-select: none;
+          }
+        ` }} />
 
         {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
         {!masterDuelIsPlaying && activeTab !== "master" && (

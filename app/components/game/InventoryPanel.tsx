@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useRef } from "react";
 import { useGameStore, formatCompactNumber } from "@/app/lib/game/useGameStore";
-import { MARTIAL_COMPENDIUM } from "@/app/lib/game/martialArtsSystem";
+import {
+  MARTIAL_COMPENDIUM,
+  getManualFragmentDisplayName,
+} from "@/app/lib/game/martialArtsSystem";
 import { SYNERGY_CONFIG } from "@/app/lib/game/items";
 import { FORGE_ITEMS } from "@/app/lib/game/items";
 import type {
@@ -58,6 +61,7 @@ export default function InventoryPanel(props: Props) {
   const getTotalHp = useGameStore((s: any) => s.getTotalHp);
   const getTotalEvasion = useGameStore((s: any) => s.getTotalEvasion);
   const getTotalSpeed = useGameStore((s: any) => s.getTotalSpeed);
+  const getMaterialCount = useGameStore((s: any) => s.getMaterialCount);
   const [swipeGearId, setSwipeGearId] = useState<string | null>(null);
   const duelTokenFragments = useGameStore(
     (s: any) => s.game.duelTokenFragments || 0,
@@ -300,6 +304,15 @@ export default function InventoryPanel(props: Props) {
         gap: "6px",
       }}
     >
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       {!unlocked && (
         <div
           style={{
@@ -462,26 +475,37 @@ export default function InventoryPanel(props: Props) {
                 {(() => {
                   const fragments: Record<string, number> = {};
                   // Legacy record
-                  Object.entries(useGameStore.getState().game.manualFragments || {}).forEach(([k, v]: any) => {
+                  Object.entries(
+                    useGameStore.getState().game.manualFragments || {},
+                  ).forEach(([k, v]: any) => {
                     if (v > 0) fragments[k] = (fragments[k] || 0) + v;
                   });
                   // New stack-based items
                   ownedWeapons.forEach((w: OwnedWeapon) => {
-                    if (w.type === "material" && w.name.endsWith(" 조각") && !w.name.includes("투전패")) {
-                      fragments[w.name] = (fragments[w.name] || 0) + (w.count || 0);
+                    if (
+                      w.type === "material" &&
+                      w.name.endsWith(" 조각") &&
+                      !w.name.includes("투전패")
+                    ) {
+                      fragments[w.name] =
+                        (fragments[w.name] || 0) + (w.count || 0);
                     }
                   });
                   return Object.entries(fragments);
                 })().map(([id, count]: [string, any]) => {
                   if (count <= 0) return null;
 
-                  const fragItem = ownedWeapons.find((w: OwnedWeapon) => w.name === id);
-                  let displayName = id;
+                  const fragItem = ownedWeapons.find(
+                    (w: OwnedWeapon) => w.name === id,
+                  );
+                  let displayName = getManualFragmentDisplayName(id);
                   let gradePrefix = "";
-                  
+
                   // 만약 id가 스킬 이름 형태라면 (예: "마기응축 조각")
                   const skillName = id.replace(" 조각", "");
-                  const skill = MARTIAL_COMPENDIUM.find(s => s.name === skillName);
+                  const skill = MARTIAL_COMPENDIUM.find(
+                    (s) => s.name === skillName,
+                  );
                   if (skill) {
                     const gradeMap: any = {
                       common: "일반",
@@ -585,7 +609,7 @@ export default function InventoryPanel(props: Props) {
                       color: "#4dff8a",
                     }}
                   >
-                    {(useGameStore.getState() as any).getMaterialCount("일반 재료")}
+                    {getMaterialCount("일반 재료")}
                   </span>
                 </div>
                 <div
@@ -607,7 +631,7 @@ export default function InventoryPanel(props: Props) {
                       color: "#4facfe",
                     }}
                   >
-                    {useGameStore.getState().game.gearFragments?.["standard_gear_fragment"] || 0}
+                    {getMaterialCount("장비 조각")}
                   </span>
                 </div>
                 <div
@@ -629,7 +653,7 @@ export default function InventoryPanel(props: Props) {
                       color: "#ffd700",
                     }}
                   >
-                    {useGameStore.getState().game.divineWeaponShards?.["standard_divine_shard"] || 0}
+                    {getMaterialCount("신기 파편")}
                   </span>
                 </div>
                 <div
@@ -651,7 +675,7 @@ export default function InventoryPanel(props: Props) {
                       color: "#66ccff",
                     }}
                   >
-                    {useGameStore.getState().game.insights || 0}
+                    {getMaterialCount("무학 심득")}
                   </span>
                 </div>
                 {Object.entries(
@@ -677,7 +701,7 @@ export default function InventoryPanel(props: Props) {
                         color: "#ff7eb3",
                       }}
                     >
-                      {(useGameStore.getState() as any).getMaterialCount(`${faction} 인연`)}
+                      {getMaterialCount(`${faction} 인연`)}
                     </span>
                   </div>
                 ))}
@@ -723,14 +747,17 @@ export default function InventoryPanel(props: Props) {
                       style={{
                         fontSize: "14px",
                         fontWeight: "bold",
-                        color: (useGameStore.getState() as any).getMaterialCount("투전패 조각") >= 10 ? "#4dff8a" : "#eee",
+                        color:
+                          getMaterialCount("투전패 조각") >= 10
+                            ? "#4dff8a"
+                            : "#eee",
                       }}
                     >
-                      {(useGameStore.getState() as any).getMaterialCount("투전패 조각")} / 10
+                      {getMaterialCount("투전패 조각")} / 10
                     </div>
                   </div>
                 </div>
-                {(useGameStore.getState() as any).getMaterialCount("투전패 조각") >= 10 && (
+                {getMaterialCount("투전패 조각") >= 10 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -909,47 +936,60 @@ export default function InventoryPanel(props: Props) {
                         width: "100%",
                       }}
                     >
-                      {item.name.split(" ")[0]}
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 2,
+                          justifyContent: "center",
+                        }}
+                      >
+                        {item.enhancement > 0 && (
+                          <span style={{ color: "#ffd700" }}>
+                            +{item.enhancement}
+                          </span>
+                        )}
+                        <span>{item.name.split(" ")[0]}</span>
+                      </div>
                     </div>
-                      {isEquipped && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                            width: 14,
-                            height: 14,
-                            background: "#ffd700",
-                            color: "#000",
-                            borderRadius: 3,
-                            display: "grid",
-                            placeItems: "center",
-                            fontSize: 8,
-                            fontWeight: 950,
-                          }}
-                        >
-                          E
-                        </div>
-                      )}
-                      {(item.count || 0) > 1 && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: 4,
-                            right: 4,
-                            background: "rgba(0,0,0,0.7)",
-                            color: "#fff",
-                            fontSize: 9,
-                            padding: "0 4px",
-                            borderRadius: 4,
-                            fontWeight: "bold",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                          }}
-                        >
-                          x{item.count}
-                        </div>
-                      )}
-                    </button>
+                    {isEquipped && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          width: 14,
+                          height: 14,
+                          background: "#ffd700",
+                          color: "#000",
+                          borderRadius: 3,
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: 8,
+                          fontWeight: 950,
+                        }}
+                      >
+                        E
+                      </div>
+                    )}
+                    {(item.count || 0) > 1 && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: 4,
+                          right: 4,
+                          background: "rgba(0,0,0,0.7)",
+                          color: "#fff",
+                          fontSize: 9,
+                          padding: "0 4px",
+                          borderRadius: 4,
+                          fontWeight: "bold",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        x{item.count}
+                      </div>
+                    )}
+                  </button>
                 );
               })}
               {selectedItems.length === 0 && (
@@ -1423,6 +1463,11 @@ export default function InventoryPanel(props: Props) {
                               : "#ffe08a",
                   }}
                 >
+                  {(popupItem.enhancement || 0) > 0 && (
+                    <span style={{ color: "#ffd700", marginRight: 5 }}>
+                      +{popupItem.enhancement}
+                    </span>
+                  )}
                   {popupItem.name}
                   {popupItem.tier && (
                     <span
@@ -1492,7 +1537,10 @@ export default function InventoryPanel(props: Props) {
                   >
                     {popupItem.randomOptions.map((opt: any, i: number) => (
                       <div key={i} style={{ color: "#7ee7ff", fontSize: 11 }}>
-                        🔹 {opt.label.replace(/(\d+\.\d+)/g, (m: string) => Number(parseFloat(m).toFixed(1)).toString())}
+                        🔹{" "}
+                        {opt.label.replace(/(\d+\.\d+)/g, (m: string) =>
+                          Number(parseFloat(m).toFixed(1)).toString(),
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1625,12 +1673,17 @@ export default function InventoryPanel(props: Props) {
                     background: "rgba(0, 242, 255, 0.05)",
                     border: "1px solid rgba(0, 242, 255, 0.2)",
                     boxShadow: "inset 0 0 10px rgba(0, 242, 255, 0.1)",
-                    ...(useGameStore.getState().game.tutorialProgress?.currentStepId === "check_final_infused_options" ? {
-                      animation: "blink-highlight 1.5s infinite ease-in-out",
-                      border: "2px solid #00f2ff",
-                      background: "rgba(0, 242, 255, 0.15)",
-                      boxShadow: "0 0 20px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(0, 242, 255, 0.2)",
-                    } : {})
+                    ...(useGameStore.getState().game.tutorialProgress
+                      ?.currentStepId === "check_final_infused_options"
+                      ? {
+                          animation:
+                            "blink-highlight 1.5s infinite ease-in-out",
+                          border: "2px solid #00f2ff",
+                          background: "rgba(0, 242, 255, 0.15)",
+                          boxShadow:
+                            "0 0 20px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(0, 242, 255, 0.2)",
+                        }
+                      : {}),
                   }}
                 >
                   <style>{`
@@ -1677,13 +1730,20 @@ export default function InventoryPanel(props: Props) {
                     </span>
                   </div>
                   <div
-                    style={{ color: "#caf9ff", fontSize: 11, lineHeight: 1.5, marginBottom: 4 }}
+                    style={{
+                      color: "#caf9ff",
+                      fontSize: 11,
+                      lineHeight: 1.5,
+                      marginBottom: 4,
+                    }}
                   >
                     {getPotionDesc(
-                      popupItem.oilEffect.key || (popupItem.oilEffect as any).id,
-                    ) || (popupItem.oilEffect.label.includes(":")
-                      ? popupItem.oilEffect.label.split(": ")[1]
-                      : popupItem.oilEffect.label)}
+                      popupItem.oilEffect.key ||
+                        (popupItem.oilEffect as any).id,
+                    ) ||
+                      (popupItem.oilEffect.label.includes(":")
+                        ? popupItem.oilEffect.label.split(": ")[1]
+                        : popupItem.oilEffect.label)}
                   </div>
                   <div
                     style={{
@@ -1693,27 +1753,26 @@ export default function InventoryPanel(props: Props) {
                       borderTop: "1px dashed rgba(0, 242, 255, 0.2)",
                       paddingTop: 4,
                       display: "flex",
-                      justifyContent: "space-between"
+                      justifyContent: "space-between",
                     }}
                   >
                     <span>⏱️ 효과 지속시간</span>
-<span style={{ color: "#00f2ff" }}>
-  {(() => {
-    const oilId = popupItem.oilEffect.key;
-    const desc = getPotionDesc(oilId);
+                    <span style={{ color: "#00f2ff" }}>
+                      {(() => {
+                        const oilId = popupItem.oilEffect.key;
+                        const desc = getPotionDesc(oilId);
 
-    if (popupItem.oilEffect.duration) {
-      return `${popupItem.oilEffect.duration}초`;
-    }
+                        if (popupItem.oilEffect.duration) {
+                          return `${popupItem.oilEffect.duration}초`;
+                        }
 
-    if (desc.includes("초")) {
-      return desc.split("(").pop()?.split(")")[0];
-    }
+                        if (desc.includes("초")) {
+                          return desc.split("(").pop()?.split(")")[0];
+                        }
 
-    return "즉시 발동";
-  })()}
-
-</span>
+                        return "즉시 발동";
+                      })()}
+                    </span>
                   </div>
                 </div>
               )}
@@ -1795,15 +1854,32 @@ export default function InventoryPanel(props: Props) {
               {popupItem.tier === "신기" && (
                 <button
                   onClick={() => {
-                    const dupes = ownedWeapons.filter((w: any) => w.tier === "신기" && w.name === popupItem.name && w.id !== popupItem.id);
+                    const dupes = ownedWeapons.filter(
+                      (w: any) =>
+                        w.tier === "신기" &&
+                        w.name === popupItem.name &&
+                        w.id !== popupItem.id,
+                    );
                     if (dupes.length === 0) {
-                      alert("중복된 신기 아이템이 없습니다. (동일 이름의 신기 아이템 2개 필요)");
+                      alert(
+                        "중복된 신기 아이템이 없습니다. (동일 이름의 신기 아이템 2개 필요)",
+                      );
                       return;
                     }
-                    if (confirm(`중복된 [신기] ${popupItem.name} 아이템을 소모하여 새로운 신기 아이템을 제작하시겠습니까? (수동 합성)`)) {
-                      (useGameStore.getState() as any).convertDivineItem(popupItem.id, dupes[0].id, popupItem);
+                    if (
+                      confirm(
+                        `중복된 [신기] ${popupItem.name} 아이템을 소모하여 새로운 신기 아이템을 제작하시겠습니까? (수동 합성)`,
+                      )
+                    ) {
+                      (useGameStore.getState() as any).convertDivineItem(
+                        popupItem.id,
+                        dupes[0].id,
+                        popupItem,
+                      );
                       setPopupItem(null);
-                      alert("신기 합성이 완료되었습니다! 새로운 신기 아이템이 인벤토리에 추가되었습니다.");
+                      alert(
+                        "신기 합성이 완료되었습니다! 새로운 신기 아이템이 인벤토리에 추가되었습니다.",
+                      );
                     }
                   }}
                   style={{
@@ -1818,7 +1894,7 @@ export default function InventoryPanel(props: Props) {
                     border: "none",
                     cursor: "pointer",
                     boxShadow: "0 0 15px rgba(255,0,255,0.4)",
-                    textShadow: "0 0 5px rgba(255,255,255,0.5)"
+                    textShadow: "0 0 5px rgba(255,255,255,0.5)",
                   }}
                 >
                   ✨ 신기 아이템 합성 (2:1)
@@ -1959,7 +2035,7 @@ function getPotionName(id: ConsumableId) {
   if (id === "night_gear_box") return "야행 장비 상자";
   if (id === "gear_piece_bundle") return "야행 장비 조각 묶음";
   if (id === "manual_fragment_bundle") return "비급 조각 주머니";
-  return id;
+  return getManualFragmentDisplayName(id);
 }
 
 function getPotionIcon(id: ConsumableId) {

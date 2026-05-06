@@ -87,8 +87,8 @@ export const defaultGameData: GameSaveData = {
   factionBonds: {},
   unlockedContents: [],
   towerFirstClearFloors: [],
-  duelTokens: 0,
-  duelTokenFragments: 0,
+  tujeonTokens: 0,
+  tujeonTokenFragments: 0,
   speedGauge: 0,
 
   reputation: 0,
@@ -263,7 +263,8 @@ export const defaultGameData: GameSaveData = {
     oil_speed_3: 0, oil_luck_3: 0, oil_clarity: 0, oil_eye: 0,
     oil_demon: 0, oil_triple_hit: 0, oil_formless: 0, oil_blessed: 0,
     charm_luck: 0, exp_scroll: 0, paewang_box: 0,
-    stone_box_tujeon: 0, rare_box_tujeon: 0, night_gear_box: 0, gear_piece_bundle: 0, manual_fragment_bundle: 0
+    stone_box_tujeon: 0, rare_box_tujeon: 0, night_gear_box: 0, gear_piece_bundle: 0, manual_fragment_bundle: 0,
+    card_cheongryong: 0, card_baekho: 0, card_hyunmu: 0, card_jujak: 0
   },
   quickSlots: [null, null, null, null, null],
   skillCooldowns: {},
@@ -337,6 +338,8 @@ export const defaultGameData: GameSaveData = {
   upgradeMultiplier: 1,
   selectedForgeItemId: null,
   selectedForgeOilId: null,
+  questCompletionCounts: {},
+  trainingRewardAccumulator: { gold: 0, rep: 0 },
 };
 
 // 중요: 도메인이 다르면 localStorage는 공유되지 않습니다. 

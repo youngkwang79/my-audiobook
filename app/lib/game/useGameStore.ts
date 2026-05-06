@@ -987,11 +987,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   useGamblingToken: () => {
     const { game } = get();
-    if (game.duelTokens > 0) {
+    if (game.tujeonTokens > 0) {
       set((s: any) => ({
         game: {
           ...s.game,
-          duelTokens: s.game.duelTokens - 1,
+          tujeonTokens: s.game.tujeonTokens - 1,
           yabawiEvent: null // 이벤트 성공적으로 사용 시 팝업 닫힘
         }
       }));
@@ -2870,7 +2870,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             timingMission: { ...s.game.timingMission, available: false },
             pendingInnEntry: false, // Ensure the overlay is removed
             activeTab: "training",
-            duelTokens: (s.game.duelTokens || 0) + tokenGained,
+            tujeonTokens: (s.game.tujeonTokens || 0) + tokenGained,
             duel: {
               ...s.game.duel,
               rating: newRating,
@@ -4939,7 +4939,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 ...s.game,
                 coins: s.game.coins + goldReward,
                 reputation: s.game.reputation + fameReward,
-                duelTokenFragments: s.game.duelTokenFragments + (extraItems.length > 0 ? 1 : 0),
+                tujeonTokenFragments: s.game.tujeonTokenFragments + (extraItems.length > 0 ? 1 : 0),
                 ownedWeapons: bossDrop ? [...s.game.ownedWeapons, bossDrop] : s.game.ownedWeapons,
                 towerFirstClearFloors: isFirstClear ? [...s.game.towerFirstClearFloors, floor] : s.game.towerFirstClearFloors,
                 lastActivityHeartbeat: now,

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, REALM_SETTINGS, getInnStageConfig } from "@/app/lib/game/useGameStore";
+import { getManualFragmentDisplayName } from "@/app/lib/game/martialArtsSystem";
 import { FACTIONS } from "@/app/lib/game/factions";
 import YabawiGame from "./YabawiGame";
 import { BreathGame } from "./panels/BreathGame";
@@ -270,7 +271,7 @@ export default function InnPanel({
     // Cumulative geometric series for target scores
     // Each stage requires 150% of the previous stage's increment.
     // S1: 3000, S2: 3000 + 4500 = 7500, S3: 7500 + 6750 = 14250...
-    const baseIncrement = 1500;
+    const baseIncrement = 3000;
     const ratio = 1.5;
     const baseScore = Math.floor(baseIncrement * (Math.pow(ratio, s) - 1) / (ratio - 1));
 
@@ -302,7 +303,15 @@ export default function InnPanel({
   const [isFailPopup, setIsFailPopup] = useState(false);
   const [isSuccessPopup, setIsSuccessPopup] = useState(false);
   const [transitionCountdown, setTransitionCountdown] = useState(3);
-  const [victoryRewards, setVictoryRewards] = useState<{ gold: number, rep: number, stones: number, item: string | null, wisdom: number, repPenalty: number, isPerfect: boolean }>({ gold: 0, rep: 0, stones: 0, item: null, wisdom: 0, repPenalty: 0, isPerfect: true });
+  const [victoryRewards, setVictoryRewards] = useState<{ 
+    gold: number, 
+    reputation: number, 
+    stones: number, 
+    item: string | null, 
+    wisdom: number, 
+    repPenalty: number, 
+    isPerfect: boolean 
+  }>({ gold: 0, reputation: 0, stones: 0, item: null, wisdom: 0, repPenalty: 0, isPerfect: true });
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [failReason, setFailReason] = useState("");
   const [localFailCount, setLocalFailCount] = useState(0);
@@ -542,7 +551,7 @@ export default function InnPanel({
       grade: victoryRewards.isPerfect ? "PERFECT" : "MISS",
       maxStage: currentStage,
       gold: victoryRewards.gold,
-      rep: victoryRewards.rep - (victoryRewards.repPenalty || 0),
+      reputation: victoryRewards.reputation - (victoryRewards.repPenalty || 0),
       stones: victoryRewards.stones,
       item: victoryRewards.item,
       wisdom: victoryRewards.wisdom
@@ -614,8 +623,8 @@ export default function InnPanel({
       const innRewardMult = rIdx !== -1 ? (10 + rIdx * 5) : 10;
 
       const commonFactor = Math.pow(1.45, actualStage) * (REALM_SETTINGS[realm]?.rewardMultiplier || 1) * innRewardMult;
-      const gReward = Math.floor(3000 * commonFactor);
-      const rReward = Math.floor(3000 * commonFactor);
+      const gReward = Math.floor(1500 * commonFactor);
+      const rReward = Math.floor(1500 * commonFactor);
 
       // 강화석 보상 (스테이지당 1~3개 + 10단계 보너스 30개) -> 4배 상향
       let sReward = actualStage * (1 + Math.floor(Math.random() * 3)) * 4;
@@ -625,7 +634,7 @@ export default function InnPanel({
       const randomItem = Math.random() < 0.3 ? items[Math.floor(Math.random() * items.length)] : null;
 
       // 심득 보상 계산 (기본 15 + 스테이지비례 + 경지 가중치)
-      const wReward = Math.floor((15 + actualStage * 3) * (1 + (rIdx * 0.2)));
+      const wReward = Math.floor(((15 + actualStage * 3) * (1 + (rIdx * 0.2))) / 2);
 
       // Penalty logic for Defeat (success is false but score > 0)
       let repPenalty = 0;
@@ -644,7 +653,7 @@ export default function InnPanel({
 
       setVictoryRewards({
         gold: finalGold,
-        rep: finalRep,
+        reputation: finalRep,
         stones: finalStones,
         item: randomItem,
         wisdom: finalWisdom,
@@ -1856,13 +1865,9 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "25px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,0,0.2)" }}>
-                <span style={{ color: "#aaa", fontSize: 13 }}>금화 보상</span>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,0,0.4)" }}>
+                <span style={{ color: "#aaa", fontSize: 13 }}>금화 / 명성 보상</span>
                 <span style={{ color: "#ffd700", fontWeight: 700 }}>+{victoryRewards.gold.toLocaleString()}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(0,242,255,0.2)" }}>
-                <span style={{ color: "#aaa", fontSize: 13 }}>명성 획득</span>
-                <span style={{ color: "#00f2ff", fontWeight: 700 }}>+{victoryRewards.rep.toLocaleString()}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,215,120,0.4)" }}>
                 <span style={{ color: "#aaa", fontSize: 13 }}>현철 강화석</span>
@@ -1873,9 +1878,11 @@ ransform: translate(0, 0) rotate(0deg) skewX(0deg) scale(1); }
                 <span style={{ color: "#66ccff", fontWeight: 700 }}>+{victoryRewards.wisdom.toLocaleString()} pt</span>
               </div>
               {victoryRewards.item && (
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(255,255,255,0.05)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 15px", background: "rgba(181,140,255,0.1)", borderRadius: "12px", border: "1px solid rgba(181,140,255,0.4)" }}>
                   <span style={{ color: "#aaa", fontSize: 13 }}>추가 획득</span>
-                  <span style={{ color: "#fff", fontWeight: 700 }}>{victoryRewards.item}</span>
+                  <span style={{ color: "#b58cff", fontWeight: "900" }}>
+                    {getPotionIcon(victoryRewards.item as any)} {getPotionName(victoryRewards.item as any)}
+                  </span>
                 </div>
               )}
             </div>
@@ -2396,3 +2403,57 @@ const flashOverlay: React.CSSProperties = {
   pointerEvents: "none",
   zIndex: 99,
 };
+
+// Helper functions for items
+function getPotionName(id: string) {
+  if (id === "hp_small") return "소형 체력 영약 (20%)";
+  if (id === "hp_medium") return "중형 체력 영약 (50%)";
+  if (id === "hp_large") return "대형 체력 영약 (100%)";
+  if (id === "mp_small") return "소형 내력 영약 (20%)";
+  if (id === "mp_medium") return "중형 내력 영약 (50%)";
+  if (id === "mp_large") return "대형 내력 영약 (100%)";
+  if (id === "trance_2") return "무아지경의 환약 (2배)";
+  if (id === "trance_5") return "무아지경의 환약 (5배)";
+  if (id === "trance_10") return "무아지경의 환약 (10배)";
+  if (id === "exp_scroll") return "수련의 고서 (경험치 2배)";
+  if (id === "oil_atk_3") return "광폭유";
+  if (id === "oil_crit_3") return "파천유";
+  if (id === "oil_thunder") return "뇌전유";
+  if (id === "oil_poison") return "만독유";
+  if (id === "oil_bleed") return "혈염유";
+  if (id === "oil_eva_3") return "무영유";
+  if (id === "oil_def_3") return "강철유";
+  if (id === "oil_reflect") return "반탄유";
+  if (id === "oil_vajra") return "금강유";
+  if (id === "oil_vampire") return "흡성유";
+  if (id === "oil_speed_3") return "질풍유";
+  if (id === "oil_luck_3") return "기연유";
+  if (id === "oil_clarity") return "청명유";
+  if (id === "oil_eye") return "영안유";
+  if (id === "oil_demon") return "천마유";
+  if (id === "oil_triple_hit") return "삼연유";
+  if (id === "oil_formless") return "무상유";
+  if (id === "oil_blessed") return "가호유";
+  if (id === "charm_luck") return "행운의 부적 (드랍율)";
+  if (id === "paewang_box") return "[패왕]의 유물 상자";
+  if (id === "stone_box_tujeon") return "현철 강화석 상자 (투전)";
+  if (id === "rare_box_tujeon") return "흑시 희귀품 상자";
+  if (id === "night_gear_box") return "야행 장비 상자";
+  if (id === "gear_piece_bundle") return "야행 장비 조각 묶음";
+  if (id === "manual_fragment_bundle") return "비급 조각 주머니";
+  return getManualFragmentDisplayName(id);
+}
+
+function getPotionIcon(id: string) {
+  if (id.startsWith("hp_")) return "🧪";
+  if (id.startsWith("mp_")) return "🍶";
+  if (id.startsWith("trance_")) return "💊";
+  if (id === "exp_scroll") return "📜";
+  if (id.startsWith("oil_")) return "🍯";
+  if (id === "charm_luck") return "🧧";
+  if (id === "paewang_box") return "🎁";
+  if (id.endsWith("_box") || id.endsWith("_box_tujeon")) return "🎁";
+  if (id === "gear_piece_bundle") return "⚔️";
+  if (id === "manual_fragment_bundle") return "📜";
+  return "📦";
+}

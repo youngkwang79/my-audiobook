@@ -22,23 +22,12 @@ export default function GamblingPanel() {
   const [streak, setStreak] = useState(0);
   const [yabawiSession, setYabawiSession] = useState<any | null>(null);
 
-  const gamblingTokens =
-    game.gamblingTokens ?? game.tujeonTokens ?? game.gambleTokens ?? 0;
+  const tujeonTokens = game.tujeonTokens ?? 0;
   const unlocked = game.unlockedContents ?? [];
   const isSecretGambleUnlocked = unlocked.includes("secret_gamble");
 
-  const addTujeonToken = (amount: number) => {
-    if (typeof giveGamblingToken === "function") {
-      giveGamblingToken(amount);
-      return;
-    }
-
-    useGameStore.setState((s: any) => ({
-      game: {
-        ...s.game,
-        gamblingTokens: (s.game.gamblingTokens ?? 0) + amount,
-      },
-    }));
+  const addTujeonToken = (amount: number, fragments: number = 0) => {
+    giveGamblingToken(amount, fragments);
   };
 
   const handleTwentyOneResult = (win: boolean, bet: number) => {
@@ -243,7 +232,7 @@ export default function GamblingPanel() {
                 color: "#4dff8a",
               }}
             >
-              🎴 {gamblingTokens.toLocaleString()}개
+              🎴 {tujeonTokens.toLocaleString()}개
             </div>
           </div>
         </div>

@@ -211,6 +211,15 @@ export default function UpgradePanel() {
       onTouchEnd={handleTouchEnd}
       style={containerStyle}
     >
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       {/* Description Overlay (Restored) */}
       {activeDesc && (
         <div
@@ -660,6 +669,8 @@ const containerStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   boxSizing: "border-box",
+  touchAction: "pan-y",
+  overscrollBehavior: "none",
 };
 
 const headerStyle: React.CSSProperties = {
@@ -738,6 +749,7 @@ const tabButtonStyle: React.CSSProperties = {
 
 const listAreaStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   overflowY: "auto",
   display: "flex",
   flexDirection: "column",

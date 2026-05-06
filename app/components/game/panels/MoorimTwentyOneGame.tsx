@@ -34,6 +34,22 @@ export default function MoorimTwentyOneGame({
   const [resultMsg, setResultMsg] = useState('');
   const [nextCardPreview, setNextCardPreview] = useState<string | null>(null);
   const [isDealerCardHidden, setIsDealerCardHidden] = useState(true);
+  const [preparedNextCard, setPreparedNextCard] = useState<CardType | null>(null);
+
+  const consumables = useGameStore((s: any) => s.game.consumables || {});
+  const useItem = (id: string) => {
+    if ((consumables[id] || 0) <= 0) return false;
+    useGameStore.setState((s: any) => ({
+      game: {
+        ...s.game,
+        consumables: {
+          ...s.game.consumables,
+          [id]: (s.game.consumables[id] || 0) - 1
+        }
+      }
+    }));
+    return true;
+  };
 
   // Deck generation
   const generateCard = useCallback((forceSpecial?: boolean): CardType => {
@@ -99,10 +115,11 @@ export default function MoorimTwentyOneGame({
 
   const hit = () => {
     if (gameState !== 'playing') return;
-    const newCard = generateCard();
+    const newCard = preparedNextCard || generateCard();
     const newHand = [...playerHand, newCard];
     setPlayerHand(newHand);
     setNextCardPreview(null);
+    setPreparedNextCard(null);
 
     const score = calculateScore(newHand);
     if (score > 21) {
@@ -139,18 +156,32 @@ export default function MoorimTwentyOneGame({
   };
 
   const discardLast = () => {
-    if (gameState !== 'playing' || playerHand.length <= 2) return;
-    const hasHyunmu = playerHand.some(c => c && c.specialType === 'hyunmu');
-    if (!hasHyunmu) {
-      alert('현무패가 있어야 마지막 패를 버릴 수 있습니다.');
+    if (gameState !== 'playing') return;
+    if (playerHand.length <= 2) {
+      alert('초기 패 두 장은 버릴 수 없습니다.');
       return;
     }
-    const newHand = playerHand.filter((c, i) => !(i === playerHand.length - 1));
-    const hyunmuIdx = newHand.findIndex(c => c && c.specialType === 'hyunmu');
-    if (hyunmuIdx !== -1) newHand.splice(hyunmuIdx, 1);
     
-    setPlayerHand(newHand);
-    setMessage('현무의 힘으로 패를 버렸습니다.');
+    // 현무패 소모 확인 (인벤토리 아이템 우선, 없으면 핸드 내 현무패 확인)
+    const consumed = useItem('card_hyunmu');
+    if (!consumed) {
+      const hasHyunmuInHand = playerHand.some(c => c && c.specialType === 'hyunmu');
+      if (!hasHyunmuInHand) {
+        alert('현무패가 부족합니다.');
+        return;
+      }
+      // 핸드 내 현무패 제거 로직 (기존 호환성 유지)
+      const newHand = playerHand.filter((c, i) => i !== playerHand.length - 1);
+      const hyunmuIdx = newHand.findIndex(c => c && c.specialType === 'hyunmu');
+      if (hyunmuIdx !== -1) newHand.splice(hyunmuIdx, 1);
+      setPlayerHand(newHand);
+    } else {
+      // 아이템 소모 시 마지막 패만 제거
+      const newHand = playerHand.slice(0, -1);
+      setPlayerHand(newHand);
+    }
+    
+    setMessage('현무의 힘으로 방금 뽑은 패를 버렸습니다.');
   };
 
   // Dealer Logic
@@ -204,14 +235,24 @@ export default function MoorimTwentyOneGame({
   };
 
   const handleSpecialAction = (type: string) => {
+    if (gameState !== 'playing') return;
+
     if (type === 'baekho') {
+      if (!useItem('card_baekho')) { alert('백호패가 부족합니다.'); return; }
       setIsDealerCardHidden(false);
-      setTimeout(() => setIsDealerCardHidden(true), 2000);
-      setMessage('백호의 눈으로 상대의 숨은 패를 엿보았습니다.');
+      setTimeout(() => setIsDealerCardHidden(true), 2500);
+      setMessage('백호의 눈으로 상대의 숨은 패를 2.5초간 엿보았습니다.');
     } else if (type === 'jujak') {
-      const next = generateCard();
-      setNextCardPreview(next.value <= 5 ? '낮은 숫자' : '높은 숫자');
-      setMessage('주작의 기운으로 다음 패의 범위를 예측합니다.');
+      if (!useItem('card_jujak')) { alert('주작패가 부족합니다.'); return; }
+      const nextVal = Math.floor(Math.random() * 11) + 1;
+      const next = { id: Math.random(), value: nextVal, name: `${nextVal}식 패` };
+      setPreparedNextCard(next);
+      setNextCardPreview(nextVal <= 6 ? '낮은 숫자 (1-6)' : '높은 숫자 (7-11)');
+      setMessage('주작의 기운으로 다음 패의 범위를 예측하고 고정합니다.');
+    } else if (type === 'cheongryong') {
+      // 청룡패는 자동 계산이지만, 사용 시 보너스 등을 부여할 수 있음 (여기서는 소모만 구현)
+      if (!useItem('card_cheongryong')) { alert('청룡패가 부족합니다.'); return; }
+      setMessage('청룡의 가호가 함께합니다. (합계 최적화 적용)');
     }
   };
 
@@ -220,6 +261,20 @@ export default function MoorimTwentyOneGame({
 
   return (
     <div style={{ padding: '10px', color: '#fff' }}>
+      {/* Top Info Section */}
+      <div style={{ 
+        marginBottom: '15px', 
+        fontSize: '11px', 
+        color: 'rgba(255,215,0,0.6)', 
+        background: 'rgba(0,0,0,0.3)', 
+        padding: '10px', 
+        borderRadius: '10px',
+        border: '1px solid rgba(255,215,0,0.2)'
+      }}>
+        * 본 콘텐츠는 게임 내 재화로만 이용되는 미니게임입니다.<br />
+        * 획득한 투전패와 금화는 현금, 상품권, 외부 재화로 교환할 수 없습니다.
+      </div>
+
       {gameState === 'betting' ? (
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <div style={{ fontSize: '18px', color: '#ffd700', fontWeight: 900, marginBottom: '20px' }}>
@@ -352,23 +407,42 @@ export default function MoorimTwentyOneGame({
 
           {/* Controls */}
           {gameState === 'playing' ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <button onClick={hit} style={actionButtonStyle}>패 받기 (Hit)</button>
-              <button onClick={stand} style={actionButtonStyle}>멈추기 (Stand)</button>
-              <button 
-                onClick={doubleDown} 
-                disabled={playerHand.length !== 2}
-                style={{ ...actionButtonStyle, opacity: playerHand.length === 2 ? 1 : 0.5 }}
-              >
-                판돈 두 배
-              </button>
-              <button 
-                onClick={discardLast}
-                disabled={!playerHand.some(c => c.specialType === 'hyunmu') || playerHand.length <= 2}
-                style={{ ...actionButtonStyle, opacity: (playerHand.some(c => c.specialType === 'hyunmu') && playerHand.length > 2) ? 1 : 0.5 }}
-              >
-                한 장 버리기
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button onClick={hit} style={actionButtonStyle}>패 받기 (Hit)</button>
+                <button onClick={stand} style={actionButtonStyle}>멈추기 (Stand)</button>
+                <button 
+                  onClick={doubleDown} 
+                  disabled={playerHand.length !== 2}
+                  style={{ ...actionButtonStyle, opacity: playerHand.length === 2 ? 1 : 0.5 }}
+                >
+                  판돈 두 배
+                </button>
+                <button 
+                  onClick={() => handleSpecialAction('cheongryong')}
+                  style={{ ...actionButtonStyle, color: '#6ad7ff', borderColor: '#6ad7ff33' }}
+                >
+                  🐉 청룡패 ({consumables.card_cheongryong || 0})
+                </button>
+                <button 
+                  onClick={() => handleSpecialAction('baekho')}
+                  style={{ ...actionButtonStyle, color: '#fff', borderColor: '#ffffff33' }}
+                >
+                  🐅 백호패 ({consumables.card_baekho || 0})
+                </button>
+                <button 
+                  onClick={discardLast}
+                  style={{ ...actionButtonStyle, color: '#a0ffa0', borderColor: '#a0ffa033' }}
+                >
+                  🐢 현무패 ({consumables.card_hyunmu || 0})
+                </button>
+                <button 
+                  onClick={() => handleSpecialAction('jujak')}
+                  style={{ ...actionButtonStyle, color: '#ff6b6b', borderColor: '#ff6b6b33' }}
+                >
+                  🦅 주작패 ({consumables.card_jujak || 0})
+                </button>
+              </div>
             </div>
           ) : gameState === 'result' ? (
             <button
@@ -404,12 +478,11 @@ export default function MoorimTwentyOneGame({
         padding: '12px',
         borderRadius: '10px'
       }}>
-        * 본 콘텐츠는 게임 내 재화로만 이용되는 미니게임입니다.<br />
-        * 획득한 투전패와 금화는 현금, 상품권, 외부 재화로 교환할 수 없습니다.<br />
+        * 패술 대련 가이드:<br />
         * 청룡패(A): 1 또는 11로 자동 계산됩니다.<br />
-        * 백호패: 사용 시 상대의 숨은 패를 엿봅니다.<br />
-        * 현무패: 사용 시 방금 뽑은 패를 한 장 버립니다.<br />
-        * 주작패: 사용 시 다음 패의 크기(높음/낮음)를 예측합니다.
+        * 백호패: 사용 시 상대의 숨은 패를 2.5초간 엿봅니다.<br />
+        * 현무패: 사용 시 방금 뽑은 패를 한 장 버립니다. (초기 2장 제외)<br />
+        * 주작패: 사용 시 다음 패의 크기를 예측하고 운명을 고정합니다.
       </div>
     </div>
   );

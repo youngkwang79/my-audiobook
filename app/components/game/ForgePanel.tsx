@@ -513,6 +513,15 @@ export default function ForgePanel(props: Props) {
         boxSizing: "border-box"
       }}
     >
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       {/* 구매 성공 이펙트 */}
       {purchaseEffect && (
         <div style={{
@@ -858,7 +867,7 @@ export default function ForgePanel(props: Props) {
                               bottom: 1,
                               right: 4,
                               fontSize: 9,
-                              color: "#ff4d4d",
+                              color: "#ffd700",
                               fontWeight: 950
                             }}
                           >
@@ -898,7 +907,7 @@ export default function ForgePanel(props: Props) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>
                     {selectedItem?.name} 
-                    <span style={{ color: "#ff4d4d", marginLeft: 5 }}>+{selectedItem?.enhancement || 0}</span>
+                    <span style={{ color: "#ffd700", marginLeft: 5 }}>+{selectedItem?.enhancement || 0}</span>
                   </div>
                   <div style={{ fontSize: 10, color: "#aaa" }}>{selectedItem?.realm} 장비</div>
                 </div>
@@ -915,7 +924,7 @@ export default function ForgePanel(props: Props) {
                     }}
                   >
                     <div style={{ fontSize: 15, fontWeight: 950, color: "#ffd700" }}>
-                      +{selectedItem?.enhancement || 0} → +{(selectedItem?.enhancement || 0) + 1}
+                    <span style={{ color: "#ffd700" }}>+{selectedItem?.enhancement || 0}</span> → <span style={{ color: "#ffd700" }}>+{(selectedItem?.enhancement || 0) + 1}</span>
                     </div>
 
                     <div style={{ fontSize: 11, color: "#aaa", fontWeight: 900 }}>

@@ -449,11 +449,33 @@ export function getNextAdaptiveQuests(game: any) {
   const { realm, upgradeLevels, duel, consumables, inventory } = game;
 
   // 1. 기초 가이드 연계 (강화, 재연마, 연마유, 탑, 무공)
-  // 완료되지 않은 튜토리얼 성격의 고정 임무들 우선 노출
   const fixedIds = ["q_tutorial_forge", "q_tutorial_refine", "q_tutorial_oil", "q_daily_tower", "q_daily_study", "q_tower_floor_10", "q_tower_floor_20"];
+  const completionCounts = game.questCompletionCounts || {};
+
   fixedIds.forEach(id => {
-    const q = GIRU_QUESTS.find(fq => fq.id === id);
+    let q = GIRU_QUESTS.find(fq => fq.id === id);
     if (q && quests.length < 3) {
+      const repeatCount = completionCounts[id] || 0;
+      
+      // 강화 임무 특수 처리 (Anti-Inflation & Escalation)
+      if (id === "q_tutorial_forge") {
+        if (repeatCount > 0) {
+          const targetCount = 1 + repeatCount * 2; // +1 -> +3 -> +5 ...
+          const baseGold = 100000;
+          const minGold = 5000;
+          const decayedGold = Math.max(minGold, Math.floor(baseGold / Math.pow(2, repeatCount)));
+          const decayedFavor = Math.max(1, 5 - (repeatCount)); // 최소 1
+
+          q = {
+            ...q,
+            title: `장비 강화 실습 (${repeatCount + 1}차)`,
+            desc: `장비를 총 ${targetCount}회 강화하여 기술을 연마하세요.`,
+            targetCount: targetCount,
+            reward: { ...q.reward, gold: decayedGold, favor: decayedFavor }
+          };
+        }
+      }
+
       // For milestone quests, check if already cleared
       const floorNum = parseInt(id.split('_').pop() || "0");
       if (id.includes("tower_floor_milestone") || id.startsWith("q_tower_floor_")) {
@@ -525,7 +547,7 @@ export function getNextAdaptiveQuests(game: any) {
       currentCount: 0,
       status: "active",
       targetType: "use_potion_combat",
-      reward: { gold: 50000, item: "oil_box", favor: 5 }
+      reward: { gold: 50000, favor: 5 }
     });
   }
 

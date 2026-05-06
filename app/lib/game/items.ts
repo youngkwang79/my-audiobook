@@ -239,11 +239,11 @@ export const LEGENDARY_OPTIONS: any[] = [
 
 export function getItemOptionCount(tier: ItemTier): number {
   switch (tier) {
-    case "신기": return 5;
-    case "국보": return 4;
-    case "보구": return 3;
-    case "명품": return 2;
-    default: return 1;
+    case "신기": return 4;
+    case "국보": return 3;
+    case "보구": return 2;
+    case "명품": return 1;
+    default: return 0; // '평범' (Normal) has 0 options
   }
 }
 

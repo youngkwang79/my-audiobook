@@ -30,6 +30,42 @@ export default function TutorialOverlay() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Lock/Unlock body scroll and Global Pause when tutorial is active/inactive
+  useEffect(() => {
+    if (isActive && step) {
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+      document.body.style.height = "100%";
+    } else {
+      document.documentElement.style.overflow = "auto";
+      document.body.style.overflow = "auto";
+      document.body.style.position = "static";
+      document.body.style.height = "auto";
+      
+      // Fail-safe: Ensure game resumes when tutorial is not active
+      const state = useGameStore.getState() as any;
+      if (state.game.isPaused || state.game.timeScale !== 1) {
+        useGameStore.setState((s: any) => ({
+          game: { ...s.game, isPaused: false, timeScale: 1 }
+        }));
+      }
+    }
+
+    return () => {
+      document.documentElement.style.overflow = "auto";
+      document.body.style.overflow = "auto";
+      document.body.style.position = "static";
+      document.body.style.height = "auto";
+
+      // Fail-safe on unmount
+      useGameStore.setState((s: any) => ({
+        game: { ...s.game, isPaused: false, timeScale: 1 }
+      }));
+    };
+  }, [isActive, step]);
+
   useEffect(() => {
     if (!isActive || !step?.targetId) {
       setTargetRect(null);
@@ -58,7 +94,24 @@ export default function TutorialOverlay() {
     return () => clearInterval(timer);
   }, [isActive, step]);
 
-  if (!isActive || !step) return null;
+  if (!isActive || !step || !(TUTORIAL_STEPS as any)[currentStepId!]) {
+    if (isActive) {
+      // Auto-fix: Clear stuck/invalid tutorial state
+      useGameStore.setState((s: any) => ({
+        game: {
+          ...s.game,
+          isPaused: false,
+          timeScale: 1,
+          tutorialProgress: {
+            ...s.game.tutorialProgress,
+            isActive: false,
+            currentStepId: null
+          }
+        }
+      }));
+    }
+    return null;
+  }
 
   const padding = 4;
   const hole = targetRect
@@ -88,7 +141,19 @@ export default function TutorialOverlay() {
             inset: 0,
             background:
               step.actionType === "any" ? "rgba(0,0,0,0.7)" : "transparent",
-            pointerEvents: (step.actionType === "any" || ["tower_unlock", "library_unlock", "library_cost_guide", "library_complete", "master_unlock", "inn_event", "restart_training"].includes(step.id)) ? "none" : "auto",
+            pointerEvents:
+              step.actionType === "any" ||
+              [
+                "tower_unlock",
+                "library_unlock",
+                "library_cost_guide",
+                "library_complete",
+                "master_unlock",
+                "inn_event",
+                "restart_training",
+              ].includes(step.id)
+                ? "none"
+                : "auto",
           }}
           onClick={(e) => {
             e.preventDefault();
@@ -136,7 +201,21 @@ export default function TutorialOverlay() {
               height="100%"
               fill="rgba(0,0,0,0.7)"
               mask="url(#tutorial-mask)"
-              pointerEvents={(step.actionType === "any" || ["tower_unlock", "library_unlock", "library_cost_guide", "library_complete", "master_unlock", "inn_event"].includes(step.id)) ? "none" : "auto"}
+              pointerEvents={
+                step.actionType === "any" ||
+                [
+                  "tower_unlock",
+                  "library_unlock",
+                  "library_cost_guide",
+                  "library_complete",
+                  "master_unlock",
+                  "inn_event",
+                  "trance_achieved",
+                  "forge_unlock",
+                ].includes(step.id)
+                  ? "none"
+                  : "auto"
+              }
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -205,6 +284,8 @@ export default function TutorialOverlay() {
                             "explain_time_cycle",
                             "explain_auto_battle",
                             "auto_training_info",
+                            "library_complete",
+                            "library_cost_guide",
                           ].includes(step.id)
                         ? "28%"
                         : ["upgrade_mult_10", "upgrade_hp_gold"].includes(
@@ -237,8 +318,9 @@ export default function TutorialOverlay() {
                                             "check_refine_preview",
                                             "select_item_to_infuse",
                                             "upgrade_popup_any",
+                                            "library_complete",
                                           ].includes(step.id)
-                                        ? "70%"
+                                        ? "35%"
                                         : "50%",
             transform: "translateY(-50%)",
             width: "90%",
@@ -343,8 +425,15 @@ export default function TutorialOverlay() {
             </motion.div>
           )}
 
-          {(step.actionType === "any" || 
-            ["tower_unlock", "library_unlock", "master_unlock", "inn_event", "click_equip_button"].includes(step.id)) && (
+          {(step.actionType === "any" ||
+            [
+              "tower_unlock",
+              "master_unlock",
+              "inn_event",
+              "click_equip_button",
+              "library_complete",
+              "library_cost_guide",
+            ].includes(step.id)) && (
             <button
               onClick={() => completeTutorialStep(currentStepId!)}
               style={{
@@ -380,10 +469,10 @@ export default function TutorialOverlay() {
               step.id === "explain_night_only" ||
               step.id === "goto_forge_click" ||
               step.id === "forge_unlock" ||
-              step.id === "goto_inventory" ||
-              step.id === "master_unlock" ||
               step.id === "tower_unlock" ||
-              step.id === "inn_event"
+              step.id === "inn_event" ||
+              step.id === "library_complete" ||
+              step.id === "library_cost_guide"
                 ? [0, 15, 0]
                 : [0, -15, 0],
             scale: [1, 1.1, 1],
@@ -423,14 +512,20 @@ export default function TutorialOverlay() {
                           "actual_final_back_to_training",
                           "restart_training",
                           "library_unlock",
+                          "library_cost_guide",
+                          "library_complete",
                           "master_unlock",
                           "tower_unlock",
                           "inn_event",
+                          "explain_mission_bar",
                         ].includes(step.id)
                       ? [
                           "check_forge_result",
                           "check_final_infused_options",
                           "library_unlock",
+                          "library_cost_guide",
+                          "library_complete",
+                          "explain_mission_bar",
                         ].includes(step.id)
                         ? hole.top - 50
                         : hole.top - 85
@@ -457,8 +552,7 @@ export default function TutorialOverlay() {
                               : 5) +
                             (step.targetId === "training-area"
                               ? 40
-                              : step.id === "explain_mission_bar" ||
-                                  step.id === "click_status_detailed"
+                              : step.id === "click_status_detailed"
                                 ? -10
                                 : step.id === "explain_quest_list"
                                   ? 110
@@ -507,7 +601,10 @@ export default function TutorialOverlay() {
           step.id === "library_unlock" ||
           step.id === "master_unlock" ||
           step.id === "tower_unlock" ||
-          step.id === "inn_event"
+          step.id === "inn_event" ||
+          step.id === "library_complete" ||
+          step.id === "library_cost_guide" ||
+          step.id === "explain_mission_bar"
             ? "👇"
             : "👆"}
         </motion.div>
@@ -517,7 +614,7 @@ export default function TutorialOverlay() {
       {secondTargetRect && (
         <motion.div
           animate={{
-            y: [0, 15, 0],
+            y: step.id === "explain_mission_bar" ? [0, -15, 0] : [0, 15, 0],
             scale: [1, 1.1, 1],
           }}
           transition={{
@@ -528,7 +625,10 @@ export default function TutorialOverlay() {
           style={{
             position: "absolute",
             left: secondTargetRect.left + secondTargetRect.width / 2 - 25,
-            top: secondTargetRect.top - 60,
+            top:
+              step.id === "explain_mission_bar"
+                ? secondTargetRect.bottom + 10
+                : secondTargetRect.top - 60,
             width: 50,
             height: 50,
             display: "flex",
@@ -540,7 +640,7 @@ export default function TutorialOverlay() {
             filter: "drop-shadow(0 0 10px #ffd700)",
           }}
         >
-          👇
+          {step.id === "explain_mission_bar" ? "👆" : "👇"}
         </motion.div>
       )}
     </div>

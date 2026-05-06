@@ -77,8 +77,8 @@ export function PuzzleGame({
   const initPuzzleGrid = useCallback(() => {
     const rows = PUZZLE_ROWS;
     const cols = PUZZLE_COLS;
-    // 6 colors as requested: fire, water, wind, thunder, poison, gold
-    const types = ["fire", "water", "wind", "thunder", "poison", "gold"];
+    // 5 colors: fire, water, wind, thunder, poison
+    const types = ["fire", "water", "wind", "thunder", "poison"];
     const newGrid: any[][] = [];
     for (let r = 0; r < rows; r++) {
       const row: any[] = [];
@@ -390,7 +390,6 @@ export function PuzzleGame({
             case 'wind': return '#63e6be';
             case 'thunder': return '#ffeda7ff';
             case 'poison': return '#e599f7';
-            case 'gold': return '#ff260046';
             default: return '#fff';
           }
         })();
@@ -411,7 +410,7 @@ export function PuzzleGame({
       setPuzzleGrid(newGrid);
       await new Promise(res => setTimeout(res, 300));
 
-      const types = ["fire", "water", "wind", "thunder", "poison", "gold"];
+      const types = ["fire", "water", "wind", "thunder", "poison"];
       for (let c = 0; c < PUZZLE_COLS; c++) {
         let emptySpaces = 0;
         for (let r = PUZZLE_ROWS - 1; r >= 0; r--) {
@@ -611,7 +610,6 @@ export function PuzzleGame({
                         case 'wind': return 'radial-gradient(circle at 35% 35%, #00dd00 0%, #008800 50%, #003300 100%)';
                         case 'thunder': return 'radial-gradient(circle at 35% 35%, #f7f72bff 0%, #ffff00 45%, #867a07ff 100%)';
                         case 'poison': return 'radial-gradient(circle at 35% 35%, #ff00ff, #4d004d)';
-                        case 'gold': return 'radial-gradient(circle at 35% 35%, #ffcc33 0%, #ff9500 50%, #ff6a00 100%)';
                         default: return 'transparent';
                       }
                     })(),
