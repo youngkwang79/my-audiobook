@@ -160,25 +160,24 @@ export default function QiCondenseGame({
   };
 
   return (
-    <div className="w-full max-w-sm mx-auto p-5 rounded-2xl bg-slate-950 border border-cyan-500/30 text-white shadow-xl">
-      <div className="text-center mb-4">
+    <div className="w-full max-w-[370px] mx-auto p-4 py-3 rounded-2xl bg-slate-950 border border-cyan-500/30 text-white shadow-xl">
+      <div className="text-center mb-2">
         <h2 className="text-xl font-bold text-cyan-200">기운응축</h2>
-        <p className="text-sm text-slate-400">내공의 흐름을 한 점에 모으십시오</p>
       </div>
 
-      <div className="flex justify-between text-sm mb-4">
+      <div className="flex justify-between text-sm mb-2 text-slate-400">
         <span>단계: {stage}</span>
         <span>연속: {combo}</span>
         <span>진행: {currentProgress}/{targetForRound}</span>
       </div>
 
-      <div className="relative w-64 h-64 mx-auto mb-4">
-        <div className="absolute top-0 left-0 flex gap-1 z-10">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <span key={i} style={{ opacity: i < lives ? 1 : 0.2, fontSize: "14px" }}>❤️</span>
-          ))}
-        </div>
+      <div className="flex justify-center gap-1 mb-2">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <span key={i} style={{ opacity: i < lives ? 1 : 0.2, fontSize: "14px" }}>❤️</span>
+        ))}
+      </div>
 
+      <div className="relative w-64 h-64 mx-auto mb-2">
         <div className="relative w-full h-full rounded-full border-4 border-slate-700 bg-slate-900 overflow-hidden flex items-center justify-center">
           <div className="absolute w-[195px] h-[195px] rounded-full border-[18px] border-cyan-500/25" />
           <div className="absolute w-[184px] h-[184px] rounded-full border-[12px] border-purple-400/35" />
@@ -202,22 +201,22 @@ export default function QiCondenseGame({
         </div>
       </div>
 
-      <div className={`text-center h-8 font-bold transition-all ${getResultClass()}`}>
+      <div className={`text-center h-7 font-bold transition-all ${getResultClass()}`}>
         {getResultText()}
       </div>
 
       <button
         onClick={judge}
         disabled={locked || !isPlaying}
-        className="mt-5 w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:scale-95 disabled:bg-slate-600 text-slate-950 font-extrabold text-lg transition"
+        className="mt-2 w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:scale-95 disabled:bg-slate-600 text-slate-950 font-extrabold text-lg transition"
       >
         기운 응축
       </button>
 
-      <div className="mt-4 text-xs text-slate-400 flex justify-between">
-        <span>청색: 성공</span>
-        <span>자색: 대성공</span>
-        <span>금색: 극의 응축</span>
+      <div className="mt-2 text-xs text-slate-500 flex justify-center gap-4">
+        <span>🔵 성공</span>
+        <span>🟣 대성공</span>
+        <span>🟡 극의 응축</span>
       </div>
     </div>
   );

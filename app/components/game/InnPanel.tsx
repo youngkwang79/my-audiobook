@@ -2180,7 +2180,7 @@ const activeGameArea: React.CSSProperties = {
 };
 
 const scoreBarContainer: React.CSSProperties = {
-  marginBottom: "15px",
+  marginBottom: "8px",
 };
 
 const scoreLabels: React.CSSProperties = {
@@ -2189,7 +2189,7 @@ const scoreLabels: React.CSSProperties = {
   gridTemplateColumns: "1fr auto 1fr",
   alignItems: "center",
   fontSize: "12px",
-  marginBottom: "8px",
+  marginBottom: "4px",
   color: "#ffd700",
   fontWeight: "bold",
   padding: "0 14px",
@@ -2216,7 +2216,7 @@ const roundBadge: React.CSSProperties = {
   borderRadius: "8px",
   fontSize: "12px",
   fontWeight: 600,
-  marginBottom: "15px",
+  marginBottom: "8px",
 };
 
 const gameTip: React.CSSProperties = {

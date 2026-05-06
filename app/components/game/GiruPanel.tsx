@@ -237,7 +237,7 @@ export default function GiruPanel() {
         style={{
           position: "relative",
           zIndex: 10,
-          padding: "20px 16px 10px",
+          padding: "10px 16px 5px",
           textAlign: "center",
           background:
             "linear-gradient(to bottom, rgba(5,5,16,0.8), transparent)",
@@ -269,7 +269,7 @@ export default function GiruPanel() {
           style={{
             fontSize: "12px",
             color: "#ffd700",
-            marginTop: "8px",
+            marginTop: "4px",
             fontWeight: 900,
             textShadow: "0 0 10px rgba(255,215,0,0.4)",
           }}
@@ -807,7 +807,7 @@ export default function GiruPanel() {
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                paddingBottom: "80px",
+                paddingBottom: "40px",
                 overflowY: "auto",
                 WebkitOverflowScrolling: "touch",
               }}
@@ -818,9 +818,9 @@ export default function GiruPanel() {
                   background: "rgba(0,0,0,0.75)",
                   backdropFilter: "blur(12px)",
                   borderRadius: "18px",
-                  padding: "10px 16px",
-                  minHeight: "50px",
-                  marginBottom: "10px",
+                  padding: "8px 14px",
+                  minHeight: "40px",
+                  marginBottom: "6px",
                   border: "1px solid rgba(255, 255, 255, 0.2)",
                   boxShadow:
                     "0 10px 30px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.3)",
@@ -844,10 +844,10 @@ export default function GiruPanel() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     style={{
-                      marginTop: "8px",
+                      marginTop: "4px",
                       display: "flex",
                       flexDirection: "column",
-                      gap: "6px",
+                      gap: "4px",
                     }}
                   >
                     <div
@@ -930,7 +930,7 @@ export default function GiruPanel() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: "8px",
+                        marginBottom: "4px",
                       }}
                     >
                       <div
@@ -973,7 +973,7 @@ export default function GiruPanel() {
 
                     <div
                       style={{
-                        padding: "10px",
+                        padding: "6px 10px",
                         background:
                           q.status === "completed"
                             ? "rgba(77,255,138,0.1)"
@@ -1107,7 +1107,7 @@ export default function GiruPanel() {
                       </div>
 
                       {q.status === "active" && (
-                        <div style={{ marginTop: "10px" }}>
+                        <div style={{ marginTop: "6px" }}>
                           <div
                             style={{
                               display: "flex",
@@ -1200,7 +1200,7 @@ export default function GiruPanel() {
                     onClick={() => handleAction(selectedNpc.id, action.id)}
                     disabled={isProcessing || game.coins < action.cost}
                     style={{
-                      padding: "8px 14px",
+                      padding: "6px 12px",
                       borderRadius: "14px",
                       border: "1px solid rgba(255,255,255,0.08)",
                       background:
@@ -1263,8 +1263,8 @@ export default function GiruPanel() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowSecretRoom(true)}
                     style={{
-                      marginTop: "10px",
-                      padding: "16px",
+                      marginTop: "8px",
+                      padding: "12px",
                       borderRadius: "16px",
                       background:
                         "linear-gradient(135deg, rgba(224,195,252,0.2), rgba(255,215,0,0.1))",
