@@ -238,6 +238,7 @@ export const defaultGameData: GameSaveData = {
   },
   pendingInnEntry: false,
   innEventVersion: 0,
+  gearPieces: 0,
 
   lastSaveTime: Date.now(),
   lastOfflineRewards: null,

@@ -132,18 +132,19 @@ export function PuzzleGame({
           lastScoreAtTickRef.current = playerScoreRef.current;
         }
 
+        const targetScore = getTargetScore(stage);
+        if (playerScoreRef.current >= targetScore) {
+          onStageClear("PERFECT", 240, `Stage ${stage} 성공!`);
+          return;
+        }
+
         if (combat.playerHp <= 0) {
           onFail(playerScoreRef.current, "기력이 다하여 무뢰배에게 패배했습니다...");
           return;
         }
 
         if (nextTime <= 0) {
-          const targetScore = getTargetScore(stage);
-          if (playerScoreRef.current >= targetScore) {
-            onStageClear("PERFECT", 240, `Stage ${stage} 성공!`);
-          } else {
-            onFail(playerScoreRef.current, `시간 내에 무뢰배를 제압하지 못했습니다.`);
-          }
+          onFail(playerScoreRef.current, `시간 내에 무뢰배를 제압하지 못했습니다.`);
           return;
         }
       }

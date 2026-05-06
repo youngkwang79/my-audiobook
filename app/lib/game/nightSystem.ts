@@ -410,6 +410,14 @@ export function checkActionRefund(favor: number): boolean {
   return false;
 }
 
+export function getInfoTierCost(tier: string) {
+  if (tier === "low") return 20000;
+  if (tier === "mid") return 500000;
+  if (tier === "high") return 10000000;
+  if (tier === "special") return 200000000;
+  return 100000;
+}
+
 export const GIRU_INVEST_COSTS = [
   0, 10000, 30000, 70000, 150000, 300000, 600000, 1000000, 1500000, 2200000
 ];

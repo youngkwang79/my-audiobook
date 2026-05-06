@@ -5,11 +5,7 @@ import { CompendiumSkill, RealmKey, SkillCategory, SkillElement, SkillGrade } fr
  * 문파에 상관없이 누구나 익힐 수 있으며, 각 경지마다 2~3개씩 배치하여 다양성을 확보함.
  */
 export const COMMON_MARTIAL_ARTS: Partial<Record<RealmKey, any[]>> = {
-  "필부": [
-    { name: "삼재검법(三才劍法)", type: "sword", element: "neutral", desc: "천·지·인의 이치를 담은 가장 기초적인 검법입니다." },
-    { name: "육합권(六合拳)", type: "fist", element: "neutral", desc: "몸의 여섯 부위를 조화롭게 사용하는 입문 권법입니다." },
-    { name: "연환각(連環脚)", type: "movement", element: "neutral", desc: "끊임없이 이어지는 발차기로 적의 중심을 무너뜨립니다." }
-  ],
+  "필부": [],
   "삼류": [
     { name: "소요장(逍遙掌)", type: "palm", element: "wind", desc: "거동이 자유롭고 막힘이 없는 장법으로 적을 유린합니다." },
     { name: "철포삼(鐵布衫)", type: "internal", element: "yang", desc: "몸을 철갑처럼 단단하게 만들어 외부의 충격을 흡수합니다." },

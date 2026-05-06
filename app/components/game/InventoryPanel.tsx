@@ -47,6 +47,7 @@ export default function InventoryPanel(props: Props) {
   const consumables = useGameStore((s: any) => s.game.consumables);
   const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
   const quickSlots = useGameStore((s: any) => s.game.quickSlots);
+  const game = useGameStore((s: any) => s.game);
 
   const equipItem = useGameStore((s: any) => s.equipItem);
   const unequipItem = useGameStore((s: any) => s.unequipItem);
@@ -476,7 +477,7 @@ export default function InventoryPanel(props: Props) {
                   const fragments: Record<string, number> = {};
                   // Legacy record
                   Object.entries(
-                    useGameStore.getState().game.manualFragments || {},
+                    game.manualFragments || {},
                   ).forEach(([k, v]: any) => {
                     if (v > 0) fragments[k] = (fragments[k] || 0) + v;
                   });
@@ -679,7 +680,7 @@ export default function InventoryPanel(props: Props) {
                   </span>
                 </div>
                 {Object.entries(
-                  useGameStore.getState().game.factionBonds || {},
+                  game.factionBonds || {},
                 ).map(([faction, count]: [string, any]) => (
                   <div
                     key={faction}

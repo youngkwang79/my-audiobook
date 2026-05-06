@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { GameSaveData, OwnedWeapon, EquipSlot, TimingMissionState, DuelState, MasterDuelState, Skill, FactionType, ConsumableId, MiniGameType, CombatAnalysis, CombatLogEntry, CombatLogSource, NextDayEvent, Quest, TowerEnemy, TowerState, TowerBuff, TowerArtifact, ItemTier } from "./types";
 import { FACTIONS } from "./factions";
-import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS, ROGUE_QUEST_REWARDS, getNextAdaptiveQuests } from "./nightSystem";
+import { GIRU_NPCS, GIRU_EVENTS, GIRU_ACTIONS, GIRU_GIFT_ITEMS, GIRU_QUESTS, ROGUE_QUEST_REWARDS, getNextAdaptiveQuests, getInfoTierCost } from "./nightSystem";
 import { defaultGameData, loadGame, saveGame } from "./storage";
 import { REALM_SET_OPTIONS, SYNERGY_CONFIG, MASTER_RIVALS, generateRandomAccessory, rollTierAndOptions, rollPaewangItem, getEnhancementMultiplier, FORGE_ITEMS, generateRandomGear, SET_GROUPS, getItemOptionCount, fixItemOptions } from "./items";
 import { getMovementBuff } from "./movementLogic";
@@ -13,13 +13,42 @@ import {
   getRefineGoldCost,
   canSynthesize,
   MARTIAL_COMPENDIUM,
-  getRefineBonusMultiplier
+  getRefineBonusMultiplier,
+  getManualFragmentDisplayName
 } from "./martialArtsSystem";
 import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
 import { saveGameToFirebase, loadGameFromFirebase } from "@/lib/gameSave";
 import { supabase } from "@/lib/supabaseClient";
 import { m } from "framer-motion";
 import { TOWER_ROGUE_BUFF_POOL, getTierWeight, TOWER_SYNERGIES } from "./towerData";
+
+/**
+ * 현재 경지와 문파에 맞는 비급 조각을 무작위로 선택하는 헬퍼
+ */
+const getRealmAppropriateShards = (game: any) => {
+  const faction = game.faction || "무소속";
+  const realm = game.realm || "필부";
+  
+  // 현재 경지에 맞는 무공들 필터링
+  let possible = MARTIAL_COMPENDIUM.filter(sk => 
+    (sk.factionName === faction || sk.factionName === "강호공용") && 
+    sk.realm === realm
+  );
+  
+  if (possible.length === 0) {
+    // 해당 경지에 맞는 문파 무공이 없으면 전체 도감에서 해당 경지 무공 검색
+    possible = MARTIAL_COMPENDIUM.filter(sk => sk.realm === realm);
+  }
+  
+  if (possible.length === 0) {
+    // 해당 경지에 맞는 무공이 하나도 없으면 (매우 드문 경우)
+    // 기본적으로 신화 비급 조각 반환 또는 가장 낮은 경지 무공 반환
+    return { name: "신화 비급 조각", icon: "📜" };
+  }
+  
+  const selected = possible[Math.floor(Math.random() * possible.length)];
+  return { name: `${selected.name} 조각`, icon: "📜" };
+};
 
 
 export function formatCompactNumber(num: number): string {
@@ -744,7 +773,7 @@ function generateEnemy(level: number) {
   const bossMult = isBoss ? 2.5 : 1.0;
 
   const rivalHp = Math.floor(avgDmgPerHit * DUEL_BALANCING.TOTAL_BASELINE_HITS * hpMult * bossMult);
-  const estimatedHitsTaken = 35 / 1.2;
+  const estimatedHitsTaken = 35 / 2.2; // 기존 1.2에서 2.2로 상향 (적 공격력 약 80% 강화)
   const playerDefMultiplier = 100 / (100 + refPlayer.def);
   const requiredDmgPerHit = refPlayer.hp / estimatedHitsTaken;
   const rivalAtk = Math.floor((requiredDmgPerHit / playerDefMultiplier) * atkMult * (isBoss ? 1.5 : 1.0));
@@ -1083,16 +1112,60 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   getMaterialCount: (name: string) => {
     const { game } = get();
-    return game.ownedWeapons
+    // 1. 인연 점수 처리
+    if (name.endsWith(" 인연")) {
+      const faction = name.replace(" 인연", "");
+      return (game.factionBonds && game.factionBonds[faction]) || 0;
+    }
+    // 2. 심득 포인트 처리
+    if (name === "무학 심득" || name === "심득") {
+      return game.wisdom || 0;
+    }
+    // 3. 재료 맵 및 인벤토리 아이템 처리
+    let count = game.ownedWeapons
       .filter(w => w.name === name)
       .reduce((sum, w) => sum + (w.count || 0), 0);
+    
+    // 추가 맵 데이터 합산 (상점/대결 보상용)
+    if (name === "일반 재료") count += (game.materials?.standard_material || 0);
+    if (name === "진귀한 재료") count += (game.materials?.rare_material || 0);
+    if (name === "영험한 재료") count += (game.materials?.epic_material || 0);
+    if (name === "천외기보") count += (game.materials?.mythic_material || 0);
+    
+    if (name === "장비 조각") count += (game.gearFragments?.standard_gear_fragment || 0) + (game.gearPieces || 0);
+    if (name === "신기 파편") count += (game.divineWeaponShards?.standard_divine_shard || 0);
+
+    // 4. 비급 조각 맵 합산 (Library/Inventory 연동용)
+    if (game.manualFragments && game.manualFragments[name]) {
+      count += game.manualFragments[name];
+    }
+
+    return count;
   },
   consumeMaterial: (name: string, amount: number) => {
     set((s: any) => {
+      // 1. 인연 점수 처리
+      if (name.endsWith(" 인연")) {
+        const faction = name.replace(" 인연", "");
+        const nextBonds = { ...(s.game.factionBonds || {}) };
+        nextBonds[faction] = Math.max(0, (nextBonds[faction] || 0) - amount);
+        return { game: { ...s.game, factionBonds: nextBonds } };
+      }
+
+      // 2. 심득 포인트 처리
+      if (name === "무학 심득" || name === "심득") {
+        return { 
+          game: { 
+            ...s.game, 
+            wisdom: Math.max(0, (s.game.wisdom || 0) - amount),
+            insights: Math.max(0, (s.game.insights || 0) - amount) 
+          } 
+        };
+      }
+
+      // 3. 인벤토리 아이템 처리
       const owned = [...s.game.ownedWeapons];
       let remaining = amount;
-      
-      // 재료 아이템들을 찾아서 수량 차감
       for (let i = owned.length - 1; i >= 0; i--) {
         if (owned[i].name === name) {
           const count = owned[i].count || 0;
@@ -1615,10 +1688,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       const killGap = tKills - (s.game.lastInnEventKillCount || 0);
 
       let nTM = { ...s.game.timingMission };
-      if (tKills >= 400 && killGap >= targetInterval && !nTM.available && !s.game.tutorialProgress.isActive) {
+
+      if (tKills >= 300 && killGap >= targetInterval && !nTM.available && !s.game.tutorialProgress.isActive) {
         const miniGames = ["breath", "dodge", "puzzle", "pulse"];
-        const gameIdx = iEV % 4;
-        const selectedGame = miniGames[gameIdx];
+        const selectedGame = miniGames[iEV % 4];
         const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
         const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
 
@@ -1706,13 +1779,13 @@ export const useGameStore = create<GameState>((set, get) => ({
           uTabs_val = Array.from(new Set([...uTabs_val, "master"]));
           milestoneToTrigger = "master_unlock";
         } else if (qT_val === 290) {
-          qT_val = targetInterval;
-          cMT_val = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
+          qT_val = 300; 
+          cMT_val = "허수아비 누적 처치 290번\n[개방: 객잔]";
           uET_val = null;
           uTabs_val = Array.from(new Set([...uTabs_val, "inn"]));
           pIE = false;
           milestoneToTrigger = "inn_event";
-        } else if (qT_val >= targetInterval) {
+        } else if (finalKills >= 300) {
           qT_val = targetInterval;
           cMT_val = `객잔 무뢰배 추격 (${iEV + 1}차)\n허수아비를 ${targetInterval}회 더 처단하세요.`;
           uET_val = null;
@@ -2010,29 +2083,48 @@ export const useGameStore = create<GameState>((set, get) => ({
       } else if (reqs && typeof reqs === 'object') {
         nextGame.coins -= (reqs.goldCost || 0);
         
+        // --- 헬퍼: 재료 차감 로직 (nested set 방지용) ---
+        const deductMaterial = (name: string, amount: number) => {
+          const owned = [...(nextGame.ownedWeapons || [])];
+          let remaining = amount;
+          for (let i = owned.length - 1; i >= 0; i--) {
+            if (owned[i].name === name) {
+              const count = owned[i].count || 0;
+              if (count <= remaining) {
+                remaining -= count;
+                owned.splice(i, 1);
+              } else {
+                owned[i] = { ...owned[i], count: count - remaining };
+                remaining = 0;
+                break;
+              }
+            }
+          }
+          nextGame.ownedWeapons = owned;
+        };
+
         if (reqs.requiredFragments > 0) {
-          (get() as any).consumeMaterial(reqs.fragmentId, reqs.requiredFragments);
+          deductMaterial(reqs.fragmentId, reqs.requiredFragments);
         }
         if (reqs.requiredMaterials > 0) {
-          (get() as any).consumeMaterial("일반 재료", reqs.requiredMaterials);
+          deductMaterial(reqs.materialId || "일반 재료", reqs.requiredMaterials);
         }
         if (reqs.requiredGearFragments > 0) {
-          (get() as any).consumeMaterial("장비 조각", reqs.requiredGearFragments);
+          deductMaterial("장비 조각", reqs.requiredGearFragments);
         }
         if (reqs.requiredDivineWeaponShards > 0) {
-          (get() as any).consumeMaterial("신기 파편", reqs.requiredDivineWeaponShards);
+          deductMaterial("신기 파편", reqs.requiredDivineWeaponShards);
         }
         if (reqs.requiredBonds > 0) {
-          const bondName = `${reqs.bondId} 인연`;
-          (get() as any).consumeMaterial(bondName, reqs.requiredBonds);
+          const faction = reqs.bondId;
+          const nextBonds = { ...(nextGame.factionBonds || {}) };
+          nextBonds[faction] = Math.max(0, (nextBonds[faction] || 0) - reqs.requiredBonds);
+          nextGame.factionBonds = nextBonds;
         }
         if (reqs.requiredInsights > 0) {
-          nextGame.insights -= reqs.requiredInsights;
+          nextGame.wisdom = Math.max(0, (nextGame.wisdom || 0) - reqs.requiredInsights);
+          nextGame.insights = Math.max(0, (nextGame.insights || 0) - reqs.requiredInsights);
         }
-        // State might have changed due to consumeMaterial calling set()
-        // But since we are inside set(), we should be careful.
-        // Wait, consumeMaterial calls set() which is nested set() problem.
-        // I should return the updated ownedWeapons in consumeMaterial or perform logic here.
       }
 
       const isAlreadyLearned = g.learnedSkills.some((s: any) => (s.id || s.name) === (skill.id || skill.name));
@@ -2555,29 +2647,39 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }
     else if (id === "paewang_box") {
-      const baseList = FORGE_ITEMS.filter(i => i.realm === "천인합일" || i.realm === "신화경");
+      const currentRealm = s.game.realm || "필부";
+      const rIdx = REALM_ORDER.indexOf(currentRealm as any);
+      
+      let baseList = FORGE_ITEMS.filter(i => i.realm === currentRealm);
+      if (baseList.length === 0) {
+        baseList = FORGE_ITEMS.filter(i => i.realm === "천인합일");
+      }
+      
       const base = baseList[Math.floor(Math.random() * baseList.length)];
-      const newItem = rollPaewangItem({ ...base, id: `paewang_${Date.now()}` }, 1, s.game.upgradeLevels?.luck || 0, 10);
-
-      const slotNames: any = { mainWeapon: "무기", subWeapon: "보조", gloves: "장갑", shoes: "신발", robe: "도포", necklace: "목걸이", ring: "반지", bracelet: "팔찌" };
+      
+      const newItem = rollPaewangItem(
+        { ...base, id: `paewang_${Date.now()}` }, 
+        1, 
+        s.game.upgradeLevels?.luck || 0, 
+        rIdx === -1 ? 10 : rIdx
+      );
 
       return {
         game: {
           ...s.game,
           ownedWeapons: [...s.game.ownedWeapons, newItem],
-          consumables: { ...s.game.consumables, [id]: s.game.consumables[id] - 1 },
+          consumables: {
+            ...s.game.consumables,
+            [id]: Math.max(0, (s.game.consumables[id] || 0) - 1)
+          },
           pendingReward: {
-            title: "패왕의 유물 개봉",
-            items: [{ 
-              icon: newItem.icon, 
-              name: newItem.name, 
-              color: "#ff9d00",
-              slotName: slotNames[newItem.slot] || newItem.slot 
-            }]
+            title: "패왕의 보물상자 개봉",
+            items: [{ icon: newItem.icon, name: newItem.name, color: "#ff3e3e" }]
           }
         }
       };
     }
+
     else if (id === "stone_box_tujeon") {
       return {
         game: {
@@ -2814,7 +2916,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // 실제 임무 보상 정산 및 수련장 복귀
         const actualStage = Math.min(15, p.maxStage || 0);
         const r = p.gold || (1000 * Math.pow(1.4, actualStage) * (REALM_SETTINGS[game.realm]?.goldMultiplier || 1));
-        const repGain = p.rep || (50 + actualStage * 30);
+        const repGain = r;
 
         let newConsumables = { ...game.consumables };
         if (p.item) {
@@ -2853,23 +2955,95 @@ export const useGameStore = create<GameState>((set, get) => ({
         const stoneGain = p.stones || (Math.floor(actualStage * 1.5) + 1);
         const wisdomGain = p.wisdom || 0;
 
-        set((s: any) => ({
-          game: {
-            ...s.game,
-            coins: s.game.coins + r,
-            reputation: Math.max(0, (s.game.reputation || 0) + repGain),
-            enhancementStones: (s.game.enhancementStones || 0) + stoneGain,
-            wisdom: (s.game.wisdom || 0) + wisdomGain,
-            consumables: newConsumables,
-            activeBuff: tranceMultiplier > 1 ? "무아지경" : s.game.activeBuff,
-            attackMultiplier: tranceMultiplier > 1 ? tranceMultiplier : s.game.attackMultiplier,
-            buffTimeLeft: tranceMultiplier > 1 ? 15 : s.game.buffTimeLeft, // 무아지경 지속시간 15초
-            showInnVictoryEffect: true,
-            lastInnScore: score,
-            innHighScore: Math.max(game.innHighScore || 0, score),
-            timingMission: { ...s.game.timingMission, available: false },
-            pendingInnEntry: false, // Ensure the overlay is removed
-            activeTab: "training",
+        const realmOrder = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+        const userRealmIdx = realmOrder.indexOf(game.realm);
+        const isLowRealm = userRealmIdx <= 3; // 필부 ~ 일류
+
+        // --- 무공 조각 보상 추가 ---
+        const faction = game.faction || "강호공용";
+        const factionSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
+        const randomSkill = factionSkills[Math.floor(Math.random() * factionSkills.length)];
+        const fragmentName = randomSkill ? `${randomSkill.name} 조각` : "일반 비급 조각";
+        
+        // --- 보상 수량 산출 (경지, 스테이지, 점수 가중치 적용) ---
+        const realmWeight = (userRealmIdx + 1); // 경지 (1~11)
+        const stageWeight = (1 + actualStage * 0.1); // 스테이지 가중치
+        const scoreWeight = (1 + score / 500000); // 점수 가중치
+        
+        // 무공 조각 수량 결정 (경지가 낮을수록 적게, 단계/점수가 높을수록 많게)
+        let fragmentCount = Math.floor(0.4 * realmWeight * stageWeight * scoreWeight);
+        if (fragmentCount < 1) fragmentCount = 1;
+        
+        // 일반 재료 수량 결정
+        let materialCount = Math.floor(realmWeight * stageWeight * scoreWeight);
+        if (materialCount < 1) materialCount = 1;
+
+        const nextFragments = { ...(game.manualFragments || {}) };
+        if (fragmentCount > 0) {
+          nextFragments[fragmentName] = (nextFragments[fragmentName] || 0) + fragmentCount;
+        }
+
+        const finalGold = Math.floor(r);
+        const finalRep = finalGold;
+
+        const pendingRewardItems = [
+          { icon: "💰🌟", name: "금화/명성", count: finalGold, color: "#ffd700" },
+          { icon: "💎", name: "강화석", count: stoneGain, color: "#aaaaff" },
+          { icon: "💡", name: "심득", count: wisdomGain, color: "#66ccff" }
+        ];
+
+        if (fragmentCount > 0) {
+          pendingRewardItems.push({ icon: "📜", name: fragmentName, count: fragmentCount, color: "#ff5555" });
+        }
+        if (materialCount > 0) {
+          pendingRewardItems.push({ icon: "📦", name: "일반 재료", count: materialCount, color: "#888888" });
+        }
+
+        const pendingReward = {
+          title: "객잔 시련 완수 보상",
+          items: pendingRewardItems
+        };
+
+        set((s: any) => {
+          const nextOwned = [...s.game.ownedWeapons];
+          if (materialCount > 0) {
+            const existing = nextOwned.find(w => w.name === "일반 재료");
+            if (existing) {
+              existing.count = (existing.count || 0) + materialCount;
+            } else {
+              nextOwned.push({
+                id: `material_standard_${Date.now()}`,
+                name: "일반 재료",
+                type: "material",
+                count: materialCount,
+                icon: "📦",
+                slot: "materials",
+                realm: "필부",
+                price: 100
+              });
+            }
+          }
+
+          return {
+            game: {
+              ...s.game,
+              coins: s.game.coins + r,
+              reputation: Math.max(0, (s.game.reputation || 0) + repGain),
+              enhancementStones: (s.game.enhancementStones || 0) + stoneGain,
+              wisdom: (s.game.wisdom || 0) + wisdomGain,
+              consumables: newConsumables,
+              manualFragments: nextFragments,
+              ownedWeapons: nextOwned,
+              pendingReward: p.skipPopup ? null : pendingReward,
+              activeBuff: tranceMultiplier > 1 ? "무아지경" : s.game.activeBuff,
+              attackMultiplier: tranceMultiplier > 1 ? tranceMultiplier : s.game.attackMultiplier,
+              buffTimeLeft: tranceMultiplier > 1 ? 15 : s.game.buffTimeLeft,
+              showInnVictoryEffect: true,
+              lastInnScore: score,
+              innHighScore: Math.max(game.innHighScore || 0, score),
+              timingMission: { ...s.game.timingMission, available: false },
+              pendingInnEntry: false,
+              activeTab: "training",
             tujeonTokens: (s.game.tujeonTokens || 0) + tokenGained,
             duel: {
               ...s.game.duel,
@@ -2879,7 +3053,8 @@ export const useGameStore = create<GameState>((set, get) => ({
               winStreak: (s.game.duel.winStreak || 0) + 1
             }
           }
-        }));
+        };
+      });
 
         // 3초 후 승리 이펙트 종료
         setTimeout(() => {
@@ -2893,6 +3068,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().triggerSave(true);
   },
   incrementCombo: () => set((s: any) => ({ game: { ...s.game, comboCount: (s.game.comboCount || 0) + 1, lastAttackTime: Date.now() } })),
+  subtractTujeonTokens: (amount: number) => set((s: any) => ({
+    game: {
+      ...s.game,
+      tujeonTokens: Math.max(0, (s.game.tujeonTokens || 0) - amount)
+    }
+  })),
   setSelectedMasterLevel: (l: number) => set((s: any) => { const e = generateEnemy(l); return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, selectedLevel: l, rivalName: e.name, rivalHp: e.hp, rivalMaxHp: e.hp, lastWinReward: undefined } } }; }),
   startMasterDuel: (isSpecialBoss = false, isGiru = false) => {
     const { game } = get();
@@ -2904,7 +3085,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           masterDuel: {
             ...s.game.masterDuel,
             isPlaying: true,
-            timeLimit: 40,
+            timeLeft: 40,
             lastAttackTime: Date.now()
           }
         }
@@ -2949,6 +3130,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           streakCount: streak,
           lastAttackTime: now,
           isPlaying: true,
+          lives: 3,
           rivalHp: e.hp,
           rivalMaxHp: e.hp,
           rivalAtk: e.atk,
@@ -3062,6 +3244,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     const isPlayerDead = nextHp <= 0;
+    let finalIsPlaying = !isPlayerDead;
+    let finalLastWinReward = masterDuel.lastWinReward;
+
+    if (isPlayerDead) {
+      finalIsPlaying = false;
+      finalLastWinReward = "기운이 다했습니다 (패배)";
+    }
 
     return {
       game: {
@@ -3074,9 +3263,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerHp: Math.max(0, nextHp),
           playerMp: Math.max(0, nextMp),
           timeLeft: tLeft,
-          isPlaying: !isPlayerDead,
+          isPlaying: finalIsPlaying,
           rivalHp: rivalHp,
-          lastWinReward: isPlayerDead ? "기운이 다했습니다 (패배)" : masterDuel.lastWinReward,
+          lastWinReward: finalLastWinReward,
           rivalAttackTimer: nextRivalTimer,
           chargeTimer: nextChargeTimer,
           damageTakenAccumulator: dmgAccum,
@@ -3320,6 +3509,114 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
           if (r.insights) nextInsights += r.insights;
         }
+        // --- 보상 처리 로직 ---
+        const isGiru = !!masterDuel.isGiruEncounter;
+        const faction = game.faction || "강호공용";
+        
+        let fragmentCount = 0;
+        let bondGain = 0;
+        let materialGain = 0;
+        let fragmentName = "일반 비급 조각";
+
+        // 1. 일반 악적 대결 보상 계산 (기연 대결이 아닐 때만 수행)
+        if (!isGiru) {
+          const realmOrder = ["필부", "삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경", "신화경", "천인합일"];
+          const userRealmIdx = realmOrder.indexOf(game.realm);
+          
+          const factionSkills = MARTIAL_COMPENDIUM.filter(sk => sk.factionName === faction);
+          const randomSkill = factionSkills[Math.floor(Math.random() * factionSkills.length)];
+          fragmentName = randomSkill ? `${randomSkill.name} 조각` : "일반 비급 조각";
+
+          // 경지에 따른 드랍 확률 결정 (유저 요청: 경지가 높을수록 수급을 어렵게)
+          let dropChance = 0.1; // 기본 10%
+          if (userRealmIdx === 0) dropChance = 0.7; // 필부: 70%
+          else if (userRealmIdx === 1) dropChance = 0.5; // 삼류: 50%
+          else if (userRealmIdx === 2) dropChance = 0.3; // 이류: 30%
+          else if (userRealmIdx === 3) dropChance = 0.15; // 일류: 15%
+          else if (userRealmIdx >= 4) dropChance = 0.1; // 절정 이상: 10%
+
+          if (Math.random() < dropChance) {
+            fragmentCount = 1; // 수량은 1개로 제한하여 희소성 부여
+            bondGain = 1;
+            materialGain = 3;
+          }
+
+          if (fragmentCount > 0) nextFragments[fragmentName] = (nextFragments[fragmentName] || 0) + fragmentCount;
+          if (bondGain > 0) nextBonds[faction] = (nextBonds[faction] || 0) + bondGain;
+          if (materialGain > 0) nextMaterials["standard_material"] = (nextMaterials["standard_material"] || 0) + materialGain;
+        }
+
+        // 2. 최종 팝업용 아이템 목록 (rawItems) 구성
+        const rawItems: any[] = [];
+
+        if (!isGiru) {
+          // 일반 대결: 재화 및 기본 보상 추가
+          const cleanGold = Math.floor(goldGain / 100) * 100;
+          const cleanRep = Math.floor(reputationGain / 10) * 10;
+
+          rawItems.push({ icon: "💰", name: "금화", count: cleanGold || goldGain, color: "#ffd700" });
+          rawItems.push({ icon: "🌟", name: "명성", count: cleanRep || reputationGain, color: "#ff88ff" });
+          rawItems.push({ icon: "🩸", name: "혈투의 징표", count: bossTokenGain, color: "#ff4d4d" });
+          rawItems.push({ icon: "💡", name: "심득", count: wisdomGain, color: "#66ccff" });
+
+          if (fragmentCount > 0) rawItems.push({ icon: "📜", name: fragmentName, count: fragmentCount, color: "#ff5555" });
+          if (bondGain > 0) rawItems.push({ icon: "🤝", name: `${faction} 인연`, count: bondGain, color: "#55ff55" });
+          if (materialGain > 0) rawItems.push({ icon: "📦", name: "일반 재료", count: materialGain, color: "#888888" });
+          if (oilId) rawItems.push({ icon: "🧴", name: oilNameMap[oilId] || oilId, count: 1, color: "#ffcc00" });
+        }
+
+        // 기연(Giru) 추가 보상 표시
+        if (masterDuel.rewards) {
+          const r = masterDuel.rewards;
+          if (r.manualFragments) {
+            Object.entries(r.manualFragments).forEach(([k, v]: any) => {
+              const displayName = getManualFragmentDisplayName(k);
+              rawItems.push({ icon: "📜", name: displayName, count: v, color: "#ff5555" });
+            });
+          }
+          if (r.materials) {
+            Object.entries(r.materials).forEach(([k, v]: any) => {
+              let displayName = k;
+              if (k === "standard_material") displayName = "일반 재료";
+              rawItems.push({ icon: "📦", name: displayName, count: v, color: "#888" });
+            });
+          }
+          if (r.factionBonds) {
+            Object.entries(r.factionBonds).forEach(([f, v]: any) => {
+              if (v > 0) rawItems.push({ icon: "🤝", name: `${f} 인연`, count: v, color: "#55ff55" });
+            });
+          }
+          if (r.gearFragments) {
+            Object.entries(r.gearFragments).forEach(([k, v]: any) => {
+              rawItems.push({ icon: "⚙️", name: "장비 파편", count: v, color: "#cc88ff" });
+            });
+          }
+          if (r.divineWeaponShards) {
+            Object.entries(r.divineWeaponShards).forEach(([k, v]: any) => {
+              let displayName = "신물 파편";
+              rawItems.push({ icon: "💎", name: displayName, count: v, color: "#ffcc00" });
+            });
+          }
+          if (r.insights) {
+             rawItems.push({ icon: "🧠", name: "통찰", count: r.insights, color: "#00eeff" });
+          }
+        }
+
+        // 중복 아이템 병합 로직 (예: 인연 점수 x3, x1 -> x4)
+        const mergedItemsMap = new Map<string, any>();
+        rawItems.forEach(item => {
+          if (mergedItemsMap.has(item.name)) {
+            mergedItemsMap.get(item.name).count += item.count;
+          } else {
+            mergedItemsMap.set(item.name, { ...item });
+          }
+        });
+
+        const pendingReward: { title: string; items: any[] } = {
+          title: masterDuel.isGiruEncounter ? `[기연] ${masterDuel.rivalName} 처단` : (masterDuel.isBoss ? "악적 처단 보상 (보스)" : "악적 처단 보상"),
+          items: Array.from(mergedItemsMap.values())
+        };
+
         const nextLevel = level + 1;
         const nextMaxLevel = Math.max(masterDuel.currentLevel, nextLevel);
         const nextEnemy = generateEnemy(nextLevel);
@@ -3342,6 +3639,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             factionBonds: nextBonds,
             insights: nextInsights,
             oilBuffs: nextBuffs,
+            pendingReward,
             masterDuel: {
               ...nextMD,
               isPlaying: false,
@@ -4057,7 +4355,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   toggleAudio: () => set((s: any) => ({ game: { ...s.game, isAudioMuted: !s.game.isAudioMuted } })),
 
   claimDuelReward: () => {
-    set((s: any) => ({ game: { ...s.game, pendingDuelReward: null, timingMission: { ...s.game.timingMission, available: false } } }));
+    set((s: any) => ({ game: { ...s.game, pendingReward: null, timingMission: { ...s.game.timingMission, available: false } } }));
     get().triggerSave(true);
     get().syncToCloud(true);
   },
@@ -5307,7 +5605,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (nextGifts[giftId] <= 0) delete nextGifts[giftId];
 
         const nextFavors = { ...(s.game.npcFavors || {}) };
-        nextFavors[npcId] = Math.min(100, (nextFavors[npcId] || 0) + favorGain);
+        nextFavors[npcId] = Math.min(300, (nextFavors[npcId] || 0) + favorGain);
 
         return {
           game: {
@@ -5350,7 +5648,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { success: false, message: "이 NPC와는 오늘 밤 충분히 대화를 나눴습니다." };
     }
 
-    if (game.coins < action.cost) return { success: false, message: "금전이 부족합니다." };
+    let actualCost = action.cost;
+    if (actionId === "info") {
+      const tier = extra && (extra as any).infoTier ? (extra as any).infoTier : "low";
+      actualCost = getInfoTierCost(tier);
+    }
+    
+    if (game.coins < actualCost) return { success: false, message: "금전이 부족합니다." };
 
     const npcEvents = GIRU_EVENTS.filter(e => e.npcId === npcId && e.action === actionId);
     const favor = (game.npcFavors && game.npcFavors[npcId]) || 0;
@@ -5382,25 +5686,30 @@ export const useGameStore = create<GameState>((set, get) => ({
         let nextFragments = { ...(s.game.manualFragments || {}) };
         let nextClaimed = { ...claimed };
 
-        // 100 호감도 보상
-        if (nextFavors[npcId] >= 100 && !claimed[npcId]) {
-          const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
-          pendingReward = {
-            title: `[호감] ${npcName}의 증표`,
-            items: [
-              { icon: "🎁", name: "패왕의 보물상자", count: 2, color: "#ffd700" },
-              { icon: "📜", name: "신화 비급 조각", count: 50, color: "#ff3e3e", slotName: "재료" }
-            ]
-          };
-          nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 2;
-          nextFragments.manual_fragment_mythic = (nextFragments.manual_fragment_mythic || 0) + 50;
-          nextClaimed[npcId] = true;
-        }
+        // 호감도 단계별 보상 (100, 200, 300)
+        [100, 200, 300].forEach(milestone => {
+          const claimKey = `${npcId}_${milestone}`;
+          if (nextFavors[npcId] >= milestone && !claimed[claimKey]) {
+            const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
+            const shardInfo = getRealmAppropriateShards(s.game);
+            
+            pendingReward = {
+              title: `[호감] ${npcName}의 증표 (${milestone})`,
+              items: [
+                { icon: "🎁", name: "패왕의 보물상자", count: 1, color: "#ffd700" },
+                { icon: shardInfo.icon, name: shardInfo.name, count: 50, color: "#ff3e3e", slotName: "재료" }
+              ]
+            };
+            nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 1;
+            nextFragments[shardInfo.name] = (nextFragments[shardInfo.name] || 0) + 50;
+            nextClaimed[claimKey] = true;
+          }
+        });
 
         return {
           game: {
             ...s.game,
-            coins: s.game.coins - action.cost,
+            coins: s.game.coins - actualCost,
             npcFavors: nextFavors,
             nightLimits: nextLimits,
             consumables: nextConsumables,
@@ -5421,26 +5730,31 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextFavors = { ...(get().game.npcFavors || {}) };
     nextFavors[npcId] = (nextFavors[npcId] || 0) + gainedFavor;
 
-    // 호감도 보상 체크 (100점 달성 시)
+    // 호감도 단계별 보상 (100, 200, 300)
     let pendingReward = get().game.pendingReward;
     const claimed = get().game.giruRewardsClaimed || {};
     let nextClaimed = { ...claimed };
     let nextConsumables = { ...get().game.consumables };
     let nextFragments = { ...(get().game.manualFragments || {}) };
 
-    if (nextFavors[npcId] >= 100 && !claimed[npcId]) {
-      const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
-      pendingReward = {
-        title: `[호감] ${npcName}의 증표`,
-        items: [
-          { icon: "🎁", name: "패왕의 보물상자", count: 2, color: "#ffd700" },
-          { icon: "📜", name: "신화 비급 조각", count: 50, color: "#ff3e3e", slotName: "재료" }
-        ]
-      };
-      nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 2;
-      nextFragments.manual_fragment_mythic = (nextFragments.manual_fragment_mythic || 0) + 50;
-      nextClaimed[npcId] = true;
-    }
+    [100, 200, 300].forEach(milestone => {
+      const claimKey = `${npcId}_${milestone}`;
+      if (nextFavors[npcId] >= milestone && !claimed[claimKey]) {
+        const npcName = GIRU_NPCS.find(n => n.id === npcId)?.name || "NPC";
+        const shardInfo = getRealmAppropriateShards(get().game);
+        
+        pendingReward = {
+          title: `[호감] ${npcName}의 증표 (${milestone})`,
+          items: [
+            { icon: "🎁", name: "패왕의 보물상자", count: 1, color: "#ffd700" },
+            { icon: shardInfo.icon, name: shardInfo.name, count: 50, color: "#ff3e3e", slotName: "재료" }
+          ]
+        };
+        nextConsumables.paewang_box = (nextConsumables.paewang_box || 0) + 1;
+        nextFragments[shardInfo.name] = (nextFragments[shardInfo.name] || 0) + 50;
+        nextClaimed[claimKey] = true;
+      }
+    });
 
     set((s: any) => {
       const nextBuffs = [...(s.game.nightBuffs || [])];
@@ -5479,87 +5793,116 @@ export const useGameStore = create<GameState>((set, get) => ({
       let nextMaterials = s.game.advancedMaterials || 0;
       let nextBonds = { ...(s.game.factionBonds || {}) };
 
-      if (actionId === "info" && extra && (extra as any).infoTier) {
-        const tier = (extra as any).infoTier;
-        const faction = s.game.faction || "무소속";
-        
-        let rivalName = "신비한 고수";
-        let rivalHpMult = 1.0;
-        let rivalAtkMult = 1.0;
-        let rivalRewards: any = {};
+        // --- Info Trade Special Rewards ---
+        if (actionId === "info" && extra && (extra as any).infoTier) {
+          const tier = (extra as any).infoTier;
+          const faction = s.game.faction || "무소속";
+          
+          let rivalName = "신비한 고수";
+          let rivalRewards: any = {};
 
-        const realmIdx = REALM_ORDER.indexOf(s.game.realm);
-        const rewardScale = 1 + (realmIdx * 0.3);
+          let targetRealm = s.game.realm || "삼류";
+          if (tier === "low") targetRealm = "이류";
+          if (tier === "mid") targetRealm = "초절정";
+          if (tier === "high") targetRealm = "현경";
+          if (tier === "special") targetRealm = "천인합일";
 
-        if (tier === "low") {
-          rivalName = "월향루 무뢰배 대장";
-          rivalHpMult = 1.5; rivalAtkMult = 1.2;
-          rivalRewards = {
-            manualFragments: { "manual_fragment_common": 15 },
-            materials: { "standard_material": 10 },
-            factionBonds: { [faction]: Math.random() < 0.3 ? 1 : 0 }
-          };
-          infoMsg = "\n[기연] 월향루 근처에 무뢰배 대장이 나타났습니다!";
-        } else if (tier === "mid") {
-          rivalName = `${faction} 배신자`;
-          rivalHpMult = 3.0; rivalAtkMult = 1.8;
-          rivalRewards = {
-            manualFragments: { "manual_fragment_rare": 10, "manual_fragment_epic": 5 },
-            materials: { "standard_material": 30 },
-            factionBonds: { [faction]: 1 }
-          };
-          infoMsg = `\n[기연] ${faction}의 기술을 훔친 배신자가 인근에 숨어들었습니다!`;
-        } else if (tier === "high") {
-          rivalName = "은둔 고수";
-          rivalHpMult = 6.0; rivalAtkMult = 3.5;
-          rivalRewards = {
-            manualFragments: { "manual_fragment_epic": 15, "manual_fragment_legendary": 5 },
-            materials: { "standard_material": 100 },
-            gearFragments: { "standard_gear_fragment": 5 },
-            factionBonds: { [faction]: 2 },
-            insights: 50
-          };
-          infoMsg = `\n[기연] 소문의 은둔 고수가 강호에 모습을 드러났습니다!`;
-        } else if (tier === "special") {
-          rivalName = "강호의 전설";
-          rivalHpMult = 15.0; rivalAtkMult = 8.0;
-          rivalRewards = {
-            manualFragments: { "manual_fragment_legendary": 20, "manual_fragment_mythic": 5 },
-            materials: { "standard_material": 500 },
-            gearFragments: { "standard_gear_fragment": 20 },
-            divineWeaponShards: { "standard_divine_shard": 1 },
-            factionBonds: { [faction]: 5 },
-            insights: 200
-          };
-          infoMsg = `\n[기연] 전설적인 고수와 대결할 절호의 기회가 생겼습니다!`;
-        }
+          const dummyStats = getDummyStats(targetRealm, 1);
+          let rivalHp = dummyStats.hp || 1000;
+          let rivalAtk = dummyStats.atk || 10;
+          let rivalDef = dummyStats.def || 0;
+          let rivalEva = dummyStats.eva || 0;
+          let rivalCritRate = 0;
+          let rivalCritDmg = 150;
 
-        return {
-          game: {
-            ...s.game,
-            coins: s.game.coins - (action.cost || 0),
-            npcFavors: nextFavors,
-            nightLimits: nextLimits,
-            consumables: nextConsumables,
-            manualFragments: nextFragments,
-            pendingReward,
-            giruRewardsClaimed: nextClaimed,
-            masterDuel: {
-              ...s.game.masterDuel,
-              isPlaying: false, 
-              rivalName,
-              rivalHp: Math.floor(get().getTotalHp() * rivalHpMult),
-              rivalMaxHp: Math.floor(get().getTotalHp() * rivalHpMult),
-              rivalAtk: Math.floor(get().getStableAttack() * rivalAtkMult),
-              playerHp: get().getTotalHp(),
-              playerMaxHp: get().getTotalHp(),
-              rewards: rivalRewards,
-              infoTier: tier,
-              isGiruEncounter: true 
-            }
+          // 보상용 무공 조각 결정 헬퍼
+          const getFactionFragment = (grades: string[]) => {
+            const possible = MARTIAL_COMPENDIUM.filter(sk => 
+              (sk.factionName === faction || sk.factionName === "강호공용") && 
+              grades.includes(sk.grade)
+            );
+            if (possible.length === 0) return "manual_fragment_common";
+            const selected = possible[Math.floor(Math.random() * possible.length)];
+            return `${selected.name} 조각`;
+          };
+
+          if (tier === "low") {
+            rivalName = "월향루 무뢰배 대장";
+            rivalHp *= 1.5; rivalAtk *= 1.2; rivalDef *= 1.2;
+            const fragKey = getFactionFragment(["common"]);
+            rivalRewards = {
+              manualFragments: { [fragKey]: 3 },
+              materials: { "standard_material": 5 },
+              factionBonds: { [faction]: 1 }
+            };
+            infoMsg = `\n[기연] 월향루 근처에 무뢰배 대장이 나타났습니다! (${fragKey} 첩보)`;
+          } else if (tier === "mid") {
+            rivalName = `${faction} 배신자`;
+            rivalHp *= 3.0; rivalAtk *= 1.8; rivalDef *= 1.8; rivalEva += 5;
+            const fragKey = getFactionFragment(["rare", "epic"]);
+            rivalRewards = {
+              manualFragments: Math.random() < 0.6 ? { [fragKey]: 5 } : {},
+              materials: Math.random() < 0.5 ? { "standard_material": 10 } : {},
+              factionBonds: { [faction]: 1 }
+            };
+            infoMsg = `\n[기연] ${faction}의 기술을 훔친 배신자가 인근에 숨어들었습니다! (${fragKey} 첩보)`;
+          } else if (tier === "high") {
+            rivalName = "은둔 고수";
+            rivalHp *= 6.0; rivalAtk *= 3.5; rivalDef *= 3.0; rivalEva += 15; rivalCritRate += 10;
+            const fragKey = getFactionFragment(["epic", "legendary"]);
+            rivalRewards = {
+              manualFragments: Math.random() < 0.4 ? { [fragKey]: 8 } : {},
+              materials: Math.random() < 0.3 ? { "standard_material": 20 } : {},
+              gearFragments: Math.random() < 0.2 ? { "standard_gear_fragment": 5 } : {},
+              factionBonds: { [faction]: 1 },
+              insights: 50
+            };
+            infoMsg = `\n[기연] 소문의 은둔 고수가 강호에 모습을 드러났습니다! (${fragKey} 첩보)`;
+          } else if (tier === "special") {
+            rivalName = "강호의 전설";
+            rivalHp *= 15.0; rivalAtk *= 8.0; rivalDef *= 8.0; rivalEva += 30; rivalCritRate += 30; rivalCritDmg += 50;
+            const fragKey = getFactionFragment(["legendary", "mythic"]);
+            rivalRewards = {
+              manualFragments: Math.random() < 0.3 ? { [fragKey]: 12 } : {},
+              materials: Math.random() < 0.2 ? { "standard_material": 30 } : {},
+              gearFragments: Math.random() < 0.2 ? { "standard_gear_fragment": 10 } : {},
+              divineWeaponShards: Math.random() < 0.1 ? { "standard_divine_shard": 1 } : {},
+              factionBonds: { [faction]: 2 },
+              insights: 100
+            };
+            infoMsg = `\n[기연] 전설적인 고수와 대결할 절호의 기회가 생겼습니다! (${fragKey} 첩보)`;
           }
-        };
-      }
+
+          return {
+            game: {
+              ...s.game,
+              coins: s.game.coins - actualCost,
+              npcFavors: nextFavors,
+              nightLimits: nextLimits,
+              consumables: nextConsumables,
+              manualFragments: nextFragments,
+              pendingReward,
+              giruRewardsClaimed: nextClaimed,
+              masterDuel: {
+                ...s.game.masterDuel,
+                isPlaying: false, 
+                rivalName,
+                rivalHp: Math.floor(rivalHp),
+                rivalMaxHp: Math.floor(rivalHp),
+                rivalAtk: Math.floor(rivalAtk),
+                rivalDef: Math.floor(rivalDef),
+                rivalEva,
+                rivalCritRate,
+                rivalCritDmg,
+                playerHp: get().getTotalHp(),
+                playerMaxHp: get().getTotalHp(),
+                rewards: rivalRewards,
+                infoTier: tier,
+                isGiruEncounter: true 
+              }
+            }
+          };
+        }
 
       if (event && event.result && event.result.token && event.result.token > 0) {
         setTimeout(() => get().addWeapon({
@@ -5790,6 +6133,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (nextTimeState === "day") {
           nextTimeState = "dusk";
           nextTimeRemaining = 60;
+          
           return {
             game: {
               ...s.game,

@@ -503,11 +503,6 @@ export default function GameShell() {
                     justifyContent: "center",
                     padding: 20,
                   }}
-                  onClick={() =>
-                    useGameStore.setState((s: any) => ({
-                      game: { ...s.game, pendingReward: null },
-                    }))
-                  }
                 >
                   <motion.div
                     initial={{ scale: 0.5, y: 50, opacity: 0 }}
@@ -519,7 +514,7 @@ export default function GameShell() {
                       background: "rgba(20,20,30,0.95)",
                       borderRadius: 24,
                       border: "2px solid #ffd700",
-                      padding: 30,
+                      padding: 20,
                       textAlign: "center",
                       boxShadow: "0 0 50px rgba(255,215,0,0.3)",
                       position: "relative",
@@ -542,21 +537,21 @@ export default function GameShell() {
 
                     <div
                       style={{
-                        fontSize: 14,
+                        fontSize: 12,
                         color: "#ffd700",
                         fontWeight: 900,
                         letterSpacing: 2,
-                        marginBottom: 5,
+                        marginBottom: 2,
                       }}
                     >
-                      REWARD OBTAINED
+                      획득한 보상
                     </div>
                     <div
                       style={{
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: 950,
                         color: "#fff",
-                        marginBottom: 25,
+                        marginBottom: 15,
                         textShadow: "0 2px 10px rgba(0,0,0,0.5)",
                       }}
                     >
@@ -565,39 +560,73 @@ export default function GameShell() {
 
                     <div
                       style={{
+                        position: "relative",
+                        maxHeight: "50vh",
                         display: "flex",
                         flexDirection: "column",
-                        gap: 15,
-                        alignItems: "center",
+                        gap: "12px",
+                        overflowY: "auto",
+                        padding: "10px 5px",
+                        marginBottom: "15px",
+                        borderTop: "1px solid rgba(255,215,0,0.1)",
+                        borderBottom: "1px solid rgba(255,215,0,0.1)",
                       }}
+                      className="hide-scrollbar"
                     >
                       {pendingReward?.items.map((item: any, idx: number) => (
                         <div
                           key={idx}
                           style={{
                             display: "flex",
-                            flexDirection: "column",
                             alignItems: "center",
-                            gap: 10,
+                            gap: "15px",
+                            background: "rgba(255,255,255,0.04)",
+                            borderRadius: "15px",
+                            padding: "12px 15px",
+                            border: "1px solid rgba(255,255,255,0.06)",
+                            width: "100%",
                           }}
                         >
                           <div
                             style={{
-                              width: 80,
-                              height: 80,
-                              borderRadius: 20,
+                              width: 45,
+                              height: 45,
+                              borderRadius: 12,
                               background: "rgba(255,255,255,0.05)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontSize: 40,
+                              fontSize: 22,
                               border: `1px solid ${item.color || "#ffd700"}44`,
-                              boxShadow: `0 0 20px ${item.color || "#ffd700"}22`,
+                              boxShadow: `0 0 15px ${item.color || "#ffd700"}11`,
+                              flexShrink: 0,
                             }}
                           >
                             {item.icon}
                           </div>
-                          <div>
+                          <div style={{ textAlign: "left", flex: 1 }}>
+                            <div
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: "#aaa",
+                                marginBottom: 2,
+                              }}
+                            >
+                              {(() => {
+                                const n = item.name;
+                                if (n === "standard_material") return "일반 재료";
+                                if (n === "standard_divine_shard") return "신물 파편";
+                                if (n === "manual_fragment_common") return "일반 비급 조각";
+                                if (n === "manual_fragment_rare") return "진귀 비급 조각";
+                                if (n === "manual_fragment_epic") return "명품 비급 조각";
+                                if (n === "manual_fragment_legendary") return "전설 비급 조각";
+                                if (n === "manual_fragment_mythic") return "신화 비급 조각";
+                                if (n === "manual_fragment_bundle") return "비급 조각 주머니";
+                                if (n === "혈투의 징표") return "혈투의 징표";
+                                return n;
+                              })()}
+                            </div>
                             <div
                               style={{
                                 fontSize: 18,
@@ -605,42 +634,30 @@ export default function GameShell() {
                                 color: item.color || "#fff",
                               }}
                             >
-                              {item.name} {item.count ? `x${item.count}` : ""}
+                              {item.count ? `x${item.count.toLocaleString()}` : ""}
                             </div>
-                            {item.slotName && (
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: "#aaa",
-                                  marginTop: 4,
-                                }}
-                              >
-                                이 아이템은 행낭의{" "}
-                                <span
-                                  style={{
-                                    color: "#ffd700",
-                                    fontWeight: "bold",
-                                  }}
-                                >
-                                  [{item.slotName}]
-                                </span>{" "}
-                                칸으로 이동했습니다.
-                              </div>
-                            )}
-                            {!item.slotName && (
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: "#aaa",
-                                  marginTop: 4,
-                                }}
-                              >
-                                재화가 즉시 지급되었습니다.
-                              </div>
-                            )}
                           </div>
                         </div>
                       ))}
+                      
+                      {/* 스크롤 유도 화살표 애니메이션 */}
+                      {pendingReward?.items && pendingReward.items.length > 3 && (
+                        <motion.div
+                          animate={{ y: [0, 5, 0] }}
+                          transition={{ repeat: Infinity, duration: 1.5 }}
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            padding: "5px 0",
+                            color: "#ffd700",
+                            fontSize: 12,
+                            fontWeight: "bold",
+                            opacity: 0.8,
+                          }}
+                        >
+                          ▼ 아래로 스크롤하여 더보기
+                        </motion.div>
+                      )}
                     </div>
 
                     <button

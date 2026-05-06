@@ -554,7 +554,8 @@ export default function InnPanel({
       reputation: victoryRewards.reputation - (victoryRewards.repPenalty || 0),
       stones: victoryRewards.stones,
       item: victoryRewards.item,
-      wisdom: victoryRewards.wisdom
+      wisdom: victoryRewards.wisdom,
+      skipPopup: true
     });
   };
 
@@ -651,17 +652,32 @@ export default function InnPanel({
         finalWisdom = Math.floor(wReward * 0.2);
       }
 
-      setVictoryRewards({
-        gold: finalGold,
-        reputation: finalRep,
-        stones: finalStones,
-        item: randomItem,
-        wisdom: finalWisdom,
-        repPenalty: repPenalty,
-        isPerfect: success
-      });
-      setIsSuccessPopup(true);
-      setIsFailPopup(false);
+      if (success) {
+        useGameStore.setState((s: any) => ({ game: { ...s.game, activeTab: "training" } }));
+        resolveTimingMission({
+          success: true,
+          score: finalScore,
+          grade: "PERFECT",
+          maxStage: clearedStage,
+          gold: finalGold,
+          reputation: finalRep,
+          stones: finalStones,
+          item: randomItem,
+          wisdom: finalWisdom
+        });
+      } else {
+        setVictoryRewards({
+          gold: finalGold,
+          reputation: finalRep,
+          stones: finalStones,
+          item: randomItem,
+          wisdom: finalWisdom,
+          repPenalty: repPenalty,
+          isPerfect: false
+        });
+        setIsSuccessPopup(true);
+        setIsFailPopup(false);
+      }
     } else {
       setFailReason(text || "수련에 실패했습니다.");
       setIsFailPopup(true);

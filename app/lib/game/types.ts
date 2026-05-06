@@ -643,6 +643,7 @@ export type GameSaveData = {
   selectedForgeOilId: string | null;
   questCompletionCounts: Record<string, number>;
   trainingRewardAccumulator: { gold: number; rep: number };
+  gearPieces: number;
 };
 
 export type CombatLogSource = 'normal_attack' | 'skill_active' | 'skill_dot' | 'clan_passive' | 'extra_hit';

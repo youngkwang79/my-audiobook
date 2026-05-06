@@ -1139,6 +1139,14 @@ export default function MasterPanel() {
                 <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 4, fontWeight: 900 }}>제한시간</div>
               </div>
             </div>
+            {/* Mirror/Shimmer Effect Overlay */}
+            <div style={{
+              position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+              animation: "shimmer 3s infinite linear", 
+              pointerEvents: "none",
+              zIndex: 1
+            }} />
           </button>
 
           <button
@@ -1153,16 +1161,28 @@ export default function MasterPanel() {
             }}
           >
             <div style={{ writingMode: "vertical-rl", fontSize: 18, fontWeight: 950, color: "#ffd700", letterSpacing: "0px" }}>보상</div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 34, height: 34, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🩸</div>
-                <div style={{ fontSize: 9, color: "#ff6b6b", marginTop: 4, fontWeight: 900 }}>징표</div>
+                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🩸</div>
+                <div style={{ fontSize: 8, color: "#ff6b6b", marginTop: 4, fontWeight: 900 }}>혈투징표</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ width: 34, height: 34, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🧪</div>
-                <div style={{ fontSize: 9, color: "#ffd700", marginTop: 4, fontWeight: 900 }}>전리품</div>
+                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>🤝</div>
+                <div style={{ fontSize: 8, color: "#55ff55", marginTop: 4, fontWeight: 900 }}>문파인연</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, display: "grid", placeItems: "center", fontSize: 18 }}>📜</div>
+                <div style={{ fontSize: 8, color: "#ffcc00", marginTop: 4, fontWeight: 900 }}>비급조각</div>
               </div>
             </div>
+            {/* Mirror/Shimmer Effect Overlay */}
+            <div style={{
+              position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)",
+              animation: "shimmer 2.5s infinite linear", 
+              pointerEvents: "none",
+              zIndex: 1
+            }} />
           </button>
         </div>
       )}
@@ -1674,6 +1694,46 @@ export default function MasterPanel() {
                     </div>
                     <div style={{ fontSize: 11, color: "#777", marginTop: 12, lineHeight: 1.5 }}>
                       • 획득한 징표는 <span style={{ color: "#ffd700", fontWeight: 700 }}>패왕 토벌 상점</span>에서 현철 강화석(3:1), 영약, 강화석, 신기 장비 등으로 교환할 수 있습니다.
+                    </div>
+                  </div>
+
+                  {/* Manual Fragment & Bond Section */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                    marginBottom: 24
+                  }}>
+                    <div style={{
+                      padding: "14px",
+                      borderRadius: 18,
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: 24 }}>📜</span>
+                        <span style={{ fontSize: 14, fontWeight: 950, color: "#ffcc00" }}>비급 조각</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: "#999", lineHeight: 1.5 }}>
+                        • 무공 습득 및 정진의 핵심 재료.<br/>
+                        • <span style={{ color: "#ff6b6b" }}>낮은 경지</span>일수록 획득 확률이 높습니다.
+                      </div>
+                    </div>
+
+                    <div style={{
+                      padding: "14px",
+                      borderRadius: 18,
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: 24 }}>🤝</span>
+                        <span style={{ fontSize: 14, fontWeight: 950, color: "#55ff55" }}>문파 인연</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: "#999", lineHeight: 1.5 }}>
+                        • 문파와의 유대감 점수.<br/>
+                        • 점수가 높을수록 <span style={{ color: "#00eeff" }}>상위 무공</span> 전수 자격이 주어집니다.
+                      </div>
                     </div>
                   </div>
 

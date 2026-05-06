@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +21,7 @@ import {
   INFO_TIER_CONFIG,
   REALM_BONUS_CONFIG,
   ROGUE_QUEST_REWARDS,
+  getInfoTierCost,
 } from "@/app/lib/game/nightSystem";
 import GiruPuzzleGame from "./GiruPuzzleGame";
 
@@ -91,10 +92,13 @@ export default function GiruPanel() {
     return { ...base, ...dynamic };
   };
 
-  const getDynamicCost = (baseCost: number) => {
+  const getDynamicCost = (baseCost: number, actionId?: string) => {
     if (!game) return baseCost;
-    const invBonus = getGiruInvestmentBonus(game.giruLevel || 1);
     let cost = baseCost;
+    if (actionId === "info") {
+      cost = getInfoTierCost("low");
+    }
+    const invBonus = getGiruInvestmentBonus(game.giruLevel || 1);
     if (invBonus.costDiscount > 0)
       cost = Math.floor(cost * (1 - invBonus.costDiscount));
     cost = Math.floor(cost * getFavorDiscount(favor));
@@ -432,95 +436,6 @@ export default function GiruPanel() {
                   })()}
                 </div>
 
-                <AnimatePresence>
-                  {isEditMode && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 20 }}
-                      style={{
-                        background: "rgba(0,0,0,0.85)",
-                        padding: "15px",
-                        borderRadius: "15px",
-                        width: "90%",
-                        marginBottom: "10px",
-                        border: "1px solid #ffd700",
-                        zIndex: 10,
-                      }}
-                    >
-                      <div style={{ marginBottom: "15px" }}>
-                        <div
-                          style={{
-                            color: "#ffd700",
-                            fontSize: "12px",
-                            marginBottom: "5px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span>크기 조절 (Scale)</span>
-                          <span>
-                            {getStyle(
-                              GIRU_NPCS[activeNpcIndex].id,
-                            ).scale.toFixed(2)}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="3.0"
-                          step="0.05"
-                          value={getStyle(GIRU_NPCS[activeNpcIndex].id).scale}
-                          onChange={(e) => {
-                            const id = GIRU_NPCS[activeNpcIndex].id;
-                            setDynamicStyles((prev) => ({
-                              ...prev,
-                              [id]: {
-                                ...getStyle(id),
-                                scale: parseFloat(e.target.value),
-                              },
-                            }));
-                          }}
-                          style={{ width: "100%", accentColor: "#ffd700" }}
-                        />
-                      </div>
-                      <div>
-                        <div
-                          style={{
-                            color: "#ffd700",
-                            fontSize: "12px",
-                            marginBottom: "5px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <span>상하 위치 (Y-Pos)</span>
-                          <span>
-                            {getStyle(GIRU_NPCS[activeNpcIndex].id).y}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="-300"
-                          max="300"
-                          step="5"
-                          value={getStyle(GIRU_NPCS[activeNpcIndex].id).y}
-                          onChange={(e) => {
-                            const id = GIRU_NPCS[activeNpcIndex].id;
-                            setDynamicStyles((prev) => ({
-                              ...prev,
-                              [id]: {
-                                ...getStyle(id),
-                                y: parseInt(e.target.value),
-                              },
-                            }));
-                          }}
-                          style={{ width: "100%", accentColor: "#ffd700" }}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 <div
                   style={{
@@ -536,6 +451,95 @@ export default function GiruPanel() {
                     marginTop: `${getStyle(GIRU_NPCS[activeNpcIndex].id).boxY || 10}px`,
                   }}
                 >
+                  <AnimatePresence>
+                    {isEditMode && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{
+                          background: "rgba(255,215,0,0.05)",
+                          padding: "10px",
+                          borderRadius: "12px",
+                          marginBottom: "15px",
+                          border: "1px solid rgba(255,215,0,0.2)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div style={{ marginBottom: "10px" }}>
+                          <div
+                            style={{
+                              color: "#ffd700",
+                              fontSize: "11px",
+                              marginBottom: "4px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>크기 (Scale)</span>
+                            <span>
+                              {getStyle(
+                                GIRU_NPCS[activeNpcIndex].id,
+                              ).scale.toFixed(2)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="3.0"
+                            step="0.05"
+                            value={getStyle(GIRU_NPCS[activeNpcIndex].id).scale}
+                            onChange={(e) => {
+                              const id = GIRU_NPCS[activeNpcIndex].id;
+                              setDynamicStyles((prev) => ({
+                                ...prev,
+                                [id]: {
+                                  ...getStyle(id),
+                                  scale: parseFloat(e.target.value),
+                                },
+                              }));
+                            }}
+                            style={{ width: "100%", accentColor: "#ffd700" }}
+                          />
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              color: "#ffd700",
+                              fontSize: "11px",
+                              marginBottom: "4px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>위치 (Y-Pos)</span>
+                            <span>
+                              {getStyle(GIRU_NPCS[activeNpcIndex].id).y}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-300"
+                            max="300"
+                            step="5"
+                            value={getStyle(GIRU_NPCS[activeNpcIndex].id).y}
+                            onChange={(e) => {
+                              const id = GIRU_NPCS[activeNpcIndex].id;
+                              setDynamicStyles((prev) => ({
+                                ...prev,
+                                [id]: {
+                                  ...getStyle(id),
+                                  y: parseInt(e.target.value),
+                                },
+                              }));
+                            }}
+                            style={{ width: "100%", accentColor: "#ffd700" }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div
                     style={{
                       display: "flex",
@@ -609,7 +613,7 @@ export default function GiruPanel() {
                         cursor: "pointer",
                       }}
                     >
-                      {isEditMode ? "편집 완료" : "상세 정보"}
+                      {isEditMode ? "편집 완료" : "편집"}
                     </button>
 
                     <button
@@ -749,7 +753,7 @@ export default function GiruPanel() {
               display: "flex",
               flexDirection: "column",
               padding: "16px",
-              paddingBottom: "140px",
+              paddingBottom: "80px",
             }}
           >
             <div
@@ -803,7 +807,7 @@ export default function GiruPanel() {
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                paddingBottom: "140px",
+                paddingBottom: "80px",
                 overflowY: "auto",
                 WebkitOverflowScrolling: "touch",
               }}
@@ -814,8 +818,8 @@ export default function GiruPanel() {
                   background: "rgba(0,0,0,0.75)",
                   backdropFilter: "blur(12px)",
                   borderRadius: "18px",
-                  padding: "12px 18px",
-                  minHeight: "60px",
+                  padding: "10px 16px",
+                  minHeight: "50px",
                   marginBottom: "10px",
                   border: "1px solid rgba(255, 255, 255, 0.2)",
                   boxShadow:
@@ -840,7 +844,7 @@ export default function GiruPanel() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     style={{
-                      marginTop: "14px",
+                      marginTop: "8px",
                       display: "flex",
                       flexDirection: "column",
                       gap: "6px",
@@ -920,7 +924,7 @@ export default function GiruPanel() {
                 );
 
                 return (
-                  <div style={{ marginBottom: "15px", position: "relative" }}>
+                  <div style={{ marginBottom: "10px", position: "relative" }}>
                     <div
                       style={{
                         display: "flex",
@@ -969,7 +973,7 @@ export default function GiruPanel() {
 
                     <div
                       style={{
-                        padding: "12px",
+                        padding: "10px",
                         background:
                           q.status === "completed"
                             ? "rgba(77,255,138,0.1)"
@@ -1144,7 +1148,7 @@ export default function GiruPanel() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr",
-                  gap: "10px",
+                  gap: "6px",
                 }}
               >
                 {selectedNpc.id === "seolmae" && favor >= 40 && (
@@ -1196,22 +1200,22 @@ export default function GiruPanel() {
                     onClick={() => handleAction(selectedNpc.id, action.id)}
                     disabled={isProcessing || game.coins < action.cost}
                     style={{
-                      padding: "10px 16px",
+                      padding: "8px 14px",
                       borderRadius: "14px",
                       border: "1px solid rgba(255,255,255,0.08)",
                       background:
                         game.coins >=
-                        (action.id !== "gift" ? getDynamicCost(action.cost) : 0)
+                        (action.id !== "gift" ? getDynamicCost(action.cost, action.id) : 0)
                           ? "rgba(255,255,255,0.07)"
                           : "rgba(255,0,0,0.05)",
                       color:
                         game.coins >=
-                        (action.id !== "gift" ? getDynamicCost(action.cost) : 0)
+                        (action.id !== "gift" ? getDynamicCost(action.cost, action.id) : 0)
                           ? "#fff"
                           : "#ff6b6b",
                       cursor:
                         game.coins >=
-                        (action.id !== "gift" ? getDynamicCost(action.cost) : 0)
+                        (action.id !== "gift" ? getDynamicCost(action.cost, action.id) : 0)
                           ? "pointer"
                           : "not-allowed",
                       display: "flex",
@@ -1237,7 +1241,7 @@ export default function GiruPanel() {
                       >
                         💰{" "}
                         {action.id !== "gift"
-                          ? getDynamicCost(action.cost).toLocaleString()
+                          ? getDynamicCost(action.cost, action.id).toLocaleString()
                           : 0}
                       </div>
                       <div
@@ -1281,7 +1285,7 @@ export default function GiruPanel() {
                     </span>
                   </motion.button>
                 )}
-                <div style={{ height: "100px", flexShrink: 0 }} />
+                <div style={{ height: "60px", flexShrink: 0 }} />
               </div>
             </div>
           </div>
@@ -1780,18 +1784,15 @@ export default function GiruPanel() {
                   if (tier === "special" && favor < 60) return null;
                   const label =
                     tier === "low"
-                      ? "하급 정보"
+                      ? "하급 정보 (무뢰배)"
                       : tier === "mid"
-                        ? "중급 정보"
+                        ? "중급 정보 (배신자)"
                         : tier === "high"
-                          ? "상급 정보"
-                          : "특별 정보";
-                  const conf = INFO_TIER_CONFIG[tier];
-                  const rBonus = REALM_BONUS_CONFIG[game.realm || "삼류"] || {
-                    priceMult: 1,
-                  };
+                          ? "상급 정보 (은둔 고수)"
+                          : "특별 정보 (강호의 전설)";
+                  
                   const cost = Math.floor(
-                    conf.basePrice * rBonus.priceMult * getFavorDiscount(favor),
+                    getInfoTierCost(tier) * getFavorDiscount(favor),
                   );
                   return (
                     <button
@@ -1810,11 +1811,14 @@ export default function GiruPanel() {
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        padding: "12px",
+                        padding: "16px",
                         background: "rgba(224,195,252,0.1)",
                         border: "1px solid #e0c3fc",
                         color: "#fff",
-                        borderRadius: "8px",
+                        borderRadius: "12px",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        cursor: "pointer",
                       }}
                     >
                       <span>{label}</span>

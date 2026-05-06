@@ -179,12 +179,20 @@ export default function TujeonExchangePanel() {
             duration: 1,
           },
         ];
+        nextGame.pendingReward = {
+          title: "버프 적용 완료",
+          items: [{ icon: "🌙", name: "월향 버프", count: 1, color: "#6ad7ff" }]
+        };
       }
 
       if (item.id === "stone_box") {
         nextGame.consumables = {
           ...(s.game.consumables || {}),
           stone_box_tujeon: (s.game.consumables?.stone_box_tujeon || 0) + 1,
+        };
+        nextGame.pendingReward = {
+          title: "교환 성공",
+          items: [{ icon: "🪨", name: item.name, count: 1, color: "#6ad7ff" }]
         };
       }
 
@@ -193,6 +201,10 @@ export default function TujeonExchangePanel() {
           ...(s.game.consumables || {}),
           rare_box_tujeon: (s.game.consumables?.rare_box_tujeon || 0) + 1,
         };
+        nextGame.pendingReward = {
+          title: "교환 성공",
+          items: [{ icon: "🧧", name: item.name, count: 1, color: "#b58cff" }]
+        };
       }
 
       if (item.id === "night_gear") {
@@ -200,12 +212,18 @@ export default function TujeonExchangePanel() {
           ...(s.game.consumables || {}),
           night_gear_box: (s.game.consumables?.night_gear_box || 0) + 1,
         };
+        nextGame.pendingReward = {
+          title: "교환 성공",
+          items: [{ icon: "🏮", name: item.name, count: 1, color: "#ff6bd6" }]
+        };
       }
 
       if (item.id === "gear_piece") {
-        nextGame.consumables = {
-          ...(s.game.consumables || {}),
-          gear_piece_bundle: (s.game.consumables?.gear_piece_bundle || 0) + 1,
+        // Direct sync with blacksmith's gearPieces
+        nextGame.gearPieces = (s.game.gearPieces || 0) + 5;
+        nextGame.pendingReward = {
+          title: "교환 성공",
+          items: [{ icon: "⚔️", name: "야행 장비 조각", count: 5, color: "#ff6bd6" }]
         };
       }
 
@@ -214,6 +232,10 @@ export default function TujeonExchangePanel() {
           ...(s.game.consumables || {}),
           manual_fragment_bundle:
             (s.game.consumables?.manual_fragment_bundle || 0) + 1,
+        };
+        nextGame.pendingReward = {
+          title: "교환 성공",
+          items: [{ icon: "📜", name: item.name, count: 1, color: "#ffd700" }]
         };
       }
 
