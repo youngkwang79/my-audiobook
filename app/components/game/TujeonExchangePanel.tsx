@@ -104,7 +104,7 @@ const UNLOCK_ITEMS = [
 ];
 
 function getTujeon(game: any) {
-  return game.tujeonTokens ?? 0;
+  return (useGameStore.getState() as any).getTujeonCount();
 }
 
 function gradeColor(grade: string) {

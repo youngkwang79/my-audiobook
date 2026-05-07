@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
-import { useGameStore } from "@/app/lib/game/useGameStore";
+import { useGameStore, TUTORIAL_STEPS } from "@/app/lib/game/useGameStore";
 import { useAuth } from "@/app/providers/AuthProvider";
 import GameStatusPanel from "./GameStatusPanel";
 import GameBottomNav from "./GameBottomNav";
@@ -25,6 +25,7 @@ import QuestPanel from "./QuestPanel";
 import TutorialOverlay from "./TutorialOverlay";
 
 export default function GameShell() {
+  const game = useGameStore((s: any) => s.game);
   const activeTab = useGameStore((s: any) => s.game.activeTab || "training");
   const unlockEffectText = useGameStore((s: any) => s.game.unlockEffectText);
   const yabawiActive = useGameStore((s: any) => s.game.yabawiEvent?.active);
@@ -47,7 +48,7 @@ export default function GameShell() {
   const faction = useGameStore((s: any) => s.game.faction);
   const hero = useGameStore((s: any) => s.game.hero);
   const unlockedTabs = useGameStore((s: any) => s.game.unlockedTabs);
-  const gamblingTokens = useGameStore((s: any) => s.game.gamblingTokens);
+  const tujeonCount = (useGameStore((s: any) => s) as any).getTujeonCount();
   const lowPowerMode = useGameStore((s: any) => s.game.options?.lowPowerMode);
   const pendingReward = useGameStore((s: any) => s.game.pendingReward);
   const tutorialIsActive = useGameStore(
@@ -122,8 +123,6 @@ export default function GameShell() {
     const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
-
-  
 
   useEffect(() => {
     // Avoid synchronous setState in effect warning
@@ -286,13 +285,8 @@ export default function GameShell() {
         ...s.game,
         faction: f,
         unlockedTabs: Array.from(
-          new Set([...(s.game.unlockedTabs || []), "quest"]),
+          new Set([...(s.game.unlockedTabs || []), "training"])
         ),
-        tutorialProgress: {
-          ...s.game.tutorialProgress,
-          isActive: true,
-          currentStepId: "start_faction",
-        },
       },
     }));
   };
@@ -327,7 +321,9 @@ export default function GameShell() {
           touchAction: "pan-y", // Only allow vertical scroll globally
         }}
       >
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
           html, body {
             overflow: hidden;
             overscroll-behavior: none;
@@ -340,7 +336,9 @@ export default function GameShell() {
             user-select: none;
             -webkit-user-select: none;
           }
-        ` }} />
+        `,
+          }}
+        />
 
         {/* Night System Bar - 전투 중이 아닐 때와 대결 페이지가 아닐 때만 렌더링 */}
         {!masterDuelIsPlaying && activeTab !== "master" && (
@@ -422,7 +420,7 @@ export default function GameShell() {
 
         <AutoTrainingManager />
 
-        {!faction ? (
+        {!game.hasStarted ? (
           <GameIntroPanel
             hero={hero}
             faction={faction}
@@ -436,14 +434,37 @@ export default function GameShell() {
               }))
             }
             onSelectFaction={handleSetFaction}
-            onStart={() => {
-              useGameStore.setState((s: any) => ({
-                game: {
-                  ...s.game,
-                  isInitialized: true,
-                  hasStarted: true,
-                },
-              }));
+            onStart={(skip) => {
+              if (skip) {
+                // 건너뛰기 로직
+                const allStepIds = Object.keys(TUTORIAL_STEPS);
+                useGameStore.setState((s: any) => ({
+                  game: {
+                    ...s.game,
+                    hasStarted: true,
+                    unlockedTabs: Array.from(new Set([...(s.game.unlockedTabs || []), "training", "forge", "inventory", "upgrade", "library", "giru", "gambling", "tower", "master", "inn", "quest"])),
+                    tutorialProgress: {
+                      isActive: false,
+                      currentStepId: "",
+                      completedStepIds: allStepIds,
+                    },
+                  },
+                }));
+              } else {
+                // 가이드 시작 로직
+                useGameStore.setState((s: any) => ({
+                  game: {
+                    ...s.game,
+                    hasStarted: true,
+                    unlockedTabs: Array.from(new Set([...(s.game.unlockedTabs || []), "training", "quest"])),
+                    tutorialProgress: {
+                      ...s.game.tutorialProgress,
+                      isActive: true,
+                      currentStepId: "start_faction",
+                    },
+                  },
+                }));
+              }
             }}
           />
         ) : (
@@ -615,14 +636,22 @@ export default function GameShell() {
                             >
                               {(() => {
                                 const n = item.name;
-                                if (n === "standard_material") return "일반 재료";
-                                if (n === "standard_divine_shard") return "신물 파편";
-                                if (n === "manual_fragment_common") return "일반 비급 조각";
-                                if (n === "manual_fragment_rare") return "진귀 비급 조각";
-                                if (n === "manual_fragment_epic") return "명품 비급 조각";
-                                if (n === "manual_fragment_legendary") return "전설 비급 조각";
-                                if (n === "manual_fragment_mythic") return "신화 비급 조각";
-                                if (n === "manual_fragment_bundle") return "비급 조각 주머니";
+                                if (n === "standard_material")
+                                  return "일반 재료";
+                                if (n === "standard_divine_shard")
+                                  return "신물 파편";
+                                if (n === "manual_fragment_common")
+                                  return "일반 비급 조각";
+                                if (n === "manual_fragment_rare")
+                                  return "진귀 비급 조각";
+                                if (n === "manual_fragment_epic")
+                                  return "명품 비급 조각";
+                                if (n === "manual_fragment_legendary")
+                                  return "전설 비급 조각";
+                                if (n === "manual_fragment_mythic")
+                                  return "신화 비급 조각";
+                                if (n === "manual_fragment_bundle")
+                                  return "비급 조각 주머니";
                                 if (n === "혈투의 징표") return "혈투의 징표";
                                 return n;
                               })()}
@@ -634,30 +663,33 @@ export default function GameShell() {
                                 color: item.color || "#fff",
                               }}
                             >
-                              {item.count ? `x${item.count.toLocaleString()}` : ""}
+                              {item.count
+                                ? `x${item.count.toLocaleString()}`
+                                : ""}
                             </div>
                           </div>
                         </div>
                       ))}
-                      
+
                       {/* 스크롤 유도 화살표 애니메이션 */}
-                      {pendingReward?.items && pendingReward.items.length > 3 && (
-                        <motion.div
-                          animate={{ y: [0, 5, 0] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            padding: "5px 0",
-                            color: "#ffd700",
-                            fontSize: 12,
-                            fontWeight: "bold",
-                            opacity: 0.8,
-                          }}
-                        >
-                          ▼ 아래로 스크롤하여 더보기
-                        </motion.div>
-                      )}
+                      {pendingReward?.items &&
+                        pendingReward.items.length > 3 && (
+                          <motion.div
+                            animate={{ y: [0, 5, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              padding: "5px 0",
+                              color: "#ffd700",
+                              fontSize: 12,
+                              fontWeight: "bold",
+                              opacity: 0.8,
+                            }}
+                          >
+                            ▼ 아래로 스크롤하여 더보기
+                          </motion.div>
+                        )}
                     </div>
 
                     <button
@@ -1341,11 +1373,11 @@ export default function GameShell() {
                   <span
                     style={{
                       fontSize: 15,
-                      color: gamblingTokens > 0 ? "#4dff4d" : "#ff4d4d",
+                      color: tujeonCount > 0 ? "#4dff4d" : "#ff4d4d",
                       fontWeight: "900",
                     }}
                   >
-                    {gamblingTokens || 0} 개
+                    {tujeonCount || 0} 개
                   </span>
                 </div>
 
@@ -1380,7 +1412,7 @@ export default function GameShell() {
                   <button
                     onClick={() => {
                       const store: any = useGameStore.getState();
-                      if (gamblingTokens <= 0) {
+                      if (tujeonCount <= 0) {
                         alert(
                           "투전판 명패가 부족합니다. (객잔 대련 승리 시 확률 획득)",
                         );
@@ -1405,21 +1437,21 @@ export default function GameShell() {
                       padding: "12px",
                       borderRadius: "10px",
                       background:
-                        gamblingTokens > 0
+                        tujeonCount > 0
                           ? "linear-gradient(135deg, #ffd700 0%, #b8860b 100%)"
                           : "#333",
                       border: "none",
                       color: "#000",
                       fontWeight: 950,
-                      cursor: gamblingTokens > 0 ? "pointer" : "not-allowed",
+                      cursor: tujeonCount > 0 ? "pointer" : "not-allowed",
                       boxShadow:
-                        gamblingTokens > 0
+                        tujeonCount > 0
                           ? "0 4px 15px rgba(255,215,0,0.3)"
                           : "none",
                       fontSize: 14,
                     }}
                   >
-                    {gamblingTokens > 0 ? "수락 (명패 1개)" : "명패 부족"}
+                    {tujeonCount > 0 ? "수락 (명패 1개)" : "명패 부족"}
                   </button>
                 </div>
 

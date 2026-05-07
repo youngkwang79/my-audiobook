@@ -1682,36 +1682,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (isHitDodged) lastR = "빗나감!";
       }
 
-      const intervals = [300, 400, 500, 600, 700, 800, 900, 1000];
-      const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
-      const spawnBonus = isTreasureForecast ? 1.5 : 0;
-      const targetInterval = Math.floor(intervals[currentIdx % 8] / (nightBuffs.mobSpawn + spawnBonus));
-      const killGap = tKills - (s.game.lastInnEventKillCount || 0);
-
-      let nTM = { ...s.game.timingMission };
-
-      if (tKills >= 300 && killGap >= targetInterval && !nTM.available && (!s.game.tutorialProgress.isActive || s.game.tutorialProgress.currentStepId === "inn_event")) {
-        const miniGames = ["breath", "dodge", "puzzle", "pulse"];
-        const selectedGame = miniGames[iEV % 4];
-        const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
-        const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
-
-        pIE = true;
-        iEV += 1;
-        nTM = {
-          ...nTM,
-          available: true,
-          selectedGameType: selectedGame as any,
-          rivalName: `${randomRivalName} (${iEV}차)`,
-          requiredHits: 1,
-          isPractice: false,
-          currentStage: 1,
-          unlocked: true,
-        };
-        currentIdx = (currentIdx + 1) % 8;
-        setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 1000);
-      }
-
       if (hitCount > 0) {
         const firstHitDodged = Math.random() < stats.eva / 100;
         if (firstHitDodged) get().triggerMovementBuff();
@@ -1730,8 +1700,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       const finalKills = tKills;
-      const finalKillGap = tKills >= 300 ? killGap : tKills;
-
+      const intervals = [300, 400, 500, 600, 700, 800, 900, 1000];
+      const isTreasureForecast = s.game.nextDayEvent?.type === "TREASURE_FORECAST";
+      const spawnBonus = isTreasureForecast ? 1.5 : 0;
+      const targetInterval = Math.floor(intervals[currentIdx % 8] / (nightBuffs.mobSpawn + spawnBonus));
+      
       rep += eGold;
       const stats_hp = stats.hp;
       let qT_val = qT;
@@ -1792,6 +1765,33 @@ export const useGameStore = create<GameState>((set, get) => ({
           uET_val = null;
         }
         if (uET_val) lastR = uET_val;
+      }
+
+      const killGap = tKills - (s.game.lastInnEventKillCount || 0);
+      const finalKillGap = tKills >= 300 ? killGap : tKills;
+
+      let nTM = { ...s.game.timingMission };
+
+      if (tKills >= 300 && killGap >= targetInterval && !nTM.available && (!s.game.tutorialProgress.isActive || s.game.tutorialProgress.currentStepId === "inn_event" || milestoneToTrigger === "inn_event")) {
+        const miniGames = ["breath", "dodge", "puzzle", "pulse"];
+        const selectedGame = miniGames[iEV % 4];
+        const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
+        const randomRivalName = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
+
+        pIE = true;
+        iEV += 1;
+        nTM = {
+          ...nTM,
+          available: true,
+          selectedGameType: selectedGame as any,
+          rivalName: `${randomRivalName} (${iEV}차)`,
+          requiredHits: 1,
+          isPractice: false,
+          currentStage: 1,
+          unlocked: true,
+        };
+        currentIdx = (currentIdx + 1) % 8;
+        setTimeout(() => useGameStore.setState((p: any) => ({ game: { ...p.game, activeTab: "inn" } })), 1000);
       }
 
       return {
@@ -1972,6 +1972,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           })(),
           consumables: nextConsumables,
           activeQuests: nextQuests,
+          questCompletionCounts: {
+            ...(s.game.questCompletionCounts || {}),
+            [quest.templateId || quest.id]: ((s.game.questCompletionCounts || {})[quest.templateId || quest.id] || 0) + 1
+          },
           lastReward: msg
         }
       };
@@ -2015,10 +2019,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         const owned = [...s.game.ownedWeapons];
         let remaining = w.count || 1;
         
+        // 투전패나 조각은 99개 제한 없이 무제한 중첩 가능하게 처리 (인벤토리 부하 방지)
+        const isToken = w.name === "투전패" || w.name === "투전패 조각";
+        const stackLimit = isToken ? 999999999999 : 99;
+
         // 1. 기존 스택에 먼저 채움
         for (let i = 0; i < owned.length; i++) {
-          if (owned[i].name === w.name && (owned[i].count || 0) < 99) {
-            const canAdd = 99 - (owned[i].count || 0);
+          if (owned[i].name === w.name && (owned[i].count || 0) < stackLimit) {
+            const canAdd = stackLimit - (owned[i].count || 0);
             const toAdd = Math.min(canAdd, remaining);
             owned[i] = { ...owned[i], count: (owned[i].count || 0) + toAdd };
             remaining -= toAdd;
@@ -2028,7 +2036,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         
         // 2. 남은 수량이 있으면 새로운 스택 생성
         while (remaining > 0) {
-          const toAdd = Math.min(99, remaining);
+          const toAdd = Math.min(stackLimit, remaining);
           owned.push({ ...w, id: `${w.id}_${Date.now()}_${owned.length}`, count: toAdd });
           remaining -= toAdd;
         }
@@ -2295,6 +2303,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { success: true, item: divineItem };
   },
 
+  skipTutorial: () => {
+    const allStepIds = Object.keys(TUTORIAL_STEPS);
+    set((s: any) => ({
+      game: {
+        ...s.game,
+        tutorialProgress: {
+          isActive: false,
+          currentStepId: "",
+          completedStepIds: allStepIds
+        },
+        unlockedTabs: Array.from(new Set([...(s.game.unlockedTabs || []), "training", "forge", "inventory", "upgrade", "library", "giru", "gambling", "tower", "master", "inn"]))
+      }
+    }));
+    get().triggerSave(true);
+  },
   triggerSave: (i = false) => {
     if (i) {
       if (debounceTimer) clearTimeout(debounceTimer);
@@ -3105,12 +3128,44 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().triggerSave(true);
   },
   incrementCombo: () => set((s: any) => ({ game: { ...s.game, comboCount: (s.game.comboCount || 0) + 1, lastAttackTime: Date.now() } })),
-  subtractTujeonTokens: (amount: number) => set((s: any) => ({
-    game: {
-      ...s.game,
-      tujeonTokens: Math.max(0, (s.game.tujeonTokens || 0) - amount)
-    }
-  })),
+  getTujeonCount: () => {
+    const { game } = get();
+    const fieldTokens = game.tujeonTokens || 0;
+    const itemTokens = (game.ownedWeapons || [])
+      .filter((w: any) => w.name === "투전패" && w.type === "material")
+      .reduce((sum: number, w: any) => sum + (w.count || 0), 0);
+    return fieldTokens + itemTokens;
+  },
+  subtractTujeonTokens: (amount: number) => {
+    set((s: any) => {
+      let remaining = amount;
+      let nextWeapons = [...(s.game.ownedWeapons || [])];
+      
+      // 1. 아이템에서 먼저 차감
+      for (let i = 0; i < nextWeapons.length && remaining > 0; i++) {
+        const w = nextWeapons[i];
+        if (w.name === "투전패" && w.type === "material") {
+          const toSub = Math.min(w.count || 0, remaining);
+          nextWeapons[i] = { ...w, count: (w.count || 0) - toSub };
+          remaining -= toSub;
+        }
+      }
+      // count가 0인 아이템 제거
+      nextWeapons = nextWeapons.filter((w: any) => !(w.name === "투전패" && w.type === "material" && (w.count || 0) <= 0));
+
+      // 2. 남은 금액은 필드에서 차감
+      const nextFieldTokens = Math.max(0, (s.game.tujeonTokens || 0) - remaining);
+
+      return {
+        game: {
+          ...s.game,
+          ownedWeapons: nextWeapons,
+          tujeonTokens: nextFieldTokens
+        }
+      };
+    });
+    get().triggerSave(true);
+  },
   setSelectedMasterLevel: (l: number) => set((s: any) => { const e = generateEnemy(l); return { game: { ...s.game, masterDuel: { ...s.game.masterDuel, selectedLevel: l, rivalName: e.name, rivalHp: e.hp, rivalMaxHp: e.hp, lastWinReward: undefined } } }; }),
   startMasterDuel: (isSpecialBoss = false, isGiru = false) => {
     const { game } = get();
@@ -6329,7 +6384,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...s.game,
         tutorialProgress: {
           ...s.game.tutorialProgress,
-          isActive: true,
+          isActive: s.game.tutorialProgress.isActive,
           currentStepId: stepId
         }
       }
@@ -6603,7 +6658,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         hasStarted: isLast ? true : s.game.hasStarted,
         tutorialProgress: {
           ...s.game.tutorialProgress,
-          isActive: !isLast,
+          isActive: s.game.tutorialProgress.isActive ? !isLast : false,
           currentStepId: isLast ? null : nextStepId || s.game.tutorialProgress.currentStepId,
           completedStepIds: nextCompleted
         }
@@ -6620,4 +6675,8 @@ export function shouldPauseHeavyLoop() {
 export function getBatteryInterval(normal: number, low: number) {
   const game = useGameStore.getState().game;
   return game.options?.lowPowerMode ? low : normal;
+}
+
+if (typeof window !== "undefined") {
+  (window as any).useGameStore = useGameStore;
 }

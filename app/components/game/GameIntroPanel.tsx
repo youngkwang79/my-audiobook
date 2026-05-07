@@ -10,7 +10,7 @@ type Props = {
   faction: FactionType;
   onChangeHero: (next: HeroProfile) => void;
   onSelectFaction: (faction: Exclude<FactionType, null>) => void;
-  onStart: () => void;
+  onStart: (skip?: boolean) => void;
 };
 
 const inputStyle: React.CSSProperties = {
@@ -50,6 +50,7 @@ export default function GameIntroPanel({
   }, [faction]);
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [showTutorialChoice, setShowTutorialChoice] = useState(false);
   const currentFaction = FACTIONS[currentIndex];
 
   const canStart = hero.name.trim() !== "";
@@ -291,7 +292,7 @@ export default function GameIntroPanel({
                   onClick={() => {
                     if (!canStart) return;
                     onSelectFaction(currentFaction.name as any);
-                    onStart();
+                    setShowTutorialChoice(true);
                   }}
                   disabled={!canStart}
                   style={{
@@ -315,6 +316,76 @@ export default function GameIntroPanel({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {showTutorialChoice && (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 3000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(8px)"
+          }}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              style={{
+                width: "90%",
+                maxWidth: "320px",
+                background: "#1a1c24",
+                border: "2px solid #f3c969",
+                borderRadius: "24px",
+                padding: "30px 20px",
+                textAlign: "center",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+              }}
+            >
+              <div style={{ fontSize: "24px", marginBottom: "10px" }}>🗺️</div>
+              <h3 style={{ margin: "0 0 10px", color: "#f3c969", fontWeight: 900 }}>무림의 안내가 필요하십니까?</h3>
+              <p style={{ fontSize: "14px", color: "#ccc", marginBottom: "25px", lineHeight: 1.5 }}>
+                초보 협객을 위한 가이드를 따라가시겠습니까,<br/>
+                아니면 홀로 강호를 개척하시겠습니까?
+              </p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <button
+                  onClick={() => onStart(false)}
+                  style={{
+                    padding: "16px",
+                    borderRadius: "16px",
+                    background: "linear-gradient(135deg, #f3c969, #d4a23c)",
+                    border: "none",
+                    color: "#2b1d00",
+                    fontWeight: 900,
+                    fontSize: "16px",
+                    cursor: "pointer"
+                  }}
+                >
+                  초보 가이드 시작
+                </button>
+                <button
+                  onClick={() => onStart(true)}
+                  style={{
+                    padding: "16px",
+                    borderRadius: "16px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    color: "#aaa",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                    cursor: "pointer"
+                  }}
+                >
+                  건너뛰기 (숙련자용)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
 
     </div>

@@ -8,6 +8,8 @@ export default function TutorialOverlay() {
   const completeTutorialStep = useGameStore((s: any) => s.completeTutorialStep);
   const prevTutorialStep = useGameStore((s: any) => s.prevTutorialStep);
 
+  if (!game?.hasStarted) return null;
+
   const tutorialProgress = game?.tutorialProgress || {
     isActive: false,
     currentStepId: null,

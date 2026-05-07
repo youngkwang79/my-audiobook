@@ -463,12 +463,15 @@ export function getNextAdaptiveQuests(game: any) {
   fixedIds.forEach(id => {
     let q = GIRU_QUESTS.find(fq => fq.id === id);
     if (q && quests.length < 3) {
-      const repeatCount = completionCounts[id] || 0;
-      
+      // 튜토리얼 성격의 임무들은 최대 3회까지만 반복 노출
+      const tutorialIds = ["q_tutorial_forge", "q_tutorial_refine", "q_tutorial_oil"];
+      const repeatCount = completionCounts[id] || completionCounts[q.id] || 0;
+      if (tutorialIds.includes(id) && repeatCount >= 1) return; // 튜토리얼은 1회만 (유저 요청 반영)
+
       // 강화 임무 특수 처리 (Anti-Inflation & Escalation)
       if (id === "q_tutorial_forge") {
         if (repeatCount > 0) {
-          const targetCount = 1 + repeatCount * 2; // +1 -> +3 -> +5 ...
+          const targetCount = 1 + repeatCount * 2; // +1 -> +3 -> +5
           const baseGold = 100000;
           const minGold = 5000;
           const decayedGold = Math.max(minGold, Math.floor(baseGold / Math.pow(2, repeatCount)));
@@ -476,7 +479,7 @@ export function getNextAdaptiveQuests(game: any) {
 
           q = {
             ...q,
-            title: `장비 강화 실습 (${repeatCount + 1}차)`,
+            title: `장비 강화 실습 (${repeatCount}차)`,
             desc: `장비를 총 ${targetCount}회 강화하여 기술을 연마하세요.`,
             targetCount: targetCount,
             reward: { ...q.reward, gold: decayedGold, favor: decayedFavor }
@@ -487,11 +490,11 @@ export function getNextAdaptiveQuests(game: any) {
       // For milestone quests, check if already cleared
       const floorNum = parseInt(id.split('_').pop() || "0");
       if (id.includes("tower_floor_milestone") || id.startsWith("q_tower_floor_")) {
-          if ((game.tower?.highestFloor || 0) < floorNum) {
-             quests.push({ ...q, currentCount: game.tower?.highestFloor || 0 });
-          }
+        if ((game.tower?.highestFloor || 0) < floorNum) {
+          quests.push({ ...q, currentCount: game.tower?.highestFloor || 0 });
+        }
       } else {
-         quests.push({ ...q });
+        quests.push({ ...q });
       }
     }
   });
