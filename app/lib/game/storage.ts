@@ -333,7 +333,8 @@ export const defaultGameData: GameSaveData = {
   tutorialProgress: {
     isActive: true,
     currentStepId: "start_faction",
-    completedStepIds: []
+    completedStepIds: [],
+    skipped: false
   },
   activeUpgradeDesc: null,
   upgradeMultiplier: 1,

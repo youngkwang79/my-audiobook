@@ -380,7 +380,13 @@ export default function InventoryPanel(props: Props) {
               <button
                 key={meta.slot}
                 id={`inv-slot-${meta.slot}`}
-                onClick={() => setSelectedSlot(meta.slot)}
+                onClick={() => {
+                  setSelectedSlot(meta.slot);
+                  const { game, completeTutorialStep } = useGameStore.getState() as any;
+                  if (game.tutorialProgress?.currentStepId === "select_medicine_tab" && meta.slot === "medicine") {
+                    completeTutorialStep("select_medicine_tab");
+                  }
+                }}
                 style={{
                   borderRadius: 10,
                   border: active

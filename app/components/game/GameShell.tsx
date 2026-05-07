@@ -63,19 +63,17 @@ export default function GameShell() {
   const _setActiveTab = useGameStore((s: any) => s.setActiveTab);
   const setActiveTab = (val: string) => {
     _setActiveTab(val as any);
-    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const { game, completeTutorialStep } = useGameStore.getState() as any;
     if (game.tutorialProgress?.isActive) {
       const stepId = game.tutorialProgress.currentStepId;
-      if (val === "inventory" && stepId === "goto_inventory_final") {
-        setTutorialStep("select_infused_item");
-      } else if (val === "forge" && stepId === "goto_craft_tab_for_potion") {
-        setTutorialStep("select_potion_category");
+      if (val === "inventory" && (stepId === "goto_inventory_final" || stepId === "goto_inventory_potion" || stepId === "check_forge_result")) {
+        completeTutorialStep(stepId);
       } else if (
         val === "training" &&
         (stepId === "actual_final_back_to_training" ||
           stepId === "check_final_infused_options")
       ) {
-        setTutorialStep("restart_training");
+        completeTutorialStep(stepId);
       }
     }
   };
@@ -236,20 +234,23 @@ export default function GameShell() {
           "buy_hp_potion",
         ].includes(currentStepId)
       ) {
-        if (activeTab !== "forge") setActiveTab("forge");
+        if (activeTab !== "forge") _setActiveTab("forge");
       }
       // 인벤토리 탭
       else if (
         [
+          "goto_inventory",
           "select_item_inventory",
           "click_equip_button",
+          "goto_inventory_final",
           "select_infused_item",
           "check_final_infused_options",
+          "goto_inventory_potion",
           "select_medicine_tab",
           "guide_potion_setup",
         ].includes(currentStepId)
       ) {
-        if (activeTab !== "inventory") setActiveTab("inventory");
+        if (activeTab !== "inventory") _setActiveTab("inventory");
       }
       // 수련/메인 탭
       else if (
@@ -270,9 +271,11 @@ export default function GameShell() {
           "library_unlock",
           "tower_unlock",
           "master_unlock",
+          "actual_final_back_to_training",
+          "restart_training",
         ].includes(currentStepId)
       ) {
-        if (activeTab !== "training") setActiveTab("training");
+        if (activeTab !== "training") _setActiveTab("training");
       }
     }
   }, [useGameStore((s: any) => s.game.tutorialProgress.currentStepId)]);
@@ -447,6 +450,7 @@ export default function GameShell() {
                       isActive: false,
                       currentStepId: "",
                       completedStepIds: allStepIds,
+                      skipped: true,
                     },
                   },
                 }));
@@ -461,6 +465,7 @@ export default function GameShell() {
                       ...s.game.tutorialProgress,
                       isActive: true,
                       currentStepId: "start_faction",
+                      skipped: false,
                     },
                   },
                 }));

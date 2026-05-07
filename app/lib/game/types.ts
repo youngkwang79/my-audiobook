@@ -636,6 +636,7 @@ export type GameSaveData = {
     isActive: boolean;
     currentStepId: string | null;
     completedStepIds: string[];
+    skipped?: boolean;
   };
   activeUpgradeDesc: { id: string; name: string; text: string } | null;
   upgradeMultiplier: number;

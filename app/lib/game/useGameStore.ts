@@ -379,43 +379,30 @@ export const TUTORIAL_STEPS: Record<string, any> = {
   check_forge_result: {
     id: "check_forge_result",
     title: "연마 완료",
-    message: "연마제가 무기에 성공적으로 스며들었습니다. 이제 하단의 [장비] 탭을 눌러 효과를 확인해볼까요?",
-    targetId: "nav-inventory",
+    message: "연마제가 무기에 성공적으로 스며들었습니다. 이제 대장간의 또 다른 기능인 [회복제 제작]을 배워봅시다. 상단의 [장비 제작] 탭을 클릭하세요.",
+    targetId: "forge-main-tab-craft",
     actionType: "click"
   },
-  goto_inventory_final: {
-    id: "goto_inventory_final",
-    title: "장비 확인",
-    message: "[장비] 탭으로 이동하여 아이템을 확인합니다.",
-    targetId: "nav-inventory",
+  select_potion_category: {
+    id: "select_potion_category",
+    title: "회복제 선택",
+    message: "대장간에서는 무기뿐만 아니라 회복제도 제작할 수 있습니다. [회복제] 카테고리를 선택하세요.",
+    targetId: "forge-realm-회복제",
     actionType: "click"
   },
-  select_infused_item: {
-    id: "select_infused_item",
-    title: "아이템 클릭",
-    message: "연마한 무기를 클릭하여 상세 정보를 확인하세요.",
-    targetId: "inv-item-list-first",
-    actionType: "click"
-  },
-  check_final_infused_options: {
-    id: "check_final_infused_options",
-    title: "효과 적용 확인",
-    message: "아이템 설명 하단에 [광폭유] 효과가 적용된 것이 보이시나요? 이제 다시 강해진 상태로 수련을 시작합시다! 하단의 [수련] 탭을 클릭하세요.",
-    targetId: "nav-training",
-    actionType: "click"
-  },
+
   actual_final_back_to_training: {
     id: "actual_final_back_to_training",
     title: "수련 복귀",
     message: "[수련] 탭을 눌러 메인 화면으로 돌아갑니다.",
-    targetId: "main-nav-training",
+    targetId: "nav-training",
     actionType: "click"
   },
   restart_training: {
     id: "restart_training",
     title: "수련 재개",
-    message: "이제 [수련 시작] 버튼을 눌러 다시 강해질 시간입니다!",
-    targetId: "training-start-btn",
+    message: "이제 [허수아비]를 터치하여 다시 강해질 시간입니다!",
+    targetId: "training-area",
     actionType: "click"
   },
   select_potion_category: {
@@ -429,7 +416,7 @@ export const TUTORIAL_STEPS: Record<string, any> = {
     id: "buy_hp_potion",
     title: "회복제 구입",
     message: "생존에 필수적인 [생명력 회복제(소)]를 구입해 봅시다.",
-    targetId: "forge-buy-potion-potion_hp_1",
+    targetId: "forge-buy-potion-hp_small",
     actionType: "click"
   },
   goto_inventory_potion: {
@@ -554,9 +541,9 @@ export const TUTORIAL_STEPS: Record<string, any> = {
   inn_event: {
     id: "inn_event",
     title: "객잔 무뢰배",
-    message: "허수아비 300번 처치 시 [객잔]에서 무뢰배들이 나타납니다! [객잔]으로 이동하여 그들을 추격하세요.",
+    message: "허수아비 300번 처치 시 [객잔]에서 무뢰배들이 나타난다는 소문이 있습니다! 곧 다가올 전투를 준비하세요.",
     targetId: "nav-inn",
-    actionType: "click"
+    actionType: "any"
   }
 };
 
@@ -2311,7 +2298,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         tutorialProgress: {
           isActive: false,
           currentStepId: "",
-          completedStepIds: allStepIds
+          completedStepIds: allStepIds,
+          skipped: true
         },
         unlockedTabs: Array.from(new Set([...(s.game.unlockedTabs || []), "training", "forge", "inventory", "upgrade", "library", "giru", "gambling", "tower", "master", "inn"]))
       }
@@ -6384,8 +6372,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...s.game,
         tutorialProgress: {
           ...s.game.tutorialProgress,
-          isActive: s.game.tutorialProgress.isActive,
-          currentStepId: stepId
+          isActive: !s.game.tutorialProgress.skipped,
+          currentStepId: stepId,
+          skipped: s.game.tutorialProgress.skipped || false
         }
       }
     };
@@ -6598,11 +6587,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
-    if (stepId === "check_forge_result") nextStepId = "goto_inventory_final";
-    if (stepId === "goto_inventory_final") nextStepId = "select_infused_item";
-    if (stepId === "select_infused_item") nextStepId = "check_final_infused_options";
-    if (stepId === "check_final_infused_options") nextStepId = "goto_craft_tab_for_potion";
-    if (stepId === "goto_craft_tab_for_potion") nextStepId = "select_potion_category";
+    if (stepId === "check_forge_result") nextStepId = "select_potion_category";
     if (stepId === "select_potion_category") nextStepId = "buy_hp_potion";
     if (stepId === "buy_hp_potion") nextStepId = "goto_inventory_potion";
     if (stepId === "goto_inventory_potion") nextStepId = "select_medicine_tab";
@@ -6611,25 +6596,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (stepId === "actual_final_back_to_training") nextStepId = "restart_training";
     if (stepId === "restart_training") {
       nextStepId = null;
-      setTimeout(() => {
-  set((s: any) => ({
-    game: {
-      ...s.game,
-      isMinigameActive: true,
-    },
-  }));
-        // 튜토리얼 완전 종료
-        set((s: any) => ({
-          game: {
-            ...s.game,
-            tutorialProgress: {
-              ...s.game.tutorialProgress,
-              isActive: false,
-              currentStepId: "",
-            },
-          },
-        }));
-      }, 100);
     }
 
     if (stepId === "upgrade_unlock") nextStepId = "upgrade_guide_info";
@@ -6658,7 +6624,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         hasStarted: isLast ? true : s.game.hasStarted,
         tutorialProgress: {
           ...s.game.tutorialProgress,
-          isActive: s.game.tutorialProgress.isActive ? !isLast : false,
+          isActive: !s.game.tutorialProgress.skipped ? !isLast : false,
           currentStepId: isLast ? null : nextStepId || s.game.tutorialProgress.currentStepId,
           completedStepIds: nextCompleted
         }

@@ -120,10 +120,12 @@ export default function ForgePanel(props: Props) {
   const [activeTab, _setActiveTab] = useState<"craft" | "enhance" | "night">("craft");
   const setActiveTab = (val: "craft" | "enhance" | "night") => {
     _setActiveTab(val);
-    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const { game, completeTutorialStep } = useGameStore.getState() as any;
     if (game.tutorialProgress?.isActive) {
-      if (val === "enhance" && game.tutorialProgress.currentStepId === "select_refine_tab") {
-        setTutorialStep("select_item_to_refine");
+      if (val === "craft" && game.tutorialProgress.currentStepId === "check_forge_result") {
+        completeTutorialStep("check_forge_result");
+      } else if (val === "enhance" && game.tutorialProgress.currentStepId === "select_refine_tab") {
+        completeTutorialStep("select_refine_tab");
       }
     }
   };
@@ -146,9 +148,9 @@ export default function ForgePanel(props: Props) {
   const [selectedRealm, _setSelectedRealm] = useState("필부");
   const setSelectedRealm = (realm: any) => {
     _setSelectedRealm(realm);
-    const { game, setTutorialStep } = useGameStore.getState() as any;
+    const { game, completeTutorialStep } = useGameStore.getState() as any;
     if (game.tutorialProgress?.currentStepId === "select_potion_category" && realm === "회복제") {
-      setTutorialStep("buy_hp_potion");
+      completeTutorialStep("select_potion_category");
     }
   };
   const selectedEnhanceItem = selectedForgeItemId;
@@ -570,6 +572,7 @@ export default function ForgePanel(props: Props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
+            id="forge-main-tab-craft"
             onClick={() => setActiveTab("craft")}
             style={{
               padding: "6px 14px", borderRadius: 10, border: "none",
@@ -593,6 +596,7 @@ export default function ForgePanel(props: Props) {
             장비 제련
           </button>
           <button
+            id="forge-main-tab-night"
             onClick={() => setActiveTab("night")}
             style={{
               padding: "6px 14px", borderRadius: 10, border: "none",
