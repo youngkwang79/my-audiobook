@@ -413,7 +413,6 @@ export default function TrainingPanel() {
         "restart_training",
         "library_unlock",
         "library_cost_guide",
-        "library_complete",
         "tower_unlock",
         "master_unlock",
         "inn_event",

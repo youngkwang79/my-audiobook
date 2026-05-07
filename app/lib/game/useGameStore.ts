@@ -525,12 +525,6 @@ export const TUTORIAL_STEPS: Record<string, any> = {
     message: "무공을 제작하려면 조각, 재료, 인연 등 다양한 자원이 필요합니다. 필요한 자원을 모두 모아 무공을 완성하세요.",
     actionType: "any"
   },
-  library_complete: {
-    id: "library_complete",
-    title: "무공 습득 완료",
-    message: "새로운 무공을 익혔습니다! 이제 더욱 강력한 초식으로 적을 제압할 수 있습니다.",
-    actionType: "any"
-  },
   inn_event: {
     id: "inn_event",
     title: "객잔 무뢰배",
@@ -6605,10 +6599,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (stepId === "upgrade_finish_goto_training") { nextStepId = null; setTimeout(() => { get().setActiveTab("training"); }, 100); }
     
     if (stepId === "library_unlock") nextStepId = "library_cost_guide";
-    if (stepId === "library_cost_guide") nextStepId = "library_complete";
-    if (stepId === "library_complete") { nextStepId = null; setTimeout(() => { get().setActiveTab("training"); }, 100); }
+    if (stepId === "library_cost_guide") { nextStepId = null; setTimeout(() => { get().setActiveTab("training"); }, 100); }
 
-    const isLast = stepId === "auto_training_info" || stepId === "restart_training" || stepId === "upgrade_finish_goto_training" || stepId === "trance_achieved" || stepId === "library_complete" || stepId === "tower_unlock" || stepId === "master_unlock" || stepId === "inn_event";
+    const isLast = stepId === "auto_training_info" || stepId === "restart_training" || stepId === "upgrade_finish_goto_training" || stepId === "trance_achieved" || stepId === "library_cost_guide" || stepId === "tower_unlock" || stepId === "master_unlock" || stepId === "inn_event";
     
     return {
       game: {

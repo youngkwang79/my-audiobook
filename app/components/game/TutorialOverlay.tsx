@@ -149,7 +149,6 @@ export default function TutorialOverlay() {
                 "tower_unlock",
                 "library_unlock",
                 "library_cost_guide",
-                "library_complete",
                 "master_unlock",
                 "inn_event",
                 "restart_training",
