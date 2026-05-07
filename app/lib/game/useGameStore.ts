@@ -405,13 +405,6 @@ export const TUTORIAL_STEPS: Record<string, any> = {
     targetId: "training-area",
     actionType: "click"
   },
-  select_potion_category: {
-    id: "select_potion_category",
-    title: "회복제 선택",
-    message: "대장간에서는 무기뿐만 아니라 회복제도 제작할 수 있습니다. [회복제] 카테고리를 선택하세요.",
-    targetId: "forge-realm-회복제",
-    actionType: "click"
-  },
   buy_hp_potion: {
     id: "buy_hp_potion",
     title: "회복제 구입",

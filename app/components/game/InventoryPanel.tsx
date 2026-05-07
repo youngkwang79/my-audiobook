@@ -271,6 +271,10 @@ export default function InventoryPanel(props: Props) {
     if (slotIdxAttr !== null && slotIdxAttr !== undefined) {
       const idx = parseInt(slotIdxAttr);
       useGameStore.getState().setQuickSlot(idx, draggedMedicineId);
+      const { game, completeTutorialStep } = useGameStore.getState() as any;
+      if (game.tutorialProgress?.currentStepId === "guide_potion_setup") {
+        completeTutorialStep("guide_potion_setup");
+      }
     } else {
       const dist = Math.sqrt(
         Math.pow(dragPos.x - dragOrigin.x, 2) +
@@ -383,7 +387,7 @@ export default function InventoryPanel(props: Props) {
                 onClick={() => {
                   setSelectedSlot(meta.slot);
                   const { game, completeTutorialStep } = useGameStore.getState() as any;
-                  if (game.tutorialProgress?.currentStepId === "select_medicine_tab" && meta.slot === "medicine") {
+                  if (game.tutorialProgress?.currentStepId === "select_medicine_tab" && (meta.slot as any) === "medicine") {
                     completeTutorialStep("select_medicine_tab");
                   }
                 }}
@@ -806,7 +810,7 @@ export default function InventoryPanel(props: Props) {
                 .map((id: any, idx: number) => (
                   <div
                     key={id}
-                    id={idx === 0 ? "inv-medicine-item-first" : undefined}
+                    id={`medicine-item-${id}`}
                     onTouchStart={(e) => onTouchStart(e, id)}
                     onTouchMove={onTouchMove}
                     onTouchEnd={(e) => {
