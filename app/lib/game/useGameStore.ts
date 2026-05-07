@@ -777,7 +777,7 @@ function generateEnemy(level: number) {
   const estimatedHitsTaken = 35 / 2.2; // 기존 1.2에서 2.2로 상향 (적 공격력 약 80% 강화)
   const playerDefMultiplier = 100 / (100 + refPlayer.def);
   const requiredDmgPerHit = refPlayer.hp / estimatedHitsTaken;
-  const rivalAtk = Math.floor((requiredDmgPerHit / playerDefMultiplier) * atkMult * (isBoss ? 1.5 : 1.0));
+  const rivalAtk = Math.floor((requiredDmgPerHit / playerDefMultiplier) * atkMult * (isBoss ? 1.5 : 1.0) * 2.0); // 공격력 2배 상향 (사용자 요청 ✅)
 
   return {
     name: isBoss ? `[보스] ${rivalTemplate.name}` : rivalTemplate.name,
@@ -1690,7 +1690,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       let nTM = { ...s.game.timingMission };
 
-      if (tKills >= 300 && killGap >= targetInterval && !nTM.available && !s.game.tutorialProgress.isActive) {
+      if (tKills >= 300 && killGap >= targetInterval && !nTM.available && (!s.game.tutorialProgress.isActive || s.game.tutorialProgress.currentStepId === "inn_event")) {
         const miniGames = ["breath", "dodge", "puzzle", "pulse"];
         const selectedGame = miniGames[iEV % 4];
         const RIVAL_NAMES = ["흑풍낭인", "독고패", "철권마웅", "살수 무영", "청도방 무뢰배", "혈검 귀수", "낙양 망나니", "산적 두목", "비도 갈천", "광마 서걸", "쌍검객", "무정사", "혈랑도", "철기방 졸개", "비연수", "금강권"];
