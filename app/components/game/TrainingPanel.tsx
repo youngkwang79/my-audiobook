@@ -353,7 +353,10 @@ export default function TrainingPanel() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMissionSlide((s) => (s + 1) % 2);
+      const activeQuests = useGameStore.getState().game.activeQuests || [];
+      const ongoingCount = activeQuests.filter((q: any) => q.status === "active").length;
+      const totalSlides = 2 + ongoingCount;
+      setMissionSlide((s) => (s + 1) % totalSlides);
     }, 5000);
     return () => clearInterval(interval);
   }, []);

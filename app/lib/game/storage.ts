@@ -52,7 +52,7 @@ export const defaultGameData: GameSaveData = {
   hasSeenFirstNight: false,
   showFirstNightPopup: false,
   upgradeLevels: {
-    hpRec: 0, mpRec: 0, atk: 0, def: 0, critRate: 0, critDmg: 0, eva: 0, luck: 0, autoGain: 0, offlineLimit: 0
+    hpRec: 0, hpRecovery: 0, mpRec: 0, atk: 0, def: 0, critRate: 0, critDmg: 0, eva: 0, luck: 0, autoGain: 0, offlineLimit: 0
   },
 
   faction: null,
@@ -91,7 +91,7 @@ export const defaultGameData: GameSaveData = {
   tujeonTokenFragments: 0,
   speedGauge: 0,
 
-  reputation: 0,
+  reputation: 200000,
 
   hp: 150,
   maxHp: 150,

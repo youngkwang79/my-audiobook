@@ -53,6 +53,7 @@ export default function AutoTrainingManager() {
       if (tutorialProgress.isActive && !isAutoTrainingAllowedStep) return;
 
       autoTrain(amountPerTick);
+      updateBuffs(tickMs / 1000);
     }, tickMs);
 
     return () => clearInterval(timer);

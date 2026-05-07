@@ -137,7 +137,7 @@ export const STAT_INCREMENTS: Record<string, number> = {
   critRate: 0.001,
   critDmg: 1,
   eva: 0.001,
-  luck: 0.00001,
+  luck: 0.0002,
   autoGain: 0.01,
   offlineLimit: 0.05,
 };
@@ -174,8 +174,9 @@ export const TUTORIAL_STEPS: Record<string, any> = {
   explain_mission_bar: {
     id: "explain_mission_bar",
     title: "임무 및 상태 확인",
-    message: "하단의 임무 포시창에서는 현재 진행중인 임무를 확인할 수 있습니다. 상단은 상태를 바로 확인할 수 있는 창입니다. 순서는 금화,명성,수련치,공격력입니다.",
+    message: "하단의 임무 표시창에서는 현재 진행중인 임무를 확인할 수 있습니다. 상단은 상태를 바로 확인할 수 있는 창입니다. 순서는 금화,명성,수련치,공격력입니다.",
     targetId: "player-status-button",
+    secondTargetId: "mission-status-bar",
     actionType: "any"
   },
   click_status_detailed: {
@@ -697,11 +698,11 @@ export function generateTowerWave(floor: number, wave: number): TowerEnemy[] {
 }
 
 export const STAT_UPGRADE_BASES: Record<string, { gold: number; rep: number }> = {
-  atk: { gold: 150, rep: 40 },
-  def: { gold: 150, rep: 40 },
-  hpRec: { gold: 150, rep: 40 },
-  mpRec: { gold: 150, rep: 40 },
-  hpRecovery: { gold: 150, rep: 40 },
+  atk: { gold: 500, rep: 130 },
+  def: { gold: 500, rep: 130 },
+  hpRec: { gold: 500, rep: 130 },
+  mpRec: { gold: 500, rep: 130 },
+  hpRecovery: { gold: 500, rep: 130 },
   critRate: { gold: 3000, rep: 800 },
   critDmg: { gold: 3000, rep: 800 },
   eva: { gold: 3000, rep: 800 },
@@ -1932,11 +1933,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (reward.item === "oil_box") {
         nextConsumables.oil_box = (nextConsumables.oil_box || 0) + 1;
       }
-      if (reward.item === "gear_piece_10") {
-        s.game.gearPieces = (s.game.gearPieces || 0) + 10;
-      }
+      const nextGearPieces = reward.item === "gear_piece_10" 
+        ? (s.game.gearPieces || 0) + 10 
+        : (s.game.gearPieces || 0);
 
-      // 퀘스트 제거 (또는 상태 변경 후 필터링)
+      const msg = `🎁 임무 보상 획득!\n금화 ${(reward.gold || 0).toLocaleString()}냥, 명성 ${(reward.favor ? reward.favor * 1000 : 0).toLocaleString()} 획득`;
+
       const nextQuests = s.game.activeQuests.filter((q: any) => q.id !== questId);
 
       if (reward && reward.token && reward.token > 0) {
@@ -1958,10 +1960,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           coins: s.game.coins + (reward.gold || 0),
           reputation: (s.game.reputation || 0) + (reward.favor ? reward.favor * 1000 : 0),
           exp: (s.game.exp || 0) + (reward.exp || 0),
+          gearPieces: nextGearPieces,
           npcFavors: (() => {
              const nextFavors = { ...(s.game.npcFavors || {}) };
              if (quest.npcId && reward.favor) {
-                // 한글 이름 매칭 (임시)
                 const nameMap: any = { yeonhwa: "연화", seolmae: "설매", chowoon: "초운", sohee: "소희", oldman: "백노인" };
                 const kname = nameMap[quest.npcId] || quest.npcId;
                 nextFavors[kname] = (nextFavors[kname] || 0) + reward.favor;
@@ -1969,7 +1971,8 @@ export const useGameStore = create<GameState>((set, get) => ({
              return nextFavors;
           })(),
           consumables: nextConsumables,
-          activeQuests: nextQuests
+          activeQuests: nextQuests,
+          lastReward: msg
         }
       };
     });
@@ -2327,19 +2330,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   getUpgradeCost: (k: keyof GameSaveData["statUpgrades"]) => {
     const cL = (get().game.upgradeLevels as any)[k] || 0;
     const base = STAT_UPGRADE_BASES[k]?.gold || 1500;
-    return Math.floor(base * Math.pow(1.28, cL));
+    return Math.floor(base * Math.pow(1.0115, cL));
   },
   getReputationCost: (k: keyof GameSaveData["statUpgrades"]) => {
     const cL = (get().game.upgradeLevels as any)[k] || 0;
     const base = STAT_UPGRADE_BASES[k]?.rep || 400;
-    return Math.floor(base * Math.pow(1.28, cL));
+    return Math.floor(base * Math.pow(1.0115, cL));
   },
   spendPoints: (k: keyof GameSaveData["statUpgrades"]) => { },
   getMultiUpgradeCost: (k: string, c: number, m: string) => {
     const cL = (get().game.upgradeLevels as any)[k] || 0;
     const base = m === 'gold' ? (STAT_UPGRADE_BASES[k]?.gold || 1500) : (STAT_UPGRADE_BASES[k]?.rep || 400);
     // 등비수열의 합 공식: a * (r^n - 1) / (r - 1)
-    const r = 1.28;
+    const r = 1.0115;
     const a = base * Math.pow(r, cL);
     return Math.floor(a * (Math.pow(r, c) - 1) / (r - 1));
   },
@@ -2366,18 +2369,52 @@ export const useGameStore = create<GameState>((set, get) => ({
       for (let i = 1; i <= level; i++) {
         if (i <= 10) tempAtk += 2;
         else if (i <= 30) tempAtk = tempAtk * 1.04 + 2;
-        else tempAtk *= 1.06;
+        else if (i <= 300) tempAtk *= 1.02;
+        else if (i <= 600) tempAtk += 400;
+        else tempAtk += 700;
       }
       return (tempAtk - game.baseAttack) * 2;
     }
     if (k === 'hpRec') {
-      return game.maxHp * (Math.pow(1.08, level) - 1);
+      let tempHp = 1000;
+      for (let i = 1; i <= level; i++) {
+        if (i <= 30) tempHp *= 1.04;
+        else if (i <= 300) tempHp *= 1.02;
+        else if (i <= 600) tempHp += 2000;
+        else tempHp += 4000;
+      }
+      return tempHp - 1000;
     }
     if (k === 'def') {
-      return 100 * (Math.pow(1.08, level) - 1);
+      let tempDef = 100;
+      for (let i = 1; i <= level; i++) {
+        if (i <= 30) tempDef *= 1.04;
+        else if (i <= 300) tempDef *= 1.02;
+        else if (i <= 600) tempDef += 200;
+        else tempDef += 400;
+      }
+      return tempDef - 100;
     }
-    if (k === 'mpRec') return level * 100;
-    if (k === 'hpRecovery') return level * 20;
+    if (k === 'mpRec') {
+      let tempMp = 200;
+      for (let i = 1; i <= level; i++) {
+        if (i <= 30) tempMp *= 1.04;
+        else if (i <= 300) tempMp *= 1.02;
+        else if (i <= 600) tempMp += 500;
+        else tempMp += 1000;
+      }
+      return tempMp - 200;
+    }
+    if (k === 'hpRecovery') {
+      let tempRegen = 20;
+      for (let i = 1; i <= level; i++) {
+        if (i <= 30) tempRegen *= 1.04;
+        else if (i <= 300) tempRegen *= 1.02;
+        else if (i <= 600) tempRegen += 100;
+        else tempRegen += 200;
+      }
+      return tempRegen - 20;
+    }
     if (k === 'critRate') return level * 0.05;
     if (k === 'critDmg') return level * 0.5;
     if (k === 'eva') return level * 0.05;
@@ -2848,7 +2885,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   checkOfflineRewards: () => {
     const { game } = get(); const offMs = Date.now() - (game.lastSaveTime || Date.now()); if (offMs < 60000) return;
     const limitBonus = get().getStatUpgradeBonus('offlineLimit');
-    const maxOffSec = 3600 * (1 + limitBonus);
+    const maxOffSec = 43200 * (1 + limitBonus);
     const offSec = Math.min(offMs / 1000, maxOffSec);
     const lv = game.upgradeLevels.autoGain || 0;
     const expB = 1 + lv * 0.01;
@@ -3509,8 +3546,29 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
           if (r.insights) nextInsights += r.insights;
         }
-        // --- 보상 처리 로직 ---
+
         const isGiru = !!masterDuel.isGiruEncounter;
+        const rawItems: any[] = [];
+
+        // [신규] 필부 경지 기루 특별 보상 (1회성)
+        let specialRewardGiven = false;
+        if (isGiru && s.game.realm === "필부" && !(s.game.giruRewardsClaimed || {})["philbu_special"]) {
+          const userFaction = FACTIONS.find(f => f.name === s.game.faction);
+          const introManualName = userFaction?.martial?.필부?.name || "기초 무공";
+          const basicFootworkName = userFaction?.movement?.entry || "기초 보법";
+          
+          const introManual = `${introManualName} 조각`;
+          const basicFootwork = `${basicFootworkName} 조각`;
+          
+          nextFragments[introManual] = (nextFragments[introManual] || 0) + 10;
+          nextFragments[basicFootwork] = (nextFragments[basicFootwork] || 0) + 20;
+          
+          rawItems.push({ icon: "📜", name: introManual, count: 10, color: "#ffd700" });
+          rawItems.push({ icon: "📜", name: basicFootwork, count: 20, color: "#ffd700" });
+          specialRewardGiven = true;
+        }
+
+        // --- 보상 처리 로직 ---
         const faction = game.faction || "강호공용";
         
         let fragmentCount = 0;
@@ -3546,9 +3604,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (materialGain > 0) nextMaterials["standard_material"] = (nextMaterials["standard_material"] || 0) + materialGain;
         }
 
-        // 2. 최종 팝업용 아이템 목록 (rawItems) 구성
-        const rawItems: any[] = [];
-
+        // 2. 최종 팝업용 아이템 목록 (rawItems) 구성 (위에서 정의된 rawItems 사용)
         if (!isGiru) {
           // 일반 대결: 재화 및 기본 보상 추가
           const cleanGold = Math.floor(goldGain / 100) * 100;
@@ -3660,6 +3716,10 @@ export const useGameStore = create<GameState>((set, get) => ({
               lastDefeatTimes: { ...(nextMD.lastDefeatTimes || {}), [level]: now },
               streakCount: (masterDuel.challengeTickets === 0) ? 0 : currentStreak + 1, // 0개가 되면 초기화
               lastAttackTime: now
+            },
+            giruRewardsClaimed: {
+              ...(s.game.giruRewardsClaimed || {}),
+              philbu_special: (s.game.giruRewardsClaimed || {})["philbu_special"] || specialRewardGiven
             }
           }
         };
@@ -3927,14 +3987,20 @@ export const useGameStore = create<GameState>((set, get) => ({
             const nextDef = w.defenseBonus ? Math.floor(w.defenseBonus * 1.15) + 5 : w.defenseBonus;
             const nextHp = w.hpBonus ? Math.floor(w.hpBonus * 1.15) + 5 : w.hpBonus;
             
-            // 랜덤 옵션들은 0.1%씩 정직하게 증가
+            // 랜덤 옵션 스케일링
+            const isGloveOrShoe = w.slot === "gloves" || w.slot === "shoes";
             const nextOptions = (w.randomOptions || []).map((o: any) => {
-              const nextVal = Number(((o.value || 0) + 0.1).toFixed(1));
+              const isPercentage = o.label.includes("%");
+              let increment = 0.1;
+              if (isGloveOrShoe && isPercentage) {
+                increment = 0.003;
+              }
+              const nextVal = Number(((o.value || 0) + increment).toFixed(5));
               const baseLabel = o.label.split(" +")[0];
               return {
                 ...o,
                 value: nextVal,
-                label: `${baseLabel} +${nextVal}%`
+                label: isPercentage ? `${baseLabel} +${nextVal.toFixed(3)}%` : `${baseLabel} +${nextVal}`
               };
             });
             
@@ -3974,10 +4040,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     get().updateQuestProgress("enhance_item", 1);
     let failMsg = "강화에 실패했습니다.";
-    if (curLv >= 11) {
+    if (curLv >= 21) {
       failMsg = useHeavenlyTalisman
         ? "강화에 실패했으나 천운의 부적이 단계 하락을 방어했습니다."
         : "강화에 실패하여 강화 단계가 하락했습니다.";
+    } else if (curLv >= 11) {
+      failMsg = "강화에 실패했습니다. (안전 구간이므로 단계가 유지됩니다)";
     }
     const successMsg = isTutorial 
       ? `무명철검 +${curLv + 1}강 강화 성공! (공격력 10 → 22)`
@@ -6082,13 +6150,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s: any) => {
       const { activeTab, isMinigameActive, masterDuel, tower, lastActivityHeartbeat } = s.game;
       
-      // 1. 실제 시간 정지가 필요한 상황인지 엄격하게 판단 (탭 위치 + 플래그 + 하트비트)
+      // 1. 실제 시간 정지가 필요한 상황인지 엄격하게 판단
       const isHeartbeatActive = (Date.now() - (lastActivityHeartbeat || 0)) < 10000; 
       const isActuallyPlayingMinigame = isMinigameActive && activeTab === "inn" && isHeartbeatActive;
       const isActuallyInMasterDuel = masterDuel.isPlaying && activeTab === "master" && isHeartbeatActive;
       const isActuallyInTower = tower?.isInside && activeTab === "tower" && isHeartbeatActive;
 
-      // 2. 다른 탭에 있는데 플래그가 남아있는 경우 (Stuck) 복구 로직 변수 계산
+      // 2. 복구 로직 변수 계산
       let nextIsMini = isMinigameActive;
       let nextMasterIsPlaying = masterDuel.isPlaying;
       let nextTowerIsInside = tower?.isInside;
@@ -6104,26 +6172,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         nextTowerIsInside = (activeTab === "tower" && tower) ? tower.isInside : false;
       }
 
-      // 3. 진짜 플레이 중인 경우에만 중단 (복구 로직이 수행된 경우 반영하여 리턴)
-      if (isActuallyPlayingMinigame || isActuallyInMasterDuel || isActuallyInTower) {
-        if (!needsRecovery) return s;
-        return {
-          game: {
-            ...s.game,
-            isMinigameActive: nextIsMini,
-            masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
-            tower: { ...s.game.tower, isInside: nextTowerIsInside }
-          }
-        };
+      // 3. 진짜 플레이 중인 경우 타이머 정지 (단, 복구 로직은 반영)
+      if (!needsRecovery && (isActuallyPlayingMinigame || isActuallyInMasterDuel || isActuallyInTower)) {
+        return s;
       }
 
-      // 4. 시간 흐름 로직 (복구된 플래그와 함께 적용)
+      // 4. 시간 흐름 로직
       let nextTimeState = s.game.timeState || "day";
-      
       let currentTR = s.game.timeRemaining;
-      if (typeof currentTR !== 'number' || isNaN(currentTR)) {
-        currentTR = 300;
-      }
+      if (typeof currentTR !== 'number' || isNaN(currentTR)) currentTR = 300;
       
       let nextTimeRemaining = currentTR - dt;
       let nextNightLimits = s.game.nightLimits;
@@ -6133,35 +6190,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (nextTimeState === "day") {
           nextTimeState = "dusk";
           nextTimeRemaining = 60;
-          
-          return {
-            game: {
-              ...s.game,
-              timeState: nextTimeState,
-              timeRemaining: nextTimeRemaining,
-              nextDayEvent: null,
-              isMinigameActive: nextIsMini,
-              masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
-              tower: { ...s.game.tower, isInside: nextTowerIsInside }
-            }
-          };
         } else if (nextTimeState === "dusk") {
           nextTimeState = "night";
           nextTimeRemaining = 300;
           nextNightLimits = { giluActionLeft: 5, npcTalkCount: {}, infoTradeUsed: false };
-          return {
-            game: {
-              ...s.game,
-              timeState: nextTimeState,
-              timeRemaining: nextTimeRemaining,
-              nightLimits: nextNightLimits,
-              nightBuffs: [],
-              tujeonExchangeBought: {},
-              isMinigameActive: nextIsMini,
-              masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
-              tower: { ...s.game.tower, isInside: nextTowerIsInside }
-            }
-          };
         } else if (nextTimeState === "night") {
           nextTimeState = "dawn";
           nextTimeRemaining = 60;
@@ -6171,7 +6203,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           nextTimeRemaining = 300;
           const nextDayCount = (s.game.dayCount || 1) + 1;
           const nextEvent = s.game.nextDayEvent ? { ...s.game.nextDayEvent, isUsed: false } : null;
-          // Note: getNextAdaptiveQuests is assumed to be available as in original
+          
           return {
             game: {
               ...s.game,
@@ -6195,7 +6227,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           timeState: nextTimeState,
           timeRemaining: nextTimeRemaining,
           nightLimits: nextNightLimits,
-          showDawnSettlement: triggerSettlement ? true : s.game.showDawnSettlement,
+          showDawnSettlement: (nextTimeRemaining <= 0 && nextTimeState === "dawn") ? true : s.game.showDawnSettlement,
           isMinigameActive: nextIsMini,
           masterDuel: { ...s.game.masterDuel, isPlaying: nextMasterIsPlaying },
           tower: { ...s.game.tower, isInside: nextTowerIsInside }

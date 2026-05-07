@@ -276,9 +276,11 @@ export default function TutorialOverlay() {
                   ? "32%"
                   : step.id === "select_item_inventory"
                     ? "35%"
-                    : ["check_quest", "explain_mission_bar"].includes(step.id)
+                    : step.id === "check_quest"
                       ? "35%"
-                      : [
+                      : step.id === "explain_mission_bar"
+                        ? "38%"
+                        : [
                             "click_status_detailed",
                             "explain_status_panel",
                             "explain_time_cycle",
@@ -465,7 +467,6 @@ export default function TutorialOverlay() {
             y:
               step.id === "start_faction" ||
               step.id === "check_quest" ||
-              step.id === "explain_mission_bar" ||
               step.id === "explain_night_only" ||
               step.id === "goto_forge_click" ||
               step.id === "forge_unlock" ||
@@ -474,7 +475,9 @@ export default function TutorialOverlay() {
               step.id === "library_complete" ||
               step.id === "library_cost_guide"
                 ? [0, 15, 0]
-                : [0, -15, 0],
+                : step.id === "explain_mission_bar"
+                  ? [0, -15, 0]
+                  : [0, -15, 0],
             scale: [1, 1.1, 1],
           }}
           transition={{
@@ -520,15 +523,16 @@ export default function TutorialOverlay() {
                           "explain_mission_bar",
                         ].includes(step.id)
                       ? [
-                          "check_forge_result",
-                          "check_final_infused_options",
-                          "library_unlock",
-                          "library_cost_guide",
-                          "library_complete",
-                          "explain_mission_bar",
-                        ].includes(step.id)
+                            "check_forge_result",
+                            "check_final_infused_options",
+                            "library_unlock",
+                            "library_cost_guide",
+                            "library_complete",
+                          ].includes(step.id)
                         ? hole.top - 50
-                        : hole.top - 85
+                        : step.id === "explain_mission_bar"
+                          ? "15vh"
+                          : hole.top - 85
                       : step.id === "click_infuse_start"
                         ? hole.top - 50
                         : step.id === "select_oil"
@@ -603,8 +607,7 @@ export default function TutorialOverlay() {
           step.id === "tower_unlock" ||
           step.id === "inn_event" ||
           step.id === "library_complete" ||
-          step.id === "library_cost_guide" ||
-          step.id === "explain_mission_bar"
+          step.id === "library_cost_guide"
             ? "👇"
             : "👆"}
         </motion.div>
@@ -614,7 +617,7 @@ export default function TutorialOverlay() {
       {secondTargetRect && (
         <motion.div
           animate={{
-            y: step.id === "explain_mission_bar" ? [0, -15, 0] : [0, 15, 0],
+            y: step.id === "explain_mission_bar" ? [0, 15, 0] : [0, 15, 0],
             scale: [1, 1.1, 1],
           }}
           transition={{
@@ -627,7 +630,7 @@ export default function TutorialOverlay() {
             left: secondTargetRect.left + secondTargetRect.width / 2 - 25,
             top:
               step.id === "explain_mission_bar"
-                ? secondTargetRect.bottom + 10
+                ? "75vh"
                 : secondTargetRect.top - 60,
             width: 50,
             height: 50,
@@ -640,7 +643,7 @@ export default function TutorialOverlay() {
             filter: "drop-shadow(0 0 10px #ffd700)",
           }}
         >
-          {step.id === "explain_mission_bar" ? "👆" : "👇"}
+          {step.id === "explain_mission_bar" ? "👇" : "👇"}
         </motion.div>
       )}
     </div>
