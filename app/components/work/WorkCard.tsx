@@ -47,16 +47,15 @@ export default function WorkCard({ work }: Props) {
           width: 100%;
           flex-shrink: 0;
           overflow: hidden;
-
-          /* 썸네일 뒤 배경도 거의 없음 */
           background: rgba(255, 255, 255, 0.01);
+          aspect-ratio: 16 / 9; /* Enforce strict aspect ratio on mobile */
         }
 
         .work-card-thumb {
           width: 100%;
+          height: 100%;
           display: block;
-          aspect-ratio: 16 / 9;
-          object-fit: cover;
+          object-fit: cover; /* Cover ensures all images fill the space without distortion */
           opacity: 1;
           filter: none;
         }
@@ -111,6 +110,7 @@ export default function WorkCard({ work }: Props) {
           word-break: keep-all;
           color: rgba(255, 255, 255, 0.82);
           text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+          white-space: pre-wrap;
         }
 
         .work-card-meta {
@@ -150,6 +150,7 @@ export default function WorkCard({ work }: Props) {
 
           .work-card-thumb-wrap {
             background: rgba(255, 255, 255, 0.008);
+            aspect-ratio: 16 / 9; /* Consistent on mobile */
           }
 
           .work-card-thumb-wrap::after {
@@ -170,9 +171,9 @@ export default function WorkCard({ work }: Props) {
         @media (min-width: 900px) {
           .work-card {
             display: grid;
-            grid-template-columns: 320px 1fr;
+            grid-template-columns: 200px 1fr; /* Set a standard column width for desktop */
             align-items: stretch;
-            min-height: 240px;
+            min-height: 280px;
           }
 
           .work-card-thumb-wrap {
@@ -180,13 +181,13 @@ export default function WorkCard({ work }: Props) {
             display: flex;
             align-items: center;
             justify-content: center;
+            aspect-ratio: 2 / 3; /* Fixed vertical aspect-ratio on desktop */
           }
 
           .work-card-thumb {
             width: 100%;
             height: 100%;
-            aspect-ratio: auto;
-            object-fit: contain;
+            object-fit: cover;
             background: transparent;
           }
 
@@ -199,17 +200,17 @@ export default function WorkCard({ work }: Props) {
           }
 
           .work-card-title {
-            font-size: 34px;
+            font-size: 30px;
           }
 
           .work-card-desc {
-            font-size: 21px;
+            font-size: 19px;
             line-height: 1.55;
             max-width: 760px;
           }
 
           .work-card-meta {
-            font-size: 18px;
+            font-size: 17px;
           }
 
           .work-card-btn {

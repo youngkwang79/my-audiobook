@@ -172,6 +172,37 @@ export default function EpisodePage() {
   const [isMobile, setIsMobile] = useState(false);
   const [autoEnteredCinema, setAutoEnteredCinema] = useState(false);
 
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [showDescriptionPopup, setShowDescriptionPopup] = useState(false);
+  const [showCommentsPopup, setShowCommentsPopup] = useState(false);
+  const [activeSheetTab, setActiveSheetTab] = useState<"story" | "episodes">("episodes");
+  const [activeRangeIndex, setActiveRangeIndex] = useState(0);
+
+  useEffect(() => {
+    try {
+      const fav = localStorage.getItem(`fav:${workId}`) === "true";
+      setIsFavorited(fav);
+    } catch {}
+  }, [workId]);
+
+  const toggleFavorite = () => {
+    try {
+      const next = !isFavorited;
+      setIsFavorited(next);
+      localStorage.setItem(`fav:${workId}`, String(next));
+    } catch {}
+  };
+
+  const handleShare = () => {
+    try {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url);
+      alert("공유 링크가 클립보드에 복사되었습니다!");
+    } catch {
+      alert("링크 복사에 실패했습니다.");
+    }
+  };
+
   const cinemaFont =
     '"Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif';
 
@@ -531,11 +562,6 @@ export default function EpisodePage() {
           setIsPlaying(true);
           setStatus("재생 중");
           pendingAutoplayRef.current = false;
-
-          if (!autoEnteredCinema) {
-            setAutoEnteredCinema(true);
-            await enterCinemaMode();
-          }
         })
         .catch(() => {
           setIsPlaying(false);
@@ -544,7 +570,7 @@ export default function EpisodePage() {
     }, 120);
 
     return () => clearTimeout(t);
-  }, [autoplay, locked, episodeKey, part, audioSrc, isMobile, autoEnteredCinema]);
+  }, [autoplay, locked, episodeKey, part, audioSrc, isMobile]);
 
   const enterCinemaMode = async () => {
     setPlayerLandscapeMode(true);
@@ -592,11 +618,6 @@ export default function EpisodePage() {
       if (a.paused) {
         await a.play();
         setIsPlaying(true);
-
-        if (!autoEnteredCinema) {
-          setAutoEnteredCinema(true);
-          await enterCinemaMode();
-        }
       } else {
         a.pause();
         setIsPlaying(false);
@@ -888,254 +909,619 @@ export default function EpisodePage() {
       className="episodeMain"
       style={{
         minHeight: "100dvh",
-        background: "#0b0b12",
+        background: "#000000",
         color: "white",
-        padding: 20,
+        margin: 0,
+        padding: 0,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       <style>{`
-        @media (max-width: 820px) {
-          .episodeMain {
-            padding: 12px !important;
+        /* 숏폼 전용 CSS 스타일 */
+        .sf-container {
+          width: 100%;
+          height: 100dvh;
+          position: relative;
+          background: #000;
+          overflow: hidden;
+        }
+        @media (min-width: 769px) {
+          .sf-container {
+            max-width: 480px;
+            margin: 0 auto;
+            border-left: 1px solid rgba(255,255,255,0.1);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
           }
+        }
+        
+        /* 백그라운드 블러 */
+        .sf-blur-bg {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: blur(25px) brightness(0.28);
+          transform: scale(1.05);
+          z-index: 1;
+        }
+        .sf-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.5) 0%,
+            rgba(0, 0, 0, 0.1) 40%,
+            rgba(0, 0, 0, 0.3) 70%,
+            rgba(0, 0, 0, 0.82) 100%
+          );
+          z-index: 2;
+        }
+
+        /* 헤더 탑바 */
+        .sf-header {
+          position: absolute;
+          top: calc(14px + env(safe-area-inset-top));
+          left: 16px;
+          right: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          z-index: 10;
+        }
+        .sf-back-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #ffffff;
+          font-size: 17px;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 8px 4px;
+        }
+        .sf-back-btn svg {
+          stroke: #ffffff;
+        }
+        .sf-speed-btn {
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 99px;
+          color: #ffffff;
+          padding: 6px 14px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          backdrop-filter: blur(8px);
+        }
+        .sf-more-btn {
+          background: none;
+          border: none;
+          color: #ffffff;
+          font-size: 22px;
+          cursor: pointer;
+          padding: 6px 10px;
+        }
+
+        /* 자막 영역 */
+        .sf-caption-container {
+          position: absolute;
+          left: 20px;
+          right: 20px;
+          top: 30%;
+          bottom: 220px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          z-index: 5;
+          cursor: pointer; /* 클릭 시 재생/정지 */
+        }
+        .sf-caption-text {
+          font-size: 28px;
+          font-weight: 800;
+          line-height: 1.5;
+          color: #ffffff;
+          white-space: pre-wrap;
+          word-break: keep-all;
+          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 1px rgba(0,0,0,0.5);
+          user-select: none;
+          max-height: 100%;
+          overflow-y: auto;
+          padding: 0 10px;
+        }
+        
+        /* 우측 액션 바 */
+        .sf-right-bar {
+          position: absolute;
+          bottom: 190px;
+          right: 12px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          z-index: 10;
+        }
+        .sf-action-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          background: none;
+          border: none;
+          color: #ffffff;
+          cursor: pointer;
+          padding: 4px;
+          transition: transform 0.2s;
+        }
+        .sf-action-item:active {
+          transform: scale(0.9);
+        }
+        .sf-action-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: rgba(0,0,0,0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.08);
+          color: #ffffff;
+        }
+        .sf-action-item.active .sf-action-icon {
+          color: #ffd700;
+          border-color: rgba(255, 215, 120, 0.4);
+        }
+        .sf-action-label {
+          font-size: 11px;
+          font-weight: 800;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+          opacity: 0.95;
+        }
+
+        /* 좌측 하단 메타 정보 */
+        .sf-meta-left {
+          position: absolute;
+          bottom: 125px;
+          left: 16px;
+          right: 76px;
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          text-align: left;
+        }
+        .sf-meta-title {
+          font-size: 17px;
+          font-weight: 900;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          cursor: pointer;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+        }
+        .sf-meta-title svg {
+          stroke: #ffffff;
+          opacity: 0.8;
+        }
+        .sf-meta-desc-wrap {
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.85);
+          line-height: 1.45;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .sf-more-link {
+          color: #ffe074;
+          font-weight: 800;
+          cursor: pointer;
+          margin-top: 2px;
+          background: none;
+          border: none;
+          font-size: 13px;
+          padding: 0;
+          text-align: left;
+        }
+
+        /* 하단 타임라인 */
+        .sf-timeline {
+          position: absolute;
+          bottom: 82px;
+          left: 16px;
+          right: 16px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          z-index: 10;
+        }
+        .sf-time-text {
+          font-size: 11px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.7);
+          min-width: 34px;
+          text-align: center;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+        .sf-progress-slider {
+          flex: 1;
+          height: 3px;
+          border-radius: 99px;
+          accent-color: #ffffff;
+          cursor: pointer;
+          outline: none;
+        }
+
+        /* 맨 하단 액션 버튼 */
+        .sf-bottom-bar {
+          position: absolute;
+          bottom: calc(16px + env(safe-area-inset-bottom));
+          left: 16px;
+          right: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          z-index: 10;
+        }
+        .sf-membership-btn {
+          flex: 1;
+          height: 44px;
+          border-radius: 22px;
+          background: linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%);
+          border: 1px solid rgba(255, 215, 120, 0.4);
+          color: #2b1d00;
+          font-weight: 900;
+          font-size: 14px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(212,162,60,0.25);
+        }
+        .sf-download-btn {
+          background: none;
+          border: none;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 8px 12px;
+          opacity: 0.95;
+        }
+        .sf-download-btn svg {
+          fill: #ffffff;
+        }
+
+        /* 바텀 시트 및 팝업 모달 */
+        .sf-bottom-sheet {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: #16161a;
+          border-top-left-radius: 20px;
+          border-top-right-radius: 20px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+          z-index: 100;
+          padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+          max-height: 75dvh;
+          overflow-y: auto;
+          animation: slideUp 0.22s ease-out;
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+        }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        
+        /* 스와이프 핸들바 */
+        .sf-sheet-handle {
+          width: 36px;
+          height: 4px;
+          background: rgba(255,255,255,0.18);
+          border-radius: 2px;
+          margin: 0 auto 12px auto;
+        }
+
+        /* 닫기 헤더 */
+        .sf-sheet-header {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          margin-bottom: 4px;
+        }
+        .sf-sheet-close-btn {
+          background: none;
+          border: none;
+          color: rgba(255,255,255,0.68);
+          font-size: 24px;
+          cursor: pointer;
+          padding: 4px;
+          line-height: 1;
+        }
+
+        /* 작품 정보 영역 */
+        .sf-sheet-info {
+          display: flex;
+          gap: 14px;
+          margin-bottom: 20px;
+          text-align: left;
+        }
+        .sf-sheet-thumb {
+          width: 66px;
+          aspect-ratio: 2 / 3;
+          border-radius: 8px;
+          object-fit: cover;
+          background: rgba(0,0,0,0.2);
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+        .sf-sheet-meta {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 5px;
+        }
+        .sf-sheet-meta-title {
+          font-size: 17px;
+          font-weight: 900;
+          color: #ffffff;
+        }
+        .sf-sheet-meta-views {
+          font-size: 12px;
+          color: rgba(255,255,255,0.5);
+          font-weight: 500;
+        }
+        .sf-sheet-meta-rating {
+          font-size: 12px;
+          color: rgba(255,255,255,0.7);
+          font-weight: 600;
+        }
+
+        /* 줄거리 / 회차 탭 */
+        .sf-sheet-tabs {
+          display: flex;
+          gap: 22px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          margin-bottom: 16px;
+        }
+        .sf-sheet-tab {
+          font-size: 15px;
+          font-weight: 700;
+          color: rgba(255,255,255,0.48);
+          padding: 8px 0 10px 0;
+          border-bottom: 2px solid transparent;
+          cursor: pointer;
+        }
+        .sf-sheet-tab.active {
+          color: #ffffff;
+          border-bottom-color: #ffffff;
+          font-weight: 900;
+        }
+
+        /* 구간 선택 페이징 */
+        .sf-sheet-ranges {
+          display: flex;
+          gap: 18px;
+          margin-bottom: 16px;
+          overflow-x: auto;
+          scrollbar-width: none; /* Firefox */
+        }
+        .sf-sheet-ranges::-webkit-scrollbar {
+          display: none; /* Safari, Chrome */
+        }
+        .sf-sheet-range-item {
+          font-size: 13px;
+          font-weight: 700;
+          color: rgba(255,255,255,0.36);
+          cursor: pointer;
+          white-space: nowrap;
+          padding: 2px 0;
+        }
+        .sf-sheet-range-item.active {
+          color: #ffffff;
+          font-weight: 900;
+        }
+
+        /* 6열 에피소드 그리드 */
+        .sf-episode-grid {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .sf-episode-cell {
+          aspect-ratio: 1;
+          border-radius: 8px;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.04);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255,255,255,0.85);
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          position: relative;
+          transition: all 0.15s;
+        }
+        .sf-episode-cell:active {
+          transform: scale(0.92);
+        }
+        .sf-episode-cell.active {
+          background: rgba(255, 215, 120, 0.12);
+          border-color: rgba(255, 215, 120, 0.85);
+          color: #ffd700;
+          font-weight: 900;
+        }
+        .sf-episode-cell.locked {
+          color: rgba(255,255,255,0.34);
+        }
+        .sf-episode-lock-icon {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          font-size: 9px;
+          color: rgba(255,255,255,0.45);
+          line-height: 1;
+        }
+        .sf-episode-playing-icon {
+          font-size: 9px;
+          margin-top: 1px;
+          color: #ffd700;
+        }
+
+        /* 설명 팝업 */
+        .sf-popup-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0.7);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+        }
+        .sf-popup-card {
+          width: 100%;
+          max-width: 380px;
+          background: #1c1c24;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 20px;
+          padding: 22px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          max-height: 80vh;
+          overflow-y: auto;
+          position: relative;
+        }
+        .sf-popup-title {
+          font-size: 18px;
+          font-weight: 900;
+          color: #ffffff;
+          margin-bottom: 12px;
+        }
+        .sf-popup-body {
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.8);
+          line-height: 1.6;
+          white-space: pre-wrap;
+          margin-bottom: 20px;
+        }
+        .sf-popup-btn {
+          width: 100%;
+          height: 44px;
+          border-radius: 12px;
+          background: rgba(255,255,255,0.1);
+          border: none;
+          color: #ffffff;
+          font-weight: 800;
+          font-size: 14px;
+          cursor: pointer;
+        }
+
+        /* 재생 속도 선택 리스트 */
+        .sf-speed-list {
+          display: flex;
+          justify-content: space-around;
+          gap: 8px;
+        }
+        .sf-speed-item {
+          flex: 1;
+          padding: 12px 0;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          color: #ffffff;
+          font-weight: 700;
+          cursor: pointer;
+          text-align: center;
+        }
+        .sf-speed-item.active {
+          background: rgba(255,215,120,0.15);
+          border-color: #ffd700;
+          color: #ffd700;
+        }
+
+        /* 숏폼 댓글 팝업 */
+        .sf-comments-sheet {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: #0d0d11;
+          border-top-left-radius: 20px;
+          border-top-right-radius: 20px;
+          border-top: 1px solid rgba(255,255,255,0.12);
+          z-index: 200;
+          height: 65dvh;
+          display: flex;
+          flex-direction: column;
+          animation: slideUp 0.25s ease-out;
+        }
+        .sf-comments-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+          font-weight: 900;
+          font-size: 15px;
+        }
+        .sf-comments-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 12px;
         }
       `}</style>
 
-      {!playerLandscapeMode && <TopBar />}
+      {!playerLandscapeMode ? (
+        <div className="sf-container">
+          {/* 블러 썸네일 배경 */}
+          <img src={currentImageSrc} className="sf-blur-bg" alt="" />
+          <div className="sf-overlay" />
 
-      <h1 style={{ marginTop: 14 }}>
-        {work.title} · {episodeKey}화
-        {currentEpisode?.title ? ` - ${currentEpisode.title}` : ""} · {part}편
-      </h1>
-
-      <div
-        className="episodeGrid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          gap: 14,
-          marginTop: 14,
-        }}
-      >
-        <section style={{ borderRadius: 14, padding: 14, minHeight: 320 }}>
-          <div style={{ marginBottom: 10 }}>
-            <button
-              onClick={() => setShowPartList((v) => !v)}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(255,255,255,0.06)",
-                color: "white",
-                fontWeight: 900,
-                fontSize: 16,
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-            >
-              현재 재생: {part}편 {showPartList ? "▲" : "▼"}
-            </button>
-
-            {showPartList && (
-              <div
-                style={{
-                  maxHeight: isMobile ? 240 : 320,
-                  overflowY: "auto",
-                  borderRadius: 16,
-                  background: "#15151d",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
-                  padding: 8,
-                  marginTop: 8,
-                }}
-              >
-                {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
-                  const p = i + 1;
-                  const isLocked = !isSubscribed && p > unlockedUntil;
-                  const isActive = p === part;
-
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => onSelectPart(p)}
-                      style={{
-                        width: "100%",
-                        minHeight: 48,
-                        marginBottom: 6,
-                        borderRadius: 12,
-                        border: isActive
-                          ? "2px solid rgba(255,215,120,0.9)"
-                          : "1px solid rgba(255,255,255,0.16)",
-                        background: isActive
-                          ? "rgba(255,215,120,0.12)"
-                          : "rgba(255,255,255,0.04)",
-                        color: isLocked ? "rgba(255,255,255,0.38)" : "white",
-                        fontWeight: isActive ? 900 : 700,
-                        fontSize: 17,
-                        cursor: "pointer",
-                        textAlign: "left",
-                        padding: "0 14px",
-                      }}
-                    >
-                      {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              marginBottom: 10,
-              padding: "18px 20px",
-              borderRadius: 16,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              textAlign: "center",
-              height: 380,
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: captionFontSize,
-                fontWeight: 900,
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
-                wordBreak: "keep-all",
-                display: "-webkit-box",
-                WebkitLineClamp: 10,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                color: "rgba(255,255,255,0.92)",
-
-              }}
-            >
-              {caption || " "}
-            </div>
-
-            {!caption && !locked && (
-              <div style={{ marginTop: 12, fontSize: 12, opacity: 0.65 }}>
-                {captionStatus || (entBusy ? "권한 확인 중..." : "")}
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              marginBottom: 16,
-              padding: "16px 22px",
-              borderRadius: 18,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.58)",
-                minWidth: 42,
-              }}
-            >
-              작게
-            </span>
-
-            <input
-              type="range"
-              min={16}
-              max={66}
-              step={1}
-              value={captionFontSize}
-              onChange={(e) => setCaptionFontSize(Number(e.target.value))}
-              style={{
-                flex: 1,
-                accentColor: "#6f7684",
-                cursor: "pointer",
-                filter: "brightness(0.85)",
-              }}
-            />
-
-            <span
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.58)",
-                minWidth: 42,
-                textAlign: "right",
-              }}
-            >
-              크게
-            </span>
-
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.78)",
-                minWidth: 28,
-                textAlign: "right",
-              }}
-            >
-              {captionFontSize}
-            </span>
-          </div>
-
+          {/* 오디오 엘리먼트 */}
           {!locked && audioSrc && (
             <audio
               key={`${workId}-${episodeKey}-${part}-${audioIndex}`}
               ref={audioRef}
               src={audioSrc}
-              controls={!playerLandscapeMode}
               preload="auto"
               autoPlay
-              style={
-                playerLandscapeMode
-                  ? {
-                    position: "fixed",
-                    width: 1,
-                    height: 1,
-                    opacity: 0,
-                    pointerEvents: "none",
-                    left: -9999,
-                    top: -9999,
-                  }
-                  : {
-                    width: "100%",
-                    marginBottom: 16,
-                  }
-              }
+              style={{ display: "none" }}
               onLoadedMetadata={() => {
                 const a = audioRef.current;
                 if (!a) return;
-
                 setDuration(a.duration || 0);
                 a.playbackRate = playbackRate;
                 a.volume = volume;
-
                 if (resumeTime > 0) {
                   a.currentTime = resumeTime;
                   setCurrentTime(resumeTime);
                 }
-
                 if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
-
                 a.play()
                   .then(async () => {
                     setIsPlaying(true);
                     setStatus("재생 중");
                     pendingAutoplayRef.current = false;
-
-                    if (!autoEnteredCinema) {
-                      setAutoEnteredCinema(true);
-                      await enterCinemaMode();
-                    }
                   })
                   .catch(() => {
                     setIsPlaying(false);
@@ -1161,786 +1547,904 @@ export default function EpisodePage() {
               onError={() => {
                 if (audioIndex < audioCandidates.length - 1) {
                   setAudioIndex((prev) => prev + 1);
-                  setStatus(
-                    `오디오 형식 변경 시도 중... (${audioIndex + 2}/${audioCandidates.length})`
-                  );
+                  setStatus(`오디오 형식 변경 시도 중... (${audioIndex + 2}/${audioCandidates.length})`);
                   return;
                 }
-
                 setIsPlaying(false);
-                setStatus("오디오 파일을 찾지 못했습니다. R2 파일명과 확장자를 확인해주세요.");
+                setStatus("오디오 파일을 찾지 못했습니다.");
               }}
               onTimeUpdate={onTimeUpdate}
             />
           )}
 
-          {!locked && (
-            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-              <button
-                onClick={togglePlayPause}
-                style={{
-                  flex: 1,
-                  padding: "14px 16px",
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "white",
-                  fontWeight: 900,
-                  fontSize: 16,
-                  cursor: "pointer",
-                }}
-              >
-                {isPlaying ? "일시정지" : "재생"}
+          {/* 상단 탑바 */}
+          <div className="sf-header">
+            <button className="sf-back-btn" onClick={() => router.push("/")}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <span>{episodeKey}화</span>
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button className="sf-speed-btn" onClick={() => setShowSpeedMenu(true)}>
+                ⏱️ {playbackRate}x
               </button>
-
-              <button
-                onClick={toggleLandscapePlayer}
-                style={{
-                  flex: 1,
-                  padding: "14px 16px",
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "white",
-                  fontWeight: 900,
-                  fontSize: 16,
-                  cursor: "pointer",
-                }}
-              >
-                시네마 모드
+              <button className="sf-more-btn" onClick={toggleLandscapePlayer} title="시네마(가로) 모드">
+                ⋮
               </button>
             </div>
-          )}
+          </div>
 
-
-
-          {!locked && status && (
-            <div
-              style={{
-                marginBottom: 12,
-                fontSize: 12,
-                opacity: 0.75,
-              }}
-            >
-              {status}
-            </div>
-          )}
-
-          <div
-            style={{
-              borderRadius: 18,
-              overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
-              position: "relative",
-            }}
-          >
-            <img
-              src={currentImageSrc}
-              alt={`${work.title} ${episodeKey}화 ${part}편 이미지`}
-              onError={() => {
-                if (imageErrorCount < imageCandidates.length) {
-                  setImageErrorCount((prev) => prev + 1);
-                  setImageIndex((prev) => Math.min(prev + 1, imageCandidates.length - 1));
-                }
-              }}
-              style={{
-                width: "100%",
-                display: "block",
-                maxHeight: 560,
-                objectFit: "contain",
-                background: "#111",
-                filter: locked ? "brightness(0.72)" : "none",
-                transition: "filter 180ms ease",
-              }}
-            />
-
-            {locked && (
-              <>
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "rgba(0,0,0,0.34)",
-                    zIndex: 2,
-                  }}
-                />
-
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    zIndex: 3,
-                    display: "grid",
-                    placeItems: "center",
-                    padding: 20,
-                  }}
-                >
-                  <div
-                    className="lockCard"
+          {/* 중앙 자막 영역 */}
+          <div className="sf-caption-container" onClick={togglePlayPause}>
+            {locked ? (
+              <div
+                className="lockCard"
+                style={{
+                  width: "100%",
+                  maxHeight: "90%",
+                  overflowY: "auto",
+                  borderRadius: 24,
+                  padding: 22,
+                  background: "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
+                  border: "1px solid rgba(255,215,120,0.95)",
+                  boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
+                  color: "#2b1d00",
+                  pointerEvents: "auto",
+                  textAlign: "left",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ fontSize: 13, fontWeight: 900, opacity: 0.85 }}>잠금 편</div>
+                <div style={{ fontSize: 22, fontWeight: 950, marginTop: 6, lineHeight: 1.3 }}>
+                  {work.title} {episodeKey}화 {part}편은 잠겨 있어요
+                </div>
+                <div style={{ marginTop: 8, fontSize: 14, fontWeight: 800, opacity: 0.9 }}>
+                  보유 포인트: {points}P
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, marginTop: 14 }}>
+                  <button
+                    onClick={() => unlockWithPoints(part)}
                     style={{
-                      width: "min(520px, 92%)",
-                      maxHeight: "88%",
-                      overflowY: "auto",
-                      borderRadius: 24,
-                      padding: 22,
-                      background:
-                        "linear-gradient(135deg, #fff1a8 0%, #f3c969 30%, #d4a23c 65%, #fff1a8 100%)",
-                      border: "1px solid rgba(255,215,120,0.95)",
-                      boxShadow: "0 18px 40px rgba(0,0,0,0.35), 0 0 30px rgba(255,215,120,0.35)",
-                      color: "#2b1d00",
-                      animation: "bounceIn 520ms ease-out both",
+                      height: 44,
+                      borderRadius: 12,
+                      border: "none",
+                      background: "#2b1d00",
+                      color: "#ffd700",
+                      fontWeight: 900,
+                      cursor: "pointer",
                     }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 900, opacity: 0.85 }}>잠금 편</div>
-
-                    <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>
-                      {work.title} {episodeKey}화 {part}편은 잠겨 있어요
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: 10,
-                        fontSize: 15,
-                        fontWeight: 850,
-                        opacity: 0.92,
-                      }}
-                    >
-                      무료 이후 파트는 구독 또는 포인트 또는 광고시청이 필요합니다.
-                    </div>
-
-                    <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>
-                      보유 포인트: <b>{points}P</b> · ({POINTS_PER_PART}P당 1편 해제)
-                    </div>
-
-                    <div style={{ height: 14 }} />
-
-                    <div
-                      className="lockBtns"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 10,
-                      }}
-                    >
-                      <button
-                        onClick={() => unlockWithPoints(part)}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 16,
-                          border: "1px solid rgba(43,29,0,0.25)",
-                          background: "rgba(255,255,255,0.75)",
-                          color: "#2b1d00",
-                          fontWeight: 950,
-                          cursor: "pointer",
-                        }}
-                      >
-                        포인트 {POINTS_PER_PART}로 1편 오픈
-                      </button>
-
-                      <button
-                        onClick={unlockAllParts}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 16,
-                          border: "1px solid rgba(43,29,0,0.25)",
-                          background: "rgba(0,0,0,0.10)",
-                          color: "#2b1d00",
-                          fontWeight: 950,
-                          cursor: "pointer",
-                        }}
-                      >
-                        광고로 전체 오픈
-                      </button>
-
-                      <button
-                        onClick={() => alert("월 구독은 준비 중입니다!")}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 16,
-                          border: "1px solid rgba(43,29,0,0.25)",
-                          background: "rgba(255,255,255,0.55)",
-                          color: "#2b1d00",
-                          fontWeight: 950,
-                          cursor: "pointer",
-                        }}
-                      >
-                        월 구독하기(준비중)
-                      </button>
-
-                      <button
-                        onClick={() => router.push("/points")}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 16,
-                          border: "1px solid rgba(43,29,0,0.25)",
-                          background: "rgba(255,255,255,0.75)",
-                          color: "#2b1d00",
-                          fontWeight: 950,
-                          cursor: "pointer",
-                        }}
-                      >
-                        포인트 충전하기
-                      </button>
-                    </div>
-
-                    <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
-                      ※ 이제부터 포인트/오픈은 DB 기준입니다. (클라 조작으로 풀리지 않아요)
-                    </div>
-                  </div>
+                    포인트 {POINTS_PER_PART}로 1편 오픈
+                  </button>
+                  <button
+                    onClick={unlockAllParts}
+                    style={{
+                      height: 44,
+                      borderRadius: 12,
+                      border: "1px solid #2b1d00",
+                      background: "transparent",
+                      color: "#2b1d00",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    광고로 전체 오픈
+                  </button>
+                  <button
+                    onClick={() => router.push("/points")}
+                    style={{
+                      height: 44,
+                      borderRadius: 12,
+                      border: "none",
+                      background: "rgba(255,255,255,0.7)",
+                      color: "#2b1d00",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    포인트 충전하기
+                  </button>
                 </div>
-              </>
+              </div>
+            ) : (
+              <div className="sf-caption-text">
+                {caption || " "}
+              </div>
             )}
           </div>
-        </section>
-      </div>
 
-      {playerLandscapeMode && !locked && (
-        <div
-          onMouseMove={handlePlayerInteraction}
-          onTouchStart={handlePlayerInteraction}
-          onClick={() => {
-            setShowPartMenuCinema(false);
-            setShowSpeedMenu(false);
-            setShowCinemaComments(false);
-            handlePlayerInteraction();
-          }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            background: "#000",
-            overflow: "hidden",
-            fontFamily: cinemaFont,
-          }}
-        >
-          <img
-            src={currentImageSrc}
-            alt={`${work.title} ${episodeKey}화 ${part}편`}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              filter: "brightness(0.42)",
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
-            }}
-          />
-
-          {showPlayerUi && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                exitCinemaMode();
-              }}
-              style={{
-                position: "absolute",
-                top: 18,
-                right: 18,
-                width: 52,
-                height: 52,
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(15,15,15,0.42)",
-                color: "rgba(255,255,255,0.94)",
-                fontSize: 26,
-                fontWeight: 500,
-                lineHeight: 1,
-                cursor: "pointer",
-                zIndex: 4,
-                backdropFilter: "blur(8px)",
-                fontFamily: cinemaFont,
-              }}
-            >
-              ×
+          {/* 우측 액션 바 */}
+          <div className="sf-right-bar">
+            {/* 즐겨찾기 */}
+            <button className={`sf-action-item ${isFavorited ? "active" : ""}`} onClick={toggleFavorite}>
+              <div className="sf-action-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill={isFavorited ? "#ffd700" : "none"} stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <span className="sf-action-label">{isFavorited ? "1" : "0"}</span>
             </button>
-          )}
 
-          {showPlayerUi && (
-            <div
-              style={{
-                position: "absolute",
-                left: 16,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 4,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 10,
-                padding: "14px 10px",
-                borderRadius: 18,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(10,10,10,0.40)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "rgba(255,255,255,0.95)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                음량
-              </span>
+            {/* 회차 선택 */}
+            <button className="sf-action-item" onClick={() => {
+              setActiveSheetTab("episodes");
+              setShowPartList(true);
+            }}>
+              <div className="sf-action-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </div>
+              <span className="sf-action-label">회차</span>
+            </button>
 
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onInput={(e) => handleVolumeChange(Number((e.target as HTMLInputElement).value))}
-                onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                style={{
-                  writingMode: "vertical-lr" as any,
-                  WebkitAppearance: "slider-vertical",
-                  width: 28,
-                  height: 150,
-                  accentColor: "#e50914",
-                  cursor: "pointer",
-                  touchAction: "pan-y",
-                }}
-              />
-            </div>
-          )}
+            {/* 댓글 */}
+            <button className="sf-action-item" onClick={() => setShowCommentsPopup(true)}>
+              <div className="sf-action-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <span className="sf-action-label">댓글</span>
+            </button>
 
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "38%",
-              transform: "translateX(-50%)",
-              width: "82%",
-              display: "flex",
-              justifyContent: "center",
-              pointerEvents: "none",
-              zIndex: 3,
-            }}
-          >
-            <div
-              style={{
-                maxWidth: 980,
-                textAlign: "center",
-                fontSize: captionFontSize + 4,
-                fontWeight: 700,
-                lineHeight: 1.58,
-                letterSpacing: "-0.025em",
-                color: "rgba(255,255,255,0.98)",
-                textShadow: "0 2px 8px rgba(0,0,0,0.78)",
-                whiteSpace: "pre-wrap",
-                wordBreak: "keep-all",
-                padding: "0 18px",
-                margin: "0 auto",
-                fontFamily: cinemaFont,
-              }}
-            >
-              {caption || " "}
-            </div>
+            {/* 공유 */}
+            <button className="sf-action-item" onClick={handleShare}>
+              <div className="sf-action-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+              </div>
+              <span className="sf-action-label">공유</span>
+            </button>
           </div>
 
-          {showPlayerUi && (
-            <div
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "58%",
-                transform: "translateX(-50%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 34,
-                zIndex: 4,
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  seekBy(-10);
-                }}
-                style={{
-                  width: 82,
-                  height: 82,
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(18,18,18,0.38)",
-                  color: "rgba(255,255,255,0.96)",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  backdropFilter: "blur(8px)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                -10
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayPause();
-                }}
-                style={{
-                  width: 104,
-                  height: 104,
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.16)",
-                  background: "rgba(255,255,255,0.12)",
-                  color: "white",
-                  fontSize: 28,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  backdropFilter: "blur(10px)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                {isPlaying ? "❚❚" : "▶"}
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  seekBy(10);
-                }}
-                style={{
-                  width: 82,
-                  height: 82,
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(18,18,18,0.38)",
-                  color: "rgba(255,255,255,0.96)",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  backdropFilter: "blur(8px)",
-                  fontFamily: cinemaFont,
-                }}
-              >
-                +10
-              </button>
+          {/* 좌측 하단 메타 영역 */}
+          <div className="sf-meta-left">
+            <div className="sf-meta-title" onClick={() => router.push(`/work/${workId}`)}>
+              <span>{work.title}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
             </div>
-          )}
+            <div className="sf-meta-desc-wrap">
+              {work.description}
+            </div>
+            <button className="sf-more-link" onClick={() => {
+              setActiveSheetTab("story");
+              setShowPartList(true);
+            }}>
+              ... 더 보기
+            </button>
+          </div>
 
-          {showPlayerUi && (
-            <div
-              style={{
-                position: "absolute",
-                left: "50%",
-                bottom: 38,
-                transform: "translateX(-50%)",
-                width: "min(1120px, 90vw)",
-                zIndex: 4,
-                display: "grid",
-                gap: 14,
-              }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "70px 1fr 70px",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "0 8px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 15,
-                    color: "rgba(255,255,255,0.88)",
-                    textAlign: "left",
-                    fontFamily: cinemaFont,
-                  }}
-                >
-                  {formatTime(currentTime)}
-                </span>
+          {/* 하단 진행 타임라인 */}
+          <div className="sf-timeline">
+            <span className="sf-time-text">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              className="sf-progress-slider"
+              min={0}
+              max={Math.max(duration, 0)}
+              step={1}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => handleSeek(Number(e.target.value))}
+            />
+            <span className="sf-time-text">{formatTime(duration)}</span>
+          </div>
 
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(duration, 0)}
-                  step={1}
-                  value={Math.min(currentTime, duration || 0)}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleSeek(Number(e.target.value));
-                  }}
-                  style={{
-                    width: "100%",
-                    accentColor: "#e50914",
-                    cursor: "pointer",
-                  }}
-                />
+          {/* 맨 하단 가입 액션 */}
+          <div className="sf-bottom-bar">
+            <button className="sf-membership-btn" style={{ width: "100%" }} onClick={() => alert("멤버십 가입 페이지 준비중입니다!")}>
+              👑 멤버십 가입
+            </button>
+          </div>
 
-                <span
-                  style={{
-                    fontSize: 15,
-                    color: "rgba(255,255,255,0.88)",
-                    textAlign: "right",
-                    fontFamily: cinemaFont,
-                  }}
-                >
-                  {formatTime(duration)}
-                </span>
-              </div>
+          {/* 회차 선택 바텀 시트 */}
+          {showPartList && (
+            <>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} onClick={() => setShowPartList(false)} />
+              <div className="sf-bottom-sheet">
+                {/* 상단 스와이프 핸들바 */}
+                <div className="sf-sheet-handle" />
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowSpeedMenu((v) => !v);
-                      setShowPartMenuCinema(false);
-                      setShowCinemaComments(false);
-                      resetHideTimer();
-                    }}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(10,10,10,0.40)",
-                      color: "white",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      backdropFilter: "blur(8px)",
-                      fontFamily: cinemaFont,
-                    }}
-                  >
-                    속도 {playbackRate}x
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowPartMenuCinema((v) => !v);
-                      setShowSpeedMenu(false);
-                      setShowCinemaComments(false);
-                      resetHideTimer();
-                    }}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(10,10,10,0.40)",
-                      color: "white",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      backdropFilter: "blur(8px)",
-                      fontFamily: cinemaFont,
-                    }}
-                  >
-                    파트 선택
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowCinemaComments((v) => !v);
-                      setShowPartMenuCinema(false);
-                      setShowSpeedMenu(false);
-                      resetHideTimer();
-                    }}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(10,10,10,0.40)",
-                      color: "white",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      backdropFilter: "blur(8px)",
-                      fontFamily: cinemaFont,
-                    }}
-                  >
-                    댓글
-                  </button>
+                {/* 닫기 헤더 */}
+                <div className="sf-sheet-header">
+                  <button className="sf-sheet-close-btn" onClick={() => setShowPartList(false)}>×</button>
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goNextPart();
-                  }}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.12)",
-                    color: "white",
-                    fontWeight: 900,
-                    cursor: "pointer",
-                    backdropFilter: "blur(8px)",
-                    fontFamily: cinemaFont,
-                  }}
-                >
-                  다음 편
-                </button>
-              </div>
+                {/* 작품 정보 영역 */}
+                <div className="sf-sheet-info">
+                  <img src={workThumbnail} alt={work.title} className="sf-sheet-thumb" />
+                  <div className="sf-sheet-meta">
+                    <div className="sf-sheet-meta-title">{work.title}</div>
+                    <div className="sf-sheet-meta-views">조회수 {work.views || "0"}</div>
+                    <div className="sf-sheet-meta-rating">⭐ 4.9 (2.4K) 평가하기 &gt;</div>
+                  </div>
+                </div>
 
-              {showSpeedMenu && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    bottom: 120,
-                    display: "flex",
-                    gap: 8,
-                    padding: 10,
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(0,0,0,0.88)",
-                  }}
-                >
-                  {[0.8, 1, 1.2, 1.5].map((rate) => (
+                {/* 줄거리 / 회차 전환 탭 */}
+                <div className="sf-sheet-tabs">
+                  <div 
+                    className={`sf-sheet-tab ${activeSheetTab === "story" ? "active" : ""}`}
+                    onClick={() => setActiveSheetTab("story")}
+                  >
+                    줄거리
+                  </div>
+                  <div 
+                    className={`sf-sheet-tab ${activeSheetTab === "episodes" ? "active" : ""}`}
+                    onClick={() => setActiveSheetTab("episodes")}
+                  >
+                    회차
+                  </div>
+                </div>
+
+                {activeSheetTab === "story" ? (
+                  /* 줄거리 탭 활성화 */
+                  <div style={{ textAlign: "left", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    {work.description}
+                  </div>
+                ) : (
+                  /* 회차 탭 활성화 */
+                  <>
+                    {/* 30화 단위 페이징 영역 */}
+                    {episodes.length > 30 && (
+                      <div className="sf-sheet-ranges">
+                        {Array.from({ length: Math.ceil(episodes.length / 30) }).map((_, idx) => {
+                          const start = idx * 30 + 1;
+                          const end = Math.min((idx + 1) * 30, episodes.length);
+                          return (
+                            <div 
+                              key={idx}
+                              className={`sf-sheet-range-item ${activeRangeIndex === idx ? "active" : ""}`}
+                              onClick={() => setActiveRangeIndex(idx)}
+                            >
+                              {start}-{end}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* 6열 에피소드 그리드 */}
+                    <div className="sf-episode-grid">
+                      {episodes.slice(activeRangeIndex * 30, (activeRangeIndex + 1) * 30).map((ep) => {
+                        const isCurrent = String(ep.id) === String(episodeKey);
+                        const isLocked = ep.locked;
+
+                        return (
+                          <button
+                            key={ep.id}
+                            className={`sf-episode-cell ${isCurrent ? "active" : ""} ${isLocked ? "locked" : ""}`}
+                            onClick={() => {
+                              setShowPartList(false);
+                              router.replace(`/episode/${workId}/${ep.id}?part=1&autoplay=1`);
+                            }}
+                          >
+                            <span>{ep.id}</span>
+                            {isLocked && <span className="sf-episode-lock-icon">🔒</span>}
+                            {isCurrent && <span className="sf-episode-playing-icon">📊</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* 재생 속도 조절 팝업 */}
+          {showSpeedMenu && (
+            <>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} onClick={() => setShowSpeedMenu(false)} />
+              <div className="sf-bottom-sheet">
+                <div className="sf-sheet-title">
+                  <span>재생 속도 설정</span>
+                  <button className="sf-sheet-close" onClick={() => setShowSpeedMenu(false)}>닫기</button>
+                </div>
+                <div className="sf-speed-list">
+                  {[0.8, 1.0, 1.2, 1.5].map((rate) => (
                     <button
                       key={rate}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      className={`sf-speed-item ${playbackRate === rate ? "active" : ""}`}
+                      onClick={() => {
                         changePlaybackRate(rate);
-                      }}
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        border:
-                          playbackRate === rate
-                            ? "2px solid rgba(255,215,120,0.9)"
-                            : "1px solid rgba(255,255,255,0.14)",
-                        background:
-                          playbackRate === rate
-                            ? "rgba(255,215,120,0.12)"
-                            : "rgba(255,255,255,0.04)",
-                        color: "white",
-                        fontWeight: 800,
-                        cursor: "pointer",
+                        setShowSpeedMenu(false);
                       }}
                     >
                       {rate}x
                     </button>
                   ))}
                 </div>
-              )}
+              </div>
+            </>
+          )}
 
-              {showPartMenuCinema && (
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 70,
-                    bottom: 120,
-                    width: "min(200px, 70vw)",
-                    maxHeight: 360,
-                    overflowY: "auto",
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(0,0,0,0.88)",
-                    padding: 10,
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
-                  {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
-                    const p = i + 1;
-                    const isLocked = !isSubscribed && p > unlockedUntil;
-                    const isActive = p === part;
+          {/* 작품 설명 더보기 팝업 모달 */}
+          {showDescriptionPopup && (
+            <div className="sf-popup-overlay" onClick={() => setShowDescriptionPopup(false)}>
+              <div className="sf-popup-card" onClick={(e) => e.stopPropagation()}>
+                <div className="sf-popup-title">{work.title} 줄거리</div>
+                <div className="sf-popup-body" style={{ maxHeight: "50dvh", overflowY: "auto" }}>{work.description}</div>
+                <button className="sf-popup-btn" onClick={() => setShowDescriptionPopup(false)}>닫기</button>
+              </div>
+            </div>
+          )}
 
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => onSelectPart(p)}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          border: isActive
-                            ? "2px solid rgba(255,215,120,0.9)"
-                            : "1px solid rgba(255,255,255,0.14)",
-                          background: isActive
-                            ? "rgba(255,215,120,0.12)"
-                            : "rgba(255,255,255,0.04)",
-                          color: isLocked ? "rgba(255,255,255,0.38)" : "white",
-                          fontWeight: isActive ? 900 : 700,
-                          cursor: "pointer",
-                          textAlign: "left",
-                        }}
-                      >
-                        {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
-                      </button>
-                    );
-                  })}
+          {/* 댓글 팝업 바텀 시트 */}
+          {showCommentsPopup && (
+            <>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 199 }} onClick={() => setShowCommentsPopup(false)} />
+              <div className="sf-comments-sheet">
+                <div className="sf-comments-header">
+                  <span>댓글 목록</span>
+                  <button className="sf-sheet-close" onClick={() => setShowCommentsPopup(false)}>닫기</button>
                 </div>
-              )}
+                <div className="sf-comments-body">
+                  <Comments workId={workId} episodeId={String(episodeKey)} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        /* 기존 시네마 가로 모드 (유지) */
+        !locked && (
+          <div
+            onMouseMove={handlePlayerInteraction}
+            onTouchStart={handlePlayerInteraction}
+            onClick={() => {
+              setShowPartMenuCinema(false);
+              setShowSpeedMenu(false);
+              setShowCinemaComments(false);
+              handlePlayerInteraction();
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              background: "#000",
+              overflow: "hidden",
+              fontFamily: cinemaFont,
+            }}
+          >
+            <img
+              src={currentImageSrc}
+              alt={`${work.title} ${episodeKey}화 ${part}편`}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: "brightness(0.42)",
+              }}
+            />
 
-              {showCinemaComments && (
-                <div
-                  onClick={(e) => e.stopPropagation()}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.84) 100%)",
+              }}
+            />
+
+            {showPlayerUi && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exitCinemaMode();
+                }}
+                style={{
+                  position: "absolute",
+                  top: 18,
+                  right: 18,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(15,15,15,0.42)",
+                  color: "rgba(255,255,255,0.94)",
+                  fontSize: 26,
+                  fontWeight: 500,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  zIndex: 4,
+                  backdropFilter: "blur(8px)",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                ×
+              </button>
+            )}
+
+            {showPlayerUi && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 10px",
+                  borderRadius: 18,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(10,10,10,0.40)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                <span
                   style={{
-                    position: "absolute",
-                    right: 0,
-                    top: -430,
-                    width: "min(420px, 92vw)",
-                    height: "min(70vh, 640px)",
-                    zIndex: 6,
-                    borderRadius: 18,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(8,8,8,0.92)",
-                    backdropFilter: "blur(10px)",
-                    overflow: "hidden",
-                    boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.95)",
+                    fontFamily: cinemaFont,
                   }}
                 >
-                  <div
+                  음량
+                </span>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onInput={(e) => handleVolumeChange(Number((e.target as HTMLInputElement).value))}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  style={{
+                    writingMode: "vertical-lr" as any,
+                    WebkitAppearance: "slider-vertical",
+                    width: 28,
+                    height: 150,
+                    accentColor: "#e50914",
+                    cursor: "pointer",
+                    touchAction: "pan-y",
+                  }}
+                />
+              </div>
+            )}
+
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "38%",
+                transform: "translateX(-50%)",
+                width: "82%",
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "none",
+                zIndex: 3,
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: 980,
+                  textAlign: "center",
+                  fontSize: captionFontSize + 4,
+                  fontWeight: 700,
+                  lineHeight: 1.58,
+                  letterSpacing: "-0.025em",
+                  color: "rgba(255,255,255,0.98)",
+                  textShadow: "0 2px 8px rgba(0,0,0,0.78)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "keep-all",
+                  padding: "0 18px",
+                  margin: "0 auto",
+                  fontFamily: cinemaFont,
+                }}
+              >
+                {caption || " "}
+              </div>
+            </div>
+
+            {showPlayerUi && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "58%",
+                  transform: "translateX(-50%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 34,
+                  zIndex: 4,
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    seekBy(-10);
+                  }}
+                  style={{
+                    width: 82,
+                    height: 82,
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(18,18,18,0.38)",
+                    color: "rgba(255,255,255,0.96)",
+                    fontSize: 18,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    backdropFilter: "blur(8px)",
+                    fontFamily: cinemaFont,
+                  }}
+                >
+                  -10
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlayPause();
+                  }}
+                  style={{
+                    width: 104,
+                    height: 104,
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    background: "rgba(255,255,255,0.12)",
+                    color: "white",
+                    fontSize: 28,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    backdropFilter: "blur(10px)",
+                    fontFamily: cinemaFont,
+                  }}
+                >
+                  {isPlaying ? "❚❚" : "▶"}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    seekBy(10);
+                  }}
+                  style={{
+                    width: 82,
+                    height: 82,
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(18,18,18,0.38)",
+                    color: "rgba(255,255,255,0.96)",
+                    fontSize: 18,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    backdropFilter: "blur(8px)",
+                    fontFamily: cinemaFont,
+                  }}
+                >
+                  +10
+                </button>
+              </div>
+            )}
+
+            {showPlayerUi && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  bottom: 38,
+                  transform: "translateX(-50%)",
+                  width: "min(1120px, 90vw)",
+                  zIndex: 4,
+                  display: "grid",
+                  gap: 14,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "70px 1fr 70px",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "0 8px",
+                  }}
+                >
+                  <span
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "14px 16px",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
-                      fontWeight: 900,
-                      color: "white",
+                      fontSize: 15,
+                      color: "rgba(255,255,255,0.88)",
+                      textAlign: "left",
+                      fontFamily: cinemaFont,
                     }}
                   >
-                    <span>댓글</span>
+                    {formatTime(currentTime)}
+                  </span>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(duration, 0)}
+                    step={1}
+                    value={Math.min(currentTime, duration || 0)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleSeek(Number(e.target.value));
+                    }}
+                    style={{
+                      width: "100%",
+                      accentColor: "#e50914",
+                      cursor: "pointer",
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      fontSize: 15,
+                      color: "rgba(255,255,255,0.88)",
+                      textAlign: "right",
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    {formatTime(duration)}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <button
-                      onClick={() => setShowCinemaComments(false)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSpeedMenu((v) => !v);
+                        setShowPartMenuCinema(false);
+                        setShowCinemaComments(false);
+                        resetHideTimer();
+                      }}
                       style={{
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(255,255,255,0.06)",
+                        padding: "12px 14px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(10,10,10,0.40)",
                         color: "white",
-                        borderRadius: 10,
-                        padding: "6px 10px",
+                        fontWeight: 800,
                         cursor: "pointer",
+                        backdropFilter: "blur(8px)",
+                        fontFamily: cinemaFont,
                       }}
                     >
-                      닫기
+                      속도 {playbackRate}x
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowPartMenuCinema((v) => !v);
+                        setShowSpeedMenu(false);
+                        setShowCinemaComments(false);
+                        resetHideTimer();
+                      }}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(10,10,10,0.40)",
+                        color: "white",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        backdropFilter: "blur(8px)",
+                        fontFamily: cinemaFont,
+                      }}
+                    >
+                      파트 선택
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCinemaComments((v) => !v);
+                        setShowPartMenuCinema(false);
+                        setShowSpeedMenu(false);
+                        resetHideTimer();
+                      }}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(10,10,10,0.40)",
+                        color: "white",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        backdropFilter: "blur(8px)",
+                        fontFamily: cinemaFont,
+                      }}
+                    >
+                      댓글
                     </button>
                   </div>
 
-                  <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
-                    <Comments workId={workId} episodeId={String(episodeKey)} />
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goNextPart();
+                    }}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.12)",
+                      color: "white",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                      backdropFilter: "blur(8px)",
+                      fontFamily: cinemaFont,
+                    }}
+                  >
+                    다음 편
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
-      <Comments workId={workId} episodeId={String(episodeKey)} />
+                {showSpeedMenu && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      bottom: 120,
+                      display: "flex",
+                      gap: 8,
+                      padding: 10,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.88)",
+                    }}
+                  >
+                    {[0.8, 1, 1.2, 1.5].map((rate) => (
+                      <button
+                        key={rate}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          changePlaybackRate(rate);
+                        }}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border:
+                            playbackRate === rate
+                              ? "2px solid rgba(255,215,120,0.9)"
+                              : "1px solid rgba(255,255,255,0.14)",
+                          background:
+                            playbackRate === rate
+                              ? "rgba(255,215,120,0.12)"
+                              : "rgba(255,255,255,0.04)",
+                          color: "white",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {rate}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {showPartMenuCinema && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 70,
+                      bottom: 120,
+                      width: "min(200px, 70vw)",
+                      maxHeight: 360,
+                      overflowY: "auto",
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.88)",
+                      padding: 10,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    {Array.from({ length: TOTAL_PARTS }).map((_, i) => {
+                      const p = i + 1;
+                      const isLocked = !isSubscribed && p > unlockedUntil;
+                      const isActive = p === part;
+
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => onSelectPart(p)}
+                          style={{
+                            padding: "12px 14px",
+                            borderRadius: 12,
+                            border: isActive
+                              ? "2px solid rgba(255,215,120,0.9)"
+                              : "1px solid rgba(255,255,255,0.14)",
+                            background: isActive
+                              ? "rgba(255,215,120,0.12)"
+                              : "rgba(255,255,255,0.04)",
+                            color: isLocked ? "rgba(255,255,255,0.38)" : "white",
+                            fontWeight: isActive ? 900 : 700,
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          {p}편 {isActive ? "▶ 재생중" : ""} {isLocked ? "🔒" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {showCinemaComments && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: -430,
+                      width: "min(420px, 92vw)",
+                      height: "min(70vh, 640px)",
+                      zIndex: 6,
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(8,8,8,0.92)",
+                      backdropFilter: "blur(10px)",
+                      overflow: "hidden",
+                      boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "14px 16px",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        fontWeight: 900,
+                        color: "white",
+                      }}
+                    >
+                      <span>댓글</span>
+                      <button
+                        onClick={() => setShowCinemaComments(false)}
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          background: "rgba(255,255,255,0.06)",
+                          color: "white",
+                          borderRadius: 10,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        닫기
+                      </button>
+                    </div>
+
+                    <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
+                      <Comments workId={workId} episodeId={String(episodeKey)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      )}
     </main>
   );
 }

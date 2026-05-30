@@ -122,10 +122,10 @@ export default function WorkDetailPage() {
             src={work.thumbnail}
             alt={work.title}
             style={{
-              width: 180,
-              height: "auto",
+              width: 150,
+              aspectRatio: "2 / 3",
               borderRadius: 16,
-              objectFit: "contain",
+              objectFit: "cover",
               background: "rgba(0,0,0,0.25)",
               border: "1px solid rgba(255,255,255,0.08)",
             }}
@@ -136,7 +136,7 @@ export default function WorkDetailPage() {
             <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>{work.title}</div>
 
             {!!work.description && (
-              <div style={{ fontSize: 14, opacity: 0.82, marginBottom: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 14, opacity: 0.82, marginBottom: 8, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                 {work.description}
               </div>
             )}
@@ -193,65 +193,84 @@ export default function WorkDetailPage() {
         </div>
       </div>
 
-      <div
-        id="episode-list"
-        className="episodeGrid"
-        style={{
-          marginTop: 22,
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: 14,
-          maxWidth: 1200,
-        }}
-      >
-        {episodes.map((ep) => {
-          const episodeNo = String(ep.id);
-          const isLocked = ep.locked;
-          const href = `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`;
+      {episodes.length > 0 ? (
+        <div
+          id="episode-list"
+          className="episodeGrid"
+          style={{
+            marginTop: 22,
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 14,
+            maxWidth: 1200,
+          }}
+        >
+          {episodes.map((ep) => {
+            const episodeNo = String(ep.id);
+            const isLocked = ep.locked;
+            const href = `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`;
 
-          return (
-            <button
-              key={episodeNo}
-              onClick={() => goEpisode(href)}
-              style={{
-                textDecoration: "none",
-                color: "inherit",
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-            >
-              <div
+            return (
+              <button
+                key={episodeNo}
+                onClick={() => goEpisode(href)}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 16,
-                  padding: 16,
-                  minHeight: 96,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  gap: 6,
+                  textDecoration: "none",
+                  color: "inherit",
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  textAlign: "left",
+                  cursor: "pointer",
                 }}
               >
-                <div style={{ fontSize: 13, opacity: 0.7 }}>
-                  {episodeNo}화 {ep.parts > 1 ? `· ${ep.parts}편 구성` : ""}
-                </div>
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 16,
+                    padding: 16,
+                    minHeight: 96,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ fontSize: 13, opacity: 0.7 }}>
+                    {episodeNo}화 {ep.parts > 1 ? `· ${ep.parts}편 구성` : ""}
+                  </div>
 
-                <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.35 }}>
-                  {ep.title}
-                </div>
+                  <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.35 }}>
+                    {ep.title}
+                  </div>
 
-                <div style={{ fontSize: 12, opacity: 0.78 }}>
-                  {isLocked ? "잠금" : "열림"}
+                  <div style={{ fontSize: 12, opacity: 0.78 }}>
+                    {isLocked ? "잠금" : "열림"}
+                  </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: "50px 20px",
+            textAlign: "center",
+            color: "rgba(255, 255, 255, 0.5)",
+            fontSize: 16,
+            fontWeight: 700,
+            background: "rgba(255,255,255,0.03)",
+            border: "1px dashed rgba(255,255,255,0.1)",
+            borderRadius: 16,
+            marginTop: 22,
+            maxWidth: 1200,
+          }}
+        >
+          에피소드 준비 중입니다. 조만간 재미있는 소설과 오디오 스토리로 찾아뵙겠습니다!
+        </div>
+      )}
     </main>
   );
-}
+}
