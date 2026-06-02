@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { works } from "./data/works";
 import WorkPosterCard from "@/app/components/work/WorkPosterCard";
+import BottomNav from "@/app/components/BottomNav";
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -27,18 +28,18 @@ function SearchIcon() {
   );
 }
 
-function CrownIcon() {
+function MembershipIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>
       <defs>
-        <linearGradient id="crownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fff5d0" />
-          <stop offset="50%" stopColor="#f7d070" />
-          <stop offset="100%" stopColor="#d4a23c" />
+        <linearGradient id="vipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff2a5f" />
+          <stop offset="100%" stopColor="#ff7f00" />
         </linearGradient>
       </defs>
-      <path d="M2 4.5l3.5 11h13L22 4.5l-5 4.5-5-6.5-5 6.5-5-4.5z" fill="url(#crownGrad)" />
-      <path d="M5.5 17h13v2h-13z" fill="url(#crownGrad)" />
+      <rect x="3" y="6" width="18" height="12" rx="2" fill="url(#vipGrad)" />
+      <path d="M7 10h4M7 13h2" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="16" cy="12" r="2" fill="#ffffff" />
     </svg>
   );
 }
@@ -54,26 +55,20 @@ function GiftIcon() {
   );
 }
 
-function HomeIcon({ active }: { active: boolean }) {
+
+function ClockIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "#ffffff" : "#8c8c96"}>
-      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
     </svg>
   );
 }
 
-function LibraryIcon({ active }: { active: boolean }) {
+function CheckIconSmall() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "#ffffff" : "#8c8c96"}>
-      <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-    </svg>
-  );
-}
-
-function UserIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "#ffffff" : "#8c8c96"}>
-      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
+      <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
   );
 }
@@ -92,6 +87,90 @@ export default function Home() {
 
   // ✅ 이어듣기 정보
   const [lastPlayed, setLastPlayed] = useState<LastPlayed | null>(null);
+
+  // ✅ 알림 설정 로컬스토리지 연동
+  const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
+  const [shouldPulse, setShouldPulse] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("alarmSettings");
+      if (saved) {
+        setAlarmSettings(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // highlightComingSoon 쿼리 파라미터 처리 (스크롤 및 하이라이트)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("highlightComingSoon") === "true") {
+        // 부드럽게 스크롤 이동
+        const timerScroll = setTimeout(() => {
+          const element = document.getElementById("coming-soon-section");
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 500);
+
+        setShouldPulse(true);
+        const timerPulse = setTimeout(() => {
+          setShouldPulse(false);
+        }, 5000);
+
+        return () => {
+          clearTimeout(timerScroll);
+          clearTimeout(timerPulse);
+        };
+      }
+    }
+  }, []);
+
+  // 알림 권한 및 로컬스토리지 토글 함수
+  const handleRequestNotification = async (workId: string) => {
+    const isSet = alarmSettings[workId];
+    if (isSet) {
+      const updated = { ...alarmSettings, [workId]: false };
+      setAlarmSettings(updated);
+      localStorage.setItem("alarmSettings", JSON.stringify(updated));
+      alert("알림 설정이 해제되었습니다.");
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      const updated = { ...alarmSettings, [workId]: true };
+      setAlarmSettings(updated);
+      localStorage.setItem("alarmSettings", JSON.stringify(updated));
+      alert("알림 설정이 완료되었습니다! (알림을 지원하지 않는 브라우저이므로 설정만 완료되었습니다)");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        const updated = { ...alarmSettings, [workId]: true };
+        setAlarmSettings(updated);
+        localStorage.setItem("alarmSettings", JSON.stringify(updated));
+        alert("알림이 정상적으로 허용 및 설정되었습니다! 작품이 공개되면 알림을 보내드리겠습니다.");
+      } else {
+        alert("알림 권한이 거부되었습니다. 기기 설정에서 알림 권한을 허용해 주셔야 알림을 받으실 수 있습니다.");
+      }
+    } catch (error) {
+      Notification.requestPermission((permission) => {
+        if (permission === "granted") {
+          const updated = { ...alarmSettings, [workId]: true };
+          setAlarmSettings(updated);
+          localStorage.setItem("alarmSettings", JSON.stringify(updated));
+          alert("알림이 정상적으로 허용 및 설정되었습니다! 작품이 공개되면 알림을 보내드리겠습니다.");
+        } else {
+          alert("알림 권한이 거부되었습니다. 기기 설정에서 알림 권한을 허용해 주셔야 알림을 받으실 수 있습니다.");
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     try {
@@ -154,6 +233,16 @@ export default function Home() {
 
     return result;
   }, [searchQuery, activeTab]);
+
+  // 메인 그리드용 작품 (준비중인 작품 제외)
+  const mainGridWorks = useMemo(() => {
+    return filteredWorks.filter((w) => w.status !== "준비중");
+  }, [filteredWorks]);
+
+  // 공개 예정 섹션용 작품 (준비중인 작품만)
+  const comingSoonWorks = useMemo(() => {
+    return works.filter((w) => w.status === "준비중");
+  }, []);
 
   return (
     <main
@@ -380,55 +469,6 @@ export default function Home() {
           }
         }
 
-        /* 바텀 네비게이션 */
-        .bottom-nav {
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: calc(58px + env(safe-area-inset-bottom));
-          padding-bottom: env(safe-area-inset-bottom);
-          background: #09090b;
-          border-top: 1px solid #1c1c24;
-          display: flex;
-          justify-content: space-around;
-          align-items: center;
-          z-index: 10000;
-        }
-
-        .nav-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-          color: #8c8c96;
-          text-decoration: none;
-          font-size: 10px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: color 0.2s;
-          flex: 1;
-          height: 100%;
-          justify-content: center;
-        }
-
-        .nav-item.active {
-          color: #ffffff;
-        }
-
-        .nav-item-my {
-          position: relative;
-        }
-
-        .my-red-dot {
-          position: absolute;
-          top: 8px;
-          right: 32%;
-          width: 5px;
-          height: 5px;
-          background: #ff2a5f;
-          border-radius: 50%;
-        }
 
         /* 포스터 카드 스타일 (WorkPosterCard) */
         .poster-card {
@@ -560,6 +600,109 @@ export default function Home() {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
+
+        /* 공개 예정 섹션 */
+        .coming-soon-section {
+          margin-top: 32px;
+          margin-bottom: 24px;
+        }
+
+        .section-title {
+          font-size: 16px;
+          font-weight: 800;
+          color: #ffffff;
+          margin: 0 0 16px 0;
+          letter-spacing: -0.3px;
+        }
+
+        .coming-soon-date-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .coming-soon-date {
+          font-size: 13px;
+          font-weight: 700;
+          color: #8c8c96;
+        }
+
+        .coming-soon-divider {
+          flex: 1;
+          height: 1px;
+          background: rgba(255, 255, 255, 0.08);
+        }
+
+        .coming-soon-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px 10px;
+        }
+
+        @media (min-width: 600px) {
+          .coming-soon-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+          }
+        }
+
+        .coming-soon-item-container {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          width: 100%;
+        }
+
+        .alarm-btn {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 800;
+          height: 32px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          cursor: pointer;
+          transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+        }
+
+        .alarm-btn:active {
+          transform: scale(0.96);
+        }
+
+        .alarm-btn.active {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+        }
+
+        /* 펄스 애니메이션 (알림받기 활성화 강조용) */
+        @keyframes pulseGlow {
+          0% {
+            box-shadow: 0 0 0 0 rgba(255, 42, 95, 0.6);
+            border-color: rgba(255, 42, 95, 0.8);
+            background: rgba(255, 42, 95, 0.25);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(255, 42, 95, 0);
+            border-color: rgba(255, 42, 95, 0.8);
+            background: rgba(255, 42, 95, 0.35);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(255, 42, 95, 0);
+            border-color: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.12);
+          }
+        }
+
+        .alarm-btn.pulse {
+          animation: pulseGlow 1.5s infinite;
+        }
       `}</style>
 
       {/* 데스크탑 전용 탑바 */}
@@ -581,8 +724,8 @@ export default function Home() {
         </div>
 
         <div className="header-icons mobile-only">
-          <button className="icon-btn" onClick={() => router.push("/points")} title="포인트 충전">
-            <CrownIcon />
+          <button className="icon-btn" onClick={() => router.push("/membership")} title="멤버십 가입">
+            <MembershipIcon />
           </button>
           <button className="icon-btn" onClick={() => router.push("/faq")} title="도움말">
             <GiftIcon />
@@ -665,9 +808,9 @@ export default function Home() {
       </div>
 
       {/* 작품 카드 그리드 */}
-      {filteredWorks.length > 0 ? (
+      {mainGridWorks.length > 0 ? (
         <div className="works-poster-grid">
-          {filteredWorks.map((work) => (
+          {mainGridWorks.map((work) => (
             <WorkPosterCard key={work.id} work={work} />
           ))}
         </div>
@@ -677,23 +820,44 @@ export default function Home() {
         </div>
       )}
 
+      {/* 공개 예정 섹션 */}
+      {activeTab === "추천" && !searchQuery && comingSoonWorks.length > 0 && (
+        <div className="coming-soon-section" id="coming-soon-section">
+          <h2 className="section-title">공개 예정</h2>
+          
+          <div className="coming-soon-date-header">
+            <span className="coming-soon-date">06. 03.</span>
+            <div className="coming-soon-divider" />
+          </div>
+
+          <div className="coming-soon-grid">
+            {comingSoonWorks.map((work) => (
+              <div key={work.id} className="coming-soon-item-container">
+                <WorkPosterCard work={work} />
+                <button
+                  className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
+                  onClick={() => handleRequestNotification(work.id)}
+                >
+                  {alarmSettings[work.id] ? (
+                    <>
+                      <CheckIconSmall />
+                      <span>알림 설정 완료</span>
+                    </>
+                  ) : (
+                    <>
+                      <ClockIcon />
+                      <span>알림 받기</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 모바일 하단 네비게이션 바 */}
-      <div className="bottom-nav">
-        <div className={`nav-item ${pathname === "/" ? "active" : ""}`} onClick={() => router.push("/")}>
-          <HomeIcon active={pathname === "/"} />
-          <span>홈</span>
-        </div>
-        <div className={`nav-item ${pathname === "/works" ? "active" : ""}`} onClick={() => router.push("/works")}>
-          <LibraryIcon active={pathname === "/works"} />
-          <span>보관함</span>
-        </div>
-        <div className={`nav-item nav-item-my ${pathname === "/me" ? "active" : ""}`} onClick={() => router.push(user ? "/me" : "/login")}>
-          <UserIcon active={pathname === "/me" || pathname === "/login"} />
-          <span>마이</span>
-          {/* 알림을 상징하는 빨간 점 */}
-          <div className="my-red-dot"></div>
-        </div>
-      </div>
+      <BottomNav />
     </main>
   );
 }

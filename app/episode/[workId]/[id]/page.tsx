@@ -313,6 +313,12 @@ export default function EpisodePage() {
           updatedAt: Date.now(),
         })
       );
+
+      // 개별 작품별 시청한 마지막 에피소드 저장
+      const progressRaw = localStorage.getItem("workProgress");
+      const progress = progressRaw ? JSON.parse(progressRaw) : {};
+      progress[workId] = episodeKey;
+      localStorage.setItem("workProgress", JSON.stringify(progress));
     } catch { }
   }, [workId, episodeKey, part]);
 
