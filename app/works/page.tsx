@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { works } from "@/app/data/works";
+import { supabase } from "@/lib/supabaseClient";
 import LibraryItemCard from "@/app/components/work/LibraryItemCard";
 import BottomNav from "@/app/components/BottomNav";
 
@@ -19,7 +20,44 @@ export default function WorksPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("시청 중");
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
-  const tabs = ["시청 중", "시청 기록", "알림 설정 완료"];
+  const [downloads, setDownloads] = useState<any[]>([]);
+  const tabs = ["시청 중", "시청 기록", "다운로드", "알림 설정 완료"];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (tabParam && tabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "다운로드") {
+      supabase.auth.getSession().then(({ data }) => {
+        const token = data.session?.access_token;
+        if (!token) return;
+
+        fetch("/api/me/downloads", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.downloads) {
+              try {
+                // 문자열로 된 JSON 배열을 파싱
+                const parsed = typeof data.downloads === "string" ? JSON.parse(data.downloads) : data.downloads;
+                setDownloads(parsed);
+              } catch(e) {
+                console.error("다운로드 목록 파싱 오류:", e);
+              }
+            }
+          })
+          .catch(console.error);
+      });
+    }
+  }, [activeTab]);
 
   // 알림 설정 불러오기
   useEffect(() => {
@@ -190,6 +228,26 @@ export default function WorksPage() {
               인기 작품 시청하기
             </button>
           </div>
+        ) : activeTab === "다운로드" ? (
+          downloads.length === 0 ? (
+            <div className="lib-empty-state">
+              <div className="lib-empty-text">다운로드한 작품이 없습니다.</div>
+              <button className="lib-empty-btn" onClick={() => router.push("/")}>
+                작품 보러가기
+              </button>
+            </div>
+          ) : (
+            <div style={{ marginTop: 20 }}>
+              {downloads.map((item, idx) => (
+                <div key={idx} style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }} onClick={() => router.push(`/episode/${item.workId}/${item.episodeId}?part=${item.part}`)}>
+                  <div style={{ fontSize: "16px", fontWeight: "bold" }}>작품 ID: {item.workId}</div>
+                  <div style={{ fontSize: "14px", color: "#8c8c96", marginTop: "4px" }}>
+                    에피소드: {item.episodeId} | 파트: {item.part}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : (
           filteredWorksList.map((work) => (
             <LibraryItemCard key={work.id} work={work} />

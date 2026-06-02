@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
     const { data: wallet, error } = await supabaseAdmin
       .from("wallets")
-      .select("points")
+      .select("points, reward_points")
       .eq("user_id", user_id)
       .maybeSingle();
 
@@ -35,7 +35,8 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({
-      points: Number(wallet?.points ?? 0),
+      points: wallet?.points ?? 0,
+      reward_points: wallet?.reward_points ?? 0,
     });
   } catch (error) {
     console.error("wallet route error:", error);

@@ -52,7 +52,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "entitlements_query_failed" }, { status: 500 });
   }
 
-  const is_subscribed = false;
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("expires_at")
+    .eq("user_id", user_id)
+    .maybeSingle();
+
+  const is_subscribed = sub ? new Date(sub.expires_at) > new Date() : false;
 
   return NextResponse.json({
     points: wallet?.points ?? 0,

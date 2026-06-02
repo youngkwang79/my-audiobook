@@ -64,6 +64,7 @@ export default function MePage() {
   const { user, loading, signOut } = useAuth();
   const [currentPoints, setCurrentPoints] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
 
   // 지갑 잔액 불러오기
   const loadWallet = async () => {
@@ -100,6 +101,13 @@ export default function MePage() {
       setCurrentPoints(null);
     }
   }, [user]);
+
+  useEffect(() => {
+    try {
+      const plan = localStorage.getItem("membership");
+      if (plan) setSubscribedPlan(plan);
+    } catch (e) {}
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -508,15 +516,23 @@ export default function MePage() {
         {/* 멤버십 배너 */}
         <div className="membership-banner" onClick={handleMembershipRedirect}>
           <div className="membership-banner-left">
-            <h3 className="membership-banner-title">멤버십 가입하기</h3>
-            <p className="membership-banner-desc">멤버십 전용 혜택을 누려보세요:</p>
+            <h3 className="membership-banner-title">
+              {subscribedPlan === "weekly"
+                ? "작가에게 커피한잔 후원중💖"
+                : subscribedPlan === "annual" || subscribedPlan === "yearly"
+                ? "작가에게 따뜻한 국밥 후원중💖"
+                : "멤버십 가입하기"}
+            </h3>
+            {!subscribedPlan && <p className="membership-banner-desc">멤버십 전용 혜택을 누려보세요:</p>}
           </div>
-          <button className="membership-banner-btn" onClick={(e) => {
-            e.stopPropagation();
-            handleMembershipRedirect();
-          }}>
-            가입
-          </button>
+          {!subscribedPlan && (
+            <button className="membership-banner-btn" onClick={(e) => {
+              e.stopPropagation();
+              handleMembershipRedirect();
+            }}>
+              가입
+            </button>
+          )}
         </div>
 
         {/* 메뉴 그룹 1 */}
@@ -524,11 +540,16 @@ export default function MePage() {
           <button className="menu-item" onClick={handlePointsRedirect}>
             <span className="menu-item-left">바로 충전</span>
             <div className="menu-item-right">
+              {subscribedPlan && (
+                <span style={{ fontSize: "12px", color: "#ff2a5f", marginRight: "4px", fontWeight: "600" }}>
+                  멤버십 이용중
+                </span>
+              )}
               <span className="menu-arrow"><ChevronRightIcon /></span>
             </div>
           </button>
 
-          <button className="menu-item" onClick={handlePointsRedirect}>
+          <button className="menu-item" onClick={() => router.push("/wallet")}>
             <span className="menu-item-left">내 지갑</span>
             <div className="menu-item-right">
               <CoinIcon />
@@ -537,22 +558,22 @@ export default function MePage() {
             </div>
           </button>
 
-          <button className="menu-item" onClick={() => alert("인센티브 센터 준비중입니다.")}>
-            <span className="menu-item-left">인센티브 센터</span>
+          <button className="menu-item" onClick={() => router.push("/checkin")}>
+            <span className="menu-item-left">출석체크 / 무료 코인 받기</span>
             <div className="menu-item-right">
               <span className="menu-badge">+10</span>
               <span className="menu-arrow"><ChevronRightIcon /></span>
             </div>
           </button>
 
-          <button className="menu-item" onClick={() => alert("시청 기록이 없습니다.")}>
+          <button className="menu-item" onClick={() => router.push("/works?tab=시청 기록")}>
             <span className="menu-item-left">시청 기록</span>
             <div className="menu-item-right">
               <span className="menu-arrow"><ChevronRightIcon /></span>
             </div>
           </button>
 
-          <button className="menu-item" onClick={() => alert("다운로드는 멤버십 회원만 가능합니다.")}>
+          <button className="menu-item" onClick={() => router.push("/works?tab=다운로드")}>
             <span className="menu-item-left">다운로드</span>
             <div className="menu-item-right">
               <span className="menu-arrow"><ChevronRightIcon /></span>

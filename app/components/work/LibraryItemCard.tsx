@@ -127,7 +127,7 @@ export default function LibraryItemCard({ work }: Props) {
         }
       `}</style>
 
-      <Link href={`/work/${work.id}`} className="library-item">
+      <Link href={`/episode/${work.id}/${watchedEpisode}?part=1`} className="library-item">
         <div className="lib-thumb-wrap">
           <img src={work.thumbnail} alt={work.title} className="lib-thumb" loading="lazy" />
           <div className="lib-progress-bg">

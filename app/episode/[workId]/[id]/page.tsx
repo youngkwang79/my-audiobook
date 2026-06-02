@@ -50,6 +50,16 @@ function lockedMemo(isSubscribed: boolean, part: number, unlockedUntil: number) 
   return part > unlockedUntil;
 }
 
+function DownloadIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
 async function getAccessToken() {
   if (!supabase) return null;
 
@@ -233,57 +243,140 @@ export default function EpisodePage() {
   const [caption, setCaption] = useState("");
   const [captionStatus, setCaptionStatus] = useState("");
 
-  const [imageIndex, setImageIndex] = useState(0);
-  const [imageErrorCount, setImageErrorCount] = useState(0);
-  const [audioIndex, setAudioIndex] = useState(0);
+  const [signedAudioSrc, setSignedAudioSrc] = useState<string | null>(null);
+  const [isSigning, setIsSigning] = useState(false);
 
   const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
 
-  const getAudioCandidates = (episodeKeyValue: string, partValue: number) => {
-    const folder = getEpisodeFolder(episodeKeyValue);
-    return AUDIO_EXTENSIONS.map(
-      (ext) => `${R2_BASE}/${SERIES_PREFIX}/${folder}/${pad2(partValue)}.${ext}`
-    );
-  };
+  // 출석체크 미션(시청 타이머) 및 라우팅을 위한 저장
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "last_played_episode",
+        JSON.stringify({ workId, episodeId: episodeKey, part })
+      );
+    } catch (e) {}
+  }, [workId, episodeKey, part]);
 
-  const getR2ImageCandidates = (episodeKeyValue: string, _partValue: number) => {
-    const folder = getEpisodeFolder(episodeKeyValue);
-    const base = `${R2_BASE}/${SERIES_PREFIX}/${folder}/01`;
-    return IMAGE_EXTENSIONS.map((ext) => `${base}.${ext}`);
-  };
-
-  const getR2CaptionUrl = (episodeKeyValue: string, partValue: number) => {
-    const folder = getEpisodeFolder(episodeKeyValue);
-    return `${R2_BASE}/${SERIES_PREFIX}/${folder}/${pad2(partValue)}.json`;
-  };
-
-  const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
-    `${WORKER_BASE}/?workId=${encodeURIComponent(SERIES_PREFIX)}&episode=${encodeURIComponent(
-      episodeKeyValue
-    )}&part=${encodeURIComponent(String(partValue))}`;
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      try {
+        const todayStr = new Date().toDateString();
+        const key = `watch_time_${todayStr}`;
+        const current = Number(localStorage.getItem(key) || 0);
+        localStorage.setItem(key, String(current + 1));
+      } catch (e) {}
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   const locked = useMemo(() => {
     if (isSubscribed) return false;
     return part > unlockedUntil;
   }, [isSubscribed, part, unlockedUntil]);
 
-  const audioCandidates = useMemo(
-    () => (!locked ? getAudioCandidates(episodeKey, part) : []),
-    [episodeKey, part, workId, locked]
-  );
+  useEffect(() => {
+    if (locked) {
+      setSignedAudioSrc(null);
+      return;
+    }
 
-  const audioSrc = !locked ? audioCandidates[audioIndex] ?? null : null;
+    let isMounted = true;
+    const fetchSignedUrl = async () => {
+      setIsSigning(true);
+      setSignedAudioSrc(null);
+      try {
+        const token = await getAccessToken();
+        const res = await fetch("/api/media/sign", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ workId, episodeId: episodeKey, part })
+        });
 
-  const imageCandidates = useMemo(
-    () => getR2ImageCandidates(episodeKey, part),
-    [episodeKey, part, workId]
-  );
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.url) {
+            setSignedAudioSrc(data.url);
+          }
+        } else {
+          console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다.");
+        }
+      } catch (err) {
+        console.error("Signed URL 발급 실패:", err);
+      } finally {
+        if (isMounted) setIsSigning(false);
+      }
+    };
 
-  const currentImageSrc =
-    imageErrorCount >= imageCandidates.length
-      ? WORK_THUMBNAIL
-      : imageCandidates[imageIndex] || WORK_THUMBNAIL;
+    fetchSignedUrl();
+
+    return () => { isMounted = false; };
+  }, [locked, workId, episodeKey, part]);
+
+
+
+  const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
+    `${WORKER_BASE}/?workId=${encodeURIComponent(SERIES_PREFIX)}&episode=${encodeURIComponent(
+      episodeKeyValue
+    )}&part=${encodeURIComponent(String(partValue))}`;
+
+
+
+  const audioSrc = signedAudioSrc;
+
+  // 에피소드별 개별 이미지를 사용하지 않고 작품의 기본 썸네일을 배경으로 고정 사용
+  const currentImageSrc = WORK_THUMBNAIL;
+
+  const handleDownload = async () => {
+    if (!isSubscribed) {
+      alert("무제한 다운로드는 멤버십 회원 전용 혜택입니다.");
+      router.push("/membership");
+      return;
+    }
+    if (!audioSrc) {
+      alert("다운로드할 음원이 아직 준비되지 않았습니다.");
+      return;
+    }
+
+    try {
+      alert("다운로드를 시작합니다...");
+      const res = await fetch(audioSrc, { cache: "no-store" });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${workId}_${episodeKey}_part${part}.m4a`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      // 다운로드 기록 서버 전송
+      try {
+        const token = await getAccessToken();
+        if (token) {
+          await fetch("/api/me/downloads", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ workId, episodeId: episodeKey, part })
+          });
+        }
+      } catch (err) {
+        console.error("다운로드 기록 저장 실패:", err);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("다운로드 중 오류가 발생했습니다.");
+    }
+  };
 
   useEffect(() => {
     isNavigatingRef.current = false;
@@ -360,21 +453,13 @@ export default function EpisodePage() {
     };
   }, [workId, episodeKey, FREE_PARTS, TOTAL_PARTS]);
 
-  useEffect(() => {
-    setImageIndex(0);
-    setImageErrorCount(0);
-  }, [episodeKey, part, workId]);
 
-  useEffect(() => {
-    setAudioIndex(0);
-  }, [episodeKey, part, workId]);
 
   useEffect(() => {
     let alive = true;
 
     async function fetchJsonSafe(url: string) {
-      const u = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
-      const res = await fetch(u, { cache: "no-store" });
+      const res = await fetch(url, { cache: "no-store" });
       const text = await res.text();
 
       if (!res.ok) {
@@ -401,9 +486,31 @@ export default function EpisodePage() {
 
       setCaptionStatus("자막 불러오는 중...");
 
-      const jsonUrl = getR2CaptionUrl(episodeKey, part);
+      let signedCaptionUrl = "";
+      try {
+        const token = await getAccessToken();
+        const res = await fetch("/api/media/sign", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ workId, episodeId: episodeKey, part, type: "caption" })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          signedCaptionUrl = data.url;
+        }
+      } catch (err) {
+        console.error("자막 Signed URL 발급 실패:", err);
+      }
 
-      const r2 = await fetchJsonSafe(jsonUrl);
+      if (!signedCaptionUrl) {
+        setCaptionStatus("자막을 불러올 수 없거나 생성해야 합니다.");
+        // 실패 시 워커를 호출하도록 아래 로직으로 넘기기 위해 임시 빈 주소
+      }
+
+      const r2 = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
       if (r2.ok) {
@@ -428,7 +535,7 @@ export default function EpisodePage() {
         return;
       }
 
-      const r2b = await fetchJsonSafe(jsonUrl);
+      const r2b = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
       if (!r2b.ok) {
@@ -1506,9 +1613,10 @@ export default function EpisodePage() {
           {/* 오디오 엘리먼트 */}
           {!locked && audioSrc && (
             <audio
-              key={`${workId}-${episodeKey}-${part}-${audioIndex}`}
+              key={`${workId}-${episodeKey}-${part}`}
               ref={audioRef}
               src={audioSrc}
+              crossOrigin="anonymous"
               preload="auto"
               autoPlay
               style={{ display: "none" }}
@@ -1551,11 +1659,6 @@ export default function EpisodePage() {
                 goNextPart();
               }}
               onError={() => {
-                if (audioIndex < audioCandidates.length - 1) {
-                  setAudioIndex((prev) => prev + 1);
-                  setStatus(`오디오 형식 변경 시도 중... (${audioIndex + 2}/${audioCandidates.length})`);
-                  return;
-                }
                 setIsPlaying(false);
                 setStatus("오디오 파일을 찾지 못했습니다.");
               }}
@@ -1750,9 +1853,29 @@ export default function EpisodePage() {
           </div>
 
           {/* 맨 하단 가입 액션 */}
-          <div className="sf-bottom-bar">
-            <button className="sf-membership-btn" style={{ width: "100%" }} onClick={() => alert("멤버십 가입 페이지 준비중입니다!")}>
-              👑 멤버십 가입
+          <div className="sf-bottom-bar" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              className="sf-membership-btn"
+              style={{ flex: 1, opacity: isSubscribed ? 0.7 : 1 }}
+              onClick={() => router.push("/membership")}
+            >
+              {isSubscribed ? "👑 작가 후원 중" : "👑 멤버십 가입"}
+            </button>
+            <button
+              style={{
+                flexShrink: 0,
+                background: "transparent",
+                border: "none",
+                color: "#ffffff",
+                fontSize: "15px",
+                fontWeight: "800",
+                cursor: "pointer",
+                padding: "0 10px",
+                whiteSpace: "nowrap"
+              }}
+              onClick={handleDownload}
+            >
+              다운로드
             </button>
           </div>
 

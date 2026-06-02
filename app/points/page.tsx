@@ -23,14 +23,13 @@ function PlayIcon() {
   );
 }
 
-// 📥 다운로드 아이콘 (취소선 효과를 위해 styles 결합 예정)
-function DownloadBannedIcon() {
+// 📥 다운로드 아이콘
+function DownloadIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, color: "#5b5b66" }}>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, color: "#ffffff" }}>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
-      <line x1="3" y1="3" x2="21" y2="21" stroke="#ff2a5f" strokeWidth="2.5" />
     </svg>
   );
 }
@@ -69,6 +68,14 @@ export default function PointsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [currentPoints, setCurrentPoints] = useState(0);
+  const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const plan = localStorage.getItem("membership");
+      if (plan) setSubscribedPlan(plan);
+    } catch (e) {}
+  }, []);
 
   // 미로그인 시 리다이렉트
   useEffect(() => {
@@ -503,38 +510,38 @@ export default function PointsPage() {
         <div>
           <h2 className="section-label">코인</h2>
           <div className="coin-grid">
-            <button className="coin-card gold-shine-card" onClick={() => handlePurchaseCoin(1100, "100 + 400 코인")}>
+            <button className="coin-card gold-shine-card" onClick={() => handlePurchaseCoin(1100, "100 + 600 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">100</span>
-                <span className="coin-text-bonus">+ 400</span>
+                <span className="coin-text-bonus">+ 600</span>
               </div>
               <p className="coin-price">₩1,100</p>
             </button>
 
-            <button className="coin-card" onClick={() => handlePurchaseCoin(11000, "700 + 70 코인")}>
+            <button className="coin-card" onClick={() => handlePurchaseCoin(11000, "700 + 500 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">700</span>
-                <span className="coin-text-bonus">+ 70</span>
+                <span className="coin-text-bonus">+ 500</span>
               </div>
               <p className="coin-price">₩11,000</p>
             </button>
 
-            <button className="coin-card" onClick={() => handlePurchaseCoin(17000, "1000 + 200 코인")}>
+            <button className="coin-card" onClick={() => handlePurchaseCoin(17000, "1000 + 400 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">1000</span>
-                <span className="coin-text-bonus">+ 200</span>
+                <span className="coin-text-bonus">+ 400</span>
               </div>
               <p className="coin-price">₩17,000</p>
             </button>
 
-            <button className="coin-card" onClick={() => handlePurchaseCoin(44000, "2500 + 1000 코인")}>
+            <button className="coin-card" onClick={() => handlePurchaseCoin(44000, "2500 + 1500 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">2500</span>
-                <span className="coin-text-bonus">+ 1000</span>
+                <span className="coin-text-bonus">+ 1500</span>
               </div>
               <p className="coin-price">₩44,000</p>
             </button>
@@ -552,7 +559,9 @@ export default function PointsPage() {
               onClick={() => handleSubscribeMembership("weekly", "주간 멤버십: 작가에게 커피한잔!", 3000)}
             >
               <div className="membership-card-top">
-                <span className="membership-card-label">멤버십 (작가에게 커피한잔!)</span>
+                <span className="membership-card-label">
+                  {subscribedPlan === "weekly" ? "작가에게 커피한잔 후원중💖" : "멤버십 (작가에게 커피한잔!)"}
+                </span>
                 <div className="membership-card-price-row">
                   <span className="membership-card-price">₩3,000</span>
                   <span className="membership-card-period">/주</span>
@@ -566,8 +575,8 @@ export default function PointsPage() {
                   <PlayIcon />
                   <span>완결작 무료 청취</span>
                 </div>
-                <div className="benefit-card-item disabled">
-                  <DownloadBannedIcon />
+                <div className="benefit-card-item">
+                  <DownloadIcon />
                   <span>다운로드</span>
                 </div>
                 <div className="benefit-card-item">
@@ -589,7 +598,9 @@ export default function PointsPage() {
               <span className="membership-badge-red">기간 한정 할인</span>
 
               <div className="membership-card-top">
-                <span className="membership-card-label annual-label">멤버십 (작가에게 따뜻한 국밥 한그릇!)</span>
+                <span className="membership-card-label annual-label">
+                  {subscribedPlan === "annual" || subscribedPlan === "yearly" ? "작가에게 따뜻한 국밥 후원중💖" : "멤버십 (작가에게 따뜻한 국밥 한그릇!)"}
+                </span>
                 <div className="membership-card-price-row">
                   <span className="membership-card-price">₩99,900</span>
                   <span className="membership-card-period">/년</span>
@@ -603,8 +614,8 @@ export default function PointsPage() {
                   <PlayIcon />
                   <span>완결작 무료 청취</span>
                 </div>
-                <div className="benefit-card-item disabled">
-                  <DownloadBannedIcon />
+                <div className="benefit-card-item">
+                  <DownloadIcon />
                   <span>다운로드</span>
                 </div>
                 <div className="benefit-card-item">
@@ -630,13 +641,13 @@ export default function PointsPage() {
           <div className="info-paragraph">
             <span>1. 무림북에는 무료 및 유료 콘텐츠가 포함되어 있습니다.</span>
             <span>2. 유료 콘텐츠는 코인을 사용해 잠금 해제하거나, 멤버십 구독을 통해 시청할 수 있습니다. 단, 멤버십 전용 콘텐츠는 멤버십 구독으로만 시청가능합니다.</span>
-            <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다.</span>
-            <span>4. 멤버십 구독 기간 동안 앱 내 모든 콘텐츠를 자유롭게 시청하실 수 있습니다.</span>
+            <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다. (준비중)</span>
+            <span>4. 작가를 후원하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
             <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
             <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
             <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
             <span>8. 기타 문의 사항은 [내정보] &gt; [고객 센터]를 통해 문의해 주세요.</span>
-            <span>9. 무림북은 이미 구매 및 사용한 상품에 대해 교환 및 환불이 불가능합니다.</span>
+            <span>9. 무림북의 멤버십 가입은 문극_태양 작가에게 후원하는 것이므로 교환 및 환불이 불가능합니다. 소설을 즐겨주시고 마음으로 후원 해 주시면 감사하겠습니다.</span>
           </div>
         </div>
 

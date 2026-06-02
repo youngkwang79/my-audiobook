@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { works } from "@/app/data/works";
 import { getEpisodesByWork } from "@/app/data/episodes";
+import { supabase } from "@/lib/supabaseClient";
 
 // 뒤로가기 아이콘
 function ChevronLeft() {
@@ -42,15 +43,13 @@ function PlayIcon() {
   );
 }
 
-// 다운로드 금지 아이콘 (취소선 다운로드)
-function DownloadBannedIcon() {
+// 다운로드 아이콘
+function DownloadIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
-      {/* 대각선 취소선 */}
-      <line x1="3" y1="3" x2="21" y2="21" stroke="#ff2a5f" strokeWidth="2.5" />
     </svg>
   );
 }
@@ -104,6 +103,14 @@ export default function MembershipPage() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<"weekly" | "annual">("weekly");
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
+  const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const plan = localStorage.getItem("membership");
+      if (plan) setSubscribedPlan(plan);
+    } catch (e) {}
+  }, []);
 
   // 멤버십 전용 소설 데이터 가공
   const exclusiveNovels = works.filter(
@@ -173,9 +180,27 @@ export default function MembershipPage() {
     }
   };
 
-  const handleSubscribe = () => {
+  const handleSubscribe = async () => {
     try {
-      // TODO: 나중에 토스페이먼츠(Toss Payments) API 결제창 연동 예정
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+        return;
+      }
+
+      const res = await fetch("/api/me/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ plan: selectedPlan }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "구독 실패");
+
       localStorage.setItem("membership", selectedPlan);
       alert(
         `[가상 결제 완료]\n(추후 토스페이먼츠 결제 연동이 진행될 예정입니다)\n\n${
@@ -183,13 +208,40 @@ export default function MembershipPage() {
         } 가입이 완료되었습니다!\n이제 작가님을 후원하며 모든 에피소드를 감상하실 수 있습니다.`
       );
       router.push("/");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert("구독 처리 중 오류가 발생했습니다: " + e.message);
     }
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     alert("구매 내역 복구를 요청했습니다. 이전 구독 내역을 확인합니다.");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const res = await fetch("/api/me/restore", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem("membership", data.plan);
+        alert(data.message);
+        window.location.reload();
+      } else {
+        alert(data.message || "구독 내역이 없습니다.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("복구 중 오류가 발생했습니다.");
+    }
   };
 
 
@@ -678,8 +730,8 @@ export default function MembershipPage() {
 
         {/* 타이틀 */}
         <div className="support-info">
-          <h1 className="support-title">&lt;문극_태양작가 응원하기&gt;</h1>
-          <p className="support-subtitle">멤버십 가입으로 작가를 응원해 주세요.</p>
+          <h1 className="support-title">&lt;문극_태양작가 후원하기&gt;</h1>
+          <p className="support-subtitle">멤버십 가입으로 작가를 후원해 주세요.</p>
         </div>
 
         {/* 플랜 카드 */}
@@ -724,11 +776,11 @@ export default function MembershipPage() {
             </div>
 
             <div className="benefit-item">
-              <div className="benefit-icon-wrapper" style={{ color: "#8c8c96" }}>
-                <DownloadBannedIcon />
+              <div className="benefit-icon-wrapper">
+                <DownloadIcon />
               </div>
-              <span className="benefit-text" style={{ textDecoration: "line-through", color: "#5b5b66" }}>
-                다운로드
+              <span className="benefit-text">
+                무제한 오프라인 다운로드
               </span>
             </div>
 
@@ -835,23 +887,33 @@ export default function MembershipPage() {
           <div className="info-paragraph">
             <span>1. 무림북에는 무료 및 유료 콘텐츠가 포함되어 있습니다.</span>
             <span>2. 유료 콘텐츠는 포인트를 사용해 잠금 해제하거나, 멤버십 구독을 통해 시청할 수 있습니다. 단, 멤버십 전용 콘텐츠는 멤버십 구독으로만 시청가능합니다.</span>
-            <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다.</span>
-            <span>4. 멤버십 구독 기간 동안 앱 내 모든 콘텐츠를 자유롭게 시청하실 수 있습니다.</span>
+            <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다. (준비중)</span>
+            <span>4. 작가를 후원하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
             <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
             <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
             <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
             <span>8. 기타 문의 사항은 [내정보] &gt; [고객 센터]를 통해 문의해 주세요.</span>
-            <span>9. 무림북은 이미 구매 및 사용한 상품에 대해 교환 및 환불이 불가능합니다.</span>
+            <span>9. 무림북의 멤버십 가입은 문극_태양 작가에게 후원하는 것이므로 교환 및 환불이 불가능합니다. 소설을 즐겨주시고 마음으로 후원 해 주시면 감사하겠습니다.</span>
           </div>
         </div>
       </div>
 
       {/* 하단 고정 결제 영역 */}
       <div className="subscribe-fixed-bar">
-        <button className="subscribe-btn" onClick={handleSubscribe}>
-          지금 가입하기
+        <button
+          className="subscribe-btn"
+          style={{ opacity: subscribedPlan ? 0.7 : 1 }}
+          onClick={subscribedPlan ? undefined : handleSubscribe}
+        >
+          {subscribedPlan === "weekly"
+            ? "작가에게 커피한잔 후원중💖"
+            : subscribedPlan === "annual" || subscribedPlan === "yearly"
+            ? "작가에게 따뜻한 국밥 후원중💖"
+            : "지금 가입하기"}
         </button>
-        <span className="subscribe-caption">자동 갱신 · 언제든지 해지 가능</span>
+        <span className="subscribe-caption">
+          {subscribedPlan ? "언제든지 설정에서 해지 가능" : "자동 갱신 · 언제든지 해지 가능"}
+        </span>
       </div>
     </main>
   );
