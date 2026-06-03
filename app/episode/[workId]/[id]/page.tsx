@@ -232,6 +232,7 @@ export default function EpisodePage() {
   const isNavigatingRef = useRef(false);
   const segIndexRef = useRef(0);
   const pendingAutoplayRef = useRef(false);
+  const hasTrackedPlayRef = useRef(false);
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [unlockedUntil, setUnlockedUntilState] = useState(FREE_PARTS);
@@ -260,6 +261,34 @@ export default function EpisodePage() {
       );
     } catch (e) {}
   }, [workId, episodeKey, part]);
+
+  // 실제 오디오 청취 시작 시 1회 유니크 카운트 API 전송
+  useEffect(() => {
+    if (isPlaying && !hasTrackedPlayRef.current) {
+      hasTrackedPlayRef.current = true;
+      const trackPlay = async () => {
+        try {
+          const token = await getAccessToken();
+          await fetch("/api/media/track-play", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ workId })
+          });
+        } catch (e) {
+          console.error("Play tracking error:", e);
+        }
+      };
+      trackPlay();
+    }
+  }, [isPlaying, workId]);
+
+  // 작품이나 에피소드가 변경되면 재생 트래킹 여부 초기화
+  useEffect(() => {
+    hasTrackedPlayRef.current = false;
+  }, [workId, episodeKey]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -306,7 +335,8 @@ export default function EpisodePage() {
             setSignedAudioSrc(data.url);
           }
         } else {
-          console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다.");
+          const errData = await res.json().catch(() => ({}));
+          console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
         }
       } catch (err) {
         console.error("Signed URL 발급 실패:", err);

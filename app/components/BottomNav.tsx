@@ -38,8 +38,10 @@ export default function BottomNav() {
         .bottom-nav {
           position: fixed;
           bottom: 0;
-          left: 0;
-          right: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 100%;
+          max-width: 480px;
           height: calc(58px + env(safe-area-inset-bottom));
           padding-bottom: env(safe-area-inset-bottom);
           background: #000000;

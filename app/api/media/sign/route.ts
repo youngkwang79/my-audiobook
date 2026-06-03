@@ -17,24 +17,6 @@ const AUDIO_EXTENSIONS = ["MP3", "mp3", "WAV", "wav", "M4A", "m4a"];
 
 export async function POST(req: Request) {
   try {
-    const authHeader = req.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length)
-      : null;
-
-    if (!token) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-
     const { workId, episodeId, part, type } = await req.json();
 
     if (!workId || !episodeId || !part) {
@@ -51,6 +33,25 @@ export async function POST(req: Request) {
     let isAuthorized = isFree;
 
     if (!isAuthorized) {
+      // 무료가 아니면 인증 및 권한 확인 필요
+      const authHeader = req.headers.get("authorization") || "";
+      const token = authHeader.startsWith("Bearer ")
+        ? authHeader.slice("Bearer ".length)
+        : null;
+
+      if (!token || token === "null") {
+        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (userError || !user) {
+        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      }
+
       // 멤버십 확인
       const { data: sub } = await supabaseAdmin
         .from("subscriptions")

@@ -91,6 +91,7 @@ export default function Home() {
   // ✅ 알림 설정 로컬스토리지 연동
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
   const [shouldPulse, setShouldPulse] = useState(false);
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     try {
@@ -101,6 +102,30 @@ export default function Home() {
     } catch (e) {
       console.error(e);
     }
+  }, []);
+
+  // DB의 유니크 재생 횟수 불러오기
+  useEffect(() => {
+    const fetchPlayCounts = async () => {
+      try {
+        const res = await fetch("/api/media/play-counts");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.counts) {
+            setPlayCounts(data.counts);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load play counts:", err);
+      }
+    };
+    fetchPlayCounts();
+
+    // 페이지 포커스 시점(뒤로가기 등)에 최신 카운트 갱신
+    window.addEventListener("focus", fetchPlayCounts);
+    return () => {
+      window.removeEventListener("focus", fetchPlayCounts);
+    };
   }, []);
 
   // highlightComingSoon 쿼리 파라미터 처리 (스크롤 및 하이라이트)
@@ -203,7 +228,11 @@ export default function Home() {
 
   // ✅ 검색 및 탭 필터링/정렬 로직
   const filteredWorks = useMemo(() => {
-    let result = works;
+    // 실시간 DB 재생 횟수를 정적 데이터와 병합
+    let result = works.map((w) => ({
+      ...w,
+      views: String(playCounts[w.id] ?? w.views ?? "0")
+    }));
 
     // 1. 검색어 필터링
     if (searchQuery.trim()) {
@@ -232,7 +261,7 @@ export default function Home() {
     }
 
     return result;
-  }, [searchQuery, activeTab]);
+  }, [searchQuery, activeTab, playCounts]);
 
   // 메인 그리드용 작품 (준비중인 작품 제외)
   const mainGridWorks = useMemo(() => {
@@ -241,8 +270,13 @@ export default function Home() {
 
   // 공개 예정 섹션용 작품 (준비중인 작품만)
   const comingSoonWorks = useMemo(() => {
-    return works.filter((w) => w.status === "준비중");
-  }, []);
+    return works
+      .filter((w) => w.status === "준비중")
+      .map((w) => ({
+        ...w,
+        views: String(playCounts[w.id] ?? w.views ?? "0")
+      }));
+  }, [playCounts]);
 
   return (
     <main
@@ -288,9 +322,6 @@ export default function Home() {
           }
           .search-input-wrapper {
             max-width: 320px;
-          }
-          .bottom-nav {
-            display: none !important;
           }
         }
 
