@@ -61,21 +61,85 @@ async function getAccessToken() {
 
 export default function MePage() {
   const router = useRouter();
-  const { user, loading, signOut } = useAuth();
+  const { user, session, loading, signOut } = useAuth();
   const [currentPoints, setCurrentPoints] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
+  const [remainingMissions, setRemainingMissions] = useState<number | null>(null);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [newNickname, setNewNickname] = useState("");
+  const [newAllowNotifications, setNewAllowNotifications] = useState(false);
+  const [modalBusy, setModalBusy] = useState(false);
+
+  useEffect(() => {
+    if (user && !user.user_metadata?.nickname) {
+      setShowNicknameModal(true);
+      const socialName = user.user_metadata?.full_name || user.user_metadata?.name || "";
+      setNewNickname(socialName);
+    } else {
+      setShowNicknameModal(false);
+    }
+  }, [user]);
+
+  // 남은 미션 개수 불러오기
+  const loadRemainingMissions = async () => {
+    try {
+      const token = session?.access_token;
+      if (!token) {
+        setRemainingMissions(null);
+        return;
+      }
+
+      const res = await fetch("/api/me/tasks", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.completedTasks) {
+        const completed: string[] = data.completedTasks;
+        
+        // 오늘 날짜 포맷
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const todayStr = `${year}-${month}-${day}`;
+
+        // 대상 미션들
+        const missions = [
+          "checkin_" + todayStr,
+          "youtube",
+          "watch5_" + todayStr,
+          "watch10_" + todayStr,
+          "watch15_" + todayStr,
+          "share_" + todayStr
+        ];
+
+        const incompleteCount = missions.filter(m => !completed.includes(m)).length;
+        setRemainingMissions(incompleteCount);
+      } else {
+        setRemainingMissions(null);
+      }
+    } catch (e) {
+      console.error("미션 개수 로드 에러:", e);
+      setRemainingMissions(null);
+    }
+  };
 
   // 지갑 잔액 불러오기
   const loadWallet = async () => {
     try {
-      const token = await getAccessToken();
+      const token = session?.access_token;
       if (!token) {
         setCurrentPoints(null);
         return;
       }
 
-      const res = await fetch("/api/me/wallet", {
+      const refCode = localStorage.getItem("referral_code");
+      const url = refCode ? `/api/me/wallet?ref=${refCode}` : `/api/me/wallet`;
+
+      const res = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -86,7 +150,12 @@ export default function MePage() {
       const data = await res.json().catch(() => null);
 
       if (res.ok && data) {
-        setCurrentPoints(Number(data.points ?? 0));
+        setCurrentPoints(Number(data.points ?? 0) + Number(data.reward_points ?? 0));
+        if (refCode) {
+          localStorage.removeItem("referral_code");
+        }
+      } else {
+        setCurrentPoints(null);
       }
     } catch (error) {
       console.error("지갑 데이터 불러오기 에러:", error);
@@ -95,12 +164,28 @@ export default function MePage() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && session) {
       loadWallet();
+      loadRemainingMissions();
     } else {
       setCurrentPoints(null);
+      setRemainingMissions(null);
     }
-  }, [user]);
+  }, [user, session]);
+
+  // 에피소드 오픈 등으로 코인 변동 시 지갑 잔액 및 미션 개수 갱신 리스너
+  useEffect(() => {
+    const handleWalletUpdate = () => {
+      if (user && session) {
+        loadWallet();
+        loadRemainingMissions();
+      }
+    };
+    window.addEventListener("wallet-updated", handleWalletUpdate);
+    return () => {
+      window.removeEventListener("wallet-updated", handleWalletUpdate);
+    };
+  }, [user, session]);
 
   useEffect(() => {
     try {
@@ -152,9 +237,9 @@ export default function MePage() {
   }
 
   // 화면 렌더링에 사용할 유저 정보
-  const displayName = user?.email ? user.email.split("@")[0] : "고영광";
+  const displayName = user?.user_metadata?.nickname || (user?.email ? user.email.split("@")[0] : "고영광");
   const displayId = user?.id ? user.id.slice(0, 8) : "333418883";
-  const displayCoins = currentPoints !== null ? currentPoints : 884;
+  const displayCoins = currentPoints !== null ? currentPoints : 0;
 
   return (
     <main className="me-main-bg">
@@ -561,7 +646,9 @@ export default function MePage() {
           <button className="menu-item" onClick={() => router.push("/checkin")}>
             <span className="menu-item-left">출석체크 / 무료 코인 받기</span>
             <div className="menu-item-right">
-              <span className="menu-badge">+10</span>
+              {remainingMissions !== null && remainingMissions > 0 && (
+                <span className="menu-badge">+{remainingMissions}</span>
+              )}
               <span className="menu-arrow"><ChevronRightIcon /></span>
             </div>
           </button>
@@ -645,6 +732,181 @@ export default function MePage() {
           </button>
         </div>
       </div>
+
+      {/* 닉네임 설정 모달 (소셜 가입자 및 미설정자용) */}
+      {showNicknameModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999999,
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              background: "#16161e",
+              border: "1px solid rgba(255, 215, 120, 0.25)",
+              borderRadius: 20,
+              padding: 24,
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: 19,
+                fontWeight: 900,
+                color: "#ffffff",
+                textAlign: "center",
+              }}
+            >
+              닉네임 설정
+            </h3>
+            
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "rgba(255, 255, 255, 0.6)",
+                textAlign: "center",
+                lineHeight: 1.5,
+              }}
+            >
+              댓글과 프로필에서 이메일 대신 노출될<br />닉네임을 설정해 주세요.
+            </p>
+
+            <input
+              value={newNickname}
+              onChange={(e) => setNewNickname(e.target.value)}
+              placeholder="닉네임 (2자 이상)"
+              type="text"
+              maxLength={20}
+              disabled={modalBusy}
+              style={{
+                padding: "14px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                outline: "none",
+                fontSize: 15,
+              }}
+            />
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.02)",
+                cursor: "pointer",
+                fontSize: "13.5px",
+                color: "rgba(255,255,255,0.85)",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={newAllowNotifications}
+                onChange={(e) => setNewAllowNotifications(e.target.checked)}
+                disabled={modalBusy}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  accentColor: "#E6D3A3",
+                  cursor: "pointer",
+                }}
+              />
+              <span>신규 업데이트 알림 받기 (모바일 푸시)</span>
+            </label>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              <button
+                onClick={async () => {
+                  if (newNickname.trim().length < 2) {
+                    alert("닉네임은 2자 이상 입력해 주세요.");
+                    return;
+                  }
+                  setModalBusy(true);
+                  try {
+                    const { error } = await supabase.auth.updateUser({
+                      data: {
+                        nickname: newNickname.trim(),
+                        allow_notifications: newAllowNotifications,
+                      },
+                    });
+                    if (error) throw error;
+                    alert("설정이 저장되었습니다!");
+                    setShowNicknameModal(false);
+                    window.location.reload();
+                  } catch (err: any) {
+                    alert(`저장 실패: ${err.message}`);
+                  } finally {
+                    setModalBusy(false);
+                  }
+                }}
+                disabled={modalBusy || newNickname.trim().length < 2}
+                style={{
+                  padding: "14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%)",
+                  color: "#2b1d00",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  cursor: modalBusy || newNickname.trim().length < 2 ? "not-allowed" : "pointer",
+                  opacity: modalBusy || newNickname.trim().length < 2 ? 0.6 : 1,
+                }}
+              >
+                {modalBusy ? "저장 중..." : "저장 완료"}
+              </button>
+
+              <button
+                onClick={() => {
+                  const randomNum = Math.floor(1000 + Math.random() * 9000);
+                  const fallbackNick = `독자_${randomNum}`;
+                  supabase.auth.updateUser({
+                    data: {
+                      nickname: fallbackNick,
+                      allow_notifications: false
+                    }
+                  }).then(() => {
+                    setShowNicknameModal(false);
+                    window.location.reload();
+                  });
+                }}
+                disabled={modalBusy}
+                style={{
+                  padding: "12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "rgba(255, 255, 255, 0.4)",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                나중에 하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 하단 내비게이션 */}
       <BottomNav />

@@ -12,6 +12,14 @@ async function getAccessToken() {
   return session?.access_token ?? null;
 }
 
+function getTodayDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const ATTENDANCE_REWARDS = [
   { day: "오늘", coin: 10 },
   { day: "2일차", coin: 20 },
@@ -133,12 +141,21 @@ export default function CheckinPage() {
       try {
         const token = await getAccessToken();
         if (!token) return;
-        const res = await fetch("/api/me/wallet", {
+
+        const refCode = localStorage.getItem("referral_code");
+        const url = refCode ? `/api/me/wallet?ref=${refCode}` : `/api/me/wallet`;
+
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
         const data = await res.json().catch(() => null);
-        if (res.ok && data) setCoins(Number(data.reward_points ?? 0));
+        if (res.ok && data) {
+          setCoins(Number(data.reward_points ?? 0));
+          if (refCode) {
+            localStorage.removeItem("referral_code");
+          }
+        }
       } catch (e) { /* ignore */ }
     };
     if (user) loadWallet();
@@ -162,8 +179,20 @@ export default function CheckinPage() {
         const data = await res.json().catch(() => null);
         if (res.ok && data?.completedTasks) {
           const doneMap: Record<string, boolean> = {};
-          (data.completedTasks as string[]).forEach((id) => { doneMap[id] = true; });
+          const todayStr = getTodayDateString();
+          (data.completedTasks as string[]).forEach((id) => {
+            doneMap[id] = true;
+            if (id.endsWith("_" + todayStr)) {
+              const baseId = id.substring(0, id.length - todayStr.length - 1);
+              doneMap[baseId] = true;
+            }
+          });
           setTaskDone(doneMap);
+
+          // 출석 체크 완료 여부 동기화
+          if (doneMap["checkin_" + todayStr]) {
+            setCheckedIn(true);
+          }
         }
       } catch (e) {
         // 네트워크 오류 시 localStorage 폴백
@@ -180,34 +209,119 @@ export default function CheckinPage() {
       const saved = localStorage.getItem("checkin_data");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const today = new Date().toDateString();
-        if (parsed.lastDate === today) {
+        const todayStr = new Date().toDateString();
+        
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+
+        if (parsed.lastDate === todayStr) {
           setCheckedIn(true);
           setStreak(parsed.streak ?? 0);
-        } else {
+        } else if (parsed.lastDate === yesterdayStr) {
           setStreak(parsed.streak ?? 0);
+        } else {
+          // 출석이 끊겼으므로 streak 초기화 (다음 출석시 1일차)
+          setStreak(0);
         }
       }
     } catch (e) { /* ignore */ }
   }, []);
 
-  const handleCheckin = () => {
+  const handleCheckin = async () => {
     if (checkedIn) {
       alert("오늘 이미 출석체크를 완료했습니다!");
       return;
     }
+    const todayStr = getTodayDateString();
     const newStreak = streak + 1;
     const reward = ATTENDANCE_REWARDS[(newStreak - 1) % 7].coin;
-    setStreak(newStreak);
-    setCheckedIn(true);
-    setCoins((prev) => prev + reward);
+
     try {
-      localStorage.setItem("checkin_data", JSON.stringify({
-        lastDate: new Date().toDateString(),
-        streak: newStreak,
-      }));
-    } catch (e) { /* ignore */ }
-    alert(`출석 완료! +${reward} 코인 적립되었습니다 🎉`);
+      const token = await getAccessToken();
+      if (token) {
+        // 로그인 상태: Supabase API로 저장
+        const res = await fetch("/api/me/tasks", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ taskId: "checkin_" + todayStr, coin: reward }),
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.status === 409) {
+          alert("오늘 이미 출석체크를 완료했습니다!");
+          setCheckedIn(true);
+          return;
+        }
+        if (!res.ok) throw new Error(data?.error ?? "서버 오류");
+        if (data?.newRewardPoints !== undefined) {
+          setCoins(Number(data.newRewardPoints));
+        } else {
+          setCoins((prev) => prev + reward);
+        }
+      } else {
+        // 비로그인 상태: 로컬에서만 지급
+        setCoins((prev) => prev + reward);
+      }
+
+      setStreak(newStreak);
+      setCheckedIn(true);
+      try {
+        localStorage.setItem("checkin_data", JSON.stringify({
+          lastDate: new Date().toDateString(),
+          streak: newStreak,
+        }));
+      } catch (e) { /* ignore */ }
+
+      // 지갑 잔액 변경 브로드캐스트
+      window.dispatchEvent(new Event("wallet-updated"));
+      alert(`출석 완료! +${reward} 코인 적립되었습니다 🎉`);
+    } catch (e: any) {
+      alert(`출석체크 중 오류가 발생했습니다: ${e?.message ?? "잠시 후 다시 시도해주세요."}`);
+    }
+  };
+
+  const claimShareReward = async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        setCoins((prev) => prev + 30);
+        setTaskDone((prev) => ({ ...prev, share: true }));
+        alert("친구에게 공유하기 완료! +30 코인이 가상 적립되었습니다.");
+        return;
+      }
+
+      const todayStr = getTodayDateString();
+      const res = await fetch("/api/me/tasks", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ taskId: "share", coin: 30, daily: true, dateStr: todayStr }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 409) {
+        alert("오늘 이미 공유 미션을 완료했습니다.");
+        setTaskDone((prev) => ({ ...prev, share: true }));
+        return;
+      }
+      if (!res.ok) throw new Error(data?.error ?? "서버 오류");
+      if (data?.newRewardPoints !== undefined) {
+        setCoins(Number(data.newRewardPoints));
+      } else {
+        setCoins((prev) => prev + 30);
+      }
+      setTaskDone((prev) => ({ ...prev, share: true }));
+      window.dispatchEvent(new Event("wallet-updated"));
+      alert("친구에게 공유하기 미션 완료! +30 코인이 적립되었습니다 🎉");
+    } catch (e: any) {
+      alert(`오류: ${e?.message ?? "잠시 후 다시 시도해주세요."}`);
+    }
   };
 
   const handleTask = (taskId: string, label: string) => {
@@ -217,10 +331,27 @@ export default function CheckinPage() {
       return;
     }
     if (label === "초대하기") {
+      const userRefCode = user?.id ? user.id.slice(0, 8) : "";
+      const inviteUrl = userRefCode
+        ? `${window.location.origin}/login?ref=${userRefCode}`
+        : `${window.location.origin}/login`;
+
       if (navigator.share) {
-        navigator.share({ title: "무림북", url: window.location.origin });
+        navigator.share({
+          title: "무림북 추천 초대",
+          text: "무림북에 오셔서 출석하고 오디오북 코인 받아 가세요!",
+          url: inviteUrl,
+        }).catch(() => {
+          navigator.clipboard.writeText(inviteUrl);
+        });
       } else {
-        alert("친구 초대 링크가 복사되었습니다!");
+        navigator.clipboard.writeText(inviteUrl)
+          .then(() => {
+            alert(`친구 초대 링크가 클립보드에 복사되었습니다!\n친구가 이 링크로 가입하면 500코인이 지급됩니다.\n링크: ${inviteUrl}`);
+          })
+          .catch(() => {
+            alert("초대 링크 복사에 실패했습니다.");
+          });
       }
       return;
     }
@@ -232,10 +363,26 @@ export default function CheckinPage() {
       return;
     }
     if (label === "공유하기") {
+      const shareUrl = window.location.origin;
       if (navigator.share) {
-        navigator.share({ title: "무림북", url: window.location.origin });
+        navigator.share({
+          title: "무림북",
+          text: "고품격 오디오 소설 무림북!",
+          url: shareUrl,
+        })
+        .then(() => {
+          claimShareReward();
+        })
+        .catch(() => {});
       } else {
-        alert("공유 링크가 복사되었습니다!");
+        navigator.clipboard.writeText(shareUrl)
+          .then(() => {
+            alert("공유 링크가 클립보드에 복사되었습니다!");
+            claimShareReward();
+          })
+          .catch(() => {
+            alert("공유 링크 복사에 실패했습니다.");
+          });
       }
       return;
     }
@@ -285,6 +432,8 @@ export default function CheckinPage() {
       }
 
       setTaskDone((prev) => ({ ...prev, youtube: true }));
+      // 지갑 잔액 및 미션 상태 브로드캐스트
+      window.dispatchEvent(new Event("wallet-updated"));
       alert(`구독 감사합니다! +${YOUTUBE_COIN} 코인이 적립되었습니다 🎉`);
     } catch (e: any) {
       alert(`오류가 발생했습니다: ${e?.message ?? "잠시 후 다시 시도해주세요."}`);
@@ -311,13 +460,14 @@ export default function CheckinPage() {
     try {
       const token = await getAccessToken();
       if (token) {
+        const todayStr = getTodayDateString();
         const res = await fetch("/api/me/tasks", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ taskId, coin, daily: true }),
+          body: JSON.stringify({ taskId, coin, daily: true, dateStr: todayStr }),
         });
         const data = await res.json().catch(() => null);
         if (res.status === 409) {
@@ -335,6 +485,8 @@ export default function CheckinPage() {
         setCoins((prev) => prev + coin);
       }
       setTaskDone((prev) => ({ ...prev, [taskId]: true }));
+      // 지갑 잔액 및 미션 상태 브로드캐스트
+      window.dispatchEvent(new Event("wallet-updated"));
       alert(`+${coin} 코인이 적립되었습니다! 🎉`);
     } catch (e: any) {
       alert(`오류: ${e?.message ?? "잠시 후 다시 시도해주세요."}`);
@@ -471,14 +623,19 @@ export default function CheckinPage() {
           position: absolute;
           top: 20px;
           right: 104px;
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255, 255, 255, 0.15);
+          border: 1.5px solid rgba(255, 255, 255, 0.35);
           border-radius: 20px;
-          color: rgba(255,255,255,0.6);
-          font-size: 11px;
-          font-weight: 700;
-          padding: 4px 10px;
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 800;
+          padding: 6px 14px;
           cursor: pointer;
+          transition: all 0.2s;
+        }
+        .ci-rules-btn:hover {
+          background: rgba(255, 255, 255, 0.25);
+          transform: scale(1.05);
         }
 
         .ci-stars {
@@ -1036,7 +1193,7 @@ export default function CheckinPage() {
         {/* 코인 히어로 */}
             <div className="ci-hero">
               <p className="ci-hero-amount">{coins.toLocaleString()}</p>
-              <p className="ci-hero-label">내 코인</p>
+              <p className="ci-hero-label">리워드 코인</p>
               <button className="ci-rules-btn" onClick={() => setRulesModalOpen(true)}>코인 받기 규칙</button>
               <div className="ci-hero-coin-img">🪙</div>
               <span className="ci-stars">✦ ✦</span>

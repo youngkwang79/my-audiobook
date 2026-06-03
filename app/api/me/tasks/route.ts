@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
+import { syncAndGetWallet } from "@/lib/server/walletHelper";
 
 /**
  * GET /api/me/tasks
@@ -41,11 +42,26 @@ export async function POST(req: Request) {
     if (authErr || !user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => null);
-    const taskId: string = body?.taskId;
+    let taskId: string = body?.taskId;
     const coin: number = Number(body?.coin ?? 0);
+    const daily: boolean = !!body?.daily;
 
     if (!taskId) return NextResponse.json({ error: "taskId required" }, { status: 400 });
     if (!Number.isFinite(coin) || coin < 0) return NextResponse.json({ error: "invalid coin" }, { status: 400 });
+
+    if (daily) {
+      let dateStr = body?.dateStr;
+      if (!dateStr) {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        dateStr = `${year}-${month}-${day}`;
+      }
+      if (!taskId.includes(dateStr)) {
+        taskId = `${taskId}_${dateStr}`;
+      }
+    }
 
     // 이미 완료한 태스크인지 확인 (1회성 방지)
     const { data: existing } = await supabaseAdmin
@@ -68,18 +84,55 @@ export async function POST(req: Request) {
 
     // 코인 지급 (wallets upsert)
     if (coin > 0) {
-      const { data: wallet } = await supabaseAdmin
-        .from("wallets")
-        .select("reward_points")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      let wallet;
+      try {
+        wallet = await syncAndGetWallet(user.id, user.created_at);
+      } catch (e) {
+        console.error("wallet read error in tasks:", e);
+        return NextResponse.json({ error: "wallet_read_failed" }, { status: 500 });
+      }
 
-      const current = Number(wallet?.reward_points ?? 0);
+      const current = wallet.reward_points;
       const { error: walletErr } = await supabaseAdmin
         .from("wallets")
-        .upsert({ user_id: user.id, reward_points: current + coin }, { onConflict: "user_id" });
+        .upsert(
+          {
+            user_id: user.id,
+            points: wallet.points,
+            reward_points: current + coin,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
 
       if (walletErr) return NextResponse.json({ error: walletErr.message }, { status: 500 });
+
+      // 거래 내역 기록
+      let desc = `미션 보상 (${taskId})`;
+      if (taskId.startsWith("checkin_")) {
+        desc = "출석체크 보상";
+      } else if (taskId === "youtube") {
+        desc = "유튜브 구독 보상";
+      } else if (taskId === "invite") {
+        desc = "친구 초대 보상";
+      } else if (taskId === "share") {
+        desc = "친구 공유 보상";
+      } else if (taskId === "watch5") {
+        desc = "5분 청취 미션 보상";
+      } else if (taskId === "watch10") {
+        desc = "10분 청취 미션 보상";
+      } else if (taskId === "watch15") {
+        desc = "15분 청취 미션 보상";
+      }
+
+      await supabaseAdmin
+        .from("point_transactions")
+        .insert({
+          user_id: user.id,
+          amount: coin,
+          transaction_type: "reward",
+          description: desc,
+        });
 
       return NextResponse.json({ ok: true, newRewardPoints: current + coin });
     }

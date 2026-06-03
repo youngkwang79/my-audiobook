@@ -211,45 +211,89 @@ export default function WorkDetailPage() {
             const href = `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`;
 
             return (
-              <button
+              <div
                 key={episodeNo}
                 onClick={() => goEpisode(href)}
                 style={{
-                  textDecoration: "none",
-                  color: "inherit",
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 16,
+                  padding: 16,
+                  minHeight: 96,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  gap: 8,
                   textAlign: "left",
                   cursor: "pointer",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
                 }}
               >
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 16,
-                    padding: 16,
-                    minHeight: 96,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <div style={{ fontSize: 13, opacity: 0.7 }}>
-                    {episodeNo}화 {ep.parts > 1 ? `· ${ep.parts}편 구성` : ""}
-                  </div>
-
-                  <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.35 }}>
-                    {ep.title}
-                  </div>
-
-                  <div style={{ fontSize: 12, opacity: 0.78 }}>
-                    {isLocked ? "잠금" : "열림"}
-                  </div>
+                <div style={{ fontSize: 13, opacity: 0.7 }}>
+                  {episodeNo}화 {ep.parts > 1 ? `· ${ep.parts}편 구성` : ""}
                 </div>
-              </button>
+
+                <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.35 }}>
+                  {ep.title}
+                </div>
+
+                {ep.parts > 1 && (
+                  <div 
+                    style={{ 
+                      display: "flex", 
+                      gap: 6, 
+                      flexWrap: "wrap", 
+                      marginTop: 4, 
+                      marginBottom: 4 
+                    }}
+                  >
+                    {Array.from({ length: ep.parts }).map((_, idx) => {
+                      const partNum = idx + 1;
+                      return (
+                        <span
+                          key={partNum}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goEpisode(`/episode/${work.id}/${episodeNo}?part=${partNum}&autoplay=1`);
+                          }}
+                          style={{
+                            background: "rgba(255, 255, 255, 0.12)",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            borderRadius: 8,
+                            padding: "4px 10px",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            transition: "background 0.15s, border-color 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.style.background = "rgba(255, 255, 255, 0.22)";
+                            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.style.background = "rgba(255, 255, 255, 0.12)";
+                            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.15)";
+                          }}
+                        >
+                          {partNum}편
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div style={{ fontSize: 12, opacity: 0.78, display: "flex", alignItems: "center", gap: 4 }}>
+                  {isLocked ? "🔒 잠금" : "🔓 열림"}
+                </div>
+              </div>
             );
           })}
         </div>

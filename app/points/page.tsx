@@ -100,7 +100,7 @@ export default function PointsPage() {
 
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
-        setCurrentPoints(Number(data.points ?? 0));
+        setCurrentPoints(Number(data.points ?? 0) + Number(data.reward_points ?? 0));
       }
     } catch (e) {
       console.error("지갑 데이터 로딩 에러:", e);
@@ -145,8 +145,8 @@ export default function PointsPage() {
       const data = await res.json().catch(() => null);
 
       if (res.ok && data?.ok) {
-        alert(`충전이 완료되었습니다!\n현재 보유 포인트: ${Number(data.points).toLocaleString("ko-KR")}P`);
-        setCurrentPoints(Number(data.points));
+        await loadWallet();
+        alert("충전이 완료되었습니다!");
       } else {
         alert(`충전 실패: ${data?.error || "알 수 없는 오류"}`);
       }

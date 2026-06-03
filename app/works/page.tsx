@@ -21,6 +21,7 @@ export default function WorksPage() {
   const [activeTab, setActiveTab] = useState("시청 중");
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
   const [downloads, setDownloads] = useState<any[]>([]);
+  const [watchProgress, setWatchProgress] = useState<Record<string, string>>({});
   const tabs = ["시청 중", "시청 기록", "다운로드", "알림 설정 완료"];
 
   useEffect(() => {
@@ -30,6 +31,20 @@ export default function WorksPage() {
       setActiveTab(tabParam);
     }
   }, []);
+
+  // 시청 상태 및 진행 데이터 로드
+  useEffect(() => {
+    try {
+      const progressRaw = localStorage.getItem("workProgress");
+      if (progressRaw) {
+        setWatchProgress(JSON.parse(progressRaw));
+      } else {
+        setWatchProgress({});
+      }
+    } catch (e) {
+      console.error("시청 기록 로드 실패:", e);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === "다운로드") {
@@ -71,12 +86,22 @@ export default function WorksPage() {
     }
   }, [activeTab]);
 
-  // 알림 설정된 작품들만 필터링
+  // 각 탭에 맞게 필터링된 작품 목록 가져오기
   const getFilteredWorks = () => {
     if (activeTab === "알림 설정 완료") {
       return works.filter((w) => alarmSettings[w.id] === true);
     }
-    // 시청 중, 시청 기록은 기존처럼 전체 작품 렌더링
+    if (activeTab === "시청 중") {
+      return works.filter((w) => {
+        const watchedEp = watchProgress[w.id];
+        if (!watchedEp) return false;
+        const watchedEpNum = parseInt(watchedEp.split("-")[0], 10) || 0;
+        return watchedEpNum < w.totalEpisodes;
+      });
+    }
+    if (activeTab === "시청 기록") {
+      return works.filter((w) => !!watchProgress[w.id]);
+    }
     return works;
   };
 
@@ -248,6 +273,28 @@ export default function WorksPage() {
               ))}
             </div>
           )
+        ) : filteredWorksList.length === 0 ? (
+          <div className="lib-empty-state">
+            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" style={{ opacity: 0.5, marginBottom: 20 }}>
+              <circle cx="65" cy="35" r="15" fill="rgba(255, 255, 255, 0.1)" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="2" />
+              <polygon points="61,29 61,41 71,35" fill="rgba(255, 255, 255, 0.4)" />
+              
+              <rect x="20" y="45" width="60" height="35" rx="6" fill="rgba(255, 255, 255, 0.05)" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="3" />
+              <path d="M20 52 H80" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="2" />
+              <rect x="42" y="60" width="16" height="6" rx="3" fill="rgba(0, 0, 0, 0.3)" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1.5" />
+              
+              <path d="M38 48 L40 53 L45 54 L41 57 L42 62 L38 59 L34 62 L35 57 L31 54 L36 53 Z" fill="rgba(255, 255, 255, 0.25)" />
+              
+              <path d="M15 25 L17 25 M16 24 L16 26" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="1.5" />
+              <path d="M85 60 L87 60 M86 59 L86 61" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="1.5" />
+            </svg>
+            <div className="lib-empty-text">
+              {activeTab === "시청 중" ? "현재 시청 중인 작품이 없습니다." : "시청 기록이 없습니다."}
+            </div>
+            <button className="lib-empty-btn" onClick={() => router.push("/")}>
+              인기 작품 시청하기
+            </button>
+          </div>
         ) : (
           filteredWorksList.map((work) => (
             <LibraryItemCard key={work.id} work={work} />

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
+import { syncAndGetWallet } from "@/lib/server/walletHelper";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -30,13 +31,10 @@ export async function GET(req: Request) {
 
   const user_id = user.id;
 
-  const { data: wallet, error: walletError } = await supabaseAdmin
-    .from("wallets")
-    .select("points")
-    .eq("user_id", user_id)
-    .maybeSingle();
-
-  if (walletError) {
+  let wallet;
+  try {
+    wallet = await syncAndGetWallet(user_id, user.created_at);
+  } catch (e) {
     return NextResponse.json({ error: "wallet_query_failed" }, { status: 500 });
   }
 
@@ -60,8 +58,10 @@ export async function GET(req: Request) {
 
   const is_subscribed = sub ? new Date(sub.expires_at) > new Date() : false;
 
+  const totalPoints = Number(wallet?.points ?? 0) + Number(wallet?.reward_points ?? 0);
+
   return NextResponse.json({
-    points: wallet?.points ?? 0,
+    points: totalPoints,
     is_subscribed,
     unlocked_until_part: ent?.unlocked_until_part ?? null,
   });

@@ -24,6 +24,15 @@ function getUserClient(accessToken: string) {
   );
 }
 
+function maskEmail(email?: string | null) {
+  if (!email) return "익명";
+  if (!email.includes("@")) return email; // Already a nickname or masked email
+  const [local, domain] = email.split("@");
+  const maskedLocal = local.length > 3 ? local.slice(0, 3) + "***" : local + "***";
+  const maskedDomain = domain.length > 3 ? domain.slice(0, 3) + "***" : domain + "***";
+  return `${maskedLocal}@${maskedDomain}`;
+}
+
 function isAdminEmail(email?: string | null) {
   if (!email) return false;
   return ADMIN_EMAILS.includes(email);
@@ -87,8 +96,13 @@ export async function GET(req: Request) {
       );
     }
 
+    const processedComments = (data ?? []).map((c: any) => ({
+      ...c,
+      user_email: maskEmail(c.user_email),
+    }));
+
     return NextResponse.json({
-      comments: data ?? [],
+      comments: processedComments,
       isAdmin: auth.isAdmin,
     });
   } catch (error) {
@@ -147,6 +161,11 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
+    const displayName =
+      user.user_metadata?.nickname ||
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      maskEmail(user.email);
 
     const { error: insertError } = await supabaseAdmin
       .from("episode_comments")
@@ -154,7 +173,7 @@ export async function POST(req: Request) {
         work_id,
         episode_id,
         user_id: user.id,
-        user_email: user.email ?? null,
+        user_email: displayName,
         content,
         created_at: now,
         updated_at: now,

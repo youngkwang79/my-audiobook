@@ -221,6 +221,8 @@ export default function EpisodePage() {
   const [resumeTime, setResumeTime] = useState(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
+  const [flashType, setFlashType] = useState<"play" | "pause">("play");
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [showPlayerUi, setShowPlayerUi] = useState(true);
@@ -731,10 +733,16 @@ export default function EpisodePage() {
       if (a.paused) {
         await a.play();
         setIsPlaying(true);
+        setFlashType("play");
       } else {
         a.pause();
         setIsPlaying(false);
+        setFlashType("pause");
       }
+      setIsFlashing(true);
+      setTimeout(() => {
+        setIsFlashing(false);
+      }, 800);
     } catch { }
 
     resetHideTimer();
@@ -1597,10 +1605,63 @@ export default function EpisodePage() {
           font-weight: 900;
           font-size: 15px;
         }
-        .sf-comments-body {
+         .sf-comments-body {
           flex: 1;
           overflow-y: auto;
           padding: 12px;
+        }
+
+        /* 중앙 재생/일시정지 버튼 오버레이 */
+        .sf-center-play-overlay {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 8;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.25s, transform 0.25s;
+        }
+        .sf-center-play-overlay.visible {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .sf-center-play-overlay.flash {
+          animation: iconFlash 0.8s ease-out forwards;
+        }
+        .sf-center-play-btn {
+          width: 76px;
+          height: 76px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.6);
+          border: 1.5px solid rgba(255, 255, 255, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+          cursor: pointer;
+          backdrop-filter: blur(4px);
+        }
+        @keyframes iconFlash {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+          }
+          15% {
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(1.1);
+          }
+          40% {
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.2);
+          }
         }
       `}</style>
 
@@ -1683,6 +1744,32 @@ export default function EpisodePage() {
               </button>
             </div>
           </div>
+
+          {/* 중앙 재생/일시정지 버튼 오버레이 */}
+          {!locked && (
+            <div 
+              className={`sf-center-play-overlay ${!isPlaying && !isFlashing ? "visible" : ""} ${isFlashing ? "flash" : ""}`}
+              onClick={togglePlayPause}
+            >
+              <div className="sf-center-play-btn">
+                {isFlashing ? (
+                  flashType === "play" ? (
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff" style={{ marginLeft: "4px" }}>
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  ) : (
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff">
+                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                    </svg>
+                  )
+                ) : (
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff" style={{ marginLeft: "4px" }}>
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 중앙 자막 영역 */}
           <div className="sf-caption-container" onClick={togglePlayPause}>
@@ -1942,6 +2029,52 @@ export default function EpisodePage() {
                             </div>
                           );
                         })}
+                      </div>
+                    )}
+
+                    {/* 현재 재생중인 화의 파트(편) 선택 */}
+                    {TOTAL_PARTS > 1 && (
+                      <div 
+                        style={{ 
+                          margin: "0 0 16px", 
+                          padding: "12px", 
+                          background: "rgba(255,255,255,0.04)", 
+                          borderRadius: "12px",
+                          textAlign: "left"
+                        }}
+                      >
+                        <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px", color: "rgba(255,255,255,0.6)" }}>
+                          {episodeKey}화의 다른 편 선택:
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                          {Array.from({ length: TOTAL_PARTS }).map((_, idx) => {
+                            const partNum = idx + 1;
+                            const isCurrentPart = partNum === part;
+                            const isPartLocked = !isSubscribed && partNum > unlockedUntil;
+
+                            return (
+                              <button
+                                key={partNum}
+                                onClick={() => {
+                                  setShowPartList(false);
+                                  onSelectPart(partNum);
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: "8px",
+                                  border: isCurrentPart ? "1.5px solid #e8356d" : "1px solid rgba(255,255,255,0.14)",
+                                  background: isCurrentPart ? "rgba(232,53,109,0.12)" : "rgba(255,255,255,0.06)",
+                                  color: isPartLocked ? "rgba(255,255,255,0.4)" : "white",
+                                  fontSize: "12px",
+                                  fontWeight: "700",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                {partNum}편 {isCurrentPart ? "▶" : ""} {isPartLocked ? "🔒" : ""}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 

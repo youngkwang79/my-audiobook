@@ -7,11 +7,11 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkTable() {
-  const { data, error } = await supabase.from("user_downloads").select("*").limit(1);
-  if (error) {
-    console.error("Table Error:", error.message);
+  const { data: testSelect, error: selectErr } = await supabase.from("wallets").select("reward_points").limit(1);
+  if (selectErr) {
+    console.error("reward_points select error:", selectErr.message);
   } else {
-    console.log("Table exists! Data:", data);
+    console.log("reward_points select success! Data:", testSelect);
   }
 }
 

@@ -1,7 +1,5 @@
 // lib/gameSave.ts
 import { supabase } from "@/lib/supabaseClient";
-import { db } from "./firebase";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
 export type GameSaveData = {
   user_id: string;
@@ -10,41 +8,7 @@ export type GameSaveData = {
   updated_at?: any;
 };
 
-// --- Supabase Implementation ---
-export async function saveGame(userId: string, gameData: any) {
-  const { error } = await supabase.from("game_saves").upsert(
-    {
-      user_id: userId,
-      game_data: gameData,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: "user_id",
-    }
-  );
-
-  if (error) {
-    console.error("Supabase 게임 저장 실패:", error.message);
-    throw error;
-  }
-}
-
-export async function loadGame(userId: string) {
-  const { data, error } = await supabase
-    .from("game_saves")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Supabase 게임 불러오기 실패:", error.message);
-    return null;
-  }
-
-  return data?.game_data ?? null;
-}
-
-// --- Helper to remove undefined for Firestore ---
+// --- Helper to remove undefined/null values for Cloud Saving ---
 function sanitizeData(data: any): any {
   if (data === undefined) return null;
   if (data === null) return null;
@@ -62,33 +26,48 @@ function sanitizeData(data: any): any {
   return data;
 }
 
-// --- Firebase Implementation ---
-export async function saveGameToFirebase(userId: string, gameData: any) {
+// --- Supabase Cloud Save/Load Implementation ---
+export async function saveGameToCloud(userId: string, gameData: any) {
   try {
-    const docRef = doc(db, "gameSaves", userId);
     const sanitized = sanitizeData(gameData);
-    await setDoc(docRef, {
-      game_data: sanitized,
-      updated_at: serverTimestamp(),
-      user_id: userId
-    }, { merge: true });
-    console.log("Firebase 클라우드 저장 성공");
+    const { error } = await supabase.from("game_saves").upsert(
+      {
+        user_id: userId,
+        game_data: sanitized,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id",
+      }
+    );
+
+    if (error) {
+      console.error("Supabase 클라우드 저장 실패:", error.message);
+      throw error;
+    }
+    console.log("클라우드(Supabase) 동기화 성공");
   } catch (error: any) {
-    console.error("Firebase 게임 저장 실패:", error.message);
+    console.error("클라우드 저장 에러:", error.message);
     throw error;
   }
 }
 
-export async function loadGameFromFirebase(userId: string) {
+export async function loadGameFromCloud(userId: string) {
   try {
-    const docRef = doc(db, "gameSaves", userId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return docSnap.data().game_data;
+    const { data, error } = await supabase
+      .from("game_saves")
+      .select("game_data")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Supabase 클라우드 불러오기 실패:", error.message);
+      return null;
     }
-    return null;
+
+    return data?.game_data ?? null;
   } catch (error: any) {
-    console.error("Firebase 게임 불러오기 실패:", error.message);
+    console.error("클라우드 불러오기 에러:", error.message);
     return null;
   }
 }

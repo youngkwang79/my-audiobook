@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
+import { syncAndGetWallet } from "@/lib/server/walletHelper";
 
 async function getUserSupabase() {
   const cookieStore = await cookies();
@@ -46,19 +47,39 @@ export async function POST(req: Request) {
     // 실제 운영에서는 “결제사 서버검증” 또는 “웹훅”에서만 충전되게 바꾸는 걸 추천
     const addPoints = amount;
 
-    const { data: wallet } = await supabaseAdmin
-      .from("wallets")
-      .select("points")
-      .eq("user_id", user_id)
-      .maybeSingle();
+    let wallet;
+    try {
+      wallet = await syncAndGetWallet(user_id, auth.user.created_at);
+    } catch (e) {
+      console.error("wallet read error in payments confirm:", e);
+      return NextResponse.json({ error: "wallet_read_failed" }, { status: 500 });
+    }
 
-    const current = wallet?.points ?? 0;
+    const current = wallet.points;
 
     const { error } = await supabaseAdmin
       .from("wallets")
-      .upsert({ user_id, points: current + addPoints }, { onConflict: "user_id" });
+      .upsert(
+        {
+          user_id,
+          points: current + addPoints,
+          reward_points: wallet.reward_points,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // 충전 내역 기록
+    await supabaseAdmin
+      .from("point_transactions")
+      .insert({
+        user_id,
+        amount: addPoints,
+        transaction_type: "charge",
+        description: "포인트 충전",
+      });
 
     return NextResponse.json({ ok: true, points: current + addPoints });
   } catch (e: any) {

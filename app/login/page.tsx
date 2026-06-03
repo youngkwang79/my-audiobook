@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/providers/AuthProvider";
 import TopBar from "@/app/components/TopBar";
-import { loadGame } from "@/lib/gameSave";
+import { loadGameFromCloud } from "@/lib/gameSave";
 import { useGameStore } from "@/app/lib/game/useGameStore";
 
 function toKoreanAuthError(message?: string) {
@@ -47,8 +47,18 @@ function LoginPageInner() {
   const [oauthBusy, setOauthBusy] = useState<"google" | "kakao" | "discord" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [allowNotifications, setAllowNotifications] = useState(false);
 
   const redirect = searchParams.get("redirect") || "/";
+  const ref = searchParams.get("ref");
+
+  useEffect(() => {
+    if (ref) {
+      localStorage.setItem("referral_code", ref);
+      console.log("Referral code detected and saved:", ref);
+    }
+  }, [ref]);
 
   const emailOk = useMemo(
     () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
@@ -58,8 +68,8 @@ function LoginPageInner() {
   const pwCheck = useMemo(() => validatePassword(password), [password]);
 
   const canSubmit = useMemo(
-    () => !!supabase && emailOk && pwCheck.ok,
-    [emailOk, pwCheck.ok]
+    () => !!supabase && emailOk && pwCheck.ok && (mode !== "signup" || nickname.trim().length >= 2),
+    [emailOk, pwCheck.ok, mode, nickname]
   );
 
   useEffect(() => {
@@ -72,7 +82,7 @@ function LoginPageInner() {
 
   async function syncCloudSave(userId: string) {
     try {
-      const cloudData = await loadGame(userId);
+      const cloudData = await loadGameFromCloud(userId);
 
       if (cloudData) {
         const store = useGameStore.getState() as any;
@@ -148,7 +158,13 @@ function LoginPageInner() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo },
+          options: {
+            emailRedirectTo,
+            data: {
+              nickname: nickname.trim(),
+              allow_notifications: allowNotifications,
+            },
+          },
         });
 
         if (error) throw error;
@@ -342,6 +358,54 @@ function LoginPageInner() {
         )}
 
         <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+          {mode === "signup" && (
+            <input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="닉네임 (2자 이상)"
+              type="text"
+              maxLength={20}
+              style={{
+                padding: "12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                outline: "none",
+              }}
+            />
+          )}
+
+          {mode === "signup" && (
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.03)",
+                cursor: "pointer",
+                fontSize: "14px",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={allowNotifications}
+                onChange={(e) => setAllowNotifications(e.target.checked)}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  accentColor: "#E6D3A3",
+                  cursor: "pointer",
+                }}
+              />
+              <span>신규 업데이트 알림 받기 (모바일 푸시 허용)</span>
+            </label>
+          )}
+
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}

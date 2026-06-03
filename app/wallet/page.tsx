@@ -34,12 +34,63 @@ async function getAccessToken() {
   return session?.access_token ?? null;
 }
 
+function formatDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}.${month}.${day} ${hours}:${minutes}`;
+  } catch (e) {
+    return dateStr;
+  }
+}
+
 export default function WalletPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [coins, setCoins] = useState(0);
   const [rewardCoins, setRewardCoins] = useState(0);
   const [autoNextEpisode, setAutoNextEpisode] = useState(true);
+  const [openTab, setOpenTab] = useState<"charge" | "reward" | "use" | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+
+  const loadTransactions = async (type: "charge" | "reward" | "use") => {
+    setTxLoading(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch(`/api/me/wallet/transactions?type=${type}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.transactions) {
+        setTransactions(data.transactions);
+      } else {
+        setTransactions([]);
+      }
+    } catch (e) {
+      console.error("거래 내역 로드 에러:", e);
+      setTransactions([]);
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
+  const handleTabToggle = (tab: "charge" | "reward" | "use") => {
+    if (openTab === tab) {
+      setOpenTab(null);
+      setTransactions([]);
+    } else {
+      setOpenTab(tab);
+      loadTransactions(tab);
+    }
+  };
 
   // 코인 잔액 불러오기
   useEffect(() => {
@@ -305,6 +356,90 @@ export default function WalletPage() {
         .toggle-thumb.on {
           transform: translateX(20px);
         }
+
+        /* 거래 내역 박스 */
+        .tx-list-container {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 8px 16px;
+          margin: 4px 0 12px;
+          max-height: 240px;
+          overflow-y: auto;
+          animation: slideDown 0.25s ease-out;
+        }
+
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tx-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .tx-item:last-child {
+          border-bottom: none;
+        }
+
+        .tx-left {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          text-align: left;
+        }
+
+        .tx-desc {
+          font-size: 14px;
+          font-weight: 600;
+          color: #ffffff;
+        }
+
+        .tx-date {
+          font-size: 11px;
+          color: #8c8c96;
+        }
+
+        .tx-amount {
+          font-size: 15px;
+          font-weight: 700;
+        }
+
+        .tx-amount.charge {
+          color: #10b981; /* emerald-500 */
+        }
+
+        .tx-amount.reward {
+          color: #f59e0b; /* amber-500 */
+        }
+
+        .tx-amount.use {
+          color: #ef4444; /* red-500 */
+        }
+
+        .tx-empty {
+          padding: 24px 0;
+          text-align: center;
+          color: #8c8c96;
+          font-size: 13px;
+        }
+
+        .wallet-menu-item.active {
+          border-bottom-color: transparent;
+        }
+
+        .wallet-menu-item-right.rotated {
+          transform: rotate(90deg);
+          color: #ffffff;
+        }
+
+        .wallet-menu-item-right {
+          transition: transform 0.2s ease, color 0.2s ease;
+        }
       `}</style>
 
       <div className="wallet-container">
@@ -341,35 +476,101 @@ export default function WalletPage() {
 
         {/* 메뉴 리스트 */}
         <div className="wallet-menu-list">
-          <button
-            className="wallet-menu-item"
-            onClick={() => alert("충전 내역 기능 준비중입니다.")}
-          >
-            <span className="wallet-menu-item-label">충전 내역</span>
-            <div className="wallet-menu-item-right">
-              <ChevronRightIcon />
-            </div>
-          </button>
+          {/* 충전 내역 */}
+          <div>
+            <button
+              className={`wallet-menu-item ${openTab === "charge" ? "active" : ""}`}
+              onClick={() => handleTabToggle("charge")}
+            >
+              <span className="wallet-menu-item-label">충전 내역</span>
+              <div className={`wallet-menu-item-right ${openTab === "charge" ? "rotated" : ""}`}>
+                <ChevronRightIcon />
+              </div>
+            </button>
+            {openTab === "charge" && (
+              <div className="tx-list-container">
+                {txLoading ? (
+                  <div className="tx-empty">불러오는 중...</div>
+                ) : transactions.length > 0 ? (
+                  transactions.map((tx) => (
+                    <div key={tx.id} className="tx-item">
+                      <div className="tx-left">
+                        <span className="tx-desc">{tx.description}</span>
+                        <span className="tx-date">{formatDate(tx.created_at)}</span>
+                      </div>
+                      <span className="tx-amount charge">+{tx.amount} 코인</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="tx-empty">충전 내역이 없습니다.</div>
+                )}
+              </div>
+            )}
+          </div>
 
-          <button
-            className="wallet-menu-item"
-            onClick={() => alert("리워드 코인 기능 준비중입니다.")}
-          >
-            <span className="wallet-menu-item-label">리워드 코인</span>
-            <div className="wallet-menu-item-right">
-              <ChevronRightIcon />
-            </div>
-          </button>
+          {/* 리워드 코인 내역 */}
+          <div>
+            <button
+              className={`wallet-menu-item ${openTab === "reward" ? "active" : ""}`}
+              onClick={() => handleTabToggle("reward")}
+            >
+              <span className="wallet-menu-item-label">리워드 코인</span>
+              <div className={`wallet-menu-item-right ${openTab === "reward" ? "rotated" : ""}`}>
+                <ChevronRightIcon />
+              </div>
+            </button>
+            {openTab === "reward" && (
+              <div className="tx-list-container">
+                {txLoading ? (
+                  <div className="tx-empty">불러오는 중...</div>
+                ) : transactions.length > 0 ? (
+                  transactions.map((tx) => (
+                    <div key={tx.id} className="tx-item">
+                      <div className="tx-left">
+                        <span className="tx-desc">{tx.description}</span>
+                        <span className="tx-date">{formatDate(tx.created_at)}</span>
+                      </div>
+                      <span className="tx-amount reward">+{tx.amount} 코인</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="tx-empty">적립된 리워드 코인이 없습니다.</div>
+                )}
+              </div>
+            )}
+          </div>
 
-          <button
-            className="wallet-menu-item"
-            onClick={() => alert("사용 내역 기능 준비중입니다.")}
-          >
-            <span className="wallet-menu-item-label">사용 내역</span>
-            <div className="wallet-menu-item-right">
-              <ChevronRightIcon />
-            </div>
-          </button>
+          {/* 사용 내역 */}
+          <div>
+            <button
+              className={`wallet-menu-item ${openTab === "use" ? "active" : ""}`}
+              onClick={() => handleTabToggle("use")}
+            >
+              <span className="wallet-menu-item-label">사용 내역</span>
+              <div className={`wallet-menu-item-right ${openTab === "use" ? "rotated" : ""}`}>
+                <ChevronRightIcon />
+              </div>
+            </button>
+            {openTab === "use" && (
+              <div className="tx-list-container">
+                {txLoading ? (
+                  <div className="tx-empty">불러오는 중...</div>
+                ) : transactions.length > 0 ? (
+                  transactions.map((tx) => (
+                    <div key={tx.id} className="tx-item">
+                      <div className="tx-left">
+                        <span className="tx-desc">{tx.description}</span>
+                        <span className="tx-date">{formatDate(tx.created_at)}</span>
+                      </div>
+                      <span className="tx-amount use">{tx.amount} 코인</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="tx-empty">사용 내역이 없습니다.</div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* 다음 화 자동 해제 토글 */}
           <div className="toggle-wrapper">

@@ -14,7 +14,11 @@ export default function LayoutFooter() {
     try {
       // 1. 로그아웃 전 서버에 데이터 즉시 저장 (가장 중요)
       console.log("데이터 동기화 중...");
-      await syncToCloud(); 
+      try {
+        await syncToCloud(); 
+      } catch (syncError) {
+        console.error("로그아웃 중 클라우드 동기화 실패:", syncError);
+      }
 
       // 2. 실제 로그아웃 실행
       await signOut();

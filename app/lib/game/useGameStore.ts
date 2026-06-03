@@ -17,7 +17,7 @@ import {
   getManualFragmentDisplayName
 } from "./martialArtsSystem";
 import { MARTIAL_SYNTHESIS_RECIPES } from "./martialArtsRecipes";
-import { saveGameToFirebase, loadGameFromFirebase } from "@/lib/gameSave";
+import { saveGameToCloud, loadGameFromCloud } from "@/lib/gameSave";
 import { supabase } from "@/lib/supabaseClient";
 import { m } from "framer-motion";
 import { TOWER_ROGUE_BUFF_POOL, getTierWeight, TOWER_SYNERGIES } from "./towerData";
@@ -4870,15 +4870,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         return;
       }
 
-      await saveGameToFirebase(user.id, game);
-      console.log("클라우드(Firebase) 동기화 성공");
+      await saveGameToCloud(user.id, game);
+      console.log("클라우드(Supabase) 동기화 성공");
       set({ lastSyncTime: Date.now(), lastSyncHash: currentHash });
     } catch (e: any) {
       console.warn("클라우드 동기화 중 에러 발생:", e);
-      // Firebase stream exhaustion 에러 발생 시 로그 출력
-      if (e.message?.includes("exhausted")) {
-        console.error("Firestore Write Stream Exhausted! 요청 간격을 조절합니다.");
-      }
       get().triggerSave(true); 
       set({ isSyncingToCloud: false });
     }
@@ -4891,18 +4887,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const cloudData = await loadGameFromFirebase(user.id);
+      const cloudData = await loadGameFromCloud(user.id);
       if (cloudData && cloudData.realm) {
         set((s: any) => ({ game: { ...s.game, ...cloudData, isInitialized: true } }));
         saveGame(get().game);
-        console.log("클라우드(Firebase) 데이터 로드 성공");
+        console.log("클라우드(Supabase) 데이터 로드 성공");
       } else {
         // 클라우드에 데이터가 없는 경우 (신규 유저)
         // 로컬 데이터가 이미 있다면(경지나 처치수가 있다면) 초기화하지 않고 클라우드로 업로드 시도
         const currentLocal = get().game;
         if (currentLocal.totalDummyKills > 0 || currentLocal.realm !== "필부") {
           console.log("클라우드 데이터 없음 - 현재 로컬 데이터를 클라우드에 보존합니다.");
-          await saveGameToFirebase(user.id, currentLocal);
+          await saveGameToCloud(user.id, currentLocal);
         } else {
           console.log("신규 유저로 감지되어 초기화합니다.");
           set((s: any) => ({ game: { ...defaultGameData, isInitialized: true } }));
@@ -4922,7 +4918,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await saveGameToFirebase(user.id, defaultGameData);
+          await saveGameToCloud(user.id, defaultGameData);
           console.log("클라우드 데이터 초기화 성공");
         }
       } catch (e) {

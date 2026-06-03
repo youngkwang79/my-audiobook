@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
+import { syncAndGetWallet } from "@/lib/server/walletHelper";
 
 export async function POST(req: Request) {
   try {
@@ -33,18 +34,15 @@ if (user.email !== "youngkwang79@gmailcom") {
 
     const user_id = user.id;
 
-    const { data: wallet, error: readErr } = await supabaseAdmin
-      .from("wallets")
-      .select("points")
-      .eq("user_id", user_id)
-      .maybeSingle();
-
-    if (readErr) {
-      console.error("wallet read error:", readErr);
+    let wallet;
+    try {
+      wallet = await syncAndGetWallet(user_id, user.created_at);
+    } catch (e) {
+      console.error("wallet read error in dev credit points:", e);
       return NextResponse.json({ error: "wallet_read_failed" }, { status: 500 });
     }
 
-    const current = Number(wallet?.points ?? 0);
+    const current = wallet.points;
     const next = current + amount;
 
     const { error: upsertErr } = await supabaseAdmin
@@ -53,6 +51,7 @@ if (user.email !== "youngkwang79@gmailcom") {
         {
           user_id,
           points: next,
+          reward_points: wallet.reward_points,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" }
@@ -62,6 +61,16 @@ if (user.email !== "youngkwang79@gmailcom") {
       console.error("wallet upsert error:", upsertErr);
       return NextResponse.json({ error: "wallet_update_failed" }, { status: 500 });
     }
+
+    // 개발자 충전 내역 기록
+    await supabaseAdmin
+      .from("point_transactions")
+      .insert({
+        user_id,
+        amount: amount,
+        transaction_type: "charge",
+        description: "개발자 포인트 충전",
+      });
 
     return NextResponse.json({
       ok: true,
