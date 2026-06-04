@@ -760,8 +760,16 @@ export default function EpisodePage() {
       const a = audioRef.current;
       if (!a) return;
 
+      // 오디오가 아직 로드되지 않았으면 onCanPlayThrough에서 처리하도록 위임
+      if (a.readyState < 3) {
+        pendingAutoplayRef.current = true;
+        return;
+      }
+
+      if (!a.paused) return; // 이미 재생 중이면 스킵
+
       a.play()
-        .then(async () => {
+        .then(() => {
           setIsPlaying(true);
           setStatus("재생 중");
           pendingAutoplayRef.current = false;
@@ -1777,7 +1785,6 @@ export default function EpisodePage() {
           ref={audioRef}
           src={audioSrc}
           preload="auto"
-          autoPlay
           style={{ display: "none" }}
           onLoadedMetadata={() => {
             const a = audioRef.current;
@@ -1789,9 +1796,14 @@ export default function EpisodePage() {
               a.currentTime = resumeTime;
               setCurrentTime(resumeTime);
             }
-            if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
+          }}
+          onCanPlayThrough={() => {
+            // 모바일/데스크톱 통합: 재생 가능 상태가 되면 한 번만 play 시도
+            const a = audioRef.current;
+            if (!a || (!autoplay && !pendingAutoplayRef.current)) return;
+            if (!a.paused) return; // 이미 재생 중이면 스킵
             a.play()
-              .then(async () => {
+              .then(() => {
                 setIsPlaying(true);
                 setStatus("재생 중");
                 pendingAutoplayRef.current = false;
