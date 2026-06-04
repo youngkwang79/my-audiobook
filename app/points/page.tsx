@@ -510,40 +510,40 @@ export default function PointsPage() {
         <div>
           <h2 className="section-label">코인</h2>
           <div className="coin-grid">
-            <button className="coin-card gold-shine-card" onClick={() => handlePurchaseCoin(1100, "100 + 600 코인")}>
+            <button className="coin-card gold-shine-card" onClick={() => handlePurchaseCoin(990, "100 + 600 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">100</span>
                 <span className="coin-text-bonus">+ 600</span>
               </div>
-              <p className="coin-price">₩1,100</p>
+              <p className="coin-price">₩990</p>
             </button>
 
-            <button className="coin-card" onClick={() => handlePurchaseCoin(11000, "700 + 500 코인")}>
+            <button className="coin-card" onClick={() => handlePurchaseCoin(10900, "700 + 500 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">700</span>
                 <span className="coin-text-bonus">+ 500</span>
               </div>
-              <p className="coin-price">₩11,000</p>
+              <p className="coin-price">₩10,900</p>
             </button>
 
-            <button className="coin-card" onClick={() => handlePurchaseCoin(17000, "1000 + 400 코인")}>
+            <button className="coin-card" onClick={() => handlePurchaseCoin(14900, "1000 + 400 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">1000</span>
                 <span className="coin-text-bonus">+ 400</span>
               </div>
-              <p className="coin-price">₩17,000</p>
+              <p className="coin-price">₩14,900</p>
             </button>
 
-            <button className="coin-card" onClick={() => handlePurchaseCoin(44000, "2500 + 1500 코인")}>
+            <button className="coin-card" onClick={() => handlePurchaseCoin(39800, "2500 + 1500 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">2500</span>
                 <span className="coin-text-bonus">+ 1500</span>
               </div>
-              <p className="coin-price">₩44,000</p>
+              <p className="coin-price">₩39,800</p>
             </button>
           </div>
         </div>
@@ -646,7 +646,7 @@ export default function PointsPage() {
             <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
             <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
             <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
-            <span>8. 기타 문의 사항은 [내정보] &gt; [고객 센터]를 통해 문의해 주세요.</span>
+            <span>8. 기타 문의 사항은 [내정보] &gt; [고객문의(1:1 문의)]를 통해 문의해 주세요.</span>
             <span>9. 무림북의 멤버십 가입은 문극_태양 작가에게 후원하는 것이므로 교환 및 환불이 불가능합니다. 소설을 즐겨주시고 마음으로 후원 해 주시면 감사하겠습니다.</span>
           </div>
         </div>

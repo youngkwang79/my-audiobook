@@ -42,6 +42,15 @@ const EARN_TASKS = [
     done: false,
   },
   {
+    id: "greeting",
+    icon: "✉️",
+    title: "일일 문안 인사",
+    subtitle: "출석 한마디 남기기 +10 코인",
+    coin: 10,
+    btnLabel: "인사하기",
+    done: false,
+  },
+  {
     id: "youtube",
     icon: "▶",
     title: "유튜브 채널 구독하기",
@@ -115,12 +124,42 @@ export default function CheckinPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [coins, setCoins] = useState(0);
+
+  // ✅ 테마 상태 추가
+  const [theme, setTheme] = useState("dark");
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("theme") || "dark";
+      setTheme(savedTheme);
+      document.documentElement.className = savedTheme;
+    } catch (e) {}
+  }, []);
   const [streak, setStreak] = useState(0);
   const [checkedIn, setCheckedIn] = useState(false);
   const [taskDone, setTaskDone] = useState<Record<string, boolean>>({});
   const [ytModalOpen, setYtModalOpen] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // ✅ 신규 출석 한마디(연공록) 상태 추가
+  const [greetings, setGreetings] = useState<any[]>([]);
+  const [newGreeting, setNewGreeting] = useState("");
+  const [greetingDone, setGreetingDone] = useState(false);
+  const [greetingLoading, setGreetingLoading] = useState(false);
+
+  const loadGreetings = async () => {
+    try {
+      const res = await fetch("/api/attendance/greeting");
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.greetings) {
+        setGreetings(data.greetings);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    loadGreetings();
+  }, []);
 
   // 로컬 스토리지에서 오디오 재생 시간 연동
   useEffect(() => {
@@ -192,6 +231,10 @@ export default function CheckinPage() {
           // 출석 체크 완료 여부 동기화
           if (doneMap["checkin_" + todayStr]) {
             setCheckedIn(true);
+          }
+          // 연공록 기록 완료 여부 동기화
+          if (doneMap["greeting_" + todayStr]) {
+            setGreetingDone(true);
           }
         }
       } catch (e) {
@@ -284,6 +327,61 @@ export default function CheckinPage() {
     }
   };
 
+  // ✅ 신규 출석 한마디(연공록) 등록 함수
+  const handleGreetingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      alert("로그인이 필요합니다. 문파 가입(로그인)을 먼저 해주세요!");
+      return;
+    }
+    const val = newGreeting.trim();
+    if (!val) {
+      alert("오늘의 연공 한마디를 입력해주세요.");
+      return;
+    }
+    if (val.length > 100) {
+      alert("한마디는 100자 이하로 작성해주세요.");
+      return;
+    }
+    setGreetingLoading(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("로그인 세션이 만료되었습니다.");
+
+      const res = await fetch("/api/attendance/greeting", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: val }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 409) {
+        alert("오늘 이미 연공록을 기록하셨습니다.");
+        setGreetingDone(true);
+        return;
+      }
+      if (!res.ok) throw new Error(data?.message ?? "인사 등록 실패");
+
+      alert("오늘의 연공록이 성공적으로 등록되었습니다! +10 코인 적립 🎉");
+      setNewGreeting("");
+      setGreetingDone(true);
+      if (data?.newRewardPoints !== undefined) {
+        setCoins(Number(data.newRewardPoints));
+      } else {
+        setCoins((prev) => prev + 10);
+      }
+      loadGreetings();
+      window.dispatchEvent(new Event("wallet-updated"));
+    } catch (err: any) {
+      alert(err?.message ?? "오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setGreetingLoading(false);
+    }
+  };
+
   const claimShareReward = async () => {
     try {
       const token = await getAccessToken();
@@ -326,6 +424,10 @@ export default function CheckinPage() {
 
   const handleTask = (taskId: string, label: string) => {
     if (taskDone[taskId]) return;
+    if (taskId === "greeting") {
+      router.push("/checkin/greetings");
+      return;
+    }
     if (label === "광고 보기") {
       alert("광고 기능은 준비중입니다.");
       return;
@@ -496,15 +598,15 @@ export default function CheckinPage() {
   const todayIdx = streak % 7;
 
   return (
-    <main className="ci-root">
+    <main className={`ci-root ${theme}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Serif+KR:wght@500;700;900&display=swap');
 
         * { box-sizing: border-box; }
 
         .ci-root {
           min-height: 100dvh;
-          background: #0c0c12;
+          background: #0d0c10;
           color: #ffffff;
           font-family: 'Outfit', ui-sans-serif, system-ui, "Noto Sans KR", Arial;
         }
@@ -564,8 +666,9 @@ export default function CheckinPage() {
         }
 
         .ci-page-title {
-          font-size: 16px;
-          font-weight: 700;
+          font-family: 'Noto Serif KR', serif;
+          font-size: 17px;
+          font-weight: 900;
           color: #ffffff;
           margin: 0;
           letter-spacing: -0.2px;
@@ -575,7 +678,7 @@ export default function CheckinPage() {
         .ci-hero {
           position: relative;
           padding: 28px 20px 20px;
-          background: linear-gradient(160deg, #1a0e22 0%, #0c0c12 60%);
+          background: linear-gradient(160deg, #1d1222 0%, #0d0c10 60%);
           overflow: hidden;
         }
 
@@ -585,22 +688,25 @@ export default function CheckinPage() {
           top: -40px; right: -40px;
           width: 200px; height: 200px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(232,53,109,0.18) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%);
         }
 
         .ci-hero-amount {
+          font-family: 'Outfit', sans-serif;
           font-size: 44px;
           font-weight: 900;
-          color: #ffffff;
+          color: #f7d070;
           letter-spacing: -2px;
           line-height: 1;
           margin: 0;
+          text-shadow: 0 0 10px rgba(247,208,112,0.2);
         }
 
         .ci-hero-label {
+          font-family: 'Noto Serif KR', serif;
           font-size: 13px;
           color: rgba(255,255,255,0.45);
-          font-weight: 600;
+          font-weight: 700;
           margin-top: 4px;
         }
 
@@ -611,30 +717,30 @@ export default function CheckinPage() {
           width: 72px;
           height: 72px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f9c34a 0%, #e8871a 100%);
+          background: linear-gradient(135deg, #ffe066 0%, #cc9900 100%);
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 32px;
-          box-shadow: 0 8px 24px rgba(249,195,74,0.35);
+          box-shadow: 0 8px 24px rgba(204,153,0,0.3);
         }
 
         .ci-rules-btn {
           position: absolute;
           top: 20px;
           right: 104px;
-          background: rgba(255, 255, 255, 0.15);
-          border: 1.5px solid rgba(255, 255, 255, 0.35);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1.5px solid rgba(255, 255, 255, 0.2);
           border-radius: 20px;
           color: #ffffff;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 800;
           padding: 6px 14px;
           cursor: pointer;
           transition: all 0.2s;
         }
         .ci-rules-btn:hover {
-          background: rgba(255, 255, 255, 0.25);
+          background: rgba(255, 255, 255, 0.15);
           transform: scale(1.05);
         }
 
@@ -646,25 +752,28 @@ export default function CheckinPage() {
           pointer-events: none;
         }
 
-        /* ── 출석 카드 ── */
+        /* ── 출석 카드 (연공 서판) ── */
         .ci-attendance-card {
           margin: 16px 16px 0;
-          background: #181825;
+          background: #141217;
           border: 1px solid rgba(255,255,255,0.06);
           border-radius: 20px;
           padding: 20px 16px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.25);
         }
 
         .ci-streak-title {
-          font-size: 17px;
-          font-weight: 800;
+          font-family: 'Noto Serif KR', serif;
+          font-size: 16px;
+          font-weight: 900;
           color: #ffffff;
           margin: 0 0 16px;
           letter-spacing: -0.4px;
         }
 
         .ci-streak-highlight {
-          color: #e8356d;
+          color: #ffe066;
+          text-shadow: 0 0 8px rgba(255,224,102,0.2);
         }
 
         .ci-days-row {
@@ -683,29 +792,40 @@ export default function CheckinPage() {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: space-between;
           gap: 6px;
           padding: 10px 8px;
           border-radius: 12px;
-          background: rgba(255,255,255,0.04);
-          border: 1.5px solid rgba(255,255,255,0.06);
-          min-width: 44px;
+          background: rgba(255,255,255,0.03);
+          border: 1.5px solid rgba(255,255,255,0.05);
+          min-width: 46px;
+          min-height: 86px;
           transition: all 0.2s;
+          position: relative;
+          overflow: hidden;
         }
 
         .ci-day-box.today {
-          border-color: rgba(232,53,109,0.5);
-          background: rgba(232,53,109,0.08);
+          border-color: #ffe066;
+          background: rgba(255,224,102,0.06);
+          box-shadow: 0 0 12px rgba(255,224,102,0.15) inset;
+          animation: goldGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes goldGlow {
+          0%, 100% { border-color: rgba(255,224,102,0.5); }
+          50% { border-color: rgba(255,224,102,1); }
         }
 
         .ci-day-box.done {
-          background: rgba(249,195,74,0.08);
-          border-color: rgba(249,195,74,0.3);
+          background: rgba(204,153,0,0.05);
+          border-color: rgba(204,153,0,0.25);
         }
 
         .ci-day-coin-text {
           font-size: 10px;
           font-weight: 800;
-          color: #f9c34a;
+          color: #ffe066;
           letter-spacing: -0.3px;
         }
 
@@ -713,19 +833,42 @@ export default function CheckinPage() {
           width: 28px;
           height: 28px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f9c34a 0%, #e8871a 100%);
+          background: linear-gradient(135deg, #ffe066 0%, #cc9900 100%);
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 13px;
-          box-shadow: 0 3px 8px rgba(249,195,74,0.25);
+          box-shadow: 0 3px 8px rgba(204,153,0,0.2);
+        }
+
+        /* ── 동양풍 도장 낙인 효과 ── */
+        .ci-day-stamp {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-12deg);
+          width: 32px;
+          height: 32px;
+          border: 2px dashed #ff4d4d;
+          border-radius: 50%;
+          color: #ff4d4d;
+          font-family: 'Noto Serif KR', serif;
+          font-size: 8px;
+          font-weight: 900;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(20,18,23,0.85);
+          box-shadow: 0 0 6px rgba(255,77,77,0.3);
+          letter-spacing: -1px;
+          text-indent: -1px;
         }
 
         .ci-day-icon-grey {
           width: 28px;
           height: 28px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.06);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -739,23 +882,25 @@ export default function CheckinPage() {
         }
 
         .ci-day-label.today {
-          color: #e8356d;
+          color: #ffe066;
           font-weight: 800;
         }
 
+        /* 연공 서판 기록 버튼 */
         .ci-checkin-btn {
           width: 100%;
           height: 50px;
-          background: linear-gradient(90deg, #e8356d 0%, #f0527a 100%);
-          border: none;
+          background: linear-gradient(135deg, #8b152d 0%, #400a16 100%);
+          border: 1px solid rgba(255,224,102,0.2);
           border-radius: 14px;
           color: #ffffff;
-          font-size: 16px;
+          font-family: 'Noto Serif KR', serif;
+          font-size: 15px;
           font-weight: 800;
           cursor: pointer;
           letter-spacing: -0.3px;
-          transition: opacity 0.2s, transform 0.1s;
-          box-shadow: 0 4px 16px rgba(232,53,109,0.35);
+          transition: all 0.2s;
+          box-shadow: 0 4px 16px rgba(139,21,45,0.4);
         }
 
         .ci-checkin-btn:active {
@@ -764,16 +909,147 @@ export default function CheckinPage() {
         }
 
         .ci-checkin-btn.done {
-          background: rgba(255,255,255,0.08);
-          box-shadow: none;
-          color: rgba(255,255,255,0.4);
+          background: #252329 !important;
+          border: 1px solid rgba(255,255,255,0.05) !important;
+          box-shadow: none !important;
+          color: rgba(255,255,255,0.35) !important;
           cursor: default;
+        }
+
+        /* ── 일일 연공록 (출석인사) 섹션 ── */
+        .ci-greetings-section {
+          margin: 20px 16px 0;
+          background: #141217;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 20px;
+          padding: 20px 16px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+
+        .ci-greetings-title {
+          font-family: 'Noto Serif KR', serif;
+          font-size: 16px;
+          font-weight: 900;
+          color: #ffffff;
+          margin: 0 0 14px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .ci-greeting-form {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .ci-greeting-input {
+          flex: 1;
+          height: 44px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 10px;
+          padding: 0 12px;
+          color: #ffffff;
+          font-size: 13px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .ci-greeting-input:focus {
+          border-color: #ffe066;
+        }
+
+        .ci-greeting-submit {
+          height: 44px;
+          padding: 0 16px;
+          background: linear-gradient(135deg, #bf953f 0%, #aa771c 100%);
+          border: none;
+          border-radius: 10px;
+          color: #141217;
+          font-family: 'Noto Serif KR', serif;
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+
+        .ci-greeting-submit:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+
+        .ci-greeting-done-msg {
+          background: rgba(255,224,102,0.05);
+          border: 1px dashed rgba(255,224,102,0.2);
+          border-radius: 10px;
+          padding: 12px;
+          text-align: center;
+          font-size: 13px;
+          color: #ffe066;
+          font-weight: 600;
+          margin-bottom: 16px;
+        }
+
+        /* 인사말 피드 */
+        .ci-greeting-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          max-height: 180px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .ci-greeting-list::-webkit-scrollbar {
+          width: 4px;
+        }
+        .ci-greeting-list::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.1);
+          border-radius: 2px;
+        }
+
+        .ci-greeting-card {
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(255,255,255,0.04);
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .ci-greeting-meta {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: rgba(255,255,255,0.4);
+          font-weight: 600;
+        }
+
+        .ci-greeting-user {
+          color: #f7d070;
+        }
+
+        .ci-greeting-text {
+          font-size: 12.5px;
+          color: rgba(255,255,255,0.85);
+          line-height: 1.4;
+          word-break: break-all;
+        }
+
+        .ci-greeting-empty {
+          text-align: center;
+          padding: 24px 0;
+          color: rgba(255,255,255,0.3);
+          font-size: 12px;
         }
 
         /* ── 섹션 타이틀 ── */
         .ci-section-title {
-          font-size: 18px;
-          font-weight: 800;
+          font-family: 'Noto Serif KR', serif;
+          font-size: 17px;
+          font-weight: 900;
           color: #ffffff;
           margin: 24px 16px 12px;
           letter-spacing: -0.4px;
@@ -791,7 +1067,7 @@ export default function CheckinPage() {
           display: flex;
           align-items: center;
           gap: 14px;
-          background: #181825;
+          background: #141217;
           border: 1px solid rgba(255,255,255,0.06);
           border-radius: 16px;
           padding: 14px 16px;
@@ -802,7 +1078,7 @@ export default function CheckinPage() {
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.05);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -842,41 +1118,40 @@ export default function CheckinPage() {
         }
 
         .ci-task-sub .coin-highlight {
-          color: #f9c34a;
+          color: #ffe066;
           font-weight: 800;
         }
 
         .ci-task-btn {
           flex-shrink: 0;
-          background: linear-gradient(90deg, #e8356d 0%, #f0527a 100%);
-          color: #ffffff;
+          background: linear-gradient(135deg, #ffe066 0%, #cc9900 100%);
+          color: #141217;
           border: none;
           border-radius: 10px;
           font-size: 13px;
           font-weight: 800;
           padding: 8px 14px;
           cursor: pointer;
-          transition: opacity 0.2s, transform 0.1s;
+          transition: all 0.2s;
           white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(232,53,109,0.3);
+          box-shadow: 0 2px 8px rgba(204,153,0,0.25);
         }
 
         .ci-task-btn:active {
           transform: scale(0.95);
-          opacity: 0.9;
         }
 
         .ci-task-btn.done-btn {
-          background: rgba(255,255,255,0.08);
-          color: rgba(255,255,255,0.35);
-          box-shadow: none;
+          background: #252329 !important;
+          color: rgba(255,255,255,0.3) !important;
+          box-shadow: none !important;
           cursor: default;
         }
 
         .ci-task-btn.listen-btn {
-          background: rgba(255,255,255,0.1);
-          color: rgba(255,255,255,0.8);
-          box-shadow: none;
+          background: rgba(255,255,255,0.08) !important;
+          color: rgba(255,255,255,0.85) !important;
+          box-shadow: none !important;
           cursor: pointer;
         }
 
@@ -901,14 +1176,14 @@ export default function CheckinPage() {
         .watch-bar-track {
           width: 100%;
           height: 4px;
-          background: rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.06);
           border-radius: 99px;
           overflow: hidden;
         }
 
         .watch-bar-fill {
           height: 100%;
-          background: linear-gradient(90deg, #e8356d 0%, #f9c34a 100%);
+          background: linear-gradient(90deg, #8b152d 0%, #ffe066 100%);
           border-radius: 99px;
           transition: width 1s linear;
         }
@@ -976,7 +1251,7 @@ export default function CheckinPage() {
         .yt-modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.75);
+          background: rgba(0,0,0,0.8);
           z-index: 9999;
           display: flex;
           align-items: flex-end;
@@ -994,7 +1269,7 @@ export default function CheckinPage() {
         .yt-modal-sheet {
           width: 100%;
           max-width: 480px;
-          background: #1a1a28;
+          background: #141217;
           border-radius: 24px 24px 0 0;
           padding: 28px 20px calc(28px + env(safe-area-inset-bottom));
           display: flex;
@@ -1030,8 +1305,9 @@ export default function CheckinPage() {
         }
 
         .yt-modal-title {
+          font-family: 'Noto Serif KR', serif;
           font-size: 18px;
-          font-weight: 800;
+          font-weight: 900;
           color: #ffffff;
           text-align: center;
           margin: 0;
@@ -1047,27 +1323,28 @@ export default function CheckinPage() {
         }
 
         .yt-modal-coin-badge {
-          background: rgba(249,195,74,0.12);
-          border: 1px solid rgba(249,195,74,0.3);
+          background: rgba(255,224,102,0.1);
+          border: 1px solid rgba(255,224,102,0.3);
           border-radius: 20px;
           padding: 8px 20px;
           font-size: 15px;
           font-weight: 800;
-          color: #f9c34a;
+          color: #ffe066;
           letter-spacing: -0.3px;
         }
 
         .yt-modal-confirm-btn {
           width: 100%;
           height: 50px;
-          background: linear-gradient(90deg, #e8356d 0%, #f0527a 100%);
+          background: linear-gradient(135deg, #ffe066 0%, #cc9900 100%);
           border: none;
           border-radius: 14px;
-          color: #ffffff;
+          color: #141217;
+          font-family: 'Noto Serif KR', serif;
           font-size: 16px;
           font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 4px 16px rgba(232,53,109,0.35);
+          box-shadow: 0 4px 16px rgba(204,153,0,0.3);
           transition: opacity 0.2s, transform 0.1s;
           letter-spacing: -0.3px;
         }
@@ -1091,7 +1368,7 @@ export default function CheckinPage() {
         .rules-modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.75);
+          background: rgba(0,0,0,0.8);
           z-index: 9999;
           display: flex;
           align-items: center;
@@ -1105,7 +1382,7 @@ export default function CheckinPage() {
         .rules-modal-box {
           width: 100%;
           max-width: 360px;
-          background: #181825;
+          background: #141217;
           border-radius: 16px;
           border: 1px solid rgba(255,255,255,0.06);
           display: flex;
@@ -1129,8 +1406,9 @@ export default function CheckinPage() {
         }
 
         .rules-modal-title {
+          font-family: 'Noto Serif KR', serif;
           font-size: 17px;
-          font-weight: 800;
+          font-weight: 900;
           color: #ffffff;
           margin: 0;
           letter-spacing: -0.4px;
@@ -1172,10 +1450,128 @@ export default function CheckinPage() {
         }
 
         .rules-modal-item {
-          font-size: 14px;
-          color: rgba(255,255,255,0.7);
-          line-height: 1.5;
-          word-break: keep-all;
+          font-size: 13.5px;
+          color: rgba(255,255,255,0.65);
+          line-height: 1.5;        .ci-root.light .ci-checkin-btn.done {
+          background: #e9e3d5 !important;
+          border: 1px solid #dcd5c4 !important;
+          color: #8e877c !important;
+        }
+
+        /* 라이트 모드 연공록 */
+        .ci-root.light .ci-greetings-section {
+          background: #fdfbf7;
+          border: 1px solid #e1dbcd;
+          box-shadow: 0 4px 16px rgba(180, 160, 120, 0.12);
+        }
+        .ci-root.light .ci-greetings-title {
+          color: #2b2724;
+        }
+        .ci-root.light .ci-greeting-input {
+          background: rgba(0,0,0,0.02);
+          border: 1px solid #e1dbcd;
+          color: #2b2724;
+        }
+        .ci-root.light .ci-greeting-input:focus {
+          border-color: #aa771c;
+        }
+        .ci-root.light .ci-greeting-submit {
+          background: linear-gradient(135deg, #8b152d 0%, #600d1e 100%);
+          color: #ffffff;
+        }
+        .ci-root.light .ci-greeting-done-msg {
+          background: rgba(139,21,45,0.04);
+          border-color: rgba(139,21,45,0.15);
+          color: #8b152d;
+        }
+        .ci-root.light .ci-greeting-card {
+          background: rgba(0,0,0,0.01);
+          border: 1px solid #e1dbcd;
+        }
+        .ci-root.light .ci-greeting-user {
+          color: #8b152d;
+        }
+        .ci-root.light .ci-greeting-text {
+          color: #2b2724;
+        }
+        .ci-root.light .ci-greeting-empty {
+          color: #8e877c;
+        }
+        .ci-root.light .ci-greeting-meta {
+          color: #8e877c;
+        }
+
+        /* 라이트 모드 미션 리스트 */
+        .ci-root.light .ci-section-title {
+          color: #2b2724;
+        }
+        .ci-root.light .ci-task-card {
+          background: #fdfbf7;
+          border: 1px solid #e1dbcd;
+          box-shadow: 0 2px 8px rgba(180, 160, 120, 0.08);
+        }
+        .ci-root.light .ci-task-icon-wrap {
+          background: rgba(0,0,0,0.03);
+        }
+        .ci-root.light .ci-task-title {
+          color: #2b2724;
+        }
+        .ci-root.light .ci-task-title-badge {
+          color: #8e877c;
+        }
+        .ci-root.light .ci-task-sub {
+          color: #5d564f;
+        }
+        .ci-root.light .ci-task-sub .coin-highlight {
+          color: #8b152d;
+        }
+        .ci-root.light .ci-task-btn {
+          background: linear-gradient(135deg, #8b152d 0%, #600d1e 100%);
+          color: #ffffff;
+          box-shadow: 0 2px 6px rgba(139,21,45,0.25);
+        }
+        .ci-root.light .ci-task-btn.done-btn {
+          background: #e9e3d5 !important;
+          border: 1px solid #dcd5c4 !important;
+          color: #8e877c !important;
+        }
+        .ci-root.light .ci-task-btn.listen-btn {
+          background: #e9e3d5 !important;
+          border: 1px solid #dcd5c4 !important;
+          color: #2b2724 !important;
+        }
+        .ci-root.light .watch-bar-track {
+          background: rgba(0,0,0,0.06);
+        }
+        .ci-root.light .watch-timer-text {
+          color: #5d564f;
+        }
+        .ci-root.light .yt-modal-sheet {
+          background: #fdfbf7;
+          box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+        }
+        .ci-root.light .yt-modal-title {
+          color: #2b2724;
+        }
+        .ci-root.light .yt-modal-desc {
+          color: #5d564f;
+        }
+        .ci-root.light .yt-modal-cancel-btn {
+          color: #8e877c;
+        }
+        .ci-root.light .rules-modal-box {
+          background: #fdfbf7;
+          border: 1px solid #e1dbcd;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .ci-root.light .rules-modal-title {
+          color: #2b2724;
+        }
+        .ci-root.light .rules-modal-close {
+          color: #8e877c;
+        }
+        .ci-root.light .rules-modal-item {
+          color: #5d564f;
         }
       `}</style>
 
@@ -1187,133 +1583,132 @@ export default function CheckinPage() {
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <h1 className="ci-page-title">리워드 코인</h1>
+          <h1 className="ci-page-title">출석 보상</h1>
         </div>
 
         {/* 코인 히어로 */}
-            <div className="ci-hero">
-              <p className="ci-hero-amount">{coins.toLocaleString()}</p>
-              <p className="ci-hero-label">리워드 코인</p>
-              <button className="ci-rules-btn" onClick={() => setRulesModalOpen(true)}>코인 받기 규칙</button>
-              <div className="ci-hero-coin-img">🪙</div>
-              <span className="ci-stars">✦ ✦</span>
-            </div>
+        <div className="ci-hero">
+          <p className="ci-hero-amount">{coins.toLocaleString()}</p>
+          <p className="ci-hero-label">출석 보상 (리워드 코인)</p>
+          <button className="ci-rules-btn" onClick={() => setRulesModalOpen(true)}>코인 받기 규칙</button>
+          <div className="ci-hero-coin-img">🪙</div>
+          <span className="ci-stars">✦ ✦</span>
+        </div>
 
-            {/* 출석 카드 */}
-            <div className="ci-attendance-card">
-              <p className="ci-streak-title">
-                누적 출석 <span className="ci-streak-highlight">{streak}일</span>
-              </p>
+        {/* 출석 카드 */}
+        <div className="ci-attendance-card">
+          <p className="ci-streak-title">
+            누적 출석 <span className="ci-streak-highlight">{streak}일</span>
+          </p>
 
-              {/* 7일 달력 */}
-              <div className="ci-days-row">
-                {ATTENDANCE_REWARDS.map((item, idx) => {
-                  const isDone = idx < (streak % 7 === 0 && streak > 0 ? 7 : streak % 7);
-                  const isToday = idx === todayIdx && !checkedIn;
+          {/* 7일 달력 */}
+          <div className="ci-days-row">
+            {ATTENDANCE_REWARDS.map((item, idx) => {
+              const isDone = idx < (streak % 7 === 0 && streak > 0 ? 7 : streak % 7);
+              const isToday = idx === todayIdx && !checkedIn;
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`ci-day-box ${isDone ? "done" : ""} ${isToday ? "today" : ""}`}
-                    >
-                      <span className="ci-day-coin-text">+{item.coin}</span>
-                      {isDone ? (
-                        <div className="ci-day-coin-icon">✓</div>
-                      ) : isToday ? (
-                        <div className="ci-day-coin-icon">🪙</div>
+              return (
+                <div
+                  key={idx}
+                  className={`ci-day-box ${isDone ? "done" : ""} ${isToday ? "today" : ""}`}
+                >
+                  <span className="ci-day-coin-text">+{item.coin}</span>
+                  {isDone ? (
+                    <div className="ci-day-stamp">出席</div>
+                  ) : isToday ? (
+                    <div className="ci-day-coin-icon">🪙</div>
+                  ) : (
+                    <div className="ci-day-icon-grey">🪙</div>
+                  )}
+                  <span className={`ci-day-label ${isToday ? "today" : ""}`}>{item.day}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 출석 버튼 */}
+          <button
+            className={`ci-checkin-btn ${checkedIn ? "done" : ""}`}
+            onClick={handleCheckin}
+          >
+            {checkedIn ? "오늘 출석 완료 ✓" : "출석체크하기"}
+          </button>
+        </div>
+
+        {/* 코인 미션 섹션 */}
+        <p className="ci-section-title">코인 미션</p>
+        <div className="ci-task-list">
+          {EARN_TASKS
+            .filter((task) => !(task.id === "youtube" && taskDone["youtube"]))
+            .map((task) => {
+              const isDone = task.done || !!taskDone[task.id];
+              const isTimerTask = !!(task as any).minutesRequired;
+              const requiredSecs = ((task as any).minutesRequired ?? 0) * 60;
+              const progress = isTimerTask ? Math.min(100, (elapsedSeconds / requiredSecs) * 100) : 100;
+              const canClaim = isTimerTask && elapsedSeconds >= requiredSecs;
+
+              const fmtTime = (s: number) =>
+                `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+              return (
+                <div className="ci-task-card" key={task.id}>
+                  <div className="ci-task-icon-wrap">{task.icon}</div>
+                  <div className="ci-task-info">
+                    <span className="ci-task-title">
+                      {task.title}
+                      {task.badge && <span className="ci-task-title-badge">{task.badge}</span>}
+                    </span>
+                    <span className="ci-task-sub">
+                      {task.subtitle.includes("코인") ? (
+                        <>
+                          {task.subtitle.replace(/\d+\s*코인/, "")}{" "}
+                          <span className="coin-highlight">{task.coin} 코인</span>
+                        </>
                       ) : (
-                        <div className="ci-day-icon-grey">🪙</div>
+                        task.subtitle
                       )}
-                      <span className={`ci-day-label ${isToday ? "today" : ""}`}>{item.day}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* 출석 버튼 */}
-              <button
-                className={`ci-checkin-btn ${checkedIn ? "done" : ""}`}
-                onClick={handleCheckin}
-              >
-                {checkedIn ? "오늘 출석 완료 ✓" : "출석체크"}
-              </button>
-            </div>
-
-            {/* 코인 받기 섹션 */}
-            <p className="ci-section-title">코인 받기</p>
-            <div className="ci-task-list">
-              {EARN_TASKS
-                .filter((task) => !(task.id === "youtube" && taskDone["youtube"]))
-                .map((task) => {
-                  const isDone = task.done || !!taskDone[task.id];
-                  const isTimerTask = !!(task as any).minutesRequired;
-                  const requiredSecs = ((task as any).minutesRequired ?? 0) * 60;
-                  const progress = isTimerTask ? Math.min(100, (elapsedSeconds / requiredSecs) * 100) : 100;
-                  const canClaim = isTimerTask && elapsedSeconds >= requiredSecs;
-
-                  const fmtTime = (s: number) =>
-                    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
-                  return (
-                    <div className="ci-task-card" key={task.id}>
-                      <div className="ci-task-icon-wrap">{task.icon}</div>
-                      <div className="ci-task-info">
-                        <span className="ci-task-title">
-                          {task.title}
-                          {task.badge && <span className="ci-task-title-badge">{task.badge}</span>}
+                    </span>
+                    {isTimerTask && !isDone && (
+                      <div className="watch-progress-wrap">
+                        <div className="watch-bar-track">
+                          <div
+                            className={`watch-bar-fill${canClaim ? " complete" : ""}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <span className={`watch-timer-text${canClaim ? " ready" : ""}`}>
+                          {canClaim
+                            ? "✓ 미션 달성 완료!"
+                            : `${fmtTime(elapsedSeconds)} / ${(task as any).minutesRequired}:00`}
                         </span>
-                        <span className="ci-task-sub">
-                          {task.subtitle.includes("코인") ? (
-                            <>
-                              {task.subtitle.replace(/\d+\s*코인/, "")}{" "}
-                              <span className="coin-highlight">{task.coin} 코인</span>
-                            </>
-                          ) : (
-                            task.subtitle
-                          )}
-                        </span>
-                        {isTimerTask && !isDone && (
-                          <div className="watch-progress-wrap">
-                            <div className="watch-bar-track">
-                              <div
-                                className={`watch-bar-fill${canClaim ? " complete" : ""}`}
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <span className={`watch-timer-text${canClaim ? " ready" : ""}`}>
-                              {canClaim
-                                ? "✓ 미션 달성 완료!"
-                                : `${fmtTime(elapsedSeconds)} / ${(task as any).minutesRequired}:00`}
-                            </span>
-                          </div>
-                        )}
                       </div>
-                      <button
-                        className={`ci-task-btn ${
-                          isDone ? "done-btn" :
-                          isTimerTask && !canClaim ? "listen-btn" :
-                          isTimerTask && canClaim ? "claim-btn" : ""
-                        }`}
-                        onClick={() => {
-                          if (isDone) return;
-                          if (isTimerTask && !canClaim) {
-                            handleListenRoute();
-                            return;
-                          }
-                          if (isTimerTask && canClaim) {
-                            handleWatchClaim(task.id, task.coin);
-                          } else {
-                            handleTask(task.id, task.btnLabel);
-                          }
-                        }}
-                      >
-                        {isDone ? "완료" : isTimerTask && canClaim ? "청취완료" : task.btnLabel}
-                      </button>
-                    </div>
-                  );
-                })}
-            </div>
-
+                    )}
+                  </div>
+                  <button
+                    className={`ci-task-btn ${
+                      isDone ? "done-btn" :
+                      isTimerTask && !canClaim ? "listen-btn" :
+                      isTimerTask && canClaim ? "claim-btn" : ""
+                    }`}
+                    onClick={() => {
+                      if (isDone) return;
+                      if (isTimerTask && !canClaim) {
+                        handleListenRoute();
+                        return;
+                      }
+                      if (isTimerTask && canClaim) {
+                        handleWatchClaim(task.id, task.coin);
+                      } else {
+                        handleTask(task.id, task.btnLabel);
+                      }
+                    }}
+                  >
+                    {isDone ? "완료" : isTimerTask && canClaim ? "청취완료" : task.btnLabel}
+                  </button>
+                </div>
+              );
+            })}
+        </div>
       </div>
 
       {/* 유튜브 구독 확인 모달 */}

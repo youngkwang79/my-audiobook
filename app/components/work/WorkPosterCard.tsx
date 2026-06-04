@@ -5,14 +5,19 @@ import type { Work } from "@/app/data/works";
 import { getEpisodesByWork } from "@/app/data/episodes";
 
 type Props = {
-  work: Work;
+  work: Work & { firstEpisodeId?: string | null };
 };
 
 export default function WorkPosterCard({ work }: Props) {
-  const episodes = getEpisodesByWork(work.id);
-  const firstEp = episodes[0];
-  const playHref = firstEp
-    ? `/episode/${work.id}/${firstEp.id}?part=1&autoplay=1`
+  // Use firstEpisodeId from database if available, otherwise fall back to static data
+  let firstEpId = work.firstEpisodeId;
+  if (firstEpId === undefined) {
+    const episodes = getEpisodesByWork(work.id);
+    firstEpId = episodes[0]?.id || null;
+  }
+
+  const playHref = firstEpId
+    ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1`
     : `/work/${work.id}`;
 
   // 배지 색상 결정

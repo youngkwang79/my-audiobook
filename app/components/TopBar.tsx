@@ -95,6 +95,7 @@ export default function TopBar() {
   return (
     <div
       ref={topBarRef}
+      className="topbar-container"
       style={{
         display: "flex",
         alignItems: "center",
@@ -104,7 +105,7 @@ export default function TopBar() {
         position: "relative",
         zIndex: 10000,
         background: "transparent",
-backdropFilter: "none",
+        backdropFilter: "none",
         borderBottom: "1px solid rgba(255,215,120,0.15)",
       }}
     >

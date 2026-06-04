@@ -4,7 +4,6 @@ import "./globals.css";
 
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import AuthSessionGuard from "@/app/components/AuthSessionGuard";
-import BackgroundAudio from "@/app/components/BackgroundAudio";
 import LayoutWrapper from "@/app/components/LayoutWrapper";
 
 const geistSans = Geist({
@@ -48,11 +47,20 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{__html: `
+          (function() {
+            try {
+              const theme = localStorage.getItem('theme') || 'dark';
+              document.documentElement.className = theme;
+            } catch (e) {}
+          })();
+        `}} />
+      </head>
       <body className="antialiased font-sans">
         <AuthProvider>
           <AuthSessionGuard />
-          <BackgroundAudio />
           <LayoutWrapper>
             {children}
           </LayoutWrapper>

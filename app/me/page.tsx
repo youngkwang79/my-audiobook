@@ -59,6 +59,27 @@ async function getAccessToken() {
   return session?.access_token ?? null;
 }
 
+// 뒤로가기 아이콘
+function BackIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  );
+}
+
+// 쓰레기통 아이콘
+function TrashIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      <line x1="10" y1="11" x2="10" y2="17"></line>
+      <line x1="14" y1="11" x2="14" y2="17"></line>
+    </svg>
+  );
+}
+
 export default function MePage() {
   const router = useRouter();
   const { user, session, loading, signOut } = useAuth();
@@ -70,6 +91,92 @@ export default function MePage() {
   const [newNickname, setNewNickname] = useState("");
   const [newAllowNotifications, setNewAllowNotifications] = useState(false);
   const [modalBusy, setModalBusy] = useState(false);
+
+  // 설정 화면 데이터 및 토글 상태
+  const [allowMobileDownload, setAllowMobileDownload] = useState(false);
+  const [allowPersonalRecommendation, setAllowPersonalRecommendation] = useState(true);
+  const [denySalePersonalInfo, setDenySalePersonalInfo] = useState(false);
+  const [allowMarketingInfo, setAllowMarketingInfo] = useState(true);
+  const [cacheSize, setCacheSize] = useState("0.0MB");
+
+  // 테마 상태 추가
+  const [theme, setTheme] = useState("dark");
+
+  const handleThemeToggle = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem("theme", nextTheme);
+      document.documentElement.className = nextTheme;
+    } catch (e) {}
+  };
+
+  // 로컬 스토리지 크기 계산
+  const calculateCacheSize = () => {
+    try {
+      let total = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          total += (localStorage.getItem(key) || "").length + key.length;
+        }
+      }
+      const mb = (total / (1024 * 1024)).toFixed(1);
+      setCacheSize(`${mb}MB`);
+    } catch (e) {
+      setCacheSize("0.0MB");
+    }
+  };
+
+  useEffect(() => {
+    try {
+      setAllowMobileDownload(localStorage.getItem("allowMobileDownload") === "true");
+      setAllowPersonalRecommendation(localStorage.getItem("allowPersonalRecommendation") !== "false");
+      setDenySalePersonalInfo(localStorage.getItem("denySalePersonalInfo") === "true");
+      setAllowMarketingInfo(localStorage.getItem("allowMarketingInfo") !== "false");
+      
+      const savedTheme = localStorage.getItem("theme") || "dark";
+      setTheme(savedTheme);
+      document.documentElement.className = savedTheme;
+
+      calculateCacheSize();
+    } catch (e) {}
+  }, []);
+
+  const handleToggle = (key: string, value: boolean, setter: (val: boolean) => void) => {
+    try {
+      localStorage.setItem(key, String(value));
+      setter(value);
+    } catch (e) {}
+  };
+
+  const handleClearCache = () => {
+    try {
+      const preserveKeys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes("sb-") || key === "membership" || key.includes("auth"))) {
+          preserveKeys.push({ key, value: localStorage.getItem(key) });
+        }
+      }
+      localStorage.clear();
+      
+      preserveKeys.forEach(item => {
+        localStorage.setItem(item.key, item.value || "");
+      });
+      
+      // 설정값 재보존
+      localStorage.setItem("allowMobileDownload", String(allowMobileDownload));
+      localStorage.setItem("allowPersonalRecommendation", String(allowPersonalRecommendation));
+      localStorage.setItem("denySalePersonalInfo", String(denySalePersonalInfo));
+      localStorage.setItem("allowMarketingInfo", String(allowMarketingInfo));
+
+      alert("캐시가 삭제되었습니다.");
+      calculateCacheSize();
+    } catch (e) {
+      alert("캐시 삭제 중 오류가 발생했습니다.");
+    }
+  };
 
   useEffect(() => {
     if (user && !user.user_metadata?.nickname) {
@@ -163,10 +270,36 @@ export default function MePage() {
     }
   };
 
+  // DB의 구독 정보를 로컬 스토리지와 동기화
+  const syncSubscription = async () => {
+    try {
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch("/api/me/restore", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        if (data.success && data.plan) {
+          localStorage.setItem("membership", data.plan);
+          setSubscribedPlan(data.plan);
+        } else {
+          localStorage.removeItem("membership");
+          setSubscribedPlan(null);
+        }
+      }
+    } catch (e) {
+      console.error("구독 정보 동기화 실패:", e);
+    }
+  };
+
   useEffect(() => {
     if (user && session) {
       loadWallet();
       loadRemainingMissions();
+      syncSubscription();
     } else {
       setCurrentPoints(null);
       setRemainingMissions(null);
@@ -179,6 +312,7 @@ export default function MePage() {
       if (user && session) {
         loadWallet();
         loadRemainingMissions();
+        syncSubscription();
       }
     };
     window.addEventListener("wallet-updated", handleWalletUpdate);
@@ -242,7 +376,7 @@ export default function MePage() {
   const displayCoins = currentPoints !== null ? currentPoints : 0;
 
   return (
-    <main className="me-main-bg">
+    <main className={`me-main-bg ${theme}`}>
       <style>{`
         .me-main-bg {
           min-height: 100dvh;
@@ -568,6 +702,271 @@ export default function MePage() {
           border: none;
           margin-top: 8px;
         }
+
+        /* 풀스크린 설정 화면 오버레이 스타일 */
+        .settings-overlay {
+          position: fixed;
+          inset: 0;
+          background: #000000;
+          z-index: 100000;
+          display: flex;
+          flex-direction: column;
+          transform: translateX(100%);
+          transition: transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94);
+          box-sizing: border-box;
+        }
+
+        .settings-overlay.active {
+          transform: translateX(0);
+        }
+
+        .settings-content {
+          flex: 1;
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          background: #000000;
+          overflow-y: auto;
+          padding-bottom: calc(40px + env(safe-area-inset-bottom));
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .settings-header {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          height: 56px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: #000000;
+          flex-shrink: 0;
+        }
+
+        .settings-back-btn {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: #ffffff;
+          cursor: pointer;
+          padding: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .settings-title {
+          font-size: 17px;
+          font-weight: 800;
+          color: #ffffff;
+          margin: 0;
+        }
+
+        .settings-list {
+          display: flex;
+          flex-direction: column;
+          padding: 20px 16px;
+          gap: 24px;
+        }
+
+        .settings-group {
+          background: #16161e;
+          border: 1px solid rgba(255, 255, 255, 0.03);
+          border-radius: 16px;
+          padding: 0 16px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .settings-group-title {
+          font-size: 12px;
+          font-weight: 800;
+          color: #8c8c96;
+          margin-top: 6px;
+          margin-bottom: 10px;
+          padding-left: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+        }
+
+        .settings-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          box-sizing: border-box;
+        }
+
+        .settings-row:active {
+          background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .settings-row-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #8c8c96;
+          font-size: 14.5px;
+          font-weight: 600;
+        }
+
+        .settings-chevron {
+          color: #55555d;
+          display: flex;
+          align-items: center;
+        }
+
+        /* iOS 토글 스위치 스타일 */
+        .switch-container {
+          position: relative;
+          display: inline-block;
+          width: 51px;
+          height: 31px;
+        }
+
+        .switch-container input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .switch-slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #333337;
+          transition: .3s;
+          border-radius: 34px;
+        }
+
+        .switch-slider:before {
+          position: absolute;
+          content: "";
+          height: 27px;
+          width: 27px;
+          left: 2px;
+          bottom: 2px;
+          background-color: white;
+          transition: .3s;
+          border-radius: 50%;
+          box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked + .switch-slider {
+          background-color: #ff2a5f;
+        }
+
+        input:checked + .switch-slider:before {
+          transform: translateX(20px);
+        }
+
+        .settings-logout-btn {
+          margin: 32px 20px 20px;
+          background: #1c1c1e;
+          color: #ff453a;
+          border: none;
+          border-radius: 12px;
+          height: 50px;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+        }
+
+        .settings-logout-btn:active {
+          background: #2c2c2e;
+        }
+
+        /* 라이트 모드 전용 스타일 오버라이드 (가독성 보완) */
+        .me-main-bg.light {
+          background: #f2f2f7 !important;
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .settings-btn {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .profile-name {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .profile-meta {
+          color: #55555d !important;
+        }
+        .me-main-bg.light .copy-btn {
+          color: #55555d !important;
+        }
+        .me-main-bg.light .menu-group-box {
+          background: #ffffff !important;
+          border: 1px solid rgba(0, 0, 0, 0.04) !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        }
+        .me-main-bg.light .menu-item {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .menu-item:not(:last-child) {
+          border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+        }
+        .me-main-bg.light .menu-item-left {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .menu-arrow {
+          color: #c7c7cc !important;
+        }
+        .me-main-bg.light .menu-right-text {
+          color: #8e8e93 !important;
+        }
+        .me-main-bg.light .settings-overlay {
+          background: #f2f2f7 !important;
+        }
+        .me-main-bg.light .settings-content {
+          background: #f2f2f7 !important;
+        }
+        .me-main-bg.light .settings-header {
+          background: #ffffff !important;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+        }
+        .me-main-bg.light .settings-back-btn {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .settings-title {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .settings-group {
+          background: #ffffff !important;
+          border: 1px solid rgba(0, 0, 0, 0.04) !important;
+        }
+        .me-main-bg.light .settings-group-title {
+          color: #8e8e93 !important;
+        }
+        .me-main-bg.light .settings-row {
+          color: #1c1c1e !important;
+        }
+        .me-main-bg.light .settings-row:not(:last-child) {
+          border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+        }
+        .me-main-bg.light .settings-row-right {
+          color: #8e8e93 !important;
+        }
+        .me-main-bg.light .settings-chevron {
+          color: #c7c7cc !important;
+        }
+        .me-main-bg.light .settings-logout-btn {
+          background: #ffffff !important;
+          color: #ff3b30 !important;
+          border: 1px solid rgba(0, 0, 0, 0.04) !important;
+        }
+        .me-main-bg.light .switch-slider {
+          background-color: #e5e5ea !important;
+        }
       `}</style>
 
       <div className="me-container">
@@ -588,12 +987,10 @@ export default function MePage() {
           <div className="profile-info">
             <h2 className="profile-name">{displayName}</h2>
             <div className="profile-meta">
-              <span>ID {displayId}</span>
-              <button className="copy-btn" onClick={handleCopyId} title="ID 복사">
+              <span>회원 ID {displayId}</span>
+              <button className="copy-btn" onClick={handleCopyId} title="회원 ID 복사">
                 <CopyIcon />
               </button>
-              <span className="profile-divider">|</span>
-              <span>팔로잉 0</span>
             </div>
           </div>
         </div>
@@ -603,19 +1000,19 @@ export default function MePage() {
           <div className="membership-banner-left">
             <h3 className="membership-banner-title">
               {subscribedPlan === "weekly"
-                ? "작가에게 커피한잔 후원중💖"
+                ? "작가에게 시원한 차 한잔 후원 중🍵"
                 : subscribedPlan === "annual" || subscribedPlan === "yearly"
-                ? "작가에게 따뜻한 국밥 후원중💖"
-                : "멤버십 가입하기"}
+                ? "작가에게 든든한 삼계탕 후원 중🍗"
+                : "작가 후원하기 (정액 멤버십)"}
             </h3>
-            {!subscribedPlan && <p className="membership-banner-desc">멤버십 전용 혜택을 누려보세요:</p>}
+            {!subscribedPlan && <p className="membership-banner-desc">소설 무제한 감상 및 전용 혜택을 누려보세요:</p>}
           </div>
           {!subscribedPlan && (
             <button className="membership-banner-btn" onClick={(e) => {
               e.stopPropagation();
               handleMembershipRedirect();
             }}>
-              가입
+              후원
             </button>
           )}
         </div>
@@ -623,11 +1020,11 @@ export default function MePage() {
         {/* 메뉴 그룹 1 */}
         <div className="menu-group-box">
           <button className="menu-item" onClick={handlePointsRedirect}>
-            <span className="menu-item-left">바로 충전</span>
+            <span className="menu-item-left">코인 충전</span>
             <div className="menu-item-right">
               {subscribedPlan && (
                 <span style={{ fontSize: "12px", color: "#ff2a5f", marginRight: "4px", fontWeight: "600" }}>
-                  멤버십 이용중
+                  후원 회원
                 </span>
               )}
               <span className="menu-arrow"><ChevronRightIcon /></span>
@@ -635,7 +1032,7 @@ export default function MePage() {
           </button>
 
           <button className="menu-item" onClick={() => router.push("/wallet")}>
-            <span className="menu-item-left">내 지갑</span>
+            <span className="menu-item-left">내 지갑 (코인 잔액)</span>
             <div className="menu-item-right">
               <CoinIcon />
               <span className="menu-coin-text">{displayCoins}</span>
@@ -644,7 +1041,7 @@ export default function MePage() {
           </button>
 
           <button className="menu-item" onClick={() => router.push("/checkin")}>
-            <span className="menu-item-left">출석체크 / 무료 코인 받기</span>
+            <span className="menu-item-left">출석 보상 (무료 코인 받기)</span>
             <div className="menu-item-right">
               {remainingMissions !== null && remainingMissions > 0 && (
                 <span className="menu-badge">+{remainingMissions}</span>
@@ -653,33 +1050,12 @@ export default function MePage() {
             </div>
           </button>
 
-          <button className="menu-item" onClick={() => router.push("/works?tab=시청 기록")}>
-            <span className="menu-item-left">시청 기록</span>
-            <div className="menu-item-right">
-              <span className="menu-arrow"><ChevronRightIcon /></span>
-            </div>
-          </button>
-
-          <button className="menu-item" onClick={() => router.push("/works?tab=다운로드")}>
-            <span className="menu-item-left">다운로드</span>
-            <div className="menu-item-right">
-              <span className="menu-arrow"><ChevronRightIcon /></span>
-            </div>
-          </button>
-        </div>
-
-        {/* 메뉴 그룹 2 */}
-        <div className="menu-group-box">
-          <button className="menu-item" onClick={() => alert("현재 한국어만 지원합니다.")}>
-            <span className="menu-item-left">언어</span>
-            <div className="menu-item-right">
-              <span className="menu-right-text">한국어</span>
-              <span className="menu-arrow"><ChevronRightIcon /></span>
-            </div>
-          </button>
-
-          <button className="menu-item" onClick={() => alert("고객 센터 문의: support@murimbook.com")}>
-            <span className="menu-item-left">고객 센터</span>
+          <button className="menu-item" onClick={() => {
+            if (confirm("안녕하세요. 고품격 무협 오디오 청취 플랫폼 '무림북'입니다. 이용문의 및 에러 사항은 언제든 1:1 채팅으로 남겨주세요.\n\n확인을 누르시면 1:1 문의 채팅방(카카오톡 오픈채팅)으로 이동합니다.")) {
+              window.open("https://open.kakao.com/o/s4Da53xi", "_blank");
+            }
+          }}>
+            <span className="menu-item-left">고객 문의 (1:1 문의)</span>
             <div className="menu-item-right">
               <span className="menu-arrow"><ChevronRightIcon /></span>
             </div>
@@ -687,49 +1063,141 @@ export default function MePage() {
         </div>
       </div>
 
-      {/* 설정 모달 (바텀 시트) */}
-      <div className={`modal-overlay ${isSettingsOpen ? "active" : ""}`} onClick={() => setIsSettingsOpen(false)}>
-        <div className="bottom-sheet" onClick={(e) => e.stopPropagation()}>
-          <h4 className="sheet-title">계정 설정</h4>
-          
-          {user ? (
-            <>
-              <button className="sheet-btn" onClick={() => {
-                setIsSettingsOpen(false);
-                router.push("/me/change-password");
-              }}>
-                비밀번호 변경
-              </button>
-              <button className="sheet-btn" onClick={() => {
-                setIsSettingsOpen(false);
-                router.push("/me/change-email");
-              }}>
-                이메일 변경
-              </button>
-              <button className="sheet-btn danger" onClick={handleSignOut}>
-                로그아웃
-              </button>
-              <button className="sheet-btn danger" onClick={() => {
-                if (confirm("정말 탈퇴하시겠습니까? 데이터는 복구되지 않습니다.")) {
-                  alert("서비스 탈퇴가 처리되었습니다.");
-                  handleSignOut();
-                }
-              }}>
-                계정 탈퇴하기
-              </button>
-            </>
-          ) : (
-            <button className="sheet-btn" onClick={() => {
-              setIsSettingsOpen(false);
-              router.push("/login");
-            }}>
-              로그인하러 가기
+      {/* 설정 화면 오버레이 */}
+      <div className={`settings-overlay ${isSettingsOpen ? "active" : ""}`}>
+        <div className="settings-content">
+          {/* 헤더 */}
+          <div className="settings-header">
+            <button className="settings-back-btn" onClick={() => setIsSettingsOpen(false)}>
+              <BackIcon />
+            </button>
+            <h3 className="settings-title">설정</h3>
+          </div>
+
+          {/* 설정 리스트 */}
+          <div className="settings-list">
+            
+            {/* 1. 서비스 및 구독 */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div className="settings-group-title">구독 및 서비스</div>
+              <div className="settings-group">
+                <button className="settings-row" onClick={() => { setIsSettingsOpen(false); router.push("/me/membership"); }}>
+                  <span>구독 및 후원 설정</span>
+                  <div className="settings-row-right">
+                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. 앱 사용 설정 */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div className="settings-group-title">앱 사용 설정</div>
+              <div className="settings-group">
+                <button className="settings-row" onClick={handleThemeToggle}>
+                  <span>화면 테마 설정</span>
+                  <div className="settings-row-right">
+                    <span>{theme === "dark" ? "다크 모드" : "라이트 모드"}</span>
+                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                  </div>
+                </button>
+
+                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                  <span>3G/LTE/5G 다운로드 허용</span>
+                  <label className="switch-container">
+                    <input
+                      type="checkbox"
+                      checked={allowMobileDownload}
+                      onChange={(e) => handleToggle("allowMobileDownload", e.target.checked, setAllowMobileDownload)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+
+                <button className="settings-row" onClick={handleClearCache}>
+                  <span>임시 저장 공간 비우기</span>
+                  <div className="settings-row-right">
+                    <span style={{ fontSize: "14px", color: "#8c8c96" }}>{cacheSize}</span>
+                    <TrashIcon />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* 3. 개인정보 보호 */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div className="settings-group-title">개인정보 보호</div>
+              <div className="settings-group">
+                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                  <span>개인 맞춤형 작품 추천</span>
+                  <label className="switch-container">
+                    <input
+                      type="checkbox"
+                      checked={allowPersonalRecommendation}
+                      onChange={(e) => handleToggle("allowPersonalRecommendation", e.target.checked, setAllowPersonalRecommendation)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+
+                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                  <span>개인정보 판매 및 제공 제한</span>
+                  <label className="switch-container">
+                    <input
+                      type="checkbox"
+                      checked={denySalePersonalInfo}
+                      onChange={(e) => handleToggle("denySalePersonalInfo", e.target.checked, setDenySalePersonalInfo)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+
+                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                  <span>혜택 및 마케팅 정보 수신</span>
+                  <label className="switch-container">
+                    <input
+                      type="checkbox"
+                      checked={allowMarketingInfo}
+                      onChange={(e) => handleToggle("allowMarketingInfo", e.target.checked, setAllowMarketingInfo)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. 기타 및 정보 */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div className="settings-group-title">기타</div>
+              <div className="settings-group">
+                <button className="settings-row" onClick={() => alert("무림북 오디오북 앱 v1.0.0")}>
+                  <span>무림북 정보 및 약관</span>
+                  <div className="settings-row-right">
+                    <span>1.0.0</span>
+                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                  </div>
+                </button>
+
+                <button className="settings-row" onClick={() => {
+                  setIsSettingsOpen(false);
+                  router.push("/me/withdraw");
+                }}>
+                  <span>회원 탈퇴 (계정 삭제)</span>
+                  <div className="settings-row-right">
+                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* 로그아웃 버튼 */}
+          {user && (
+            <button className="settings-logout-btn" onClick={handleSignOut}>
+              로그아웃
             </button>
           )}
-
-          <button className="sheet-close-btn" onClick={() => setIsSettingsOpen(false)}>
-            닫기
-          </button>
         </div>
       </div>
 

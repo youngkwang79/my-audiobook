@@ -43,9 +43,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "amount invalid" }, { status: 400 });
     }
 
-    // ✅ 임시: amount만큼 points 충전(예: 100원=100포인트면 그대로)
-    // 실제 운영에서는 “결제사 서버검증” 또는 “웹훅”에서만 충전되게 바꾸는 걸 추천
-    const addPoints = amount;
+    // 금액에 따른 지급 포인트 매핑 (현 가격 정책 적용)
+    let addPoints = 0;
+    if (amount === 990) {
+      addPoints = 700; // 100 + 600
+    } else if (amount === 10900) {
+      addPoints = 1200; // 700 + 500
+    } else if (amount === 14900) {
+      addPoints = 1400; // 1000 + 400
+    } else if (amount === 39800) {
+      addPoints = 4000; // 2500 + 1500
+    } else {
+      addPoints = amount; // 폴백
+    }
 
     let wallet;
     try {

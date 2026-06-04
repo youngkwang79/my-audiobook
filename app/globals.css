@@ -210,3 +210,314 @@ main {
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
 }
+
+/* ☀️ 라이트 테마 대응 스타일 */
+html.light,
+html.light body {
+  background: #f4f4f7 !important;
+  color: #121212 !important;
+}
+
+html.light .me-main-bg {
+  background: #f4f4f7 !important;
+  color: #1c1c1e !important;
+}
+
+html.light .profile-name {
+  color: #121212 !important;
+}
+
+html.light .profile-meta {
+  color: #66666e !important;
+}
+
+html.light .copy-btn {
+  color: #66666e !important;
+}
+
+html.light .profile-avatar {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light .profile-avatar-text {
+  color: #1c1c1e !important;
+}
+
+html.light .menu-group-box {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+}
+
+html.light .menu-item {
+  color: #1c1c1e !important;
+}
+
+html.light .menu-item:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .menu-item-left {
+  color: #1c1c1e !important;
+}
+
+html.light .menu-right-text {
+  color: #66666e !important;
+}
+
+/* 설정 화면 라이트 테마 */
+html.light .settings-overlay {
+  background: #f4f4f7 !important;
+}
+
+html.light .settings-content {
+  background: #f4f4f7 !important;
+}
+
+html.light .settings-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .settings-title {
+  color: #1c1c1e !important;
+}
+
+html.light .settings-back-btn {
+  color: #1c1c1e !important;
+}
+
+html.light .settings-row {
+  color: #1c1c1e !important;
+}
+
+html.light .settings-row:active {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .settings-row-right {
+  color: #66666e !important;
+}
+
+html.light .switch-slider {
+  background-color: #e5e5ea !important;
+}
+
+html.light input:checked + .switch-slider {
+  background-color: #ff2a5f !important;
+}
+
+html.light .settings-logout-btn {
+  background: #ffffff !important;
+  color: #ff3b30 !important;
+  border: 1px solid rgba(0,0,0,0.02) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
+}
+
+html.light .settings-logout-btn:active {
+  background: #f4f4f7 !important;
+}
+
+html.light .bottom-sheet {
+  background: #ffffff !important;
+  color: #1c1c1e !important;
+}
+
+html.light .sheet-title {
+  color: #1c1c1e !important;
+}
+
+html.light .sheet-btn {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  color: #1c1c1e !important;
+}
+
+html.light .sheet-close-btn {
+  background: #1c1c1e !important;
+  color: #ffffff !important;
+}
+
+/* ☀️ 홈 화면 라이트 테마 */
+html.light .main-container {
+  background: #f4f4f7 !important;
+  color: #1c1c1e !important;
+}
+
+html.light .topbar-container {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .search-input-wrapper {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .search-input {
+  color: #1c1c1e !important;
+}
+
+html.light .search-input::placeholder {
+  color: #8c8c96 !important;
+}
+
+html.light .icon-btn {
+  color: #1c1c1e !important;
+}
+
+html.light .category-tabs {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+html.light .category-tab {
+  color: #8c8c96 !important;
+}
+
+html.light .category-tab.active {
+  color: #1c1c1e !important;
+}
+
+html.light .category-tab.active::after {
+  background-color: #1c1c1e !important;
+}
+
+html.light .continue-play-card {
+  border: 1px solid rgba(212, 162, 60, 0.25) !important;
+  background: linear-gradient(135deg, rgba(255, 241, 168, 0.25) 0%, rgba(243, 201, 105, 0.15) 50%, rgba(212, 162, 60, 0.1) 100%) !important;
+}
+
+html.light .continue-play-title {
+  color: #8a6d1c !important;
+}
+
+html.light .poster-title {
+  color: #1c1c1e !important;
+}
+
+html.light .poster-subtitle {
+  color: #66666e !important;
+}
+
+html.light .poster-thumb-wrap {
+  background: #e5e5ea !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .coming-soon-section {
+  color: #1c1c1e !important;
+}
+
+html.light .section-title {
+  color: #1c1c1e !important;
+}
+
+html.light .coming-soon-divider {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+
+/* ☀️ 보관함 (Library) 라이트 테마 */
+html.light .library-main {
+  background: #f4f4f7 !important;
+  color: #1c1c1e !important;
+}
+
+html.light .lib-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .lib-tab {
+  color: #8c8c96 !important;
+}
+
+html.light .lib-tab.active {
+  color: #1c1c1e !important;
+}
+
+html.light .lib-tab.active::after {
+  background: #1c1c1e !important;
+}
+
+html.light .lib-actions svg {
+  stroke: #1c1c1e !important;
+}
+
+html.light .lib-empty-text {
+  color: #8c8c96 !important;
+}
+
+html.light .lib-empty-state svg {
+  opacity: 0.85 !important;
+}
+
+html.light .lib-empty-state svg circle {
+  fill: rgba(0, 0, 0, 0.02) !important;
+  stroke: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light .lib-empty-state svg rect {
+  fill: rgba(0, 0, 0, 0.01) !important;
+  stroke: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light .lib-empty-state svg path {
+  stroke: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light .lib-empty-state svg polygon {
+  fill: rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light .lib-title {
+  color: #1c1c1e !important;
+}
+
+html.light .lib-subtitle {
+  color: #66666e !important;
+}
+
+html.light .lib-progress-text {
+  color: #8c8c96 !important;
+}
+
+html.light .lib-thumb-wrap {
+  background: #e5e5ea !important;
+}
+
+html.light .lib-progress-bg {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+
+
+/* ☀️ 바텀 내비게이션 (BottomNav) 라이트 테마 */
+html.light .bottom-nav {
+  background: #ffffff !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .nav-item {
+  color: #8c8c96 !important;
+}
+
+html.light .nav-item.active {
+  color: #1c1c1e !important;
+}
+
+html.light .bottom-nav svg {
+  fill: #8c8c96 !important;
+}
+
+html.light .bottom-nav .active svg {
+  fill: #1c1c1e !important;
+}
+
+html.light .bottom-nav svg path {
+  fill: inherit !important;
+}
+
+html.light .settings-btn {
+  color: #000000 !important;
+}

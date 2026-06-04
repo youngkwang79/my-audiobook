@@ -3,8 +3,6 @@
 import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { works } from "@/app/data/works";
-import { getEpisodesByWork } from "@/app/data/episodes";
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase, loginWithGoogle } from "@/lib/supabaseClient";
@@ -14,14 +12,84 @@ export default function WorkDetailPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  const workId = String((params as any).id);
-  const work = works.find((w) => w.id === workId);
-  const episodes = useMemo(() => getEpisodesByWork(workId), [workId]);
+  const workId = decodeURIComponent(String((params as any).id));
+
+  const [work, setWork] = useState<any>(null);
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [loadingWork, setLoadingWork] = useState(true);
+
+  useEffect(() => {
+    if (!workId) return;
+    const fetchData = async () => {
+      try {
+        setLoadingWork(true);
+        // Fetch work
+        const { data: workData, error: workErr } = await supabase
+          .from("works")
+          .select("*")
+          .eq("id", workId)
+          .maybeSingle();
+
+        if (workErr) {
+          console.error("Error fetching work:", workErr);
+        } else if (workData) {
+          const isOldNew = workData.badge === "신작" && workData.created_at && (new Date().getTime() - new Date(workData.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+          setWork({
+            id: workData.id,
+            title: workData.title,
+            description: workData.description,
+            thumbnail: workData.thumbnail,
+            episodeCount: workData.episode_count,
+            totalEpisodes: workData.total_episodes,
+            freeEpisodes: workData.free_episodes,
+            status: workData.status,
+            subtitle: workData.subtitle,
+            badge: isOldNew ? "" : workData.badge,
+            views: String(workData.views),
+            exclusive: workData.exclusive,
+            featured: workData.featured
+          });
+        }
+
+        // Fetch episodes (published only)
+        const { data: epData, error: epErr } = await supabase
+          .from("episodes")
+          .select("*")
+          .eq("work_id", workId)
+          .lte("release_date", new Date().toISOString())
+          .order("id", { ascending: true });
+
+        if (epErr) {
+          console.error("Error fetching episodes:", epErr);
+        } else if (epData) {
+          const sorted = epData.map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            locked: e.locked,
+            parts: e.parts
+          })).sort((a, b) => {
+            const aNum = parseFloat(a.id);
+            const bNum = parseFloat(b.id);
+            if (isNaN(aNum) || isNaN(bNum)) {
+              return String(a.id).localeCompare(String(b.id));
+            }
+            return aNum - bNum;
+          });
+          setEpisodes(sorted);
+        }
+      } catch (err) {
+        console.error("Failed to load work details:", err);
+      } finally {
+        setLoadingWork(false);
+      }
+    };
+    fetchData();
+  }, [workId]);
 
   const DEFAULT_FREE_UNTIL = work?.freeEpisodes ?? 1;
   const total = episodes.length || work?.totalEpisodes || work?.episodeCount || 0;
 
-  const [unlockedUntil, setUnlockedUntil] = useState<number>(DEFAULT_FREE_UNTIL);
+  const [unlockedUntil, setUnlockedUntil] = useState<number>(1);
 
   useEffect(() => {
     try {
@@ -55,6 +123,25 @@ export default function WorkDetailPage() {
 
     await loginWithGoogle(href);
   };
+
+  if (loadingWork) {
+    return (
+      <main
+        style={{
+          minHeight: "100dvh",
+          background: "#0b0b12",
+          color: "white",
+          padding: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 800 }}>데이터를 불러오는 중...</div>
+      </main>
+    );
+  }
 
   if (!work) {
     return (

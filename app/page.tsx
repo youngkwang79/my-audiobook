@@ -4,7 +4,6 @@ import TopBar from "@/app/components/TopBar";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { works } from "./data/works";
 import WorkPosterCard from "@/app/components/work/WorkPosterCard";
 import BottomNav from "@/app/components/BottomNav";
 
@@ -44,13 +43,12 @@ function MembershipIcon() {
   );
 }
 
-function GiftIcon() {
+function CoinIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>
-      <rect x="3" y="9" width="18" height="11" rx="2" fill="#fca834" />
-      <rect x="2" y="6" width="20" height="3" rx="1" fill="#e28714" />
-      <path d="M12 6v14M3 12h18" stroke="#ff3b30" strokeWidth="2" />
-      <path d="M12 6c-1.2-2-3-2-3 0s1.8 2 3 0zm0 0c1.2-2 3-2 3 0s-1.8 2-3 0z" fill="#ff3b30" />
+      <circle cx="12" cy="12" r="10" fill="#fca834" />
+      <circle cx="12" cy="12" r="7" stroke="#ffffff" strokeWidth="1.5" fill="none" />
+      <text x="12" y="15.5" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">P</text>
     </svg>
   );
 }
@@ -76,10 +74,88 @@ function CheckIconSmall() {
 export default function Home() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loginHover, setLoginHover] = useState(false);
+
+  // ✅ 남은 미션 개수 상태
+  const [remainingMissions, setRemainingMissions] = useState<number | null>(null);
+
+  // ✅ 남은 미션 개수 불러오기
+  const loadRemainingMissions = async () => {
+    try {
+      const token = session?.access_token;
+      if (!token) {
+        setRemainingMissions(null);
+        return;
+      }
+
+      const res = await fetch("/api/me/tasks", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.completedTasks) {
+        const completed: string[] = data.completedTasks;
+        
+        // 오늘 날짜 포맷
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const todayStr = `${year}-${month}-${day}`;
+
+        // 대상 미션들
+        const missions = [
+          "checkin_" + todayStr,
+          "youtube",
+          "watch5_" + todayStr,
+          "watch10_" + todayStr,
+          "watch15_" + todayStr,
+          "share_" + todayStr
+        ];
+
+        const incompleteCount = missions.filter((m) => !completed.includes(m)).length;
+        setRemainingMissions(incompleteCount);
+      } else {
+        setRemainingMissions(null);
+      }
+    } catch (e) {
+      console.error("미션 개수 로드 에러:", e);
+      setRemainingMissions(null);
+    }
+  };
+
+  // ✅ 미션 개수 갱신 이벤트 리스너 및 초기 호출
+  useEffect(() => {
+    if (user && session) {
+      loadRemainingMissions();
+
+      const handleFocus = () => {
+        loadRemainingMissions();
+      };
+      window.addEventListener("focus", handleFocus);
+      return () => {
+        window.removeEventListener("focus", handleFocus);
+      };
+    } else {
+      setRemainingMissions(null);
+    }
+  }, [user, session]);
+
+  useEffect(() => {
+    const handleWalletUpdate = () => {
+      if (user && session) {
+        loadRemainingMissions();
+      }
+    };
+    window.addEventListener("wallet-updated", handleWalletUpdate);
+    return () => {
+      window.removeEventListener("wallet-updated", handleWalletUpdate);
+    };
+  }, [user, session]);
 
   // ✅ 검색어 및 탭 상태
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,6 +163,73 @@ export default function Home() {
 
   // ✅ 이어듣기 정보
   const [lastPlayed, setLastPlayed] = useState<LastPlayed | null>(null);
+
+  // ✅ DB에서 소설 목록 불러오기
+  const [worksList, setWorksList] = useState<any[]>([]);
+  const [loadingWorks, setLoadingWorks] = useState(true);
+
+  useEffect(() => {
+    const fetchWorks = async () => {
+      try {
+        setLoadingWorks(true);
+        const { data, error } = await supabase
+          .from("works")
+          .select(`
+            *,
+            episodes (
+              id,
+              release_date
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching works:", error);
+        } else if (data) {
+          const mapped = data.map((w: any) => {
+            const isOldNew = w.badge === "신작" && w.created_at && (new Date().getTime() - new Date(w.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+            
+            // Find the first published episode ID
+            const publishedEpisodes = (w.episodes || [])
+              .filter((e: any) => new Date(e.release_date).getTime() <= Date.now())
+              .sort((a: any, b: any) => {
+                const aNum = parseFloat(a.id);
+                const bNum = parseFloat(b.id);
+                if (isNaN(aNum) || isNaN(bNum)) {
+                  return String(a.id).localeCompare(String(b.id));
+                }
+                return aNum - bNum;
+              });
+            const firstEpisodeId = publishedEpisodes[0]?.id || null;
+
+            return {
+              id: w.id,
+              title: w.title,
+              description: w.description,
+              thumbnail: w.thumbnail,
+              episodeCount: w.episode_count,
+              totalEpisodes: w.total_episodes,
+              freeEpisodes: w.free_episodes,
+              status: w.status,
+              subtitle: w.subtitle,
+              badge: isOldNew ? "" : w.badge,
+              views: String(w.views),
+              exclusive: w.exclusive,
+              featured: w.featured,
+              firstEpisodeId,
+              created_at: w.created_at
+            };
+          });
+          setWorksList(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch works from DB:", err);
+      } finally {
+        setLoadingWorks(false);
+      }
+    };
+    fetchWorks();
+  }, []);
 
   // ✅ 알림 설정 로컬스토리지 연동
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
@@ -223,13 +366,13 @@ export default function Home() {
   }, [lastPlayed]);
   const lastPlayedWorkTitle = useMemo(() => {
     if (!lastPlayed?.workId) return "";
-    return works.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
-  }, [lastPlayed]);
+    return worksList.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
+  }, [lastPlayed, worksList]);
 
   // ✅ 검색 및 탭 필터링/정렬 로직
   const filteredWorks = useMemo(() => {
     // 실시간 DB 재생 횟수를 정적 데이터와 병합
-    let result = works.map((w) => ({
+    let result = worksList.map((w) => ({
       ...w,
       views: String(playCounts[w.id] ?? w.views ?? "0")
     }));
@@ -261,7 +404,7 @@ export default function Home() {
     }
 
     return result;
-  }, [searchQuery, activeTab, playCounts]);
+  }, [searchQuery, activeTab, playCounts, worksList]);
 
   // 메인 그리드용 작품 (준비중인 작품 제외)
   const mainGridWorks = useMemo(() => {
@@ -270,13 +413,13 @@ export default function Home() {
 
   // 공개 예정 섹션용 작품 (준비중인 작품만)
   const comingSoonWorks = useMemo(() => {
-    return works
+    return worksList
       .filter((w) => w.status === "준비중")
       .map((w) => ({
         ...w,
         views: String(playCounts[w.id] ?? w.views ?? "0")
       }));
-  }, [playCounts]);
+  }, [playCounts, worksList]);
 
   return (
     <main
@@ -758,9 +901,11 @@ export default function Home() {
           <button className="icon-btn" onClick={() => router.push("/membership")} title="멤버십 가입">
             <MembershipIcon />
           </button>
-          <button className="icon-btn" onClick={() => router.push("/faq")} title="도움말">
-            <GiftIcon />
-            <div className="gift-badge">+10</div>
+          <button className="icon-btn" onClick={() => router.push("/checkin")} title="출석체크 / 무료코인 받기">
+            <CoinIcon />
+            {remainingMissions !== null && remainingMissions > 0 && (
+              <div className="gift-badge">+{remainingMissions}</div>
+            )}
           </button>
         </div>
       </div>
@@ -852,38 +997,70 @@ export default function Home() {
       )}
 
       {/* 공개 예정 섹션 */}
-      {activeTab === "추천" && !searchQuery && comingSoonWorks.length > 0 && (
+      {activeTab === "추천" && !searchQuery && (
         <div className="coming-soon-section" id="coming-soon-section">
           <h2 className="section-title">공개 예정</h2>
-          
-          <div className="coming-soon-date-header">
-            <span className="coming-soon-date">06. 03.</span>
-            <div className="coming-soon-divider" />
-          </div>
 
-          <div className="coming-soon-grid">
-            {comingSoonWorks.map((work) => (
-              <div key={work.id} className="coming-soon-item-container">
-                <WorkPosterCard work={work} />
-                <button
-                  className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
-                  onClick={() => handleRequestNotification(work.id)}
-                >
-                  {alarmSettings[work.id] ? (
-                    <>
-                      <CheckIconSmall />
-                      <span>알림 설정 완료</span>
-                    </>
-                  ) : (
-                    <>
-                      <ClockIcon />
-                      <span>알림 받기</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
+          {comingSoonWorks.length > 0 ? (() => {
+            // created_at 기준 날짜 그룹핑
+            const groups: { dateLabel: string; works: typeof comingSoonWorks }[] = [];
+            comingSoonWorks.forEach((work) => {
+              let dateLabel = "";
+              if (work.created_at) {
+                const d = new Date(work.created_at);
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                dateLabel = `${mm}. ${dd}.`;
+              }
+              const existing = groups.find((g) => g.dateLabel === dateLabel);
+              if (existing) {
+                existing.works.push(work);
+              } else {
+                groups.push({ dateLabel, works: [work] });
+              }
+            });
+            return (
+              <>
+                {groups.map((group) => (
+                  <div key={group.dateLabel}>
+                    {group.dateLabel && (
+                      <div className="coming-soon-date-header">
+                        <span className="coming-soon-date">{group.dateLabel}</span>
+                        <div className="coming-soon-divider" />
+                      </div>
+                    )}
+                    <div className="coming-soon-grid">
+                      {group.works.map((work) => (
+                        <div key={work.id} className="coming-soon-item-container">
+                          <WorkPosterCard work={work} />
+                          <button
+                            className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
+                            onClick={() => handleRequestNotification(work.id)}
+                          >
+                            {alarmSettings[work.id] ? (
+                              <>
+                                <CheckIconSmall />
+                                <span>알림 설정 완료</span>
+                              </>
+                            ) : (
+                              <>
+                                <ClockIcon />
+                                <span>알림 받기</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            );
+          })() : (
+            <div style={{ padding: "30px 10px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
+              새로운 작품을 준비 중입니다.
+            </div>
+          )}
         </div>
       )}
 

@@ -428,9 +428,12 @@ function LoginPageInner() {
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) =>
-              setCapsOn(e.getModifierState?.("CapsLock") ?? false)
-            }
+            onKeyDown={(e) => {
+              setCapsOn(e.getModifierState?.("CapsLock") ?? false);
+              if (e.key === "Enter" && canSubmit && !busy) {
+                onSubmit();
+              }
+            }}
             onKeyUp={(e) =>
               setCapsOn(e.getModifierState?.("CapsLock") ?? false)
             }

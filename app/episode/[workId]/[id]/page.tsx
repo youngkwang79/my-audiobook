@@ -1,7 +1,5 @@
 "use client";
 
-import { works } from "@/app/data/works";
-import { getEpisodesByWork, getTotalPartsByWork } from "@/app/data/episodes";
 import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -41,9 +39,6 @@ function getEpisodeFolder(episodeKey: string) {
   return `${pad3(Number(m[1]))}-${m[2]}`;
 }
 
-function getFreeParts(workId: string, episodeKey: string) {
-  return Math.min(DEFAULT_FREE_PARTS, getTotalPartsByWork(workId, episodeKey));
-}
 
 function lockedMemo(isSubscribed: boolean, part: number, unlockedUntil: number) {
   if (isSubscribed) return false;
@@ -142,30 +137,93 @@ export default function EpisodePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const workId = String((params as any).workId);
-  const episodeKey = String((params as any).id);
+  const workId = decodeURIComponent(String((params as any).workId));
+  const episodeKey = decodeURIComponent(String((params as any).id));
 
-  const work = works.find((w) => w.id === workId);
-  const episodes = useMemo(() => getEpisodesByWork(workId), [workId]);
+  const [work, setWork] = useState<any>(null);
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!workId) return;
+    const fetchData = async () => {
+      try {
+        setLoadingData(true);
+
+        // Fetch work
+        const { data: workData } = await supabase
+          .from("works")
+          .select("*")
+          .eq("id", workId)
+          .maybeSingle();
+
+        if (workData) {
+          const isOldNew = workData.badge === "신작" && workData.created_at && (new Date().getTime() - new Date(workData.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+          setWork({
+            id: workData.id,
+            title: workData.title,
+            description: workData.description,
+            thumbnail: workData.thumbnail,
+            episodeCount: workData.episode_count,
+            totalEpisodes: workData.total_episodes,
+            freeEpisodes: workData.free_episodes,
+            status: workData.status,
+            subtitle: workData.subtitle,
+            badge: isOldNew ? "" : workData.badge,
+            views: String(workData.views),
+            exclusive: workData.exclusive,
+            featured: workData.featured
+          });
+        }
+
+        // Fetch episodes (published only)
+        const { data: epData } = await supabase
+          .from("episodes")
+          .select("*")
+          .eq("work_id", workId)
+          .lte("release_date", new Date().toISOString())
+          .order("id", { ascending: true });
+
+        if (epData) {
+          const sorted = epData.map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            locked: e.locked,
+            parts: e.parts
+          })).sort((a, b) => {
+            const aNum = parseFloat(a.id);
+            const bNum = parseFloat(b.id);
+            if (isNaN(aNum) || isNaN(bNum)) {
+              return String(a.id).localeCompare(String(b.id));
+            }
+            return aNum - bNum;
+          });
+          setEpisodes(sorted);
+        }
+      } catch (err) {
+        console.error("Failed to fetch player data:", err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    fetchData();
+  }, [workId]);
+
   const currentEpisode = useMemo(
     () => episodes.find((ep) => String(ep.id) === episodeKey),
     [episodes, episodeKey]
   );
-  const workThumbnail = work?.thumbnail ?? "/thumbnails/cheonmujin.jpg";
 
+  const workThumbnail = work?.thumbnail ?? "/thumbnails/cheonmujin.jpg";
   const SERIES_PREFIX = workId;
   const WORK_THUMBNAIL = workThumbnail;
   const autoplay = searchParams.get("autoplay") === "1";
 
-  const TOTAL_PARTS = useMemo(
-    () => getTotalPartsByWork(workId, episodeKey),
-    [workId, episodeKey]
-  );
+  const TOTAL_PARTS = currentEpisode?.parts ?? 1;
 
-  const FREE_PARTS = useMemo(
-    () => getFreeParts(workId, episodeKey),
-    [workId, episodeKey]
-  );
+  const FREE_PARTS = useMemo(() => {
+    return Math.min(DEFAULT_FREE_PARTS, TOTAL_PARTS);
+  }, [TOTAL_PARTS]);
 
   const currentEpisodeIndex = useMemo(
     () => episodes.findIndex((ep) => String(ep.id) === episodeKey),
@@ -192,7 +250,7 @@ export default function EpisodePage() {
     try {
       const fav = localStorage.getItem(`fav:${workId}`) === "true";
       setIsFavorited(fav);
-    } catch {}
+    } catch { }
   }, [workId]);
 
   const toggleFavorite = () => {
@@ -200,7 +258,7 @@ export default function EpisodePage() {
       const next = !isFavorited;
       setIsFavorited(next);
       localStorage.setItem(`fav:${workId}`, String(next));
-    } catch {}
+    } catch { }
   };
 
   const handleShare = () => {
@@ -259,7 +317,7 @@ export default function EpisodePage() {
         "last_played_episode",
         JSON.stringify({ workId, episodeId: episodeKey, part })
       );
-    } catch (e) {}
+    } catch (e) { }
   }, [workId, episodeKey, part]);
 
   // 실제 오디오 청취 시작 시 1회 유니크 카운트 API 전송
@@ -298,7 +356,7 @@ export default function EpisodePage() {
         const key = `watch_time_${todayStr}`;
         const current = Number(localStorage.getItem(key) || 0);
         localStorage.setItem(key, String(current + 1));
-      } catch (e) {}
+      } catch (e) { }
     }, 1000);
     return () => clearInterval(interval);
   }, [isPlaying]);
@@ -353,7 +411,7 @@ export default function EpisodePage() {
 
 
   const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
-    `${WORKER_BASE}/?workId=${encodeURIComponent(SERIES_PREFIX)}&episode=${encodeURIComponent(
+    `/api/media/transcribe?workId=${encodeURIComponent(SERIES_PREFIX)}&episode=${encodeURIComponent(
       episodeKeyValue
     )}&part=${encodeURIComponent(String(partValue))}`;
 
@@ -1040,6 +1098,24 @@ export default function EpisodePage() {
     router.replace(`/episode/${workId}/${episodeKey}?part=${p}`);
   };
 
+  if (loadingData) {
+    return (
+      <main
+        style={{
+          minHeight: "100dvh",
+          background: "#000000",
+          color: "white",
+          padding: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 800 }}>데이터를 불러오는 중...</div>
+      </main>
+    );
+  }
+
   if (!work) {
     return (
       <main
@@ -1695,67 +1771,65 @@ export default function EpisodePage() {
         }
       `}</style>
 
+      {/* 오디오 엘리먼트 (가로/세로 모드에 무관하게 마운트 유지) */}
+      {!locked && audioSrc && (
+        <audio
+          ref={audioRef}
+          src={audioSrc}
+          preload="auto"
+          autoPlay
+          style={{ display: "none" }}
+          onLoadedMetadata={() => {
+            const a = audioRef.current;
+            if (!a) return;
+            setDuration(a.duration || 0);
+            a.playbackRate = playbackRate;
+            a.volume = volume;
+            if (resumeTime > 0) {
+              a.currentTime = resumeTime;
+              setCurrentTime(resumeTime);
+            }
+            if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
+            a.play()
+              .then(async () => {
+                setIsPlaying(true);
+                setStatus("재생 중");
+                pendingAutoplayRef.current = false;
+              })
+              .catch(() => {
+                setIsPlaying(false);
+                setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
+              });
+          }}
+          onPlay={() => {
+            setIsPlaying(true);
+            setStatus("재생 중");
+            window.dispatchEvent(new Event("fade-out-background-music"));
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            setStatus("일시정지");
+            window.dispatchEvent(new Event("play-default-music"));
+          }}
+          onEnded={() => {
+            setIsPlaying(false);
+            setStatus("다음으로 넘어가는 중...");
+            window.dispatchEvent(new Event("play-default-music"));
+            goNextPart();
+          }}
+          onError={() => {
+            setIsPlaying(false);
+            setStatus("오디오 파일을 찾지 못했습니다.");
+          }}
+          onTimeUpdate={onTimeUpdate}
+        />
+      )}
+
       {!playerLandscapeMode ? (
         <div className="sf-container">
           {/* 블러 썸네일 배경 */}
           <img src={currentImageSrc} className="sf-blur-bg" alt="" />
           <div className="sf-overlay" />
-
-          {/* 오디오 엘리먼트 */}
-          {!locked && audioSrc && (
-            <audio
-              key={`${workId}-${episodeKey}-${part}`}
-              ref={audioRef}
-              src={audioSrc}
-              crossOrigin="anonymous"
-              preload="auto"
-              autoPlay
-              style={{ display: "none" }}
-              onLoadedMetadata={() => {
-                const a = audioRef.current;
-                if (!a) return;
-                setDuration(a.duration || 0);
-                a.playbackRate = playbackRate;
-                a.volume = volume;
-                if (resumeTime > 0) {
-                  a.currentTime = resumeTime;
-                  setCurrentTime(resumeTime);
-                }
-                if (!pendingAutoplayRef.current && !autoplay && resumeTime <= 0) return;
-                a.play()
-                  .then(async () => {
-                    setIsPlaying(true);
-                    setStatus("재생 중");
-                    pendingAutoplayRef.current = false;
-                  })
-                  .catch(() => {
-                    setIsPlaying(false);
-                    setStatus("자동재생이 차단됐어요. 재생 버튼을 눌러주세요.");
-                  });
-              }}
-              onPlay={() => {
-                setIsPlaying(true);
-                setStatus("재생 중");
-                window.dispatchEvent(new Event("fade-out-background-music"));
-              }}
-              onPause={() => {
-                setIsPlaying(false);
-                setStatus("일시정지");
-                window.dispatchEvent(new Event("play-default-music"));
-              }}
-              onEnded={() => {
-                setIsPlaying(false);
-                setStatus("다음으로 넘어가는 중...");
-                window.dispatchEvent(new Event("play-default-music"));
-                goNextPart();
-              }}
-              onError={() => {
-                setIsPlaying(false);
-                setStatus("오디오 파일을 찾지 못했습니다.");
-              }}
-              onTimeUpdate={onTimeUpdate}
-            />
-          )}
 
           {/* 상단 탑바 */}
           <div className="sf-header">
@@ -1777,7 +1851,7 @@ export default function EpisodePage() {
 
           {/* 중앙 재생/일시정지 버튼 오버레이 */}
           {!locked && (
-            <div 
+            <div
               className={`sf-center-play-overlay ${!isPlaying && !isFlashing ? "visible" : ""} ${isFlashing ? "flash" : ""}`}
               onClick={togglePlayPause}
             >
@@ -2021,13 +2095,13 @@ export default function EpisodePage() {
 
                 {/* 줄거리 / 회차 전환 탭 */}
                 <div className="sf-sheet-tabs">
-                  <div 
+                  <div
                     className={`sf-sheet-tab ${activeSheetTab === "story" ? "active" : ""}`}
                     onClick={() => setActiveSheetTab("story")}
                   >
                     줄거리
                   </div>
-                  <div 
+                  <div
                     className={`sf-sheet-tab ${activeSheetTab === "episodes" ? "active" : ""}`}
                     onClick={() => setActiveSheetTab("episodes")}
                   >
@@ -2050,7 +2124,7 @@ export default function EpisodePage() {
                           const start = idx * 30 + 1;
                           const end = Math.min((idx + 1) * 30, episodes.length);
                           return (
-                            <div 
+                            <div
                               key={idx}
                               className={`sf-sheet-range-item ${activeRangeIndex === idx ? "active" : ""}`}
                               onClick={() => setActiveRangeIndex(idx)}
@@ -2064,11 +2138,11 @@ export default function EpisodePage() {
 
                     {/* 현재 재생중인 화의 파트(편) 선택 */}
                     {TOTAL_PARTS > 1 && (
-                      <div 
-                        style={{ 
-                          margin: "0 0 16px", 
-                          padding: "12px", 
-                          background: "rgba(255,255,255,0.04)", 
+                      <div
+                        style={{
+                          margin: "0 0 16px",
+                          padding: "12px",
+                          background: "rgba(255,255,255,0.04)",
                           borderRadius: "12px",
                           textAlign: "left"
                         }}

@@ -247,9 +247,7 @@ export default function MembershipPage() {
 
 
   // 공개 예정 소설 데이터
-  const comingSoonDramas: DramaItem[] = [
-    { id: "myeolsagwirim", title: "멸사귀림", thumbnail: "/thumbnails/myeolsagwirim.png", date: "06. 03." },
-  ];
+  const comingSoonDramas: DramaItem[] = [];
 
   return (
     <main className="membership-main">
@@ -848,33 +846,39 @@ export default function MembershipPage() {
 
           {/* 가로 스크롤 영역 */}
           <div className="coming-soon-scroll-row">
-            {comingSoonDramas.map((drama) => (
-              <div key={drama.id} className="coming-soon-card-container">
-                <div className="coming-soon-thumb-wrap">
-                  <img src={drama.thumbnail} alt={drama.title} className="coming-soon-thumb" loading="lazy" />
-                  <div className="coming-soon-badge">
-                    <span className="coming-soon-badge-text">준비중</span>
+            {comingSoonDramas.length > 0 ? (
+              comingSoonDramas.map((drama) => (
+                <div key={drama.id} className="coming-soon-card-container">
+                  <div className="coming-soon-thumb-wrap">
+                    <img src={drama.thumbnail} alt={drama.title} className="coming-soon-thumb" loading="lazy" />
+                    <div className="coming-soon-badge">
+                      <span className="coming-soon-badge-text">준비중</span>
+                    </div>
                   </div>
+                  <h3 className="coming-soon-title">{drama.title}</h3>
+                  <button
+                    className={`coming-soon-alarm-btn ${alarmSettings[drama.id] ? "active" : ""}`}
+                    onClick={() => handleRequestNotification(drama.id)}
+                  >
+                    {alarmSettings[drama.id] ? (
+                      <>
+                        <CheckIconSmall />
+                        <span>설정 완료</span>
+                      </>
+                    ) : (
+                      <>
+                        <ClockIcon />
+                        <span>알림 받기</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <h3 className="coming-soon-title">{drama.title}</h3>
-                <button
-                  className={`coming-soon-alarm-btn ${alarmSettings[drama.id] ? "active" : ""}`}
-                  onClick={() => handleRequestNotification(drama.id)}
-                >
-                  {alarmSettings[drama.id] ? (
-                    <>
-                      <CheckIconSmall />
-                      <span>설정 완료</span>
-                    </>
-                  ) : (
-                    <>
-                      <ClockIcon />
-                      <span>알림 받기</span>
-                    </>
-                  )}
-                </button>
+              ))
+            ) : (
+              <div style={{ padding: "20px 10px", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
+                새로운 작품을 준비 중입니다.
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -892,7 +896,7 @@ export default function MembershipPage() {
             <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
             <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
             <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
-            <span>8. 기타 문의 사항은 [내정보] &gt; [고객 센터]를 통해 문의해 주세요.</span>
+            <span>8. 기타 문의 사항은 [내정보] &gt; [고객문의(1:1 문의)]를 통해 문의해 주세요.</span>
             <span>9. 무림북의 멤버십 가입은 문극_태양 작가에게 후원하는 것이므로 교환 및 환불이 불가능합니다. 소설을 즐겨주시고 마음으로 후원 해 주시면 감사하겠습니다.</span>
           </div>
         </div>

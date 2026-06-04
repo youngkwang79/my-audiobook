@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     // 1. 멤버십 및 소장권(Entitlement) 확인
     // 먼저 무료 회차인지 확인 (하드코딩된 무료 회차 수)
-    const FREE_PARTS = 2; // 기본 무료 파트
+    const FREE_PARTS = 8; // 기본 무료 파트
     const isFree = part <= FREE_PARTS;
 
     let isAuthorized = isFree;
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
       Bucket: bucketName,
       Key: foundKey,
     });
-    
+
     const signedUrl = await getSignedUrl(s3 as any, command, { expiresIn: 3600 });
 
     return NextResponse.json({ url: signedUrl });
