@@ -18,6 +18,35 @@ export default function WorkDetailPage() {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loadingWork, setLoadingWork] = useState(true);
 
+  // 시청 기록 (workProgress, lastPlayed)
+  const [watchedEpisode, setWatchedEpisode] = useState<string | null>(null);
+  const [resumePart, setResumePart] = useState<number>(1);
+
+  useEffect(() => {
+    try {
+      const progressRaw = localStorage.getItem("workProgress");
+      const progress = progressRaw ? JSON.parse(progressRaw) : {};
+      const lastEp: string | undefined = progress[workId];
+      if (lastEp) {
+        setWatchedEpisode(lastEp);
+        // lastPlayed에서 part 복원
+        const lastPlayedRaw = localStorage.getItem("lastPlayed");
+        if (lastPlayedRaw) {
+          const lp = JSON.parse(lastPlayedRaw);
+          if (lp.workId === workId && String(lp.episodeId) === String(lastEp)) {
+            setResumePart(lp.part ?? 1);
+          }
+        }
+      }
+    } catch (e) {}
+  }, [workId]);
+
+  // 시청한 에피소드 번호 집합 (watchedEpisode 이하 모두 완료로 간주)
+  const watchedEpisodeNum = useMemo(() => {
+    if (!watchedEpisode) return 0;
+    return parseInt(String(watchedEpisode).split("-")[0], 10) || 0;
+  }, [watchedEpisode]);
+
   useEffect(() => {
     if (!workId) return;
     const fetchData = async () => {
@@ -263,6 +292,27 @@ export default function WorkDetailPage() {
             1화부터 듣기
           </button>
 
+          {/* 이어듣기 버튼 (시청 기록 있을 때) */}
+          {watchedEpisode && (
+            <button
+              onClick={() => goEpisode(`/episode/${work.id}/${watchedEpisode}?part=${resumePart}&autoplay=1`)}
+              style={{
+                background: "linear-gradient(135deg, #ff2a5f 0%, #ff7a3c 100%)",
+                color: "#ffffff",
+                border: "none",
+                padding: "12px 18px",
+                borderRadius: 14,
+                fontWeight: 900,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              ▶ {watchedEpisode}화 이어듣기
+            </button>
+          )}
+
           <button
             onClick={onAuthClick}
             style={{
@@ -296,14 +346,23 @@ export default function WorkDetailPage() {
             const episodeNo = String(ep.id);
             const isLocked = ep.locked;
             const href = `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`;
+            const epNum = parseInt(episodeNo.split("-")[0], 10) || 0;
+            const isWatched = watchedEpisodeNum > 0 && epNum <= watchedEpisodeNum;
+            const isCurrent = watchedEpisode && String(watchedEpisode) === episodeNo;
 
             return (
               <div
                 key={episodeNo}
                 onClick={() => goEpisode(href)}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: isCurrent
+                    ? "rgba(255, 42, 95, 0.12)"
+                    : isWatched
+                    ? "rgba(255,255,255,0.03)"
+                    : "rgba(255,255,255,0.05)",
+                  border: isCurrent
+                    ? "1px solid rgba(255,42,95,0.35)"
+                    : "1px solid rgba(255,255,255,0.10)",
                   borderRadius: 16,
                   padding: 16,
                   minHeight: 96,
@@ -314,6 +373,7 @@ export default function WorkDetailPage() {
                   textAlign: "left",
                   cursor: "pointer",
                   transition: "background 0.2s",
+                  opacity: isWatched && !isCurrent ? 0.72 : 1,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "rgba(255,255,255,0.08)";
@@ -322,8 +382,20 @@ export default function WorkDetailPage() {
                   e.currentTarget.style.background = "rgba(255,255,255,0.05)";
                 }}
               >
-                <div style={{ fontSize: 13, opacity: 0.7 }}>
+                <div style={{ fontSize: 13, opacity: 0.7, display: "flex", alignItems: "center", gap: 6 }}>
                   {episodeNo}화 {ep.parts > 1 ? `· ${ep.parts}편 구성` : ""}
+                  {isWatched && (
+                    <span style={{
+                      background: isCurrent ? "#ff2a5f" : "rgba(255,255,255,0.15)",
+                      color: isCurrent ? "#ffffff" : "rgba(255,255,255,0.7)",
+                      fontSize: 9,
+                      fontWeight: 900,
+                      padding: "1px 6px",
+                      borderRadius: 99,
+                    }}>
+                      {isCurrent ? "▶ 이어듣기" : "✓ 완료"}
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.35 }}>
