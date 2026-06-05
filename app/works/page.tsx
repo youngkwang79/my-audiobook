@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { works } from "@/app/data/works";
+import { type Work } from "@/app/data/works";
 import { supabase } from "@/lib/supabaseClient";
 import LibraryItemCard from "@/app/components/work/LibraryItemCard";
 import BottomNav from "@/app/components/BottomNav";
@@ -22,6 +22,8 @@ export default function WorksPage() {
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
   const [downloads, setDownloads] = useState<any[]>([]);
   const [watchProgress, setWatchProgress] = useState<Record<string, string>>({});
+  const [worksList, setWorksList] = useState<Work[]>([]);
+  const [loadingWorks, setLoadingWorks] = useState(true);
   const tabs = ["시청 중", "시청 기록", "다운로드", "알림 설정 완료"];
 
   useEffect(() => {
@@ -30,6 +32,70 @@ export default function WorksPage() {
     if (tabParam && tabs.includes(tabParam)) {
       setActiveTab(tabParam);
     }
+  }, []);
+
+  // DB에서 소설 목록 불러오기
+  useEffect(() => {
+    const fetchWorks = async () => {
+      try {
+        setLoadingWorks(true);
+        const { data, error } = await supabase
+          .from("works")
+          .select(`
+            *,
+            episodes (
+              id,
+              release_date
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching works:", error);
+        } else if (data) {
+          const mapped = data.map((w: any) => {
+            const isOldNew = w.badge === "신작" && w.created_at && (new Date().getTime() - new Date(w.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+            
+            // 퍼블리싱된 첫 번째 에피소드 ID 찾기
+            const publishedEpisodes = (w.episodes || [])
+              .filter((e: any) => new Date(e.release_date).getTime() <= Date.now())
+              .sort((a: any, b: any) => {
+                const aNum = parseFloat(a.id);
+                const bNum = parseFloat(b.id);
+                if (isNaN(aNum) || isNaN(bNum)) {
+                  return String(a.id).localeCompare(String(b.id));
+                }
+                return aNum - bNum;
+              });
+            const firstEpisodeId = publishedEpisodes[0]?.id || null;
+
+            return {
+              id: w.id,
+              title: w.title,
+              description: w.description,
+              thumbnail: w.thumbnail,
+              episodeCount: w.episode_count,
+              totalEpisodes: w.total_episodes,
+              freeEpisodes: w.free_episodes,
+              status: w.status,
+              subtitle: w.subtitle,
+              badge: isOldNew ? "" : w.badge,
+              views: String(w.views),
+              exclusive: w.exclusive,
+              featured: w.featured,
+              firstEpisodeId,
+              created_at: w.created_at
+            } as Work;
+          });
+          setWorksList(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch works from DB:", err);
+      } finally {
+        setLoadingWorks(false);
+      }
+    };
+    fetchWorks();
   }, []);
 
   // 시청 상태 및 진행 데이터 로드
@@ -89,10 +155,10 @@ export default function WorksPage() {
   // 각 탭에 맞게 필터링된 작품 목록 가져오기
   const getFilteredWorks = () => {
     if (activeTab === "알림 설정 완료") {
-      return works.filter((w) => alarmSettings[w.id] === true);
+      return worksList.filter((w) => alarmSettings[w.id] === true);
     }
     if (activeTab === "시청 중") {
-      return works.filter((w) => {
+      return worksList.filter((w) => {
         const watchedEp = watchProgress[w.id];
         if (!watchedEp) return false;
         const watchedEpNum = parseInt(watchedEp.split("-")[0], 10) || 0;
@@ -100,9 +166,9 @@ export default function WorksPage() {
       });
     }
     if (activeTab === "시청 기록") {
-      return works.filter((w) => !!watchProgress[w.id]);
+      return worksList.filter((w) => !!watchProgress[w.id]);
     }
-    return works;
+    return worksList;
   };
 
   const filteredWorksList = getFilteredWorks();
@@ -228,7 +294,11 @@ export default function WorksPage() {
 
       {/* 리스트 영역 */}
       <div className="lib-list">
-        {activeTab === "알림 설정 완료" && filteredWorksList.length === 0 ? (
+        {loadingWorks && activeTab !== "다운로드" ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "100px 24px", color: "#8c8c96", fontSize: "15px", fontWeight: 500 }}>
+            불러오는 중...
+          </div>
+        ) : activeTab === "알림 설정 완료" && filteredWorksList.length === 0 ? (
           <div className="lib-empty-state">
             {/* 시안의 빈 서랍/상자 아이콘 재현 */}
             <svg width="100" height="100" viewBox="0 0 100 100" fill="none" style={{ opacity: 0.5, marginBottom: 20 }}>
