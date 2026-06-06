@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/app/components/BottomNav";
-import TopBar from "@/app/components/TopBar";
 
 const CATEGORIES = ["전체", "자유 대담", "소설 평론", "무공 비급", "창작 소설"];
 
@@ -16,17 +15,174 @@ async function getAccessToken() {
   return session?.access_token ?? null;
 }
 
+function formatCommunityDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    const year = String(d.getFullYear()).slice(-2);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${year}.${month}.${day} ${ampm}${hours}:${minutes}`;
+  } catch (e) {
+    return "";
+  }
+}
+
 export default function CommunityPage() {
-  const router = useRouter();
+   const router = useRouter();
   const { user } = useAuth();
 
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("전체");
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 10;
+
+  const totalPages = useMemo(() => {
+    const pages = Math.ceil(posts.length / postsPerPage);
+    return Math.min(pages, 10); // 최대 10페이지까지
+  }, [posts]);
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * postsPerPage;
+    return posts.slice(startIndex, startIndex + postsPerPage);
+  }, [posts, currentPage]);
+
   // 모달 상태
   const [writeModalOpen, setWriteModalOpen] = useState(false);
   const [detailPost, setDetailPost] = useState<any | null>(null);
+
+  // 관리자 여부
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // 수정/삭제/숨김 관련 상태
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editingBusy, setEditingBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [hideBusy, setHideBusy] = useState(false);
+
+  const handleStartEdit = () => {
+    if (!detailPost) return;
+    setEditTitle(detailPost.title);
+    setEditContent(detailPost.content);
+    setEditCategory(detailPost.category);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !editContent.trim()) {
+      alert("제목과 내용을 모두 입력해 주세요.");
+      return;
+    }
+    setEditingBusy(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch("/api/community/posts", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: detailPost.id,
+          title: editTitle.trim(),
+          content: editContent.trim(),
+          category: editCategory,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "수정 실패");
+      
+      alert("글이 성공적으로 수정되었습니다.");
+      setIsEditing(false);
+      setDetailPost((prev: any) => ({
+        ...prev,
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        category: editCategory,
+      }));
+      loadPosts();
+    } catch (err: any) {
+      alert(err.message ?? "오류가 발생했습니다.");
+    } finally {
+      setEditingBusy(false);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    if (!window.confirm("정말로 이 서신을 파기(삭제)하시겠습니까?")) return;
+    setDeleteBusy(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`/api/community/posts?id=${detailPost.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "삭제 실패");
+      
+      alert("서신이 정상적으로 파기되었습니다.");
+      handleCloseDetail();
+      loadPosts();
+    } catch (err: any) {
+      alert(err.message ?? "오류가 발생했습니다.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const handleToggleHide = async () => {
+    const nextHidden = !detailPost.is_hidden;
+    const confirmMsg = nextHidden
+      ? "이 서신을 강호 동도들에게 보이지 않게 숨기시겠습니까?"
+      : "이 서신의 숨김을 해제하여 모든 동도들에게 노출하시겠습니까?";
+    if (!window.confirm(confirmMsg)) return;
+
+    setHideBusy(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch("/api/community/posts", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: detailPost.id,
+          is_hidden: nextHidden,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "처리 실패");
+      
+      alert(nextHidden ? "숨김 처리 완료" : "숨김 해제 완료");
+      setDetailPost((prev: any) => ({
+        ...prev,
+        is_hidden: nextHidden,
+      }));
+      loadPosts();
+    } catch (err: any) {
+      alert(err.message ?? "오류가 발생했습니다.");
+    } finally {
+      setHideBusy(false);
+    }
+  };
 
   // 새 글 필드
   const [newTitle, setNewTitle] = useState("");
@@ -80,6 +236,9 @@ export default function CommunityPage() {
 
       if (res.ok && data?.posts) {
         setPosts(data.posts);
+        if (data.isAdmin !== undefined) {
+          setIsAdmin(data.isAdmin);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -90,6 +249,7 @@ export default function CommunityPage() {
 
   useEffect(() => {
     loadPosts();
+    setCurrentPage(1);
   }, [activeCategory]);
 
   // 특정 글 상세 조회 시 댓글도 함께 로드
@@ -119,6 +279,7 @@ export default function CommunityPage() {
   const handleCloseDetail = () => {
     setDetailPost(null);
     setComments([]);
+    setIsEditing(false);
   };
 
   // 새 글 등록
@@ -339,122 +500,120 @@ export default function CommunityPage() {
         .post-list {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 8px;
         }
 
-        .post-card {
+        .post-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 14px;
           background: #141217;
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 16px;
-          padding: 16px;
+          border-radius: 12px;
           cursor: pointer;
-          transition: transform 0.15s, border-color 0.15s;
+          font-size: 13.5px;
+          transition: background 0.15s, transform 0.15s;
+          gap: 10px;
           text-align: left;
         }
 
-        .post-card:active {
-          transform: scale(0.98);
+        .post-row:active {
+          transform: scale(0.99);
         }
 
-        .post-card-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 8px;
-        }
-
-        .post-category {
-          background: rgba(255, 215, 0, 0.1);
-          color: #ffd700;
-          border: 1px solid rgba(255, 215, 0, 0.2);
-          border-radius: 4px;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 2px 6px;
-        }
-
-        .post-date {
-          font-size: 11px;
-          color: #5b5b66;
-        }
-
-        .post-title {
-          font-size: 16px;
-          font-weight: 850;
-          color: #ffffff;
-          line-height: 1.4;
-          margin: 0 0 6px;
-        }
-
-        .post-snippet {
-          font-size: 13px;
-          color: #8c8c96;
-          line-height: 1.5;
-          margin: 0 0 12px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .post-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-top: 1px solid rgba(255,255,255,0.04);
-          padding-top: 10px;
-        }
-
-        .author-info {
+        .post-row-left {
           display: flex;
           align-items: center;
           gap: 6px;
+          flex: 1;
+          min-width: 0;
         }
 
-        .author-badge {
-          background: linear-gradient(135deg, #2b1d00 0%, #171103 100%);
-          border: 1px solid #ffd700;
-          color: #ffd700;
-          font-size: 9px;
-          font-weight: 900;
-          border-radius: 4px;
-          padding: 1px 4px;
-          letter-spacing: -0.2px;
-        }
-
-        .author-name {
-          font-size: 12px;
+        .post-row-num {
+          color: #8c8c96;
           font-weight: 700;
-          color: #d1d1d6;
+          font-size: 12px;
+          min-width: 20px;
         }
 
-        .post-stats {
+        .post-row-category {
+          color: #ffd700;
+          font-weight: 800;
+          font-size: 11px;
+          background: rgba(255, 215, 0, 0.1);
+          border: 1px solid rgba(255, 215, 0, 0.2);
+          padding: 2px 6px;
+          border-radius: 4px;
+          white-space: nowrap;
+        }
+
+        .post-row-title {
+          font-weight: 700;
+          color: #ffffff;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .post-row-right {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           font-size: 12px;
           color: #8c8c96;
+          white-space: nowrap;
         }
 
-        .stat-item {
+        .post-row-stat {
           display: flex;
           align-items: center;
           gap: 4px;
         }
 
-        .stat-btn {
-          background: none;
-          border: none;
-          color: inherit;
+        .post-row-date {
+          color: #5b5b66;
+          font-size: 11px;
+        }
+
+        /* ── 페이지네이션 ── */
+        .pagination-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 6px;
+          margin-top: 24px;
+          margin-bottom: 8px;
+        }
+
+        .pagination-btn {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          color: #8c8c96;
+          font-size: 13px;
+          font-weight: 800;
           cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 2px 4px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          transition: all 0.2s;
         }
 
-        .stat-btn.active {
-          color: #ff2a5f;
+        .pagination-btn:hover:not(:disabled) {
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .pagination-btn.active {
+          color: #0b0b12;
+          background: #ffd700;
+          border-color: #ffd700;
+          box-shadow: 0 4px 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .pagination-btn:disabled {
+          opacity: 0.25;
+          cursor: not-allowed;
         }
 
         /* ── 플로팅 글쓰기 버튼 ── */
@@ -495,34 +654,36 @@ export default function CommunityPage() {
           background: rgba(0,0,0,0.7);
           z-index: 10000;
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           justify-content: center;
+          padding: 16px;
         }
 
         .modal-card {
           width: 100%;
-          max-width: 480px;
+          max-width: 440px;
           background: #141217;
-          border-top-left-radius: 24px;
-          border-top-right-radius: 24px;
-          border-top: 1px solid rgba(255,255,255,0.1);
+          border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.1);
           padding: 20px;
           max-height: 85dvh;
           overflow-y: auto;
-          box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
-          animation: slideUp 0.25s cubic-bezier(0.1, 0.8, 0.2, 1);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          animation: fadeInScale 0.2s cubic-bezier(0.1, 0.8, 0.2, 1);
         }
 
-        @keyframes slideUp {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+        @keyframes fadeInScale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
         }
 
         .modal-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          padding-bottom: 6px;
+          margin-bottom: 10px;
         }
 
         .modal-title {
@@ -616,29 +777,25 @@ export default function CommunityPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
           font-size: 12px;
           color: #8c8c96;
         }
 
         .detail-title {
-          font-size: 20px;
+          font-size: 21px;
           font-weight: 900;
           color: #ffffff;
-          margin-bottom: 14px;
+          margin-bottom: 10px;
           line-height: 1.4;
         }
 
         .detail-content {
-          font-size: 14px;
-          color: #d1d1d6;
-          line-height: 1.6;
+          font-size: 14.5px;
+          color: #e4e4e7;
+          line-height: 1.65;
           white-space: pre-wrap;
-          margin-bottom: 24px;
-          background: rgba(255,255,255,0.02);
-          padding: 14px;
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.04);
+          padding: 4px 0;
+          margin-bottom: 20px;
         }
 
         .detail-actions {
@@ -650,14 +807,14 @@ export default function CommunityPage() {
         .recommend-btn {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           background: rgba(255, 42, 95, 0.08);
           border: 1.5px solid rgba(255, 42, 95, 0.2);
-          border-radius: 20px;
+          border-radius: 16px;
           color: #ff2a5f;
           font-weight: 850;
-          font-size: 13px;
-          padding: 8px 18px;
+          font-size: 12px;
+          padding: 6px 12px;
           cursor: pointer;
           transition: all 0.2s;
         }
@@ -809,10 +966,7 @@ export default function CommunityPage() {
         }
       `}</style>
 
-      {/* 데스크탑 탑바 */}
-      <div className="desktop-topbar">
-        <TopBar />
-      </div>
+
 
       <div className="com-wrap">
         {/* 상단 정보 */}
@@ -858,45 +1012,75 @@ export default function CommunityPage() {
             기록된 서신(글)이 없습니다. 첫 서신을 남겨보세요.
           </div>
         ) : (
-          <div className="post-list">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="post-card"
-                onClick={() => handleOpenDetail(post)}
-              >
-                <div className="post-card-header">
-                  <span className="post-category">{post.category}</span>
-                  <span className="post-date">{new Date(post.created_at).toLocaleDateString()}</span>
-                </div>
-                <h2 className="post-title">{post.title}</h2>
-                <p className="post-snippet">{post.content}</p>
-                <div className="post-footer">
-                  <div className="author-info">
-                    <span className="author-badge">
-                      {post.author_faction} / {post.author_realm}
-                    </span>
-                    <span className="author-name">{post.username}</span>
-                  </div>
-                  <div className="post-stats">
-                    <button
-                      className="stat-btn"
-                      onClick={(e) => handleLikeToggle(post.id, e)}
-                    >
-                      <span style={{ color: post.isLiked ? "#ff2a5f" : "#8c8c96" }}>
-                        {post.isLiked ? "❤️" : "🤍"}
+          <>
+            <div className="post-list">
+              {paginatedPosts.map((post, idx) => {
+                const postNum = posts.length - ((currentPage - 1) * postsPerPage + idx);
+                // 포맷 날짜: MM.DD 형태로 표현
+                let dateStr = "";
+                try {
+                  const d = new Date(post.created_at);
+                  const month = String(d.getMonth() + 1).padStart(2, "0");
+                  const day = String(d.getDate()).padStart(2, "0");
+                  dateStr = `${month}.${day}`;
+                } catch (e) {
+                  dateStr = "00.00";
+                }
+
+                return (
+                  <div
+                    key={post.id}
+                    className="post-row"
+                    onClick={() => handleOpenDetail(post)}
+                  >
+                    <div className="post-row-left">
+                      <span className="post-row-num">{postNum}.</span>
+                      <span className="post-row-category">[{post.category}]</span>
+                      <span className="post-row-title">제목 : {post.title}</span>
+                    </div>
+                    <div className="post-row-right">
+                      <span className="post-row-stat" style={{ color: post.isLiked ? "#ff2a5f" : "#8c8c96" }}>
+                        ❤️ {post.likes_count ?? 0}
                       </span>
-                      <span>{post.likes_count}</span>
-                    </button>
-                    <div className="stat-item">
-                      <span>💬</span>
-                      <span>답글</span>
+                      <span className="post-row-stat">
+                        💬 {post.commentsCount ?? 0}
+                      </span>
+                      <span className="post-row-date">{dateStr}</span>
                     </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <button
+                  className="pagination-btn"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    className={`pagination-btn ${currentPage === pageNum ? "active" : ""}`}
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+                <button
+                  className="pagination-btn"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                >
+                  &gt;
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -985,39 +1169,165 @@ export default function CommunityPage() {
       {detailPost && (
         <div className="modal-overlay" onClick={handleCloseDetail}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{detailPost.category}</span>
-              <button className="modal-close" onClick={handleCloseDetail}>×</button>
+            <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span className="modal-title" style={{ fontSize: "14px", fontWeight: 500, fontFamily: "inherit" }}>{detailPost.category}</span>
+                <span style={{ color: "rgba(255, 255, 255, 0.15)", fontSize: "12px" }}>|</span>
+                <span style={{ color: "#8c8c96", fontSize: "12px" }}>닉네임 | <strong style={{ color: "#ffd700", fontWeight: 700 }}>{detailPost.username}</strong></span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "11.5px", color: "#8c8c96" }}>{formatCommunityDate(detailPost.created_at)}</span>
+                <button className="modal-close" onClick={handleCloseDetail} style={{ margin: 0, padding: "0 4px" }}>×</button>
+              </div>
             </div>
             
             <div className="detail-post-body">
-              <h2 className="detail-title">{detailPost.title}</h2>
-              <div className="detail-meta">
-                <div className="author-info">
-                  <span className="author-badge">
-                    {detailPost.author_faction} / {detailPost.author_realm}
-                  </span>
-                  <span style={{ fontWeight: 800 }}>{detailPost.username}</span>
-                </div>
-                <span>{new Date(detailPost.created_at).toLocaleString()}</span>
-              </div>
-              <div className="detail-content">{detailPost.content}</div>
+{isEditing ? (
+                <form onSubmit={handleEditSubmit}>
+                  <div className="form-group">
+                    <label className="form-label">문파 전령 분류</label>
+                    <select
+                      className="form-select"
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                    >
+                      {CATEGORIES.slice(1).map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">제목</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      maxLength={100}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">내용</label>
+                    <textarea
+                      className="form-textarea"
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      maxLength={2000}
+                      required
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                    <button
+                      type="button"
+                      className="submit-btn"
+                      onClick={handleCancelEdit}
+                      style={{ background: "rgba(255, 255, 255, 0.08)", color: "#8c8c96", marginTop: 0 }}
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="submit-btn"
+                      disabled={editingBusy}
+                      style={{ marginTop: 0 }}
+                    >
+                      {editingBusy ? "수정 중..." : "수정 완료"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="detail-title-section" style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "14px", marginBottom: "16px" }}>
+                    <h2 className="detail-title">
+                      {detailPost.is_hidden && (
+                        <span style={{ color: "#ff2a5f", fontSize: 13, marginRight: 6 }}>[숨김]</span>
+                      )}
+                      제목 : {detailPost.title}
+                    </h2>
+                  </div>
 
-              {/* 추천 버튼 */}
-              <div className="detail-actions">
-                <button
-                  id="btn-recommend-post"
-                  className={`recommend-btn ${detailPost.isLiked ? "active" : ""}`}
-                  onClick={(e) => handleLikeToggle(detailPost.id, e)}
-                >
-                  <span>{detailPost.isLiked ? "❤️" : "🤍"}</span>
-                  <span>천하 경의 {detailPost.likes_count}</span>
-                </button>
-              </div>
+                  <div className="detail-content">{detailPost.content}</div>
+
+                  {/* 구분선 */}
+                  <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", marginTop: "24px", marginBottom: "16px" }}></div>
+
+                  {/* 추천 및 수정/삭제/숨김 버튼 (우측 정렬) */}
+                  <div className="detail-actions" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", marginBottom: "20px" }}>
+                    <button
+                      id="btn-recommend-post"
+                      className={`recommend-btn ${detailPost.isLiked ? "active" : ""}`}
+                      onClick={(e) => handleLikeToggle(detailPost.id, e)}
+                      style={{ margin: 0 }}
+                    >
+                      <span>{detailPost.isLiked ? "❤️" : "🤍"}</span>
+                      <span>천하 경의 {detailPost.likes_count}</span>
+                    </button>
+
+                    {user && (user.id === detailPost.user_id || isAdmin) && (
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        {user.id === detailPost.user_id && (
+                          <button
+                            onClick={handleStartEdit}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "16px",
+                              border: "1.5px solid rgba(255,255,255,0.15)",
+                              background: "rgba(255,255,255,0.06)",
+                              color: "white",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            수정
+                          </button>
+                        )}
+                        {(user.id === detailPost.user_id || isAdmin) && (
+                          <button
+                            onClick={handleDeletePost}
+                            disabled={deleteBusy}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "16px",
+                              border: "1.5px solid rgba(255, 42, 95, 0.2)",
+                              background: "rgba(255, 42, 95, 0.08)",
+                              color: "#ff2a5f",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {deleteBusy ? "삭제 중..." : "삭제"}
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={handleToggleHide}
+                            disabled={hideBusy}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "16px",
+                              border: "1.5px solid rgba(255, 215, 0, 0.3)",
+                              background: "rgba(255, 215, 0, 0.08)",
+                              color: "#ffd700",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {hideBusy ? "처리 중..." : detailPost.is_hidden ? "숨김 해제" : "숨기기"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* 댓글 섹션 */}
               <div className="comments-section">
-                <h3 className="comments-title">답글 기록 ({comments.length}개)</h3>
+                <h3 className="comments-title">답글 ({comments.length}개)</h3>
                 
                 {loadingComments ? (
                   <div style={{ color: "#ffd700", fontSize: 12 }}>답글 비전서를 여는 중... 📖</div>

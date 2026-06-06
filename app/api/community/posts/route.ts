@@ -9,27 +9,16 @@ export async function GET(req: Request) {
     const category = searchParams.get("category");
     const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
 
-    let query = supabaseAdmin
-      .from("community_posts")
-      .select("*, auth_users:user_id(email)");
-
-    if (category && category !== "전체") {
-      query = query.eq("category", category);
-    }
-
-    // 최신글 순으로 정렬
-    const { data: posts, error } = await query.order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("GET posts error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    // 만약 로그인한 사용자라면, 각각의 글에 대해 본인이 좋아요(추천)를 눌렀는지 여부를 체크
+    let isAdmin = false;
+    let loggedInUserId = null;
     let userLikedPostIds: string[] = [];
+
     if (token) {
       const { data: { user } } = await supabaseAdmin.auth.getUser(token);
       if (user) {
+        loggedInUserId = user.id;
+        isAdmin = user.user_metadata?.role === "admin";
+
         const { data: likes } = await supabaseAdmin
           .from("community_post_likes")
           .select("post_id")
@@ -41,16 +30,58 @@ export async function GET(req: Request) {
       }
     }
 
+    let query = supabaseAdmin
+      .from("community_posts")
+      .select("*, comments_count:community_post_comments(count)");
+
+    if (category && category !== "전체") {
+      query = query.eq("category", category);
+    }
+
+    // 관리자가 아니면 숨겨지지 않은 글만 가져옴
+    let hasIsHiddenFilter = false;
+    if (!isAdmin) {
+      query = query.eq("is_hidden", false);
+      hasIsHiddenFilter = true;
+    }
+
+    // 최신글 순으로 정렬
+    let { data: posts, error } = await query.order("created_at", { ascending: false });
+
+    if (error) {
+      // 만약 is_hidden 컬럼이 없어서 에러가 발생한 경우 (예: PGRST204 또는 컬럼이 없다는 에러)
+      if (hasIsHiddenFilter && (error.code === "PGRST204" || error.message?.includes("is_hidden"))) {
+        console.warn("Fallback query without is_hidden filter because column is missing");
+        let fallbackQuery = supabaseAdmin
+          .from("community_posts")
+          .select("*, comments_count:community_post_comments(count)");
+        if (category && category !== "전체") {
+          fallbackQuery = fallbackQuery.eq("category", category);
+        }
+        const fallbackRes = await fallbackQuery.order("created_at", { ascending: false });
+        posts = fallbackRes.data;
+        error = fallbackRes.error;
+      }
+    }
+
+    if (error) {
+      console.error("GET posts error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     // 각 게시글에 작성자 정보 및 좋아요 여부 매핑
     const mappedPosts = (posts ?? []).map((post: any) => {
-      // game_data 임시 파싱은 개별 포스트 작성 시 저장해두므로 DB에서 그대로 내려줌
+      const commentsCount = (post.comments_count && post.comments_count[0])
+        ? post.comments_count[0].count
+        : 0;
       return {
         ...post,
+        commentsCount,
         isLiked: userLikedPostIds.includes(post.id)
       };
     });
 
-    return NextResponse.json({ posts: mappedPosts });
+    return NextResponse.json({ posts: mappedPosts, isAdmin });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "server_error" }, { status: 500 });
   }
@@ -174,6 +205,113 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, post: newPost, earnedGreetingReward });
   } catch (e: any) {
     console.error("POST post error:", e);
+    return NextResponse.json({ error: e?.message ?? "server_error" }, { status: 500 });
+  }
+}
+
+// PUT /api/community/posts
+// 게시글 수정
+export async function PUT(req: Request) {
+  try {
+    const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
+    if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+    const body = await req.json().catch(() => null);
+    const id = body?.id;
+    if (!id) {
+      return NextResponse.json({ error: "id_required" }, { status: 400 });
+    }
+
+    const title = typeof body?.title === "string" ? body.title.trim() : undefined;
+    const content = typeof body?.content === "string" ? body.content.trim() : undefined;
+    const category = typeof body?.category === "string" ? body.category.trim() : undefined;
+    const isHidden = typeof body?.is_hidden === "boolean" ? body.is_hidden : undefined;
+
+    // 관리자 전용 숨김/숨김해제 기능 처리
+    if (isHidden !== undefined) {
+      const isAdmin = user.user_metadata?.role === "admin";
+      if (!isAdmin) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+
+      const { data: updatedPost, error: updateErr } = await supabaseAdmin
+        .from("community_posts")
+        .update({ is_hidden: isHidden })
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (updateErr) {
+        return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, post: updatedPost });
+    }
+
+    // 일반 수정 처리 (작성자 전용)
+    if (title === undefined || content === undefined || category === undefined) {
+      return NextResponse.json({ error: "missing_required_fields" }, { status: 400 });
+    }
+
+    const { data: updatedPost, error: updateErr } = await supabaseAdmin
+      .from("community_posts")
+      .update({ title, content, category })
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+
+    if (updateErr) {
+      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    }
+    if (!updatedPost) {
+      return NextResponse.json({ error: "post_not_found_or_forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.json({ ok: true, post: updatedPost });
+  } catch (e: any) {
+    console.error("PUT post error:", e);
+    return NextResponse.json({ error: e?.message ?? "server_error" }, { status: 500 });
+  }
+}
+
+// DELETE /api/community/posts
+// 게시글 삭제
+export async function DELETE(req: Request) {
+  try {
+    const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
+    if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "id_required" }, { status: 400 });
+    }
+
+    const { data: deletedPost, error: deleteErr } = await supabaseAdmin
+      .from("community_posts")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+
+    if (deleteErr) {
+      return NextResponse.json({ error: deleteErr.message }, { status: 500 });
+    }
+    if (!deletedPost) {
+      return NextResponse.json({ error: "post_not_found_or_forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("DELETE post error:", e);
     return NextResponse.json({ error: e?.message ?? "server_error" }, { status: 500 });
   }
 }
