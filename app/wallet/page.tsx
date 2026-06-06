@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
+import BottomNav from "@/app/components/BottomNav";
 
 // 뒤로가기 아이콘
 function ChevronLeftIcon() {
@@ -172,7 +173,7 @@ export default function WalletPage() {
           width: 100%;
           max-width: 480px;
           margin: 0 auto;
-          padding: 0 16px 40px;
+          padding: 0 16px 80px;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
@@ -652,6 +653,7 @@ export default function WalletPage() {
             </label>
           </div>
         </div>
+        <BottomNav />
       </div>
     </main>
   );

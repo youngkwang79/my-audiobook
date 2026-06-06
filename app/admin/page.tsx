@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TopBar from "@/app/components/TopBar";
 import { supabase, loginWithGoogle } from "@/lib/supabaseClient";
@@ -32,6 +32,71 @@ function parseFilename(filename: string) {
   return { id: "1", title: base.trim() };
 }
 
+const EMOJI_LIST = [
+  { emoji: "🎁", label: "선물박스" },
+  { emoji: "💰", label: "돈" },
+  { emoji: "💎", label: "보석" },
+  { emoji: "👑", label: "왕관" },
+  { emoji: "🎉", label: "파티" },
+  { emoji: "🍵", label: "찻잔" },
+  { emoji: "📚", label: "책" },
+  { emoji: "⚔️", label: "검" },
+  { emoji: "🥋", label: "도복" },
+  { emoji: "📜", label: "스크롤" },
+  { emoji: "☯️", label: "태극" },
+  { emoji: "🔔", label: "종" },
+  { emoji: "📣", label: "확성기" },
+  { emoji: "📢", label: "공지" },
+  { emoji: "🔥", label: "불" },
+  { emoji: "✨", label: "반짝" },
+  { emoji: "🚀", label: "로켓" },
+  { emoji: "⭐", label: "별" },
+  { emoji: "💌", label: "편지" },
+  { emoji: "💡", label: "아이디어" }
+];
+
+const EmojiPickerChips = ({ onSelect }: { onSelect: (emoji: string) => void }) => {
+  return (
+    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px", marginBottom: "12px" }}>
+      {EMOJI_LIST.map(({ emoji, label }) => (
+        <button
+          key={emoji}
+          type="button"
+          onClick={() => onSelect(emoji)}
+          title={label}
+          style={{
+            background: "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "8px",
+            padding: "6px 10px",
+            fontSize: "16px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.15s ease",
+            userSelect: "none"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
+            e.currentTarget.style.borderColor = "#ff2a5f";
+            e.currentTarget.style.transform = "scale(1.15)";
+            e.currentTarget.style.boxShadow = "0 0 8px rgba(255, 42, 95, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -39,8 +104,38 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingCheck, setLoadingCheck] = useState(true);
 
+  // --- 입력창 Ref (이모지 삽입용) ---
+  const pushTitleRef = useRef<HTMLInputElement>(null);
+  const pushBodyRef = useRef<HTMLTextAreaElement>(null);
+  const dailyTitleRef = useRef<HTMLInputElement>(null);
+  const dailyBodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertEmoji = (
+    ref: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>,
+    value: string,
+    setValue: (val: string) => void,
+    emoji: string
+  ) => {
+    const input = ref.current;
+    if (!input) {
+      setValue(value + emoji);
+      return;
+    }
+
+    const start = input.selectionStart ?? value.length;
+    const end = input.selectionEnd ?? value.length;
+    const newValue = value.substring(0, start) + emoji + value.substring(end);
+    setValue(newValue);
+
+    setTimeout(() => {
+      input.focus();
+      const nextCursorPos = start + emoji.length;
+      input.setSelectionRange(nextCursorPos, nextCursorPos);
+    }, 10);
+  };
+
   // 탭 상태
-  const [activeTab, setActiveTab] = useState<"novels" | "episodes" | "edit">("novels");
+  const [activeTab, setActiveTab] = useState<"novels" | "episodes" | "edit" | "push">("novels");
 
   // --- 소설 등록 상태 ---
   const [novelId, setNovelId] = useState("");
@@ -64,13 +159,19 @@ export default function AdminPage() {
   // --- 회차 등록 상태 ---
   const [worksList, setWorksList] = useState<any[]>([]);
   const [selectedWorkId, setSelectedWorkId] = useState("");
-  const [episodeId, setEpisodeId] = useState("");
-  const [episodeTitle, setEpisodeTitle] = useState("");
-  const [episodeLocked, setEpisodeLocked] = useState(true);
+  const [episodeLocked, setEpisodeLocked] = useState<"auto" | "free" | "locked">("auto");
   const [episodeReleaseDate, setEpisodeReleaseDate] = useState("");
-  const [episodeFile, setEpisodeFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
+  
+  // 다중 파일 벌크 업로드용 큐 상태
+  const [episodeQueue, setEpisodeQueue] = useState<Array<{
+    id: string;
+    title: string;
+    file: File;
+    progress: number;
+    status: "idle" | "uploading" | "success" | "error";
+    errorMsg?: string;
+  }>>([]);
+  const [isQueueUploading, setIsQueueUploading] = useState(false);
 
   // --- 작품 수정 상태 ---
   const [editWorkId, setEditWorkId] = useState("");
@@ -80,6 +181,25 @@ export default function AdminPage() {
   const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
   const [editThumbnailPreview, setEditThumbnailPreview] = useState("");
   const [editThumbnailUploading, setEditThumbnailUploading] = useState(false);
+
+  // --- 웹 푸시 상태 ---
+  const [pushTitle, setPushTitle] = useState("");
+  const [pushBody, setPushBody] = useState("");
+  const [pushUrl, setPushUrl] = useState("/");
+  const [pushSending, setPushSending] = useState(false);
+  const [pushResult, setPushResult] = useState<any>(null);
+
+  // --- 매일 자동 발송 (Vercel Cron) 설정 상태 ---
+  const [dailyTitle, setDailyTitle] = useState("");
+  const [dailyBody, setDailyBody] = useState("");
+  const [dailyUrl, setDailyUrl] = useState("/checkin");
+  const [dailyLoading, setDailyLoading] = useState(false);
+  const [dailySaving, setDailySaving] = useState(false);
+  const [dailySendHour, setDailySendHour] = useState(8);
+
+  // --- 수동 푸시 발송 및 예약 관련 상태 ---
+  const [pushScheduleType, setPushScheduleType] = useState<"instant" | "scheduled">("instant");
+  const [pushScheduledTime, setPushScheduledTime] = useState("");
 
   // 권한 검증
   useEffect(() => {
@@ -109,7 +229,7 @@ export default function AdminPage() {
   const fetchWorks = async () => {
     const { data, error } = await supabase
       .from("works")
-      .select("id, title")
+      .select("id, title, free_episodes")
       .order("created_at", { ascending: false });
     if (data) {
       setWorksList(data);
@@ -310,95 +430,306 @@ export default function AdminPage() {
     }
   };
 
-  // 회차 업로드 제출 (오디오 파일 업로드 포함)
+  // 오디오 다중 파일 선택 처리
+  const handleAudioFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newItems: any[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const { id, title } = parseFilename(file.name);
+      newItems.push({
+        id,
+        title,
+        file,
+        progress: 0,
+        status: "idle" as const
+      });
+    }
+
+    setEpisodeQueue(prev => [...prev, ...newItems]);
+    // 파일 인풋의 value 초기화 (같은 파일을 다시 올릴 수 있도록)
+    e.target.value = "";
+  };
+
+  // 큐 개별 아이템 삭제
+  const removeQueueItem = (index: number) => {
+    setEpisodeQueue(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  // 큐 개별 아이템 필드 변경 (회차 번호 또는 제목)
+  const updateQueueItem = (index: number, key: "id" | "title", value: string) => {
+    setEpisodeQueue(prev => prev.map((item, idx) => {
+      if (idx === index) {
+        return { ...item, [key]: value };
+      }
+      return item;
+    }));
+  };
+
+  // 개별 파일의 실제 잠금(유료/무료) 여부를 반환하는 헬퍼 함수
+  const getEpisodeLockedStatus = (episodeIdStr: string) => {
+    if (episodeLocked === "free") return false;
+    if (episodeLocked === "locked") return true;
+
+    // "auto"인 경우 소설 무료화수(free_episodes) 조회
+    const work = worksList.find(w => w.id === selectedWorkId);
+    const freeCount = work?.free_episodes ?? 10; // 기본 폴백 10
+
+    const epNum = Number(episodeIdStr);
+    if (isNaN(epNum)) {
+      return true; // 숫자가 아닌 경우 유료로 안전하게 잠금
+    }
+    return epNum > freeCount; // 무료 화수를 초과하면 locked (true), 이하는 무료 (false)
+  };
+
+  // 회차 벌크 업로드 진행
   const handleEpisodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedWorkId || !episodeId || !episodeTitle || !episodeReleaseDate) {
-      alert("모든 필수 값을 입력해 주세요. (음원 파일을 선택하면 자동으로 채워집니다)");
+    if (!selectedWorkId || !episodeReleaseDate) {
+      alert("공개 예정 일시를 설정해 주세요.");
       return;
     }
 
-    if (!episodeFile) {
-      alert("오디오 음원 파일을 선택해 주세요.");
+    if (episodeQueue.length === 0) {
+      alert("업로드할 오디오 파일을 선택해 주세요.");
       return;
     }
+
+    // 업로드 대기중인(idle 또는 error) 아이템 확인
+    const pendingItems = episodeQueue.filter(item => item.status === "idle" || item.status === "error");
+    if (pendingItems.length === 0) {
+      alert("업로드할 대기 중인 파일이 없습니다.");
+      return;
+    }
+
+    setIsQueueUploading(true);
 
     try {
-      setUploading(true);
-      setUploadProgress(0);
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      if (!token) throw new Error("로그인 세션이 만료되었습니다.");
+
+      // 순차적으로 업로드 진행
+      for (let i = 0; i < episodeQueue.length; i++) {
+        const item = episodeQueue[i];
+        if (item.status === "success") continue; // 이미 성공한 파일은 스킵
+
+        // 상태를 uploading으로 변경
+        setEpisodeQueue(prev => prev.map((q, idx) => idx === i ? { ...q, status: "uploading" as const, progress: 0 } : q));
+
+        try {
+          // 1. 오디오 파일 R2 업로드
+          const isPureNumber = /^\d+$/.test(item.id);
+          const epFolder = isPureNumber ? String(Number(item.id)).padStart(3, "0") : item.id;
+          const ext = (item.file.name.split(".").pop() || "mp3").toUpperCase();
+          const r2Key = `${selectedWorkId}/${epFolder}/01.${ext}`; // 항상 01 파트로 업로드
+
+          const formData = new FormData();
+          formData.append("file", item.file);
+          formData.append("key", r2Key);
+
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/admin/direct-upload", true);
+            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+            
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                const pct = Math.round((event.loaded / event.total) * 100);
+                setEpisodeQueue(prev => prev.map((q, idx) => idx === i ? { ...q, progress: pct } : q));
+              }
+            };
+
+            xhr.onload = () => {
+              if (xhr.status === 200) resolve();
+              else reject(new Error(`R2 업로드 실패 (${xhr.status})`));
+            };
+
+            xhr.onerror = () => reject(new Error("네트워크 오류 발생"));
+            xhr.send(formData);
+          });
+
+          // 2. 에피소드 DB 저장
+          const epRes = await fetch("/api/admin/upsert-episode", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              work_id: selectedWorkId,
+              id: item.id,
+              title: item.title,
+              locked: getEpisodeLockedStatus(item.id),
+              parts: 1,
+              release_date: new Date(episodeReleaseDate).toISOString()
+            })
+          });
+
+          const epData = await epRes.json();
+          if (!epRes.ok) {
+            throw new Error(epData.error || "에피소드 DB 저장 실패");
+          }
+
+          // 완료 업데이트
+          setEpisodeQueue(prev => prev.map((q, idx) => idx === i ? { ...q, status: "success" as const, progress: 100 } : q));
+        } catch (itemErr: any) {
+          console.error(`${item.file.name} 업로드 실패:`, itemErr);
+          setEpisodeQueue(prev => prev.map((q, idx) => idx === i ? { ...q, status: "error" as const, errorMsg: itemErr.message } : q));
+        }
+      }
+
+      alert("🎉 모든 대기중인 회차 업로드 절차가 완료되었습니다!");
+    } catch (err: any) {
+      alert("업로드 처리 중 치명적 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsQueueUploading(false);
+    }
+  };
+
+  // 웹 푸시 전체 전송 제출
+  const handlePushSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pushTitle || !pushBody) {
+      alert("알림 제목과 내용은 필수 입력 항목입니다.");
+      return;
+    }
+
+    if (pushScheduleType === "scheduled" && !pushScheduledTime) {
+      alert("예약 발송일 경우 발송 일시를 설정해야 합니다.");
+      return;
+    }
+
+    setPushSending(true);
+    setPushResult(null);
+
+    try {
       const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
 
-      // 1. 오디오 파일 R2 업로드
-      const isPureNumber = /^\d+$/.test(episodeId);
-      const epFolder = isPureNumber ? String(Number(episodeId)).padStart(3, "0") : episodeId;
-      
-      const ext = (episodeFile.name.split(".").pop() || "mp3").toUpperCase();
-      const r2Key = `${selectedWorkId}/${epFolder}/01.${ext}`; // 항상 01 파트로 업로드
+      if (pushScheduleType === "scheduled") {
+        // 예약 발송
+        const res = await fetch("/api/admin/schedule-push", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: pushTitle,
+            body: pushBody,
+            url: pushUrl,
+            scheduled_time: new Date(pushScheduledTime).toISOString()
+          })
+        });
 
-      const formData = new FormData();
-      formData.append("file", episodeFile);
-      formData.append("key", r2Key);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "예약 푸시 등록 실패");
 
-      // API 라우트를 통해 안전하게 파일 전송 (서버를 통해 R2 업로드하므로 CORS 문제 우회)
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/admin/direct-upload", true);
-        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const pct = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(pct);
-          }
-        };
+        alert("✅ 수동 푸시 예약이 성공적으로 등록되었습니다!");
+        setPushTitle("");
+        setPushBody("");
+        setPushUrl("/");
+        setPushScheduledTime("");
+        setPushScheduleType("instant");
+      } else {
+        // 즉시 발송
+        const res = await fetch("/api/push/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: pushTitle,
+            body: pushBody,
+            url: pushUrl
+          })
+        });
 
-        const onUploadLoad = () => {
-          if (xhr.status === 200) {
-            resolve();
-          } else {
-            reject(new Error(`업로드 실패 status: ${xhr.status}`));
-          }
-        };
-        xhr.onload = onUploadLoad;
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "푸시 발송 실패");
 
-        xhr.onerror = () => reject(new Error("네트워크 오류 발생"));
-        xhr.send(formData);
+        setPushResult(data);
+        alert(`✅ 전체 회원 푸시 즉시 전송 완료!\n(전송: ${data.sentCount}건 / 성공: ${data.successCount}건 / 실패: ${data.failCount}건)`);
+        setPushTitle("");
+        setPushBody("");
+        setPushUrl("/");
+      }
+    } catch (err: any) {
+      alert("푸시 전송 중 에러 발생: " + err.message);
+    } finally {
+      setPushSending(false);
+    }
+  };
+
+  // 웹 푸시 템플릿 설정 불러오기
+  const fetchDailyPushSettings = async () => {
+    setDailyLoading(true);
+    try {
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      if (!token) return;
+
+      const res = await fetch("/api/admin/save-push-settings", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
+      const data = await res.json();
+      if (res.ok && data.success && data.settings) {
+        setDailyTitle(data.settings.daily_title || "");
+        setDailyBody(data.settings.daily_body || "");
+        setDailyUrl(data.settings.daily_url || "/checkin");
+        setDailySendHour(data.settings.daily_send_hour !== undefined ? data.settings.daily_send_hour : 8);
+      }
+    } catch (err: any) {
+      console.error("자동 발송 설정 로드 실패:", err);
+    } finally {
+      setDailyLoading(false);
+    }
+  };
 
-      // 2. API 라우트를 통해 안전하게 에피소드 등록/수정 (RLS 우회 및 에피소드 수 업데이트 일괄 처리)
-      const epRes = await fetch("/api/admin/upsert-episode", {
+  const handleDailyPushSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dailyTitle || !dailyBody) {
+      alert("알림 제목과 내용은 필수 입력 항목입니다.");
+      return;
+    }
+
+    setDailySaving(true);
+    try {
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      const res = await fetch("/api/admin/save-push-settings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          work_id: selectedWorkId,
-          id: episodeId,
-          title: episodeTitle,
-          locked: episodeLocked,
-          parts: 1, // 항상 1 파트
-          release_date: new Date(episodeReleaseDate).toISOString()
+          daily_title: dailyTitle,
+          daily_body: dailyBody,
+          daily_url: dailyUrl,
+          daily_send_hour: Number(dailySendHour)
         })
       });
 
-      const epData = await epRes.json();
-      if (!epRes.ok) {
-        throw new Error(epData.error || "에피소드 DB 저장 실패");
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "설정 저장 실패");
 
-      alert("회차 등록 및 R2 오디오 업로드가 성공적으로 완료되었습니다!");
-      setEpisodeId("");
-      setEpisodeTitle("");
-      setEpisodeFile(null);
-      setUploadProgress(null);
+      alert("✅ 매일 자동 발송 문구 및 발송 시간 설정이 저장되었습니다!");
     } catch (err: any) {
-      console.error(err);
-      alert(`업로드 중 오류 발생: ${err.message}`);
+      alert("자동 발송 설정 저장 중 에러 발생: " + err.message);
     } finally {
-      setUploading(false);
+      setDailySaving(false);
     }
   };
+
+  useEffect(() => {
+    if (isAdmin && activeTab === "push") {
+      fetchDailyPushSettings();
+    }
+  }, [isAdmin, activeTab]);
 
   // 로딩 뷰
   if (authLoading || loadingCheck) {
@@ -554,9 +885,14 @@ export default function AdminPage() {
           font-size: 15px;
           outline: none;
           transition: border-color 0.2s;
+          color-scheme: dark; /* 브라우저 기본 선택창(달력, 드롭다운 등) 다크 테마 강제 */
         }
         .form-input:focus, .form-select:focus, .form-textarea:focus {
           border-color: #ff2a5f;
+        }
+        .form-select option {
+          background-color: #121218;
+          color: white;
         }
         .btn-submit {
           height: 48px;
@@ -623,6 +959,7 @@ export default function AdminPage() {
           <button className={`admin-tab ${activeTab === "novels" ? "active" : ""}`} onClick={() => setActiveTab("novels")}>소설 등록</button>
           <button className={`admin-tab ${activeTab === "edit" ? "active" : ""}`} onClick={() => { setActiveTab("edit"); if (!editWorkId && worksList.length > 0) { setEditWorkId(worksList[0].id); fetchEditWork(worksList[0].id); } }}>작품 수정</button>
           <button className={`admin-tab ${activeTab === "episodes" ? "active" : ""}`} onClick={() => setActiveTab("episodes")}>회차 & 오디오 업로드</button>
+          <button className={`admin-tab ${activeTab === "push" ? "active" : ""}`} onClick={() => setActiveTab("push")}>웹 푸시 발송</button>
         </div>
 
         {/* 탭 1: 소설 작품 관리 */}
@@ -1036,7 +1373,11 @@ export default function AdminPage() {
         {/* 탭 2: 회차 등록 & 대용량 파일 업로드 */}
         {activeTab === "episodes" && (
           <form onSubmit={handleEpisodeSubmit} className="card-panel">
-            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 18 }}>신규 회차(에피소드) 추가 및 업로드</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 18 }}>📚 신규 회차(에피소드) 일괄 추가 및 업로드</h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 20, lineHeight: 1.5 }}>
+              여러 개의 오디오 파일을 한 번에 선택하여 일괄 순차 업로드할 수 있습니다. 
+              파일명에서 회차 번호와 제목이 자동으로 파싱되며, 업로드 전에 직접 수정할 수 있습니다.
+            </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div className="form-group">
@@ -1048,7 +1389,7 @@ export default function AdminPage() {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">공개 예정 일시</label>
+                <label className="form-label">일괄 공개 예정 일시</label>
                 <input type="datetime-local" className="form-input" value={episodeReleaseDate} onChange={(e) => setEpisodeReleaseDate(e.target.value)} required />
               </div>
             </div>
@@ -1056,74 +1397,385 @@ export default function AdminPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
               <div className="form-group">
                 <label className="form-label">기본 잠금 상태 설정</label>
-                <select className="form-select" value={String(episodeLocked)} onChange={(e) => setEpisodeLocked(e.target.value === "true")}>
-                  <option value="true">🔒 잠금 (무료화수 초과 시 포인트 필요)</option>
-                  <option value="false">🔓 공개 (무료)</option>
+                <select className="form-select" value={episodeLocked} onChange={(e) => setEpisodeLocked(e.target.value as any)}>
+                  <option value="auto">✨ 작품 설정에 따라 자동 지정 (무료/유료 자동 분리)</option>
+                  <option value="free">🔓 전체 무료회차로 지정 (포인트 불필요)</option>
+                  <option value="locked">🔒 전체 유료회차로 지정 (포인트 필요)</option>
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">오디오 음원 파일 선택 (.mp3, .m4a)</label>
+                <label className="form-label">오디오 음원 파일 선택 (여러 파일 선택 가능, .mp3, .m4a)</label>
                 <input
                   type="file"
                   accept="audio/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const { id, title } = parseFilename(file.name);
-                      setEpisodeId(id);
-                      setEpisodeTitle(title);
-                      setEpisodeFile(file);
-                    }
-                  }}
+                  multiple
+                  disabled={isQueueUploading}
+                  onChange={handleAudioFilesChange}
                   className="form-input"
                   style={{ padding: "8px 12px" }}
                 />
               </div>
             </div>
 
-            {episodeFile && (
-              <div style={{ margin: "16px 0", background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 10, padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#ffe9a3" }}>ℹ️ 파일 분석 완료</span>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>
-                      등록 회차: <strong>{episodeId}화</strong> | 제목: <strong>{episodeTitle}</strong>
-                    </div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
-                      파일명: {episodeFile.name} ({((episodeFile.size) / 1024 / 1024).toFixed(2)} MB)
-                    </div>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      setEpisodeFile(null);
-                      setEpisodeId("");
-                      setEpisodeTitle("");
-                    }}
-                    style={{ background: "rgba(255, 59, 48, 0.2)", border: "1px solid #ff3b30", color: "#ff453a", padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: 700 }}
-                  >
-                    파일 제거
-                  </button>
-                </div>
+            {/* 업로드 대기열 리스트 */}
+            {episodeQueue.length > 0 && (
+              <div style={{ marginTop: 24 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>📋 업로드 대기열 ({episodeQueue.length}개 파일)</span>
+                  {!isQueueUploading && (
+                    <button 
+                      type="button" 
+                      onClick={() => setEpisodeQueue([])}
+                      style={{ background: "rgba(255, 59, 48, 0.15)", border: "1px solid #ff3b30", color: "#ff453a", padding: "4px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 700 }}
+                    >
+                      목록 비우기
+                    </button>
+                  )}
+                </h3>
 
-                {uploadProgress !== null && (
-                  <div style={{ marginTop: 12 }}>
-                    <div className="progress-bar-container">
-                      <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, opacity: 0.7, marginTop: 4 }}>
-                      <span>업로드 중...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                  </div>
-                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 400, overflowY: "auto", paddingRight: 4 }}>
+                  {episodeQueue.map((item, index) => {
+                    const fileSizeMB = (item.file.size / 1024 / 1024).toFixed(2);
+                    
+                    // 상태 스타일 지정
+                    let statusColor = "rgba(255,255,255,0.4)";
+                    let statusText = "대기 중";
+                    let isProcessing = item.status === "uploading";
+                    let isSuccess = item.status === "success";
+                    let isError = item.status === "error";
+
+                    if (isProcessing) {
+                      statusColor = "#fca834";
+                      statusText = `업로드 중 (${item.progress}%)`;
+                    } else if (isSuccess) {
+                      statusColor = "#34c759";
+                      statusText = "완료";
+                    } else if (isError) {
+                      statusColor = "#ff453a";
+                      statusText = "실패";
+                    }
+
+                    return (
+                      <div 
+                        key={index} 
+                        style={{ 
+                          background: "rgba(255,255,255,0.02)", 
+                          border: isProcessing ? "1px solid #fca834" : isSuccess ? "1px solid rgba(52,199,89,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: 12, 
+                          padding: 16, 
+                          position: "relative" 
+                        }}
+                      >
+                        {/* 상단: 상태 및 원본 파일명 */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span 
+                              style={{ 
+                                fontSize: 11, 
+                                fontWeight: 800, 
+                                background: statusColor + "1a", 
+                                color: statusColor, 
+                                border: `1px solid ${statusColor}`, 
+                                padding: "2px 8px", 
+                                borderRadius: 6 
+                              }}
+                            >
+                              {statusText}
+                            </span>
+                            {/* 실제 유료/무료 분기 배지 */}
+                            {(() => {
+                              const actualLocked = getEpisodeLockedStatus(item.id);
+                              const lockColor = actualLocked ? "#ff453a" : "#34c759";
+                              const lockText = actualLocked ? "🔒 유료" : "🔓 무료";
+                              return (
+                                <span 
+                                  style={{ 
+                                    fontSize: 11, 
+                                    fontWeight: 800, 
+                                    background: lockColor + "1a", 
+                                    color: lockColor, 
+                                    border: `1px solid ${lockColor}`, 
+                                    padding: "2px 8px", 
+                                    borderRadius: 6 
+                                  }}
+                                >
+                                  {lockText}
+                                </span>
+                              );
+                            })()}
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", wordBreak: "break-all" }}>
+                              {item.file.name} ({fileSizeMB} MB)
+                            </span>
+                          </div>
+                          {!isQueueUploading && !isSuccess && (
+                            <button
+                              type="button"
+                              onClick={() => removeQueueItem(index)}
+                              style={{ background: "none", border: "none", color: "#ff453a", fontSize: 12, cursor: "pointer", fontWeight: 700 }}
+                            >
+                              제거
+                            </button>
+                          )}
+                        </div>
+
+                        {/* 중단: 파싱된 데이터 편집 폼 */}
+                        <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 12 }}>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>회차 번호</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              style={{ padding: "6px 10px", fontSize: 13 }} 
+                              value={item.id} 
+                              disabled={isQueueUploading || isSuccess}
+                              onChange={(e) => updateQueueItem(index, "id", e.target.value)}
+                              required 
+                            />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>회차 제목</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              style={{ padding: "6px 10px", fontSize: 13 }} 
+                              value={item.title} 
+                              disabled={isQueueUploading || isSuccess}
+                              onChange={(e) => updateQueueItem(index, "title", e.target.value)}
+                              required 
+                            />
+                          </div>
+                        </div>
+
+                        {/* 업로드 진행 상태 바 */}
+                        {isProcessing && (
+                          <div style={{ marginTop: 12 }}>
+                            <div className="progress-bar-container">
+                              <div className="progress-bar-fill" style={{ width: `${item.progress}%`, background: "#fca834" }} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 실패 시 에러 문구 */}
+                        {isError && item.errorMsg && (
+                          <div style={{ fontSize: 11, color: "#ff453a", marginTop: 8, background: "rgba(255,69,58,0.08)", padding: "6px 10px", borderRadius: 6, border: "1px solid rgba(255,69,58,0.2)" }}>
+                            ⚠️ {item.errorMsg}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            <button type="submit" className="btn-submit" disabled={uploading} style={{ marginTop: 16 }}>
-              {uploading ? "업로드 및 회차 등록 중..." : "회차 등록 및 파일 전송 시작"}
+            <button 
+              type="submit" 
+              className="btn-submit" 
+              disabled={isQueueUploading || episodeQueue.length === 0} 
+              style={{ marginTop: 24 }}
+            >
+              {isQueueUploading 
+                ? "🚀 일괄 오디오 파일 순차 업로드 중..." 
+                : `회차 일괄 등록 및 파일 전송 시작 (${episodeQueue.length}개 파일)`
+              }
             </button>
           </form>
+        )}
+
+        {/* 탭 4: 웹 푸시 알림 발송 */}
+        {activeTab === "push" && (
+          <>
+            <form onSubmit={handlePushSubmit} className="card-panel">
+              <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 18 }}>📢 전체 유저 대상 수동 웹 푸시 발송 및 예약</h2>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 20, lineHeight: 1.5 }}>
+                푸시 알림 수신을 허용한 모든 회원(브라우저) 기기 화면에 실시간 알림 팝업을 즉시 보내거나 특정 일시에 예약 전송합니다.
+              </p>
+
+              <div className="form-group" style={{ marginBottom: 20 }}>
+                <label className="form-label">발송 방식 선택</label>
+                <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+                    <input 
+                      type="radio" 
+                      name="pushScheduleType" 
+                      value="instant" 
+                      checked={pushScheduleType === "instant"} 
+                      onChange={() => setPushScheduleType("instant")} 
+                    />
+                    즉시 발송
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+                    <input 
+                      type="radio" 
+                      name="pushScheduleType" 
+                      value="scheduled" 
+                      checked={pushScheduleType === "scheduled"} 
+                      onChange={() => setPushScheduleType("scheduled")} 
+                    />
+                    예약 발송
+                  </label>
+                </div>
+              </div>
+
+              {pushScheduleType === "scheduled" && (
+                <div className="form-group" style={{ marginBottom: 20 }}>
+                  <label className="form-label">예약 발송 일시 설정 (KST)</label>
+                  <input 
+                    type="datetime-local" 
+                    className="form-input" 
+                    value={pushScheduledTime} 
+                    onChange={(e) => setPushScheduledTime(e.target.value)} 
+                    required 
+                  />
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                    * 매 정각마다 동작하는 백엔드 크론(Cron) 스케줄러가 해당 예약 시간을 확인하여 자동 전송합니다.
+                  </span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">알림 제목</label>
+                <input 
+                  ref={pushTitleRef}
+                  type="text" 
+                  className="form-input" 
+                  placeholder="[무림북] 신작 독점 공개!" 
+                  value={pushTitle} 
+                  onChange={(e) => setPushTitle(e.target.value)} 
+                  required 
+                />
+                <EmojiPickerChips onSelect={(emoji) => insertEmoji(pushTitleRef, pushTitle, setPushTitle, emoji)} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">알림 상세 내용</label>
+                <textarea 
+                  ref={pushBodyRef}
+                  className="form-textarea" 
+                  rows={3} 
+                  placeholder="천무진: 봉인된 천재의 오디오 신규 회차가 지금 업로드되었습니다. 지금 들어보세요!" 
+                  value={pushBody} 
+                  onChange={(e) => setPushBody(e.target.value)} 
+                  required 
+                />
+                <EmojiPickerChips onSelect={(emoji) => insertEmoji(pushBodyRef, pushBody, setPushBody, emoji)} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">클릭 시 이동할 링크 주소 (선택)</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="/checkin" 
+                  value={pushUrl} 
+                  onChange={(e) => setPushUrl(e.target.value)} 
+                />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                  * 기본값은 메인 화면(/)입니다. 출석체크 알림인 경우 /checkin 을 적어주시면 됩니다.
+                </span>
+              </div>
+
+              {pushResult && (
+                <div style={{ margin: "16px 0", background: "rgba(76,217,100,0.1)", border: "1px solid #34c759", borderRadius: 10, padding: 16, fontSize: 13, lineHeight: 1.6 }}>
+                  <div style={{ fontWeight: 850, color: "#34c759", marginBottom: 4 }}>✅ 전송 성공!</div>
+                  <div>총 시도: <strong>{pushResult.sentCount}건</strong></div>
+                  <div>발송 완료: <strong>{pushResult.successCount}건</strong> | 실패(연결 종료): <strong>{pushResult.failCount}건</strong></div>
+                  {pushResult.cleanedCount > 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>* 만료된 브라우저 구독 정보 {pushResult.cleanedCount}개가 DB에서 자동 정리되었습니다.</div>}
+                </div>
+              )}
+
+              <button type="submit" className="btn-submit" disabled={pushSending} style={{ marginTop: 8 }}>
+                {pushSending 
+                  ? "작업 처리 중..." 
+                  : pushScheduleType === "scheduled" 
+                    ? "지정한 일시에 예약 전송 설정하기" 
+                    : "전체 회원에게 푸시 알림 즉시 발송하기"
+                }
+              </button>
+            </form>
+
+            <form onSubmit={handleDailyPushSave} className="card-panel" style={{ marginTop: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 18 }}>⏰ 매일 자동 발송 웹 푸시 문구 및 시간 설정 (상시 발송)</h2>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 20, lineHeight: 1.5 }}>
+                Vercel Cron 작업을 통해 매일 지정한 시간대(KST 기준 정각)에 수신 동의한 모든 유저에게 자동 전송되는 출석/일일보상 푸시 문구를 편집합니다.
+              </p>
+
+              {dailyLoading ? (
+                <div style={{ textAlign: "center", padding: 20, opacity: 0.6, fontSize: 14 }}>설정을 불러오는 중...</div>
+              ) : (
+                <>
+                  <div className="form-group" style={{ marginBottom: 20 }}>
+                    <label className="form-label">매일 자동 발송 시간 선택 (KST 기준 정각)</label>
+                    <select 
+                      className="form-select" 
+                      value={dailySendHour} 
+                      onChange={(e) => setDailySendHour(Number(e.target.value))}
+                      style={{ maxWidth: 260 }}
+                    >
+                      {Array.from({ length: 24 }).map((_, hour) => {
+                        const ampm = hour < 12 ? "오전" : "오후";
+                        const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+                        return (
+                          <option key={hour} value={hour}>
+                            {`${ampm} ${displayHour}시 (${hour}:00)`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                      * 1시간 간격으로 도는 크론 스케줄러가 여기 설정된 시간대와 일치할 때 자동으로 알림을 발송합니다.
+                    </span>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">자동 발송 알림 제목</label>
+                    <input 
+                      ref={dailyTitleRef}
+                      type="text" 
+                      className="form-input" 
+                      placeholder="🎁 [무림북] 오늘의 출석 보상 도착!" 
+                      value={dailyTitle} 
+                      onChange={(e) => setDailyTitle(e.target.value)} 
+                      required 
+                    />
+                    <EmojiPickerChips onSelect={(emoji) => insertEmoji(dailyTitleRef, dailyTitle, setDailyTitle, emoji)} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">자동 발송 알림 상세 내용</label>
+                    <textarea 
+                      ref={dailyBodyRef}
+                      className="form-textarea" 
+                      rows={3} 
+                      placeholder="잊지 말고 일일 문안인사와 출석체크를 완료하고 무료 10코인을 받아가세요! 🍵" 
+                      value={dailyBody} 
+                      onChange={(e) => setDailyBody(e.target.value)} 
+                      required 
+                    />
+                    <EmojiPickerChips onSelect={(emoji) => insertEmoji(dailyBodyRef, dailyBody, setDailyBody, emoji)} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">자동 발송 클릭 시 이동할 링크 주소 (선택)</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="/checkin" 
+                      value={dailyUrl} 
+                      onChange={(e) => setDailyUrl(e.target.value)} 
+                    />
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                      * 기본값은 출석체크 화면(/checkin)입니다.
+                    </span>
+                  </div>
+
+                  <button type="submit" className="btn-submit" disabled={dailySaving} style={{ marginTop: 8 }}>
+                    {dailySaving ? "자동 발송 설정 저장 중..." : "매일 자동 발송 설정 저장하기"}
+                  </button>
+                </>
+              )}
+            </form>
+          </>
         )}
       </div>
     </main>

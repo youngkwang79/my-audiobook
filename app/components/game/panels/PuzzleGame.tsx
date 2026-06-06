@@ -108,6 +108,22 @@ export function PuzzleGame({
     lastScoreAtTickRef.current = playerScore;
   }, [initPuzzleGrid, stage]);
 
+  const stageRef = useRef(stage);
+  const combatStateRef = useRef(mission?.combatState);
+  const updateInnCombatRef = useRef(updateInnCombat);
+  const onStageClearRef = useRef(onStageClear);
+  const onFailRef = useRef(onFail);
+  const getTargetScoreRef = useRef(getTargetScore);
+
+  useEffect(() => {
+    stageRef.current = stage;
+    combatStateRef.current = mission?.combatState;
+    updateInnCombatRef.current = updateInnCombat;
+    onStageClearRef.current = onStageClear;
+    onFailRef.current = onFail;
+    getTargetScoreRef.current = getTargetScore;
+  });
+
   useEffect(() => {
     if (!isPlaying) return;
 
@@ -117,9 +133,9 @@ export function PuzzleGame({
       const dt = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
-      const combat = mission?.combatState;
+      const combat = combatStateRef.current;
       if (combat) {
-        updateInnCombat(dt, playerScoreRef.current);
+        updateInnCombatRef.current(dt, playerScoreRef.current);
 
         const nextTime = Math.max(0, puzzleTimeLeftRef.current - dt);
         puzzleTimeLeftRef.current = nextTime;
@@ -132,19 +148,19 @@ export function PuzzleGame({
           lastScoreAtTickRef.current = playerScoreRef.current;
         }
 
-        const targetScore = getTargetScore(stage);
+        const targetScore = getTargetScoreRef.current(stageRef.current);
         if (playerScoreRef.current >= targetScore) {
-          onStageClear("PERFECT", 240, `Stage ${stage} 성공!`);
+          onStageClearRef.current("PERFECT", 240, `Stage ${stageRef.current} 성공!`);
           return;
         }
 
         if (combat.playerHp <= 0) {
-          onFail(playerScoreRef.current, "기력이 다하여 무뢰배에게 패배했습니다...");
+          onFailRef.current(playerScoreRef.current, "기력이 다하여 무뢰배에게 패배했습니다...");
           return;
         }
 
         if (nextTime <= 0) {
-          onFail(playerScoreRef.current, `시간 내에 무뢰배를 제압하지 못했습니다.`);
+          onFailRef.current(playerScoreRef.current, `시간 내에 무뢰배를 제압하지 못했습니다.`);
           return;
         }
       }
@@ -154,7 +170,7 @@ export function PuzzleGame({
 
     const handle = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(handle);
-  }, [isPlaying, stage, mission?.combatState, updateInnCombat, onFail, onStageClear, getTargetScore]);
+  }, [isPlaying, stage]);
 
   const findPossibleMove = useCallback((grid: any[][]) => {
     if (!grid || grid.length === 0) return null;

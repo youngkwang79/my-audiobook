@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
+import BottomNav from "@/app/components/BottomNav";
 
 async function getAccessToken() {
   if (!supabase) return null;
@@ -48,6 +49,15 @@ const EARN_TASKS = [
     subtitle: "출석 한마디 남기기 +10 코인",
     coin: 10,
     btnLabel: "인사하기",
+    done: false,
+  },
+  {
+    id: "game_training",
+    icon: "⚔️",
+    title: "일일 무공 수련",
+    subtitle: "무공수련 게임 1회 완료 +10 코인",
+    coin: 10,
+    btnLabel: "수련하기",
     done: false,
   },
   {
@@ -122,7 +132,7 @@ const YT_CHANNEL_URL = "https://www.youtube.com/channel/UCSw1s3kC086lNi9_wcdX3Aw
 
 export default function CheckinPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [coins, setCoins] = useState(0);
 
   // ✅ 테마 상태 추가
@@ -141,25 +151,7 @@ export default function CheckinPage() {
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // ✅ 신규 출석 한마디(연공록) 상태 추가
-  const [greetings, setGreetings] = useState<any[]>([]);
-  const [newGreeting, setNewGreeting] = useState("");
-  const [greetingDone, setGreetingDone] = useState(false);
-  const [greetingLoading, setGreetingLoading] = useState(false);
 
-  const loadGreetings = async () => {
-    try {
-      const res = await fetch("/api/attendance/greeting");
-      const data = await res.json().catch(() => null);
-      if (res.ok && data?.greetings) {
-        setGreetings(data.greetings);
-      }
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    loadGreetings();
-  }, []);
 
   // 로컬 스토리지에서 오디오 재생 시간 연동
   useEffect(() => {
@@ -197,8 +189,8 @@ export default function CheckinPage() {
         }
       } catch (e) { /* ignore */ }
     };
-    if (user) loadWallet();
-  }, [user]);
+    if (user && session) loadWallet();
+  }, [user, session]);
 
   // Supabase에서 완료된 태스크 로드
   useEffect(() => {
@@ -220,10 +212,13 @@ export default function CheckinPage() {
           const doneMap: Record<string, boolean> = {};
           const todayStr = getTodayDateString();
           (data.completedTasks as string[]).forEach((id) => {
-            doneMap[id] = true;
-            if (id.endsWith("_" + todayStr)) {
-              const baseId = id.substring(0, id.length - todayStr.length - 1);
-              doneMap[baseId] = true;
+            const isDaily = id !== "youtube" && id !== "more" && !id.startsWith("youtube") && !id.startsWith("more");
+            if (isDaily) {
+              if (id.endsWith("_" + todayStr)) {
+                doneMap[id] = true;
+              }
+            } else {
+              doneMap[id] = true;
             }
           });
           setTaskDone(doneMap);
@@ -231,10 +226,6 @@ export default function CheckinPage() {
           // 출석 체크 완료 여부 동기화
           if (doneMap["checkin_" + todayStr]) {
             setCheckedIn(true);
-          }
-          // 연공록 기록 완료 여부 동기화
-          if (doneMap["greeting_" + todayStr]) {
-            setGreetingDone(true);
           }
         }
       } catch (e) {
@@ -244,7 +235,7 @@ export default function CheckinPage() {
       }
     };
     loadCompletedTasks();
-  }, [user]);
+  }, [user, session]);
 
   // 출석체크 데이터는 localStorage 유지 (날짜 기반)
   useEffect(() => {
@@ -327,72 +318,26 @@ export default function CheckinPage() {
     }
   };
 
-  // ✅ 신규 출석 한마디(연공록) 등록 함수
-  const handleGreetingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      alert("로그인이 필요합니다. 문파 가입(로그인)을 먼저 해주세요!");
-      return;
-    }
-    const val = newGreeting.trim();
-    if (!val) {
-      alert("오늘의 연공 한마디를 입력해주세요.");
-      return;
-    }
-    if (val.length > 100) {
-      alert("한마디는 100자 이하로 작성해주세요.");
-      return;
-    }
-    setGreetingLoading(true);
-    try {
-      const token = await getAccessToken();
-      if (!token) throw new Error("로그인 세션이 만료되었습니다.");
 
-      const res = await fetch("/api/attendance/greeting", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: val }),
-      });
-      const data = await res.json().catch(() => null);
-
-      if (res.status === 409) {
-        alert("오늘 이미 연공록을 기록하셨습니다.");
-        setGreetingDone(true);
-        return;
-      }
-      if (!res.ok) throw new Error(data?.message ?? "인사 등록 실패");
-
-      alert("오늘의 연공록이 성공적으로 등록되었습니다! +10 코인 적립 🎉");
-      setNewGreeting("");
-      setGreetingDone(true);
-      if (data?.newRewardPoints !== undefined) {
-        setCoins(Number(data.newRewardPoints));
-      } else {
-        setCoins((prev) => prev + 10);
-      }
-      loadGreetings();
-      window.dispatchEvent(new Event("wallet-updated"));
-    } catch (err: any) {
-      alert(err?.message ?? "오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setGreetingLoading(false);
-    }
-  };
 
   const claimShareReward = async () => {
     try {
       const token = await getAccessToken();
+      const todayStr = getTodayDateString();
+
       if (!token) {
         setCoins((prev) => prev + 30);
-        setTaskDone((prev) => ({ ...prev, share: true }));
+        setTaskDone((prev) => ({ ...prev, [`share_${todayStr}`]: true }));
+        try {
+          const savedTasks = localStorage.getItem("checkin_tasks");
+          const existing = savedTasks ? JSON.parse(savedTasks) : {};
+          existing[`share_${todayStr}`] = true;
+          localStorage.setItem("checkin_tasks", JSON.stringify(existing));
+        } catch (e) {}
         alert("친구에게 공유하기 완료! +30 코인이 가상 적립되었습니다.");
         return;
       }
 
-      const todayStr = getTodayDateString();
       const res = await fetch("/api/me/tasks", {
         method: "POST",
         headers: {
@@ -423,9 +368,16 @@ export default function CheckinPage() {
   };
 
   const handleTask = (taskId: string, label: string) => {
-    if (taskDone[taskId]) return;
+    const todayStr = getTodayDateString();
+    const isDaily = taskId !== "youtube" && taskId !== "more";
+    const taskKey = isDaily ? `${taskId}_${todayStr}` : taskId;
+    if (taskDone[taskKey]) return;
     if (taskId === "greeting") {
-      router.push("/checkin/greetings");
+      router.push("/community?category=자유 대담&openWriteModal=1");
+      return;
+    }
+    if (taskId === "game_training") {
+      router.push("/?openGameModal=1");
       return;
     }
     if (label === "광고 보기") {
@@ -558,11 +510,12 @@ export default function CheckinPage() {
 
   // 시청 시간 달성 → 일일 태스크 완료 처리 (Supabase)
   const handleWatchClaim = async (taskId: string, coin: number) => {
-    if (taskDone[taskId]) return;
+    const todayStr = getTodayDateString();
+    const taskKey = `${taskId}_${todayStr}`;
+    if (taskDone[taskKey]) return;
     try {
       const token = await getAccessToken();
       if (token) {
-        const todayStr = getTodayDateString();
         const res = await fetch("/api/me/tasks", {
           method: "POST",
           headers: {
@@ -574,7 +527,7 @@ export default function CheckinPage() {
         const data = await res.json().catch(() => null);
         if (res.status === 409) {
           alert("오늘 이미 완료한 미션입니다.");
-          setTaskDone((prev) => ({ ...prev, [taskId]: true }));
+          setTaskDone((prev) => ({ ...prev, [taskKey]: true }));
           return;
         }
         if (!res.ok) throw new Error(data?.error ?? "서버 오류");
@@ -585,8 +538,14 @@ export default function CheckinPage() {
         }
       } else {
         setCoins((prev) => prev + coin);
+        try {
+          const saved = localStorage.getItem("checkin_tasks");
+          const existing = saved ? JSON.parse(saved) : {};
+          existing[taskKey] = true;
+          localStorage.setItem("checkin_tasks", JSON.stringify(existing));
+        } catch (e) {}
       }
-      setTaskDone((prev) => ({ ...prev, [taskId]: true }));
+      setTaskDone((prev) => ({ ...prev, [taskKey]: true }));
       // 지갑 잔액 및 미션 상태 브로드캐스트
       window.dispatchEvent(new Event("wallet-updated"));
       alert(`+${coin} 코인이 적립되었습니다! 🎉`);
@@ -614,7 +573,7 @@ export default function CheckinPage() {
         .ci-wrap {
           max-width: 480px;
           margin: 0 auto;
-          padding: 0 0 60px;
+          padding: 0 0 90px;
           display: flex;
           flex-direction: column;
         }
@@ -1641,7 +1600,10 @@ export default function CheckinPage() {
           {EARN_TASKS
             .filter((task) => !(task.id === "youtube" && taskDone["youtube"]))
             .map((task) => {
-              const isDone = task.done || !!taskDone[task.id];
+              const todayStr = getTodayDateString();
+              const isDaily = task.id !== "youtube" && task.id !== "more";
+              const taskKey = isDaily ? `${task.id}_${todayStr}` : task.id;
+              const isDone = task.done || !!taskDone[taskKey];
               const isTimerTask = !!(task as any).minutesRequired;
               const requiredSecs = ((task as any).minutesRequired ?? 0) * 60;
               const progress = isTimerTask ? Math.min(100, (elapsedSeconds / requiredSecs) * 100) : 100;
@@ -1767,6 +1729,7 @@ export default function CheckinPage() {
           </div>
         </div>
       )}
+      <BottomNav />
     </main>
   );
 }

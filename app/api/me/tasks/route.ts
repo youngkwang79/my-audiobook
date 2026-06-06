@@ -111,18 +111,20 @@ export async function POST(req: Request) {
       let desc = `미션 보상 (${taskId})`;
       if (taskId.startsWith("checkin_")) {
         desc = "출석체크 보상";
-      } else if (taskId === "youtube") {
+      } else if (taskId.startsWith("youtube")) {
         desc = "유튜브 구독 보상";
-      } else if (taskId === "invite") {
+      } else if (taskId.startsWith("invite")) {
         desc = "친구 초대 보상";
-      } else if (taskId === "share") {
+      } else if (taskId.startsWith("share")) {
         desc = "친구 공유 보상";
-      } else if (taskId === "watch5") {
+      } else if (taskId.startsWith("watch5")) {
         desc = "5분 청취 미션 보상";
-      } else if (taskId === "watch10") {
+      } else if (taskId.startsWith("watch10")) {
         desc = "10분 청취 미션 보상";
-      } else if (taskId === "watch15") {
+      } else if (taskId.startsWith("watch15")) {
         desc = "15분 청취 미션 보상";
+      } else if (taskId.startsWith("game_training")) {
+        desc = "일일 무공수련 미션 보상";
       }
 
       await supabaseAdmin

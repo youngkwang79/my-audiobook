@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import WorkPosterCard from "@/app/components/work/WorkPosterCard";
 import BottomNav from "@/app/components/BottomNav";
+import MugongGameLauncher from "@/app/components/game/MugongGameLauncher";
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -79,8 +80,102 @@ export default function Home() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loginHover, setLoginHover] = useState(false);
 
+  // ✅ 검색어 및 탭 상태
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("추천");
+
   // ✅ 남은 미션 개수 상태
   const [remainingMissions, setRemainingMissions] = useState<number | null>(null);
+
+  // 무공 수련 관련 상태
+  const [activeLauncherGame, setActiveLauncherGame] = useState<null | "breath" | "pulse" | "puzzle" | "dodge">(null);
+  const [selectedLeaderboardGame, setSelectedLeaderboardGame] = useState<"breath" | "pulse" | "puzzle" | "dodge">("breath");
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<"weekly" | "allTime">("weekly");
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [weeklyRankings, setWeeklyRankings] = useState<any[]>([]);
+  const [allTimeRankings, setAllTimeRankings] = useState<any[]>([]);
+  const [participantsCount, setParticipantsCount] = useState(0);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+  // 리더보드 로드
+  const loadLeaderboard = async (gameId: string) => {
+    try {
+      setLoadingLeaderboard(true);
+      const res = await fetch(`/api/game/leaderboard?gameId=${gameId}`, { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setWeeklyRankings(data.weeklyRankings ?? []);
+        setAllTimeRankings(data.allTimeRankings ?? []);
+        setParticipantsCount(data.participantsCount ?? 0);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLeaderboard(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "무공 수련") {
+      loadLeaderboard(selectedLeaderboardGame);
+    }
+  }, [activeTab, selectedLeaderboardGame]);
+
+  // 게임 완료 시 점수 제출 및 정산
+  const handleGameFinished = async (score: number) => {
+    if (!activeLauncherGame) return;
+    const gameId = activeLauncherGame;
+    setActiveLauncherGame(null);
+
+    if (score <= 0) {
+      alert("수련 점수가 0점이라 기록이 등록되지 않았습니다. 더 연마하세요!");
+      return;
+    }
+
+    try {
+      const token = session?.access_token;
+      if (!token) {
+        alert(`수련이 끝났습니다! 최종 점수: ${score.toLocaleString()} (로그인을 하시면 점수가 랭킹에 기록되고 미션 코인을 받을 수 있습니다.)`);
+        return;
+      }
+
+      const res = await fetch("/api/game/score", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ gameId, score })
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "기록 등록 실패");
+
+      if (data?.earnedMissionReward) {
+        alert(`✨ 수련 성공! ✨\n\n최종 점수: ${score.toLocaleString()}\n점수가 랭킹에 등록되었습니다.\n\n🎁 일일 무공 수련 미션 완료 보상 +10 코인 지급 완료!`);
+        // 코인 및 미션 개수 동기화
+        window.dispatchEvent(new Event("wallet-updated"));
+      } else {
+        alert(`✨ 수련 성공! ✨\n\n최종 점수: ${score.toLocaleString()}\n점수가 랭킹에 등록되었습니다.`);
+      }
+
+      // 리더보드 갱신
+      loadLeaderboard(selectedLeaderboardGame);
+    } catch (err: any) {
+      alert(`오류: ${err.message ?? "점수 등록 중 오류가 발생했습니다."}`);
+    }
+  };
+
+  // 수련하기 숏컷 쿼리 파라미터 처리
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("openGameModal") === "1") {
+        setActiveTab("무공 수련");
+        router.replace("/");
+      }
+    }
+  }, [router]);
 
   // ✅ 남은 미션 개수 불러오기
   const loadRemainingMissions = async () => {
@@ -110,7 +205,9 @@ export default function Home() {
         // 대상 미션들
         const missions = [
           "checkin_" + todayStr,
+          "greeting_" + todayStr,
           "youtube",
+          "invite_" + todayStr,
           "watch5_" + todayStr,
           "watch10_" + todayStr,
           "watch15_" + todayStr,
@@ -156,10 +253,6 @@ export default function Home() {
       window.removeEventListener("wallet-updated", handleWalletUpdate);
     };
   }, [user, session]);
-
-  // ✅ 검색어 및 탭 상태
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("추천");
 
   // ✅ 이어듣기 정보
   const [lastPlayed, setLastPlayed] = useState<LastPlayed | null>(null);
@@ -435,6 +528,8 @@ export default function Home() {
     >
       {/* 스타일정의 */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Noto+Serif+KR:wght@500;700;900&display=swap');
+
         @keyframes lightSweep {
           0% { transform: translateX(-120%); }
           100% { transform: translateX(120%); }
@@ -912,7 +1007,7 @@ export default function Home() {
 
       {/* 카테고리 탭 */}
       <div className="category-tabs">
-        {["추천", "신작", "인기 순위"].map((tab) => (
+        {["추천", "신작", "인기 순위", "무공 수련"].map((tab) => (
           <div
             key={tab}
             className={`category-tab ${activeTab === tab ? "active" : ""}`}
@@ -923,145 +1018,801 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ✅ 이어듣기 카드 */}
-      {lastPlayed && (
-        <div className="continue-play-card">
-          <div className="continue-play-title">
-            <span className="play-icon">▶</span> {lastPlayedWorkTitle} · {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
-          </div>
-          <Link
-            href={
-              user
-                ? continueHref
-                : `/login?redirect=${encodeURIComponent(continueHref)}`
-            }
-            style={{ textDecoration: "none" }}
-          >
-            <div className="continue-play-btn">
-              이어서 듣기
+      {activeTab !== "무공 수련" ? (
+        <>
+          {/* ✅ 이어듣기 카드 */}
+          {lastPlayed && (
+            <div className="continue-play-card">
+              <div className="continue-play-title">
+                <span className="play-icon">▶</span> {lastPlayedWorkTitle} · {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
+              </div>
+              <Link
+                href={
+                  user
+                    ? continueHref
+                    : `/login?redirect=${encodeURIComponent(continueHref)}`
+                }
+                style={{ textDecoration: "none" }}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("episodeBackPath", "/");
+                  } catch (e) {}
+                }}
+              >
+                <div className="continue-play-btn">
+                  이어서 듣기
+                </div>
+              </Link>
             </div>
-          </Link>
-        </div>
-      )}
+          )}
 
-      {/* ✅ 소개 박스 (데스크탑 전용) */}
-      <div
-        className="intro-banner"
-        style={{
-          maxWidth: 900,
-          margin: "0 auto 28px",
-          padding: "31px 17px",
-          borderRadius: 28,
-          background:
-            "linear-gradient(135deg, rgba(7,10,22,0.58) 0%, rgba(8,11,24,0.46) 45%, rgba(10,13,26,0.34) 100%)",
-          border: "1px solid rgba(255,215,120,0.22)",
-          boxShadow:
-            "0 0 14px rgba(255,215,120,0.18), 0 12px 40px rgba(0,0,0,0.024)",
-          backdropFilter: "blur(0px)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 24,
-            fontWeight: 900,
-            lineHeight: 1.2,
-            color: "rgba(255,255,255,0.95)",
-          }}
-        >
-          검과 강호의 이야기를 귀로 감상
-        </div>
-        <p
-          style={{
-            marginTop: 10,
-            fontSize: 14,
-            lineHeight: 1.5,
-            color: "rgba(255,255,255,0.78)",
-            margin: 0,
-          }}
-        >
-          무림북은 창작 무협 소설과 오디오 스토리를 중심으로, 에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다. 강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
-        </p>
-      </div>
+          {/* ✅ 소개 박스 (데스크탑 전용) */}
+          <div
+            className="intro-banner"
+            style={{
+              maxWidth: 900,
+              margin: "0 auto 28px",
+              padding: "31px 17px",
+              borderRadius: 28,
+              background:
+                "linear-gradient(135deg, rgba(7,10,22,0.58) 0%, rgba(8,11,24,0.46) 45%, rgba(10,13,26,0.34) 100%)",
+              border: "1px solid rgba(255,215,120,0.22)",
+              boxShadow:
+                "0 0 14px rgba(255,215,120,0.18), 0 12px 40px rgba(0,0,0,0.024)",
+              backdropFilter: "blur(0px)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 900,
+                lineHeight: 1.2,
+                color: "rgba(255,255,255,0.95)",
+              }}
+            >
+              검과 강호의 이야기를 귀로 감상
+            </div>
+            <p
+              style={{
+                marginTop: 10,
+                fontSize: 14,
+                lineHeight: 1.5,
+                color: "rgba(255,255,255,0.78)",
+                margin: 0,
+              }}
+            >
+              무림북은 창작 무협 소설과 오디오 스토리를 중심으로, 에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다. 강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
+            </p>
+          </div>
 
-      {/* 작품 카드 그리드 */}
-      {mainGridWorks.length > 0 ? (
-        <div className="works-poster-grid">
-          {mainGridWorks.map((work) => (
-            <WorkPosterCard key={work.id} work={work} />
-          ))}
-        </div>
-      ) : (
-        <div style={{ padding: "80px 20px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: 15 }}>
-          검색 결과에 맞는 작품이 없습니다.
-        </div>
-      )}
+          {/* 작품 카드 그리드 */}
+          {mainGridWorks.length > 0 ? (
+            <div className="works-poster-grid">
+              {mainGridWorks.map((work) => (
+                <WorkPosterCard key={work.id} work={work} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: "80px 20px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: 15 }}>
+              검색 결과에 맞는 작품이 없습니다.
+            </div>
+          )}
 
-      {/* 공개 예정 섹션 */}
-      {activeTab === "추천" && !searchQuery && (
-        <div className="coming-soon-section" id="coming-soon-section">
-          <h2 className="section-title">공개 예정</h2>
+          {/* 공개 예정 섹션 */}
+          {activeTab === "추천" && !searchQuery && (
+            <div className="coming-soon-section" id="coming-soon-section">
+              <h2 className="section-title">공개 예정</h2>
 
-          {comingSoonWorks.length > 0 ? (() => {
-            // created_at 기준 날짜 그룹핑
-            const groups: { dateLabel: string; works: typeof comingSoonWorks }[] = [];
-            comingSoonWorks.forEach((work) => {
-              let dateLabel = "";
-              if (work.created_at) {
-                const d = new Date(work.created_at);
-                const mm = String(d.getMonth() + 1).padStart(2, "0");
-                const dd = String(d.getDate()).padStart(2, "0");
-                dateLabel = `${mm}. ${dd}.`;
-              }
-              const existing = groups.find((g) => g.dateLabel === dateLabel);
-              if (existing) {
-                existing.works.push(work);
-              } else {
-                groups.push({ dateLabel, works: [work] });
-              }
-            });
-            return (
-              <>
-                {groups.map((group) => (
-                  <div key={group.dateLabel}>
-                    {group.dateLabel && (
-                      <div className="coming-soon-date-header">
-                        <span className="coming-soon-date">{group.dateLabel}</span>
-                        <div className="coming-soon-divider" />
-                      </div>
-                    )}
-                    <div className="coming-soon-grid">
-                      {group.works.map((work) => (
-                        <div key={work.id} className="coming-soon-item-container">
-                          <WorkPosterCard work={work} />
-                          <button
-                            className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
-                            onClick={() => handleRequestNotification(work.id)}
-                          >
-                            {alarmSettings[work.id] ? (
-                              <>
-                                <CheckIconSmall />
-                                <span>알림 설정 완료</span>
-                              </>
-                            ) : (
-                              <>
-                                <ClockIcon />
-                                <span>알림 받기</span>
-                              </>
-                            )}
-                          </button>
+              {comingSoonWorks.length > 0 ? (() => {
+                // created_at 기준 날짜 그룹핑
+                const groups: { dateLabel: string; works: typeof comingSoonWorks }[] = [];
+                comingSoonWorks.forEach((work) => {
+                  let dateLabel = "";
+                  if (work.created_at) {
+                    const d = new Date(work.created_at);
+                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                    const dd = String(d.getDate()).padStart(2, "0");
+                    dateLabel = `${mm}. ${dd}.`;
+                  }
+                  const existing = groups.find((g) => g.dateLabel === dateLabel);
+                  if (existing) {
+                    existing.works.push(work);
+                  } else {
+                    groups.push({ dateLabel, works: [work] });
+                  }
+                });
+                return (
+                  <>
+                    {groups.map((group) => (
+                      <div key={group.dateLabel}>
+                        {group.dateLabel && (
+                          <div className="coming-soon-date-header">
+                            <span className="coming-soon-date">{group.dateLabel}</span>
+                            <div className="coming-soon-divider" />
+                          </div>
+                        )}
+                        <div className="coming-soon-grid">
+                          {group.works.map((work) => (
+                            <div key={work.id} className="coming-soon-item-container">
+                              <WorkPosterCard work={work} />
+                              <button
+                                className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
+                                onClick={() => handleRequestNotification(work.id)}
+                              >
+                                {alarmSettings[work.id] ? (
+                                  <>
+                                    <CheckIconSmall />
+                                    <span>알림 설정 완료</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ClockIcon />
+                                    <span>알림 받기</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                    ))}
+                  </>
+                );
+              })() : (
+                <div style={{ padding: "30px 10px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
+                  새로운 작품을 준비 중입니다.
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="game-tab-content" style={{ textAlign: "left", marginTop: 8 }}>
+          <style>{`
+            .game-grid {
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 14px;
+              margin-bottom: 24px;
+            }
+            .game-card {
+              background: #141217;
+              border: 1.5px solid rgba(255, 215, 0, 0.15);
+              border-radius: 18px;
+              padding: 16px;
+              display: flex;
+              align-items: center;
+              gap: 16px;
+              cursor: pointer;
+              transition: all 0.2s;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }
+            .game-card:hover {
+              border-color: #ffd700;
+              box-shadow: 0 4px 20px rgba(255,215,0,0.1);
+              transform: translateY(-2px);
+            }
+            .game-card:active {
+              transform: translateY(0);
+            }
+            .game-icon-box {
+              width: 54px;
+              height: 54px;
+              border-radius: 14px;
+              background: rgba(255, 215, 0, 0.08);
+              border: 1px solid rgba(255, 215, 0, 0.2);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 26px;
+              color: #ffd700;
+              flex-shrink: 0;
+            }
+            .game-info {
+              flex: 1;
+            }
+            .game-title-text {
+              font-size: 15px;
+              font-weight: 850;
+              color: #ffffff;
+              margin-bottom: 3px;
+            }
+            .game-desc-text {
+              font-size: 11px;
+              color: #8c8c96;
+              line-height: 1.45;
+              margin-bottom: 6px;
+            }
+            .game-badge-text {
+              display: inline-block;
+              padding: 2px 6px;
+              background: rgba(255,255,255,0.06);
+              border: 1px solid rgba(255,255,255,0.12);
+              border-radius: 4px;
+              font-size: 10px;
+              color: #d1d1d6;
+              font-weight: 700;
+            }
+            .training-dashboard-layout {
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 16px;
+              margin-top: 10px;
+              width: 100%;
+            }
+            .leaderboard-container {
+              background: #141217;
+              border: 1px solid rgba(255,255,255,0.06);
+              border-radius: 20px;
+              padding: 18px;
+            }
+            .training-guide-container {
+              background: rgba(20, 18, 23, 0.45);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+              border: 1.5px solid rgba(255, 215, 0, 0.2);
+              border-radius: 20px;
+              padding: 20px 18px;
+              position: relative;
+              overflow: hidden;
+              box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35),
+                          inset 0 0 40px rgba(255, 215, 0, 0.02);
+              text-align: left;
+              transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            }
+            .training-guide-container:hover {
+              border-color: rgba(255, 215, 0, 0.45);
+              transform: translateY(-2px);
+              box-shadow: 0 12px 36px 0 rgba(255, 215, 0, 0.08),
+                          inset 0 0 40px rgba(255, 215, 0, 0.04);
+            }
+            .training-guide-container::before {
+              content: '';
+              position: absolute;
+              top: -50%;
+              left: -50%;
+              width: 200%;
+              height: 200%;
+              background: linear-gradient(
+                45deg,
+                transparent 45%,
+                rgba(255, 215, 0, 0.12) 50%,
+                transparent 55%
+              );
+              transform: rotate(-45deg);
+              pointer-events: none;
+              animation: glass-shine 6s infinite ease-in-out;
+            }
+            @keyframes glass-shine {
+              0% { transform: translate(-30%, -30%) rotate(-45deg); opacity: 0; }
+              15% { opacity: 1; }
+              35% { transform: translate(30%, 30%) rotate(-45deg); opacity: 0; }
+              100% { transform: translate(30%, 30%) rotate(-45deg); opacity: 0; }
+            }
+            .guide-header {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 16px;
+              border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+              padding-bottom: 8px;
+            }
+            .guide-icon {
+              font-size: 20px;
+            }
+            .guide-title {
+              font-family: 'Noto Serif KR', serif;
+              font-size: 17px;
+              font-weight: 950;
+              color: #ffd700;
+              margin: 0;
+              text-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+            }
+            .guide-body {
+              display: flex;
+              flex-direction: column;
+              gap: 16px;
+            }
+            .guide-section {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+            }
+            .guide-section-title {
+              font-size: 13.5px;
+              font-weight: 850;
+              color: #ffffff;
+            }
+            .guide-section-desc {
+              font-size: 11.5px;
+              color: #a1a1aa;
+              line-height: 1.5;
+            }
+            .guide-sub-rules {
+              background: rgba(0, 0, 0, 0.35);
+              border-radius: 8px;
+              padding: 8px 10px;
+              margin-top: 6px;
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              border: 1px solid rgba(255, 215, 0, 0.08);
+            }
+            .leaderboard-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 14px;
+              flex-wrap: wrap;
+              gap: 8px;
+            }
+            .leaderboard-title {
+              font-family: 'Noto Serif KR', serif;
+              font-size: 18px;
+              font-weight: 900;
+              color: #ffd700;
+              margin: 0;
+            }
+            .leaderboard-prizes {
+              background: rgba(0,0,0,0.45);
+              padding: 12px 14px;
+              border-radius: 12px;
+              border: 1px solid rgba(255,215,0,0.25);
+              margin-bottom: 14px;
+              font-size: 12px;
+              line-height: 1.5;
+            }
+            .leaderboard-cat-tabs {
+              display: flex;
+              gap: 8px;
+              margin-bottom: 12px;
+            }
+            .leaderboard-cat-tab {
+              flex: 1;
+              background: rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-radius: 8px;
+              color: #8c8c96;
+              font-size: 12px;
+              font-weight: 700;
+              padding: 6px 0;
+              cursor: pointer;
+              text-align: center;
+            }
+            .leaderboard-cat-tab.active {
+              background: rgba(255,215,0,0.12);
+              border-color: #ffd700;
+              color: #ffd700;
+            }
+            .period-tabs {
+              display: flex;
+              gap: 6px;
+            }
+            .period-tab {
+              background: rgba(255, 255, 255, 0.06);
+              border: none;
+              border-radius: 6px;
+              color: #8c8c96;
+              font-size: 11px;
+              font-weight: 700;
+              padding: 4px 10px;
+              cursor: pointer;
+            }
+            .period-tab.active {
+              background: #ffffff;
+              color: #0b0b12;
+            }
+            .rank-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 10px 6px;
+              border-bottom: 1px solid rgba(255,255,255,0.03);
+              font-size: 13px;
+            }
+            .rank-user {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            }
+            .rank-num {
+              font-weight: 900;
+              font-size: 14px;
+              width: 20px;
+              color: #ffd700;
+            }
+            .rank-username {
+              font-weight: 700;
+              color: #ffffff;
+            }
+            .rank-score {
+              font-family: 'Outfit', sans-serif;
+              font-weight: 800;
+              color: #ffd36a;
+            }
+            .game-welcome-banner {
+              background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(20, 18, 23, 0.6) 100%);
+              border: 1px dashed rgba(255, 215, 0, 0.35);
+              border-radius: 16px;
+              padding: 16px 20px;
+              margin-bottom: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 16px;
+              position: relative;
+              overflow: hidden;
+            }
+            .game-welcome-banner::before {
+              content: "";
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 4px;
+              height: 100%;
+              background: #ffd700;
+            }
+            .banner-content {
+              flex: 1;
+            }
+            .banner-badge {
+              display: inline-block;
+              background: #ff9f0a;
+              color: #000000;
+              font-size: 10px;
+              font-weight: 900;
+              padding: 2px 6px;
+              border-radius: 4px;
+              margin-bottom: 8px;
+              text-transform: uppercase;
+            }
+            .banner-title {
+              font-family: 'Noto Serif KR', serif;
+              font-size: 16px;
+              font-weight: 900;
+              color: #ffffff;
+              margin: 0 0 6px 0;
+            }
+            .banner-desc {
+              font-size: 12px;
+              color: #a1a1aa;
+              line-height: 1.5;
+              margin: 0;
+            }
+            .banner-desc strong {
+              color: #ffd700;
+            }
+            .banner-accent-icon {
+              font-size: 36px;
+              filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.3));
+              user-select: none;
+              animation: float-coin 3s infinite ease-in-out;
+            }
+            @keyframes float-coin {
+              0% { transform: translateY(0); }
+              50% { transform: translateY(-6px); }
+              100% { transform: translateY(0); }
+            }
+            .banner-content {
+              flex: 1;
+            }
+            .banner-badge {
+              display: inline-block;
+              background: #ff9f0a;
+              color: #000000;
+              font-size: 10px;
+              font-weight: 900;
+              padding: 2px 6px;
+              border-radius: 4px;
+              margin-bottom: 8px;
+              text-transform: uppercase;
+            }
+            .banner-title {
+              font-family: 'Noto Serif KR', serif;
+              font-size: 16px;
+              font-weight: 900;
+              color: #ffffff;
+              margin: 0 0 6px 0;
+            }
+            .banner-desc {
+              font-size: 12px;
+              color: #a1a1aa;
+              line-height: 1.5;
+              margin: 0;
+            }
+            .banner-desc strong {
+              color: #ffd700;
+            }
+            .guide-details-btn {
+              background: rgba(255, 215, 0, 0.1);
+              border: 1px solid rgba(255, 215, 0, 0.4);
+              color: #ffd700;
+              font-size: 11px;
+              font-weight: 800;
+              padding: 4px 10px;
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.2s;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              white-space: nowrap;
+            }
+            .guide-details-btn:hover {
+              background: rgba(255, 215, 0, 0.2);
+              border-color: #ffd700;
+              transform: scale(1.03);
+            }
+            .guide-details-btn:active {
+              transform: scale(0.97);
+            }
+          `}</style>
+
+          {/* 미니게임 안내 배너 */}
+          <div className="game-welcome-banner">
+            <div className="banner-content">
+              <span className="banner-badge">코인 획득</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap" }}>
+                <h4 className="banner-title" style={{ margin: 0 }}>🎮 강호 무공 수련관 (미니게임)</h4>
+                <button 
+                  className="guide-details-btn"
+                  onClick={() => setShowGuideModal(true)}
+                >
+                  자세히 📖
+                </button>
+              </div>
+              <p className="banner-desc" style={{ marginTop: "6px" }}>
+                4가지 무공 수련 미니게임을 플레이하고 기록을 등록하세요!<br />
+                매일 첫 수련 완료 시 <strong>+10 코인</strong> 즉시 지급 & 주간 랭킹 Top 3 진입 시 <strong>최대 500 코인</strong> 상금이 지급됩니다.
+              </p>
+            </div>
+            <div className="banner-accent-icon">🪙</div>
+          </div>
+
+          {/* Mini-game List */}
+          <div className="game-grid">
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("breath");
+            }}>
+              <div className="game-icon-box">🌬️</div>
+              <div className="game-info">
+                <div className="game-title-text">호흡 수련 (조식조양)</div>
+                <div className="game-desc-text">기운을 조화롭게 다스려 적의 예리한 암습을 무력화하십시오.</div>
+                <div className="game-badge-text">콤보 방어전</div>
+              </div>
+            </div>
+
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("pulse");
+            }}>
+              <div className="game-icon-box">☯️</div>
+              <div className="game-info">
+                <div className="game-title-text">기운 응축 (단전응축)</div>
+                <div className="game-desc-text">단전에 순수한 진기를 모으고 극의 상태로 정밀 압축하십시오.</div>
+                <div className="game-badge-text">타이밍 미니게임</div>
+              </div>
+            </div>
+
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("puzzle");
+            }}>
+              <div className="game-icon-box">🧩</div>
+              <div className="game-info">
+                <div className="game-title-text">내공 정렬 (단전정렬)</div>
+                <div className="game-desc-text">단전의 흐트러진 내공 기맥을 한 줄로 정렬해 진기를 일깨우십시오.</div>
+                <div className="game-badge-text">내공 매치 3 퍼즐</div>
+              </div>
+            </div>
+
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("dodge");
+            }}>
+              <div className="game-icon-box">👟</div>
+              <div className="game-info">
+                <div className="game-title-text">보법 수련 (梅화樁)</div>
+                <div className="game-desc-text">매화장 위에서 몸을 놀려 신비로운 신법보법을 연마하십시오.</div>
+                <div className="game-badge-text">신법 회피 게임</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dashboard Layout wrapper for Leaderboard and Guide side-by-side */}
+          <div className="training-dashboard-layout">
+            {/* Leaderboard Section */}
+            <div className="leaderboard-container">
+              <div className="leaderboard-header">
+                <h3 className="leaderboard-title">무공 랭킹 리더보드</h3>
+                <div className="period-tabs">
+                  <button
+                    className={`period-tab ${leaderboardPeriod === "weekly" ? "active" : ""}`}
+                    onClick={() => setLeaderboardPeriod("weekly")}
+                  >
+                    주간
+                  </button>
+                  <button
+                    className={`period-tab ${leaderboardPeriod === "allTime" ? "active" : ""}`}
+                    onClick={() => setLeaderboardPeriod("allTime")}
+                  >
+                    전체
+                  </button>
+                </div>
+              </div>
+
+              {/* 주간 랭킹 보상 활성화 조건 요약 박스 */}
+              {leaderboardPeriod === "weekly" && (
+                <div className="leaderboard-prizes">
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "900", marginBottom: "4px" }}>
+                    <span style={{ color: "#ffd700" }}>🏆 주간 Top 3 상금 (비례 보상제)</span>
+                    {participantsCount >= 30 ? (
+                      <span style={{ color: "#4dff70" }}>활성화 (100%)</span>
+                    ) : participantsCount >= 10 ? (
+                      <span style={{ color: "#ffcc00" }}>부분 활성화 (50%)</span>
+                    ) : (
+                      <span style={{ color: "#ff4d4d" }}>비활성화</span>
+                    )}
+                  </div>
+                  <div style={{ color: "#8c8c96", fontSize: "11px" }}>
+                    이번 주 고유 참여자: <span style={{ color: "#ffd700", fontWeight: "bold" }}>{participantsCount}명</span> (최소 10명 시 50% 지급, 30명 시 100% 지급)
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "6px", fontSize: "11px", color: "#d1d1d6", justifyContent: "space-between" }}>
+                    <span>🥇 1등: {participantsCount >= 30 ? "500" : participantsCount >= 10 ? "250" : "0"}코인</span>
+                    <span>🥈 2등: {participantsCount >= 30 ? "300" : participantsCount >= 10 ? "150" : "0"}코인</span>
+                    <span>🥉 3등: {participantsCount >= 30 ? "100" : participantsCount >= 10 ? "50" : "0"}코인</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Game Selector Tabs */}
+              <div className="leaderboard-cat-tabs">
+                <button
+                  className={`leaderboard-cat-tab ${selectedLeaderboardGame === "breath" ? "active" : ""}`}
+                  onClick={() => setSelectedLeaderboardGame("breath")}
+                >
+                  호흡 수련
+                </button>
+                <button
+                  className={`leaderboard-cat-tab ${selectedLeaderboardGame === "pulse" ? "active" : ""}`}
+                  onClick={() => setSelectedLeaderboardGame("pulse")}
+                >
+                  기응축
+                </button>
+                <button
+                  className={`leaderboard-cat-tab ${selectedLeaderboardGame === "puzzle" ? "active" : ""}`}
+                  onClick={() => setSelectedLeaderboardGame("puzzle")}
+                >
+                  내공 정렬
+                </button>
+                <button
+                  className={`leaderboard-cat-tab ${selectedLeaderboardGame === "dodge" ? "active" : ""}`}
+                  onClick={() => setSelectedLeaderboardGame("dodge")}
+                >
+                  보법 수련
+                </button>
+              </div>
+
+              {/* Ranking List */}
+              {loadingLeaderboard ? (
+                <div style={{ padding: "40px 0", color: "#ffd700", fontWeight: 800, textAlign: "center" }}>전령 비급을 조회하는 중... 🍃</div>
+              ) : (leaderboardPeriod === "weekly" ? weeklyRankings : allTimeRankings).length === 0 ? (
+                <div style={{ padding: "40px 0", color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center" }}>
+                  기록된 수련 점수가 없습니다. 첫 강호 랭킹에 이름을 새기십시오!
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {(leaderboardPeriod === "weekly" ? weeklyRankings : allTimeRankings).map((rank, idx) => (
+                    <div key={idx} className="rank-row">
+                      <div className="rank-user">
+                        <span className="rank-num">
+                          {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
+                        </span>
+                        <span className="rank-username">{rank.username}</span>
+                      </div>
+                      <span className="rank-score">{rank.score.toLocaleString()} 점</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* 가이드 모달 */}
+          {showGuideModal && (
+            <div 
+              className="guide-modal-overlay"
+              onClick={() => setShowGuideModal(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.75)",
+                backdropFilter: "blur(4px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: "20px"
+              }}
+            >
+              <div 
+                className="training-guide-container"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  maxWidth: "500px",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
+                  border: "1.5px solid rgba(255, 215, 0, 0.35)",
+                }}
+              >
+                {/* 닫기 버튼 */}
+                <button
+                  onClick={() => setShowGuideModal(false)}
+                  style={{
+                    position: "absolute",
+                    top: "14px",
+                    right: "14px",
+                    background: "none",
+                    border: "none",
+                    color: "rgba(255, 255, 255, 0.5)",
+                    fontSize: "20px",
+                    cursor: "pointer",
+                    padding: "4px",
+                    zIndex: 10
+                  }}
+                >
+                  ✕
+                </button>
+                <div className="guide-header">
+                  <span className="guide-icon">📖</span>
+                  <h3 className="guide-title">무공수련 규정 비급</h3>
+                </div>
+                <div className="guide-body">
+                  <div className="guide-section">
+                    <div className="guide-section-title">🏆 주간 Top 3 비례 상금제 (대안 A)</div>
+                    <div className="guide-section-desc">
+                      주간 고유 수련 참여자 수에 비례하여 랭킹 보상이 차등 활성화됩니다. 참여율이 높을수록 상금이 증폭됩니다.
+                      <div className="guide-sub-rules">
+                        <div>• <strong>30명 이상 (100%):</strong> 1등 500 / 2등 300 / 3등 100 코인</div>
+                        <div>• <strong>10명 ~ 30명 (50%):</strong> 1등 250 / 2등 150 / 3등 50 코인</div>
+                        <div>• <strong>10명 미만 (비활성):</strong> 인원 미달 시 주간 상금 미지급</div>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </>
-            );
-          })() : (
-            <div style={{ padding: "30px 10px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
-              새로운 작품을 준비 중입니다.
+
+                  <div className="guide-section">
+                    <div className="guide-section-title">📅 일일 수련 임무 보상</div>
+                    <div className="guide-section-desc">
+                      매일 4종 무공 수련 중 아무 게임이나 1회 이상 완수하여 점수를 등록하십시오. 금일 수련이 마감되며 즉시 <strong>+10 코인</strong>의 일일 보상이 적립됩니다.
+                    </div>
+                  </div>
+
+                  <div className="guide-section">
+                    <div className="guide-section-title">⚖️ 수련 및 정산 규칙</div>
+                    <div className="guide-section-desc">
+                      • <strong>매주 월요일 00:00 KST</strong> 기준으로 지난주 랭킹 성적이 정산되어 지갑에 즉시 지급됩니다.<br />
+                      • 비정상적인 방법으로 기록을 조작하거나 대리 수련 시, 공적 회수 및 플랫폼 이용 제재가 가해집니다.<br />
+                      • 수련 항목은 추가되거나 교체 될 수 있습니다.
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
+      )}
+
+      {/* 게임 실행 런처 모달 */}
+      {activeLauncherGame && (
+        <MugongGameLauncher
+          gameId={activeLauncherGame}
+          onClose={() => setActiveLauncherGame(null)}
+          onFinished={handleGameFinished}
+        />
       )}
 
       {/* 모바일 하단 네비게이션 바 */}

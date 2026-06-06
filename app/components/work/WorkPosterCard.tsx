@@ -76,7 +76,15 @@ export default function WorkPosterCard({ work }: Props) {
   };
 
   return (
-    <Link href={playHref} className="poster-card">
+    <Link
+      href={playHref}
+      className="poster-card"
+      onClick={() => {
+        try {
+          sessionStorage.setItem("episodeBackPath", "/");
+        } catch (e) {}
+      }}
+    >
       <div className="poster-thumb-wrap">
         {/* 배지 */}
         {work.badge && (

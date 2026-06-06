@@ -217,6 +217,7 @@ export default function EpisodePage() {
   const workThumbnail = work?.thumbnail ?? "/thumbnails/cheonmujin.jpg";
   const SERIES_PREFIX = workId;
   const WORK_THUMBNAIL = workThumbnail;
+  const currentImageSrc = WORK_THUMBNAIL;
   const autoplay = searchParams.get("autoplay") === "1";
 
   const TOTAL_PARTS = currentEpisode?.parts ?? 1;
@@ -348,6 +349,99 @@ export default function EpisodePage() {
     hasTrackedPlayRef.current = false;
   }, [workId, episodeKey]);
 
+  // Media Session API - Metadata 연동
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    if (!work || !currentEpisode) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${currentEpisode.title || (episodeKey + "화")} - ${part}편`,
+        artist: work.title || "무림북",
+        album: "무림북 오디오북",
+        artwork: [
+          {
+            src: currentImageSrc || "/logo.png",
+            sizes: "512x512",
+            type: "image/png"
+          }
+        ]
+      });
+    } catch (err) {
+      console.error("Media Session metadata error:", err);
+    }
+  }, [work, currentEpisode, episodeKey, part, currentImageSrc]);
+
+  // Media Session API - Playback State 연동
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    } catch (_) {}
+  }, [isPlaying]);
+
+  // Media Session API - Position State 연동
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator) || !audioRef.current) return;
+    try {
+      const a = audioRef.current;
+      if (a && a.duration && Number.isFinite(a.duration) && Number.isFinite(a.currentTime)) {
+        navigator.mediaSession.setPositionState({
+          duration: a.duration,
+          playbackRate: a.playbackRate || 1.0,
+          position: a.currentTime
+        });
+      }
+    } catch (_) {}
+  }, [currentTime, duration, playbackRate]);
+
+  // Media Session API - Action Handlers 연동
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+
+    try {
+      navigator.mediaSession.setActionHandler("play", () => {
+        const a = audioRef.current;
+        if (a && a.paused) {
+          a.play()
+            .then(() => setIsPlaying(true))
+            .catch(() => {});
+        }
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        const a = audioRef.current;
+        if (a && !a.paused) {
+          a.pause();
+          setIsPlaying(false);
+        }
+      });
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        if (part > 1) {
+          onSelectPart(part - 1);
+        } else if (currentEpisodeIndex > 0) {
+          const prevEp = episodes[currentEpisodeIndex - 1];
+          if (prevEp) {
+            router.replace(`/episode/${workId}/${prevEp.id}?part=1&autoplay=1`);
+          }
+        }
+      });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        goNextPart();
+      });
+    } catch (err) {
+      console.error("Failed to set MediaSession handlers:", err);
+    }
+
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+        navigator.mediaSession.setActionHandler("previoustrack", null);
+        navigator.mediaSession.setActionHandler("nexttrack", null);
+      } catch (_) {}
+    };
+  }, [episodes, currentEpisodeIndex, part, workId, router]);
+
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
@@ -420,9 +514,37 @@ export default function EpisodePage() {
   const audioSrc = signedAudioSrc;
 
   // 에피소드별 개별 이미지를 사용하지 않고 작품의 기본 썸네일을 배경으로 고정 사용
-  const currentImageSrc = WORK_THUMBNAIL;
 
   const handleDownload = async () => {
+    // 3G/LTE/5G 다운로드 허용 여부 체크
+    try {
+      const allowMobileDownload = localStorage.getItem("allowMobileDownload") === "true";
+      if (!allowMobileDownload) {
+        const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+        if (conn) {
+          // 안드로이드 크롬 등 네트워크 정보 API를 지원하는 환경
+          const isCellular = conn.type === "cellular" || ["2g", "3g", "4g"].includes(conn.effectiveType);
+          if (isCellular) {
+            alert(
+              "⚠️ [데이터 다운로드 차단]\n\n현재 3G/LTE/5G 데이터 연결 상태입니다. 데이터 사용량 절약을 위해 와이파이(Wi-Fi) 환경에서 다운로드하시거나, 마이페이지 설정에서 '3G/LTE/5G 다운로드 허용'을 켜주세요."
+            );
+            return;
+          }
+        } else {
+          // 아이폰 사파리 등 네트워크 정보 API를 지원하지 않는 환경 (User-Agent 검사로 모바일 판별)
+          const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (isMobileDevice) {
+            const confirmWifi = confirm(
+              "⚠️ [데이터 요금 주의 안내]\n\n현재 설정에서 '3G/LTE/5G 다운로드 허용'이 비활성화되어 있습니다. 데이터 요금이 청구될 수 있으니 현재 와이파이(Wi-Fi) 연결 상태인지 확인해 주세요.\n\n다운로드를 계속 진행하시겠습니까?"
+            );
+            if (!confirmWifi) return;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("네트워크 체크 오류:", e);
+    }
+
     if (!isSubscribed) {
       alert("무제한 다운로드는 멤버십 회원 전용 혜택입니다.");
       router.push("/membership");
@@ -1845,7 +1967,13 @@ export default function EpisodePage() {
 
           {/* 상단 탑바 */}
           <div className="sf-header">
-            <button className="sf-back-btn" onClick={() => router.push("/")}>
+            <button className="sf-back-btn" onClick={() => {
+              let backPath = "/";
+              try {
+                backPath = sessionStorage.getItem("episodeBackPath") || "/";
+              } catch (e) {}
+              router.push(backPath);
+            }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>

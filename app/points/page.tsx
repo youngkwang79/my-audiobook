@@ -129,6 +129,11 @@ export default function PointsPage() {
         return;
       }
 
+      const proceed = confirm(
+        "⚠️ [결제 전 필수 동의 안내]\n\n본 상품은 결제 즉시 혜택이 개시되는 디지털 콘텐츠로, 일부 사용 시 청약철회(환불)가 불가능합니다. 결제 후 7일 이내의 미사용 코인에 한해서만 10%의 환불 수수료를 공제한 후 환불이 가능합니다.\n\n동의하고 결제를 진행하시겠습니까?"
+      );
+      if (!proceed) return;
+
       alert(
         `[가상 결제 진행]\n(추후 토스페이먼츠 결제 연동 예정)\n\n${coinName} 구매를 위해 ₩${amount.toLocaleString("ko-KR")} 결제를 승인합니다.`
       );
@@ -159,6 +164,11 @@ export default function PointsPage() {
   // 멤버십 가입 결제 (Weekly / Annual)
   const handleSubscribeMembership = (plan: "weekly" | "annual", planName: string, price: number) => {
     try {
+      const proceed = confirm(
+        "🍵 [작가 후원 동의 및 안내]\n\n\"소중한 후원에 진심으로 감사드립니다! 독자님이 보내주신 따뜻한 지지와 성원은 창작자에게 가장 큰 힘이 됩니다. 더 깊이 있고 몰입감 넘치는 오디오북 스토리로 보답하겠습니다.\"\n\n※ 본 멤버십은 자발적인 작가 후원 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 후원 결정을 부탁드립니다.\n\n동의하고 후원을 진행하시겠습니까?"
+      );
+      if (!proceed) return;
+
       localStorage.setItem("membership", plan);
       alert(
         `[가상 결제 완료]\n(추후 토스페이먼츠 결제 연동이 진행될 예정입니다)\n\n${planName} 가입이 완료되었습니다!\n이제 작가님을 후원하며 모든 에피소드를 감상하실 수 있습니다.`

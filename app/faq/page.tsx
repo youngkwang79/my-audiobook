@@ -75,7 +75,7 @@ const faqs = [
     q: "10. 문의는 어떻게 하면 되나요?",
     a: [
       "서비스 이용 중 문제가 발생하거나 문의 사항이 있는 경우 아래 이메일로 연락해 주세요.",
-      "contact@murimbook.com",
+      "sun_writer@murimbook.com",
       "운영시간: 평일 10:00 ~ 17:00",
     ],
   },

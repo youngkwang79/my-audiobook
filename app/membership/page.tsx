@@ -189,6 +189,11 @@ export default function MembershipPage() {
         return;
       }
 
+      const proceed = confirm(
+        "🍵 [작가 후원 동의 및 안내]\n\n\"소중한 후원에 진심으로 감사드립니다! 독자님이 보내주신 따뜻한 지지와 성원은 창작자에게 가장 큰 힘이 됩니다. 더 깊이 있고 몰입감 넘치는 오디오북 스토리로 보답하겠습니다.\"\n\n※ 본 멤버십은 자발적인 작가 후원 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 후원 결정을 부탁드립니다.\n\n동의하고 후원을 진행하시겠습니까?"
+      );
+      if (!proceed) return;
+
       const res = await fetch("/api/me/subscribe", {
         method: "POST",
         headers: {

@@ -143,6 +143,19 @@ export default function MePage() {
     } catch (e) {}
   }, []);
 
+  // 외부(AuthProvider 등)에서 마케팅 설정 업데이트 시 동기화
+  useEffect(() => {
+    const handleMarketingSync = () => {
+      try {
+        setAllowMarketingInfo(localStorage.getItem("allowMarketingInfo") !== "false");
+      } catch (e) {}
+    };
+    window.addEventListener("localstorage-marketing-updated", handleMarketingSync);
+    return () => {
+      window.removeEventListener("localstorage-marketing-updated", handleMarketingSync);
+    };
+  }, []);
+
   const handleToggle = (key: string, value: boolean, setter: (val: boolean) => void) => {
     try {
       localStorage.setItem(key, String(value));
@@ -216,7 +229,9 @@ export default function MePage() {
         // 대상 미션들
         const missions = [
           "checkin_" + todayStr,
+          "greeting_" + todayStr,
           "youtube",
+          "invite_" + todayStr,
           "watch5_" + todayStr,
           "watch10_" + todayStr,
           "watch15_" + todayStr,
@@ -1129,18 +1144,6 @@ export default function MePage() {
               <div className="settings-group-title">개인정보 보호</div>
               <div className="settings-group">
                 <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
-                  <span>개인 맞춤형 작품 추천</span>
-                  <label className="switch-container">
-                    <input
-                      type="checkbox"
-                      checked={allowPersonalRecommendation}
-                      onChange={(e) => handleToggle("allowPersonalRecommendation", e.target.checked, setAllowPersonalRecommendation)}
-                    />
-                    <span className="switch-slider"></span>
-                  </label>
-                </div>
-
-                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
                   <span>개인정보 판매 및 제공 제한</span>
                   <label className="switch-container">
                     <input
@@ -1170,7 +1173,7 @@ export default function MePage() {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div className="settings-group-title">기타</div>
               <div className="settings-group">
-                <button className="settings-row" onClick={() => alert("무림북 오디오북 앱 v1.0.0")}>
+                <button className="settings-row" onClick={() => { setIsSettingsOpen(false); router.push("/terms"); }}>
                   <span>무림북 정보 및 약관</span>
                   <div className="settings-row-right">
                     <span>1.0.0</span>

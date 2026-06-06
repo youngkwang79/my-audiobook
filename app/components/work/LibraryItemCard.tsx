@@ -3,34 +3,58 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Work } from "@/app/data/works";
+import { getEpisodesByWork } from "@/app/data/episodes";
 
 type Props = {
-  work: Work;
+  work: Work & { firstEpisodeId?: string | null };
 };
 
 export default function LibraryItemCard({ work }: Props) {
   const [watchedEpisode, setWatchedEpisode] = useState<string>("1");
+  const [playHref, setPlayHref] = useState<string>(`/episode/${work.id}/1?part=1&autoplay=1`);
 
   useEffect(() => {
     try {
       const progressRaw = localStorage.getItem("workProgress");
-      if (progressRaw) {
-        const progress = JSON.parse(progressRaw);
-        if (progress[work.id]) {
-          setWatchedEpisode(String(progress[work.id]));
-          return;
+      const progress = progressRaw ? JSON.parse(progressRaw) : {};
+      const lastEpisode: string | undefined = progress[work.id];
+
+      let epId = "1";
+      let part = 1;
+
+      if (lastEpisode) {
+        epId = String(lastEpisode);
+        setWatchedEpisode(epId);
+
+        // lastPlayed에서 part 복원
+        const lastPlayedRaw = localStorage.getItem("lastPlayed");
+        if (lastPlayedRaw) {
+          const lastPlayed = JSON.parse(lastPlayedRaw);
+          if (lastPlayed.workId === work.id && String(lastPlayed.episodeId) === epId) {
+            part = lastPlayed.part ?? 1;
+          }
         }
-      }
-      // 아직 본 기록이 없고 에피소드가 아예 없으면 (준비중 등) 0화로 설정
-      if (work.episodeCount === 0) {
-        setWatchedEpisode("0");
+        setPlayHref(`/episode/${work.id}/${epId}?part=${part}&autoplay=1`);
       } else {
-        setWatchedEpisode("1");
+        // 아직 본 기록이 없고 에피소드가 아예 없으면 (준비중 등) 0화로 설정
+        if (work.episodeCount === 0) {
+          setWatchedEpisode("0");
+        } else {
+          setWatchedEpisode("1");
+        }
+
+        let firstEpId = work.firstEpisodeId;
+        if (firstEpId === undefined) {
+          const episodes = getEpisodesByWork(work.id);
+          firstEpId = episodes[0]?.id || null;
+        }
+        const ep = firstEpId || "1";
+        setPlayHref(`/episode/${work.id}/${ep}?part=1&autoplay=1`);
       }
     } catch (e) {
       console.error(e);
     }
-  }, [work.id, work.episodeCount]);
+  }, [work.id, work.episodeCount, work.firstEpisodeId]);
 
   const watchedEpisodeNum = parseInt(watchedEpisode.split("-")[0], 10) || 0;
 
@@ -127,7 +151,15 @@ export default function LibraryItemCard({ work }: Props) {
         }
       `}</style>
 
-      <Link href={`/episode/${work.id}/${watchedEpisode}?part=1`} className="library-item">
+      <Link
+        href={playHref}
+        className="library-item"
+        onClick={() => {
+          try {
+            sessionStorage.setItem("episodeBackPath", "/works");
+          } catch (e) {}
+        }}
+      >
         <div className="lib-thumb-wrap">
           <img src={work.thumbnail} alt={work.title} className="lib-thumb" loading="lazy" />
           <div className="lib-progress-bg">

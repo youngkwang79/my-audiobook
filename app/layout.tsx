@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
 
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import AuthSessionGuard from "@/app/components/AuthSessionGuard";
@@ -59,6 +60,19 @@ export default function RootLayout({
         `}} />
       </head>
       <body className="antialiased font-sans">
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-WKLB4BKH17"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-WKLB4BKH17');
+          `}
+        </Script>
         <AuthProvider>
           <AuthSessionGuard />
           <LayoutWrapper>
