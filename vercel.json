@@ -3,7 +3,9 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["icn1"],
+  "regions": [
+    "icn1"
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -26,7 +28,7 @@
   "crons": [
     {
       "path": "/api/cron/push-daily",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
