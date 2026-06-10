@@ -1,5 +1,6 @@
 "use client";
 
+import { requestPayment } from "@portone/browser-sdk/v2";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
@@ -74,7 +75,7 @@ export default function PointsPage() {
     try {
       const plan = localStorage.getItem("membership");
       if (plan) setSubscribedPlan(plan);
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   // 미로그인 시 리다이렉트
@@ -120,6 +121,7 @@ export default function PointsPage() {
   };
 
   // 코인 결제 (실제 confirm API에 매핑)
+  // ⚡ 결제 함수 시작점
   const handlePurchaseCoin = async (amount: number, coinName: string) => {
     try {
       const token = await getAccessToken();
@@ -129,22 +131,32 @@ export default function PointsPage() {
         return;
       }
 
-      const proceed = confirm(
-        "⚠️ [결제 전 필수 동의 안내]\n\n본 상품은 결제 즉시 혜택이 개시되는 디지털 콘텐츠로, 일부 사용 시 청약철회(환불)가 불가능합니다. 결제 후 7일 이내의 미사용 코인에 한해서만 10%의 환불 수수료를 공제한 후 환불이 가능합니다.\n\n동의하고 결제를 진행하시겠습니까?"
-      );
-      if (!proceed) return;
+      // 1. 포트원 결제창 띄우기 (심사 필수 요건)
+      const paymentId = `coin-${crypto.randomUUID()}`;
 
-      alert(
-        `[가상 결제 진행]\n(추후 토스페이먼츠 결제 연동 예정)\n\n${coinName} 구매를 위해 ₩${amount.toLocaleString("ko-KR")} 결제를 승인합니다.`
-      );
+      const response = await requestPayment({
+        storeId: "store-본인의-상점아이디-입력", // 포트원 관리자에서 확인한 ID로 교체하세요
+        paymentId: paymentId,
+        orderName: `코인 충전: ${coinName}`,
+        totalAmount: amount,
+        currency: "CURRENCY_KRW",
+        payMethod: "CARD",
+      });
 
+      // 2. 결제창에서 취소하거나 실패했을 경우
+      if (!response || response.code != null) {
+        alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
+        return;
+      }
+
+      // 3. 결제 성공 시 서버 API 호출 (결제 검증 및 포인트 지급)
       const res = await fetch("/api/payments/confirm", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, paymentId }),
       });
 
       const data = await res.json().catch(() => null);
@@ -153,13 +165,14 @@ export default function PointsPage() {
         await loadWallet();
         alert("충전이 완료되었습니다!");
       } else {
-        alert(`충전 실패: ${data?.error || "알 수 없는 오류"}`);
+        alert(`충전 승인 처리 실패: ${data?.error || "알 수 없는 오류"}`);
       }
     } catch (e) {
       console.error(e);
       alert("결제 처리 중 에러가 발생했습니다.");
     }
   };
+  // ⚡ 결제 함수 끝점
 
   // 멤버십 가입 결제 (Weekly / Annual)
   const handleSubscribeMembership = (plan: "weekly" | "annual", planName: string, price: number) => {
