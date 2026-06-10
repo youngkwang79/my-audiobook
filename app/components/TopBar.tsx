@@ -169,8 +169,11 @@ export default function TopBar() {
           </button>
         ) : !user ? (
           <>
+            <button onClick={() => router.push("/points")} style={smallGoldStyle}>
+              코인 상품
+            </button>
             <button onClick={() => router.push("/membership")} style={smallGoldStyle}>
-              멤버십
+              멤버십 상품
             </button>
             <button onClick={() => router.push("/faq")} style={smallGoldStyle}>
               FAQ
@@ -181,8 +184,11 @@ export default function TopBar() {
           </>
         ) : (
           <>
+            <button onClick={() => router.push("/points")} style={smallGoldStyle}>
+              코인 상품
+            </button>
             <button onClick={() => router.push("/membership")} style={smallGoldStyle}>
-              멤버십
+              멤버십 상품
             </button>
             <button onClick={() => router.push("/faq")} style={smallGoldStyle}>
               FAQ
