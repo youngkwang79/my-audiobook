@@ -1,8 +1,8 @@
 "use client";
-
+ 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+ 
 function BackIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -10,10 +10,10 @@ function BackIcon() {
     </svg>
   );
 }
-
+ 
 export default function PrivacyPage() {
   const router = useRouter();
-
+ 
   return (
     <main className="terms-main-bg">
       <style>{`
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           padding: 24px 16px calc(60px + env(safe-area-inset-bottom));
           box-sizing: border-box;
         }
-
+ 
         .terms-container {
           width: 100%;
           max-width: 480px;
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           flex-direction: column;
           gap: 20px;
         }
-
+ 
         /* 상단 네비게이션 탑바 */
         .terms-header {
           display: flex;
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
           height: 44px;
           position: relative;
         }
-
+ 
         .terms-back-btn {
           background: none;
           border: none;
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
           align-items: center;
           padding: 8px 8px 8px 0;
         }
-
+ 
         .terms-header-title {
           font-size: 18px;
           font-weight: 800;
@@ -63,14 +63,14 @@ export default function PrivacyPage() {
           transform: translateX(-50%);
           pointer-events: none;
         }
-
+ 
         /* 탭 가이드 메뉴 */
         .terms-tabs {
           display: flex;
           border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           margin-bottom: 8px;
         }
-
+ 
         .terms-tab {
           flex: 1;
           text-align: center;
@@ -81,12 +81,12 @@ export default function PrivacyPage() {
           text-decoration: none;
           border-bottom: 2px solid transparent;
         }
-
+ 
         .terms-tab.active {
           color: #f7d070;
           border-bottom: 2px solid #f7d070;
         }
-
+ 
         /* 약관 본문 스타일 */
         .terms-content {
           line-height: 1.65;
@@ -97,20 +97,20 @@ export default function PrivacyPage() {
           gap: 24px;
           padding: 8px 4px;
         }
-
+ 
         .terms-section {
           display: flex;
           flex-direction: column;
           gap: 8px;
         }
-
+ 
         .terms-section-title {
           font-size: 15px;
           font-weight: 850;
           color: #ffffff;
           margin: 0;
         }
-
+ 
         .terms-bullet-list {
           list-style: none;
           padding-left: 0;
@@ -119,19 +119,19 @@ export default function PrivacyPage() {
           flex-direction: column;
           gap: 6px;
         }
-
+ 
         .terms-bullet-list li {
           position: relative;
           padding-left: 14px;
         }
-
+ 
         .terms-bullet-list li::before {
           content: "•";
           position: absolute;
           left: 4px;
           color: #fca834;
         }
-
+ 
         .terms-alert-box {
           background: rgba(252, 168, 52, 0.06);
           border: 1px solid rgba(252, 168, 52, 0.15);
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
           font-weight: 600;
           line-height: 1.5;
         }
-
+ 
         .terms-footer {
           margin-top: 24px;
           font-size: 12.5px;
@@ -153,8 +153,8 @@ export default function PrivacyPage() {
           flex-direction: column;
           gap: 4px;
         }
-      `}</style>
-
+       `}</style>
+ 
       <div className="terms-container">
         {/* 탑바 */}
         <div className="terms-header">
@@ -163,20 +163,20 @@ export default function PrivacyPage() {
           </button>
           <span className="terms-header-title">개인정보 처리방침</span>
         </div>
-
+ 
         {/* 탭 네비게이션 */}
         <div className="terms-tabs">
           <Link href="/terms" className="terms-tab">이용약관</Link>
           <Link href="/privacy" className="terms-tab active">개인정보 처리</Link>
           <Link href="/refund" className="terms-tab">환불 및 결제</Link>
         </div>
-
+ 
         {/* 약관 본문 */}
         <div className="terms-content">
           <div className="terms-alert-box">
             🛡️ 무림북은 이용자의 개인정보를 소중하게 보호하며, 안전한 서비스 환경을 구축하기 위해 개인정보 보호법 및 관계 법령을 철저히 준수합니다.
           </div>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제1조 (개인정보의 처리 목적)</h2>
             <p>
@@ -184,11 +184,11 @@ export default function PrivacyPage() {
             </p>
             <ul className="terms-bullet-list">
               <li><strong>회원 가입 및 관리</strong>: 회원제 서비스 제공에 따른 본인 식별·인증, 회원자격 유지·관리, 제한적 본인확인제 시행에 따른 본인확인, 서비스 부정이용 방지, 각종 고지·통지, 고충처리 등을 목적으로 개인정보를 처리합니다.</li>
-              <li><strong>서비스 제공 및 정산</strong>: 오디오북 재생, 텍스트 스토리 제공, 후원 결제 및 영수증 발행, 리워드 코인 지급, 포인트 충전 및 정산 등 서비스 제공 및 이에 따른 요금결제·정산을 목적으로 개인정보를 처리합니다.</li>
+              <li><strong>서비스 제공 및 정산</strong>: 오디오북 재생, 텍스트 스토리 제공, 멤버십/이용권 결제 및 영수증 발행, 리워드 코인 지급, 포인트 충전 및 정산 등 서비스 제공 및 이에 따른 요금결제·정산을 목적으로 개인정보를 처리합니다.</li>
               <li><strong>고객 문의 처리</strong>: 1:1 상담 접수 및 답변, 불만 처리 등 민원인의 신원 확인, 민원사항 확인, 사실조사를 위한 연락·통지, 처리결과 통보 등의 목적으로 개인정보를 처리합니다.</li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제2조 (처리하는 개인정보의 항목)</h2>
             <p>회사는 서비스 이용 과정에서 아래와 같은 개인정보 항목을 수집 및 처리할 수 있습니다.</p>
@@ -198,7 +198,7 @@ export default function PrivacyPage() {
               <li><strong>자동 생성 항목</strong>: 서비스 이용 기록(오디오 재생 시간, 마지막 청취 에피소드 파트 위치 등), 접속 IP 정보, 접속 쿠키(Cookie), 접속 로그, 불량 이용 기록.</li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제3조 (개인정보의 처리 및 보유 기간)</h2>
             <ul className="terms-bullet-list">
@@ -213,7 +213,7 @@ export default function PrivacyPage() {
               </li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제4조 (개인정보의 파기절차 및 파기방법)</h2>
             <ul className="terms-bullet-list">
@@ -225,18 +225,18 @@ export default function PrivacyPage() {
               </li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제5조 (개인정보의 제3자 제공 및 위탁)</h2>
             <ul className="terms-bullet-list">
               <li>회사는 이용자의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위 내에서만 처리하며, 이용자의 사전 동의 없이 범위를 초과하여 이용하거나 제3자에게 제공하지 않습니다. (단, 법령의 규정에 의하거나 수사 목적으로 법령에 정해진 절차와 방법에 따라 수사기관의 요구가 있는 경우는 제외)</li>
               <li>회사는 원활한 서비스 제공을 위해 아래와 같이 개인정보 처리를 위탁하고 있습니다.
                 <br />- 위탁 대상자: 결제 대행사(PG사 및 간편결제사)
-                <br />- 위탁 업무 내용: 충전 및 후원 결제 처리, 본인인증
+                <br />- 위탁 업무 내용: 충전 및 멤버십/이용권 결제 처리, 본인인증
               </li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제6조 (정보주체의 권리와 그 행사방법)</h2>
             <ul className="terms-bullet-list">
@@ -245,7 +245,7 @@ export default function PrivacyPage() {
               <li>회원 탈퇴는 마이페이지 내 '회원 탈퇴' 메뉴를 통해 본인이 직접 즉시 처리할 수 있습니다.</li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제7조 (개인정보의 기술적/관리적 보호대책)</h2>
             <p>회사는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다.</p>
@@ -254,7 +254,7 @@ export default function PrivacyPage() {
               <li><strong>기술적 조치</strong>: 개인정보처리시스템 등의 접근권한 관리, 접근통제시스템 설치, 비밀번호 및 고유식별정보의 암호화 저장, 보안프로그램(SSL 등) 설치.</li>
             </ul>
           </section>
-
+ 
           <section className="terms-section">
             <h2 className="terms-section-title">제8조 (개인정보 보호책임자)</h2>
             <ul className="terms-bullet-list">
@@ -264,7 +264,7 @@ export default function PrivacyPage() {
               </li>
             </ul>
           </section>
-
+ 
           <div className="terms-footer">
             <span>제공 주체: 무림북 (Murimbook)</span>
             <span>공식 문의: sun_writer@murimbook.com / 1:1 고객문의</span>
