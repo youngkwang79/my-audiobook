@@ -183,6 +183,11 @@ export default function MembershipPage() {
 
   const handleSubscribe = async () => {
     try {
+      const proceed = confirm(
+        "🍵 [멤버십 서비스 가입 동의 및 안내]\n\n\"소중한 상품 가입에 감사드립니다! 본 상품은 디지털 콘텐츠 정기 멤버십 서비스 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 결정 부탁드립니다.\"\n\n동의하고 가입을 진행하시겠습니까?"
+      );
+      if (!proceed) return;
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         alert("로그인이 필요합니다.");
@@ -206,6 +211,7 @@ export default function MembershipPage() {
         payMethod: "CARD",
         customer: {
           email: session.user.email || undefined,
+          phoneNumber: session.user.phone || "010-0000-0000",
         },
       });
 

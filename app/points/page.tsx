@@ -139,6 +139,7 @@ export default function PointsPage() {
         payMethod: "CARD",
         customer: {
           email: user?.email || undefined,
+          phoneNumber: user?.phone || "010-0000-0000",
         },
       });
 
@@ -201,6 +202,7 @@ export default function PointsPage() {
         payMethod: "CARD",
         customer: {
           email: session.user.email || undefined,
+          phoneNumber: session.user.phone || "010-0000-0000",
         },
       });
 
