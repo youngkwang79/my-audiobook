@@ -388,8 +388,8 @@ export default function WithdrawPage() {
               <CardIcon type="membership" />
             </div>
             <div className="withdraw-card-info">
-              <h4 className="withdraw-card-title">구독 후원 혜택 및 에피소드 감상 권한 종료</h4>
-              <p className="withdraw-card-desc">활성화된 모든 후원 멤버십 정보 및 소설 회차별 잠금 해제 혜택이 정지되어, 에피소드 청취 권한이 일괄 박탈됩니다.</p>
+              <h4 className="withdraw-card-title">구독 멤버십 혜택 및 에피소드 감상 권한 종료</h4>
+              <p className="withdraw-card-desc">활성화된 모든 멤버십 이용권 정보 및 소설 회차별 잠금 해제 혜택이 정지되어, 에피소드 청취 권한이 일괄 박탈됩니다.</p>
             </div>
           </div>
 

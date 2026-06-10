@@ -746,8 +746,8 @@ export default function MembershipPage() {
 
         {/* 타이틀 */}
         <div className="support-info">
-          <h1 className="support-title">&lt;문극_태양작가 후원하기&gt;</h1>
-          <p className="support-subtitle">멤버십 상품 가입으로 작가를 후원해 주세요.</p>
+          <h1 className="support-title">&lt;무림북 멤버십 서비스 가입&gt;</h1>
+          <p className="support-subtitle">멤버십 상품 가입으로 무제한 감상 서비스를 만나보세요.</p>
         </div>
 
         {/* 플랜 카드 */}
@@ -759,7 +759,7 @@ export default function MembershipPage() {
           >
             {selectedPlan === "weekly" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
             <div className="plan-info-right">
-              <h3 className="plan-title">작가에게 커피한잔!</h3>
+              <h3 className="plan-title">주간 무제한 이용권</h3>
               <p className="plan-price">₩ 3000/주</p>
               <span className="plan-duration-tag">주간 멤버십 서비스</span>
             </div>
@@ -773,7 +773,7 @@ export default function MembershipPage() {
             <div className="plan-badge">기간 한정 할인</div>
             {selectedPlan === "annual" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
             <div className="plan-info-right">
-              <h3 className="plan-title">작가에게 따뜻한 국밥 한그릇!</h3>
+              <h3 className="plan-title">연간 무제한 이용권</h3>
               <p className="plan-price">₩ 99900/년</p>
               <span className="plan-duration-tag">연간 멤버십 서비스</span>
             </div>
@@ -910,12 +910,12 @@ export default function MembershipPage() {
             <span>1. 무림북에는 무료 및 유료 콘텐츠가 포함되어 있습니다.</span>
             <span>2. 유료 콘텐츠는 포인트를 사용해 잠금 해제하거나, 멤버십 구독을 통해 시청할 수 있습니다. 단, 멤버십 전용 콘텐츠는 멤버십 구독으로만 시청가능합니다.</span>
             <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다. (준비중)</span>
-            <span>4. 작가를 후원하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
+            <span>4. 멤버십 서비스를 이용하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
             <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
             <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
             <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
             <span>8. 기타 문의 사항은 [내정보] &gt; [고객문의(1:1 문의)]를 통해 문의해 주세요.</span>
-            <span>9. 무림북의 멤버십 가입은 문극_태양 작가에게 후원하는 것이므로 교환 및 환불이 불가능합니다. 소설을 즐겨주시고 마음으로 후원 해 주시면 감사하겠습니다.</span>
+            <span>9. 무림북의 멤버십 가입은 정식 멤버십 상품 서비스이므로 교환 및 환불이 불가능합니다. 소설을 즐겁게 이용해 주시면 감사하겠습니다.</span>
           </div>
         </div>
       </div>
@@ -928,9 +928,9 @@ export default function MembershipPage() {
           onClick={subscribedPlan ? undefined : handleSubscribe}
         >
           {subscribedPlan === "weekly"
-            ? "작가에게 커피한잔 후원중💖"
+            ? "주간 무제한 이용권 사용중💖"
             : subscribedPlan === "annual" || subscribedPlan === "yearly"
-              ? "작가에게 따뜻한 국밥 후원중💖"
+              ? "연간 무제한 이용권 사용중💖"
               : "지금 가입하기"}
         </button>
         <span className="subscribe-caption">

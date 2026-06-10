@@ -2190,7 +2190,7 @@ export default function EpisodePage() {
               style={{ flex: 1, opacity: isSubscribed ? 0.7 : 1 }}
               onClick={() => router.push("/membership")}
             >
-              {isSubscribed ? "👑 작가 후원 중" : "👑 멤버십 가입"}
+              {isSubscribed ? "👑 멤버십 사용 중" : "👑 멤버십 가입"}
             </button>
             <button
               style={{

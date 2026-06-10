@@ -96,14 +96,14 @@ export default function MembershipManagePage() {
   const getPlanName = (plan: string) => {
     switch (plan) {
       case "weekly":
-        return "작가에게 커피한잔 후원중 (주간)";
+        return "주간 무제한 이용권 사용중 (주간)";
       case "monthly":
-        return "작가에게 맛있는 식사 후원중 (월간)";
+        return "월간 무제한 이용권 사용중 (월간)";
       case "yearly":
       case "annual":
-        return "작가에게 따뜻한 국밥 후원중 (연간)";
+        return "연간 무제한 이용권 사용중 (연간)";
       default:
-        return `${plan} 멤버십`;
+        return `${plan} 멤버십 서비스`;
     }
   };
 

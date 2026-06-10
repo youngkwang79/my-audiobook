@@ -1015,10 +1015,10 @@ export default function MePage() {
           <div className="membership-banner-left">
             <h3 className="membership-banner-title">
               {subscribedPlan === "weekly"
-                ? "작가에게 시원한 차 한잔 후원 중🍵"
+                ? "주간 무제한 이용권 사용 중🍵"
                 : subscribedPlan === "annual" || subscribedPlan === "yearly"
-                ? "작가에게 든든한 삼계탕 후원 중🍗"
-                : "작가 후원하기 (정액 멤버십)"}
+                ? "연간 무제한 이용권 사용 중🍗"
+                : "멤버십 서비스 가입 (정액제 이용권)"}
             </h3>
             {!subscribedPlan && <p className="membership-banner-desc">소설 무제한 감상 및 전용 혜택을 누려보세요:</p>}
           </div>
@@ -1027,7 +1027,7 @@ export default function MePage() {
               e.stopPropagation();
               handleMembershipRedirect();
             }}>
-              후원
+              가입
             </button>
           )}
         </div>
@@ -1039,7 +1039,7 @@ export default function MePage() {
             <div className="menu-item-right">
               {subscribedPlan && (
                 <span style={{ fontSize: "12px", color: "#ff2a5f", marginRight: "4px", fontWeight: "600" }}>
-                  후원 회원
+                  멤버십 회원
                 </span>
               )}
               <span className="menu-arrow"><ChevronRightIcon /></span>
@@ -1097,7 +1097,7 @@ export default function MePage() {
               <div className="settings-group-title">구독 및 서비스</div>
               <div className="settings-group">
                 <button className="settings-row" onClick={() => { setIsSettingsOpen(false); router.push("/me/membership"); }}>
-                  <span>구독 및 후원 설정</span>
+                  <span>구독 및 멤버십 설정</span>
                   <div className="settings-row-right">
                     <span className="settings-chevron"><ChevronRightIcon /></span>
                   </div>

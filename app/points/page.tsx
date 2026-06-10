@@ -173,13 +173,13 @@ export default function PointsPage() {
   const handleSubscribeMembership = (plan: "weekly" | "annual", planName: string, price: number) => {
     try {
       const proceed = confirm(
-        "🍵 [작가 후원 동의 및 안내]\n\n\"소중한 후원에 진심으로 감사드립니다! 독자님이 보내주신 따뜻한 지지와 성원은 창작자에게 가장 큰 힘이 됩니다. 더 깊이 있고 몰입감 넘치는 오디오북 스토리로 보답하겠습니다.\"\n\n※ 본 멤버십은 자발적인 작가 후원 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 후원 결정을 부탁드립니다.\n\n동의하고 후원을 진행하시겠습니까?"
+        "🍵 [멤버십 서비스 가입 동의 및 안내]\n\n\"소중한 상품 가입에 감사드립니다! 본 상품은 디지털 콘텐츠 정기 멤버십 서비스 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 결정 부탁드립니다.\"\n\n동의하고 가입을 진행하시겠습니까?"
       );
       if (!proceed) return;
 
       localStorage.setItem("membership", plan);
       alert(
-        `[가상 결제 완료]\n(추후 토스페이먼츠 결제 연동이 진행될 예정입니다)\n\n${planName} 가입이 완료되었습니다!\n이제 작가님을 후원하며 모든 에피소드를 감상하실 수 있습니다.`
+        `[가상 결제 완료]\n(추후 토스페이먼츠 결제 연동이 진행될 예정입니다)\n\n${planName} 가입이 완료되었습니다!\n이제 모든 에피소드를 무제한으로 감상하실 수 있습니다.`
       );
       router.push("/");
     } catch (e) {
@@ -574,11 +574,11 @@ export default function PointsPage() {
             {/* 주간 멤버십 */}
             <div
               className="membership-vip-card weekly-card gold-shine-card"
-              onClick={() => handleSubscribeMembership("weekly", "주간 멤버십 서비스: 작가에게 커피한잔!", 3000)}
+              onClick={() => handleSubscribeMembership("weekly", "주간 멤버십 서비스: 주간 무제한 이용권", 3000)}
             >
               <div className="membership-card-top">
                 <span className="membership-card-label">
-                  {subscribedPlan === "weekly" ? "작가에게 커피한잔 후원중💖" : "주간 멤버십 서비스 (작가에게 커피한잔!)"}
+                  {subscribedPlan === "weekly" ? "주간 무제한 이용권 사용중💖" : "주간 멤버십 서비스 (주간 무제한 이용권)"}
                 </span>
                 <div className="membership-card-price-row">
                   <span className="membership-card-price">₩3,000</span>
@@ -611,13 +611,13 @@ export default function PointsPage() {
             {/* 연간 멤버십 */}
             <div
               className="membership-vip-card annual-card"
-              onClick={() => handleSubscribeMembership("annual", "연간 멤버십 서비스: 작가에게 따뜻한 국밥 한그릇!", 99900)}
+              onClick={() => handleSubscribeMembership("annual", "연간 멤버십 서비스: 연간 무제한 이용권", 99900)}
             >
               <span className="membership-badge-red">기간 한정 할인</span>
 
               <div className="membership-card-top">
                 <span className="membership-card-label annual-label">
-                  {subscribedPlan === "annual" || subscribedPlan === "yearly" ? "작가에게 따뜻한 국밥 후원중💖" : "연간 멤버십 서비스 (작가에게 따뜻한 국밥 한그릇!)"}
+                  {subscribedPlan === "annual" || subscribedPlan === "yearly" ? "연간 무제한 이용권 사용중💖" : "연간 멤버십 서비스 (연간 무제한 이용권)"}
                 </span>
                 <div className="membership-card-price-row">
                   <span className="membership-card-price">₩99,900</span>
@@ -660,12 +660,12 @@ export default function PointsPage() {
             <span>1. 무림북에는 무료 및 유료 콘텐츠가 포함되어 있습니다.</span>
             <span>2. 유료 콘텐츠는 코인을 사용해 잠금 해제하거나, 멤버십 구독을 통해 시청할 수 있습니다. 단, 멤버십 전용 콘텐츠는 멤버십 구독으로만 시청가능합니다.</span>
             <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다. (준비중)</span>
-            <span>4. 작가를 후원하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
+            <span>4. 멤버십 서비스를 이용하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
             <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
             <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
             <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
             <span>8. 기타 문의 사항은 [내정보] &gt; [고객문의(1:1 문의)]를 통해 문의해 주세요.</span>
-            <span>9. 무림북의 멤버십 가입은 문극_태양 작가에게 후원하는 것이므로 교환 및 환불이 불가능합니다. 소설을 즐겨주시고 마음으로 후원 해 주시면 감사하겠습니다.</span>
+            <span>9. 무림북의 멤버십 가입은 정식 멤버십 상품 서비스이므로 교환 및 환불이 불가능합니다. 소설을 즐겁게 이용해 주시면 감사하겠습니다.</span>
           </div>
         </div>
 
