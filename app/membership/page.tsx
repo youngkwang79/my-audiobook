@@ -204,6 +204,9 @@ export default function MembershipPage() {
         totalAmount: price,
         currency: "CURRENCY_KRW",
         payMethod: "CARD",
+        customer: {
+          email: session.user.email || undefined,
+        },
       });
 
       if (!response || response.code != null) {
