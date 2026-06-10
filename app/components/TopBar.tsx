@@ -163,44 +163,46 @@ export default function TopBar() {
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-  {loading ? (
-    <button style={{ ...smallGoldStyle, opacity: 0.7, cursor: "default" }} disabled>
-      로딩중
-    </button>
-  ) : !user ? (
-    <>
-      <button onClick={() => router.push("/faq")} style={smallGoldStyle}>
-        FAQ
-      </button>
-
-      <button onClick={() => router.push("/login")} style={smallGoldStyle}>
-        로그인
-      </button>
-    </>
-  ) : (
-    <>
-      <button onClick={() => router.push("/faq")} style={smallGoldStyle}>
-        FAQ
-      </button>
-
-      <button
-        onClick={() => router.push("/points")}
-        style={{
-          ...smallGoldStyle,
-          minWidth: 74,
-          textAlign: "center",
-        }}
-      >
-        {points.toLocaleString()}P
-      </button>
-
-      {/* ✅ 로그인 했을 때만 보이는 내정보 */}
-      <button onClick={() => router.push("/me")} style={smallGoldStyle}>
-        내정보
-      </button>
-    </>
-  )}
-</div>
+        {loading ? (
+          <button style={{ ...smallGoldStyle, opacity: 0.7, cursor: "default" }} disabled>
+            로딩중
+          </button>
+        ) : !user ? (
+          <>
+            <button onClick={() => router.push("/membership")} style={smallGoldStyle}>
+              멤버십
+            </button>
+            <button onClick={() => router.push("/faq")} style={smallGoldStyle}>
+              FAQ
+            </button>
+            <button onClick={() => router.push("/login")} style={smallGoldStyle}>
+              로그인
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => router.push("/membership")} style={smallGoldStyle}>
+              멤버십
+            </button>
+            <button onClick={() => router.push("/faq")} style={smallGoldStyle}>
+              FAQ
+            </button>
+            <button
+              onClick={() => router.push("/points")}
+              style={{
+                ...smallGoldStyle,
+                minWidth: 74,
+                textAlign: "center",
+              }}
+            >
+              {points.toLocaleString()}P
+            </button>
+            <button onClick={() => router.push("/me")} style={smallGoldStyle}>
+              내정보
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

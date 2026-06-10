@@ -78,12 +78,7 @@ export default function PointsPage() {
     } catch (e) { }
   }, []);
 
-  // 미로그인 시 리다이렉트
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login?redirect=/points");
-    }
-  }, [loading, user, router]);
+
 
   // 지갑 포인트 로드
   const loadWallet = async () => {

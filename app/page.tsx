@@ -992,7 +992,7 @@ export default function Home() {
           />
         </div>
 
-        <div className="header-icons mobile-only">
+        <div className="header-icons">
           <button className="icon-btn" onClick={() => router.push("/membership")} title="멤버십 가입">
             <MembershipIcon />
           </button>
