@@ -130,8 +130,9 @@ export default function PointsPage() {
       const paymentId = `coin-${crypto.randomUUID()}`;
 
       const response = await requestPayment({
-        storeId: "store-본인의-상점아이디-입력", // 포트원 관리자에서 확인한 ID로 교체하세요
+        storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4", // 포트원 관리자에서 확인한 ID로 교체하세요
         paymentId: paymentId,
+        channelKey: "channel-key-10ae1c88-a130-4f80-82b3-dd268f9b4ae4",
         orderName: `코인 충전: ${coinName}`,
         totalAmount: amount,
         currency: "CURRENCY_KRW",

@@ -197,8 +197,9 @@ export default function MembershipPage() {
 
       // 1. 포트원 결제창 호출 (심사 필수)
       const response = await requestPayment({
-        storeId: "store-본인의-상점아이디-입력", // ⚠️ 반드시 포트원 테스트 상점 ID로 교체하세요
+        storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4", // ⚠️ 반드시 포트원 테스트 상점 ID로 교체하세요
         paymentId: paymentId,
+        channelKey: "channel-key-10ae1c88-a130-4f80-82b3-dd268f9b4ae4",
         orderName: `멤버십 상품 구독: ${planName}`,
         totalAmount: price,
         currency: "CURRENCY_KRW",
