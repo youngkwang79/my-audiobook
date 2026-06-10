@@ -4,7 +4,7 @@ import { CompendiumSkill, RealmKey, SkillCategory, SkillElement, SkillGrade } fr
  * 강호 전역에 퍼져 있는 정통 무협 공용 무공들
  * 문파에 상관없이 누구나 익힐 수 있으며, 각 경지마다 2~3개씩 배치하여 다양성을 확보함.
  */
-export const COMMON_MARTIAL_ARTS: Partial<Record<RealmKey, any[]>> = {
+const COMMON_MARTIAL_ARTS: Partial<Record<RealmKey, any[]>> = {
   "필부": [],
   "삼류": [
     { name: "소요장(逍遙掌)", type: "palm", element: "wind", desc: "거동이 자유롭고 막힘이 없는 장법으로 적을 유린합니다." },

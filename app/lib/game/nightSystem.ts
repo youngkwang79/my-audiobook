@@ -189,7 +189,7 @@ export const GIRU_EVENTS: GiruEvent[] = [
   },
 ];
 
-export interface GiruQuest {
+interface GiruQuest {
   id: string;
   npcId: string;
   title: string;
@@ -317,7 +317,7 @@ export const GIRU_QUESTS: GiruQuest[] = [
   }
 ];
 
-export const GIRU_ILLUSTRATIONS: Record<string, string[]> = {
+const GIRU_ILLUSTRATIONS: Record<string, string[]> = {
   yeonhwa: [
     "/images/giru/yeonhwa_secret_1.png",
     "/images/giru/yeonhwa_secret_2.png"
@@ -348,13 +348,13 @@ export const GIRU_ILLUSTRATIONS: Record<string, string[]> = {
 // [신규 기루 시스템 설정 추가]
 
 // 행동력 수치
-export const GIRU_ACTION_LIMITS = {
+const GIRU_ACTION_LIMITS = {
   baseActionCount: 3,
   maxActionCount: 5,
 };
 
 // 선물 등급별 상승치
-export const GIFT_FAVOR_REWARDS: Record<string, number> = {
+const GIFT_FAVOR_REWARDS: Record<string, number> = {
   "gift_comb": 10,     // 하급
   "gift_perfume": 18,  // 중급
   "gift_wine": 30,     // 고급
@@ -393,14 +393,14 @@ export function getFavorDiscount(favor: number) {
   return 1.0;
 }
 
-export function getFavorRewardMult(favor: number) {
+function getFavorRewardMult(favor: number) {
   if (favor >= 80) return 1.2;
   if (favor >= 60) return 1.1;
   if (favor >= 40) return 1.05;
   return 1.0;
 }
 
-export function checkActionRefund(favor: number): boolean {
+function checkActionRefund(favor: number): boolean {
   if (favor >= 80) {
     // 80 이상 첫 행동 무조건 1회 환급은 게임 스토어 레벨에서 처리
     return Math.random() < 0.25; // 두번째 이후 확률

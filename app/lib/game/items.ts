@@ -1,8 +1,8 @@
 import type { OwnedWeapon, ItemTier, RandomOption, EquipSlot, RealmType } from "./types";
 
-export type SetType = "공격" | "생존" | "회피" | "내공" | "경제";
+type SetType = "공격" | "생존" | "회피" | "내공" | "경제";
 
-export type SetEffect = {
+type SetEffect = {
   pieces: number;
   description: string;
   stats: {
@@ -24,7 +24,7 @@ export type SetEffect = {
   };
 };
 
-export type SetGroup = {
+type SetGroup = {
   id: SetType;
   name: string;
   effects: SetEffect[];
@@ -78,7 +78,7 @@ export const SET_GROUPS: SetGroup[] = [
   }
 ];
 
-export const REALM_STATS: Record<RealmType, any> = {
+const REALM_STATS: Record<RealmType, any> = {
   "필부": { atk: 10, crit: 1, evade: 1, defRate: 0.1, mp: 10, hp: 20, price: 5000, ring: { gold: 0.05, hpRegen: 1 } },
   "삼류": { atk: 30, crit: 2, evade: 2, defRate: 0.15, mp: 30, hp: 60, price: 20000, ring: { gold: 0.10, hpRegen: 2 } },
   "이류": { atk: 80, crit: 3, evade: 3, defRate: 0.25, mp: 80, hp: 160, price: 80000, ring: { drop: 0.10, hpRegen: 4 } },
@@ -223,7 +223,7 @@ export const RANDOM_OPTION_POOL = [
   { stat: "speed_pct", label: "신법가속", values: { "하급": 1, "중급": 2, "상급": 3, "최상급": 5 } }, // 기본값은 하급 기준, 실제 값은 등급/희귀도에 따라 보정
 ];
 
-export const LEGENDARY_OPTIONS: any[] = [
+const LEGENDARY_OPTIONS: any[] = [
   { id: "leg_crit_dmg", name: "폭멸", description: "치명타 시 추가 피해 50% 발생" },
   { id: "leg_smash", name: "강타", description: "3초마다 공격력 200%의 강타 발동" },
   { id: "leg_kill_atk", name: "광전사", description: "적 처치 시 5초간 공격력 10% 증가" },

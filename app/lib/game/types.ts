@@ -32,7 +32,7 @@ export type FactionType =
   | null;
 
 export type WeaponId = string;
-export type ItemId = string;
+type ItemId = string;
 export type EquipSlot =
   | "mainWeapon"
   | "subWeapon"
@@ -61,7 +61,7 @@ export type ConsumableId =
 
 export type ItemTier = "평범" | "명품" | "보구" | "국보" | "신기";
 
-export type RandomOptionGrade = "하급" | "중급" | "상급" | "최상급";
+type RandomOptionGrade = "하급" | "중급" | "상급" | "최상급";
 
 export type RandomOption = {
   stat: string;
@@ -70,7 +70,7 @@ export type RandomOption = {
   grade?: RandomOptionGrade;
 };
 
-export type LegendaryOption = {
+type LegendaryOption = {
   id: string;
   name: string;
   description: string;
@@ -206,7 +206,7 @@ export type CoinItem = {
 
 export type EquippedGear = Record<EquipSlot, WeaponId | null>;
 
-export type InnCombatState = {
+type InnCombatState = {
   playerHp: number;
   playerMaxHp: number;
   enemyHp: number;
@@ -320,7 +320,7 @@ export type MasterDuelState = {
   rivalAttackGauge: number; // 0-1 (1초 게이지)
 }
 
-export type FootworkGameState = {
+type FootworkGameState = {
   timeLeft: number;
   maxTime: number;
   combo: number;
@@ -335,7 +335,7 @@ export type FootworkGameState = {
   isPlaying: boolean;
 };
 
-export type NightLimits = {
+type NightLimits = {
   giluActionLeft: number;
   npcTalkCount: Record<string, number>;
   infoTradeUsed: boolean;
@@ -432,7 +432,7 @@ export type TowerState = {
   autoAttackTimer: number;
 };
 
-export type MovementBuffStatus = {
+type MovementBuffStatus = {
   skillId: string;
   name: string;
   timeLeft: number;

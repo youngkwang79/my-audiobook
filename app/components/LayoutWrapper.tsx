@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import VisitorStats from "./VisitorStats";
 import LayoutFooter from "./LayoutFooter";
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -14,7 +13,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
       {children}
       {!isGamePage && (
         <>
-          {!isHomePage && <VisitorStats />}
+          {!isHomePage}
           <LayoutFooter />
         </>
       )}

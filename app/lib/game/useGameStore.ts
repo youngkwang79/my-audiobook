@@ -128,7 +128,7 @@ export const STAT_UPGRADE_CONFIG: Record<string, { name: string; resources: stri
   offlineLimit: { name: "수련 시간", resources: ["gold", "reputation"] },
 };
 
-export const STAT_INCREMENTS: Record<string, number> = {
+const STAT_INCREMENTS: Record<string, number> = {
   atk: 500,
   def: 500,
   hpRec: 2500,
@@ -534,7 +534,7 @@ export const TUTORIAL_STEPS: Record<string, any> = {
   }
 };
 
-export const TOWER_BUFF_POOL = [
+const TOWER_BUFF_POOL = [
   { id: "atk_up", name: "천마의 가속", description: "공격력 +30%", bonus: { atk: 1.3 }, penalty: {} },
   { id: "def_up", name: "철벽의 기운", description: "받는 피해 -20%", bonus: { defBuff: 0.8 }, penalty: {} },
   { id: "speed_up", name: "신법의 깨달음", description: "자동 공격 속도 +20%", bonus: { towerSpeed: 1.2 }, penalty: {} },
@@ -542,9 +542,9 @@ export const TOWER_BUFF_POOL = [
   { id: "ki_up", name: "영천의 기운", description: "Ki 게이지 획득 +50%", bonus: { kiGain: 1.5 }, penalty: {} },
 ];
 
-export const TOWER_ARTIFACT_POOL = TOWER_ROGUE_BUFF_POOL;
+const TOWER_ARTIFACT_POOL = TOWER_ROGUE_BUFF_POOL;
 
-export const TOWER_THEMES: Record<number, any> = {
+const TOWER_THEMES: Record<number, any> = {
   1: { name: "석조의 시련", color: "#64748b", effect: "none", desc: "고요한 돌의 기운이 감도는 층입니다." },
   21: { name: "혹한의 감옥", color: "#38bdf8", effect: "slow", desc: "뼈를 깎는 추위가 공격 속도를 늦춥니다." },
   41: { name: "염화의 지옥", color: "#f87171", effect: "burn", desc: "타오르는 열기가 매초 체력을 깎습니다." },
@@ -558,12 +558,12 @@ export function getTowerTheme(floor: number) {
   return TOWER_THEMES[key];
 }
 
-export function generateTowerBuffs(floor: number) {
+function generateTowerBuffs(floor: number) {
   const pool = [...TOWER_BUFF_POOL].sort(() => 0.5 - Math.random());
   return pool.slice(0, 3);
 }
 
-export function generateTowerArtifacts(floor: number, luck: number = 0) {
+function generateTowerArtifacts(floor: number, luck: number = 0) {
   const getWeight = (art: any) => getTierWeight(art.tier);
   const pool = [...TOWER_ARTIFACT_POOL];
   const selected: any[] = [];
@@ -583,7 +583,7 @@ export function generateTowerArtifacts(floor: number, luck: number = 0) {
   return selected;
 }
 
-export function generateTowerEnemy(floor: number, type: "small" | "elite" | "boss" = "small", wave: number = 1) {
+function generateTowerEnemy(floor: number, type: "small" | "elite" | "boss" = "small", wave: number = 1) {
   const theme = getTowerTheme(floor);
   const isBoss = type === "boss";
   const isElite = type === "elite";
@@ -643,7 +643,7 @@ export function generateTowerEnemy(floor: number, type: "small" | "elite" | "bos
   };
 }
 
-export function generateTowerWave(floor: number, wave: number): TowerEnemy[] {
+function generateTowerWave(floor: number, wave: number): TowerEnemy[] {
   const isBossFloor = floor % 10 === 0;
   const isEliteFloor = floor % 5 === 0;
 
@@ -671,7 +671,7 @@ export function generateTowerWave(floor: number, wave: number): TowerEnemy[] {
   return enemies;
 }
 
-export const STAT_UPGRADE_BASES: Record<string, { gold: number; rep: number }> = {
+const STAT_UPGRADE_BASES: Record<string, { gold: number; rep: number }> = {
   atk: { gold: 500, rep: 130 },
   def: { gold: 500, rep: 130 },
   hpRec: { gold: 500, rep: 130 },
@@ -805,7 +805,7 @@ function getDummyStats(realm: string, star: number, totalAtk: number = 10) {
   return { hp, def, eva, atk: Math.floor(atkBase * (1 + star * 0.2)) };
 }
 
-export function getRealmSettings(realm: string) {
+function getRealmSettings(realm: string) {
   if (REALM_SETTINGS[realm]) return REALM_SETTINGS[realm];
   if (realm.startsWith("환골탈퇴")) {
     const level = parseInt(realm.split(" ")[1]) || 1;
@@ -6620,7 +6620,7 @@ export function shouldPauseHeavyLoop() {
   return document.hidden;
 }
 
-export function getBatteryInterval(normal: number, low: number) {
+function getBatteryInterval(normal: number, low: number) {
   const game = useGameStore.getState().game;
   return game.options?.lowPowerMode ? low : normal;
 }

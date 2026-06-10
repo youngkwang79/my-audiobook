@@ -1,5 +1,6 @@
 "use client";
 
+import { requestPayment } from "@portone/browser-sdk/v2";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { works } from "@/app/data/works";
@@ -109,7 +110,7 @@ export default function MembershipPage() {
     try {
       const plan = localStorage.getItem("membership");
       if (plan) setSubscribedPlan(plan);
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   // 멤버십 전용 소설 데이터 가공
@@ -189,29 +190,41 @@ export default function MembershipPage() {
         return;
       }
 
-      const proceed = confirm(
-        "🍵 [작가 후원 동의 및 안내]\n\n\"소중한 후원에 진심으로 감사드립니다! 독자님이 보내주신 따뜻한 지지와 성원은 창작자에게 가장 큰 힘이 됩니다. 더 깊이 있고 몰입감 넘치는 오디오북 스토리로 보답하겠습니다.\"\n\n※ 본 멤버십은 자발적인 작가 후원 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 후원 결정을 부탁드립니다.\n\n동의하고 후원을 진행하시겠습니까?"
-      );
-      if (!proceed) return;
+      // 선택된 플랜에 따른 가격 및 이름 설정
+      const price = selectedPlan === "weekly" ? 3000 : 99900;
+      const planName = selectedPlan === "weekly" ? "주간 멤버십" : "연간 멤버십";
+      const paymentId = `membership-${crypto.randomUUID()}`;
 
+      // 1. 포트원 결제창 호출 (심사 필수)
+      const response = await requestPayment({
+        storeId: "store-본인의-상점아이디-입력", // ⚠️ 반드시 포트원 테스트 상점 ID로 교체하세요
+        paymentId: paymentId,
+        orderName: `멤버십 구독: ${planName}`,
+        totalAmount: price,
+        currency: "CURRENCY_KRW",
+        payMethod: "CARD",
+      });
+
+      if (!response || response.code != null) {
+        alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
+        return;
+      }
+
+      // 2. 결제 성공 후 멤버십 활성화 API 호출
       const res = await fetch("/api/me/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan: selectedPlan }),
+        body: JSON.stringify({ plan: selectedPlan, paymentId }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "구독 실패");
+      if (!res.ok) throw new Error(data.error || "구독 처리 실패");
 
       localStorage.setItem("membership", selectedPlan);
-      alert(
-        `[가상 결제 완료]\n(추후 토스페이먼츠 결제 연동이 진행될 예정입니다)\n\n${
-          selectedPlan === "weekly" ? "주간 멤버십" : "연간 멤버십"
-        } 가입이 완료되었습니다!\n이제 작가님을 후원하며 모든 에피소드를 감상하실 수 있습니다.`
-      );
+      alert(`${planName} 가입이 완료되었습니다!`);
       router.push("/");
     } catch (e: any) {
       console.error(e);
@@ -840,7 +853,7 @@ export default function MembershipPage() {
         {/* 2. 공개 예정 섹션 */}
         <div className="coming-soon-section">
           <h2 className="coming-soon-section-title">공개 예정</h2>
-          
+
           {/* 타임라인 헤더 */}
           <div className="coming-soon-timeline">
             <div className="timeline-node">
@@ -917,8 +930,8 @@ export default function MembershipPage() {
           {subscribedPlan === "weekly"
             ? "작가에게 커피한잔 후원중💖"
             : subscribedPlan === "annual" || subscribedPlan === "yearly"
-            ? "작가에게 따뜻한 국밥 후원중💖"
-            : "지금 가입하기"}
+              ? "작가에게 따뜻한 국밥 후원중💖"
+              : "지금 가입하기"}
         </button>
         <span className="subscribe-caption">
           {subscribedPlan ? "언제든지 설정에서 해지 가능" : "자동 갱신 · 언제든지 해지 가능"}

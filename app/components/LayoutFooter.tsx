@@ -2,41 +2,17 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { useGameStore } from "@/app/lib/game/useGameStore"; // [수정] 게임 스토어 가져오기
+import { useGameStore } from "@/app/lib/game/useGameStore";
 
 export default function LayoutFooter() {
+  // 사용하지 않는 hook들은 삭제해도 좋지만, 
+  // 코드 구조를 유지하기 위해 그대로 두었습니다.
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { syncToCloud } = useGameStore(); // [수정] 동기화 함수 추출
+  const { syncToCloud } = useGameStore();
 
-  const handleLogout = async () => {
-    try {
-      // 1. 로그아웃 전 서버에 데이터 즉시 저장 (가장 중요)
-      console.log("데이터 동기화 중...");
-      try {
-        await syncToCloud(); 
-      } catch (syncError) {
-        console.error("로그아웃 중 클라우드 동기화 실패:", syncError);
-      }
-
-      // 2. 실제 로그아웃 실행
-      await signOut();
-      
-      router.refresh();
-      router.push("/");
-    } catch (error) {
-      console.error("로그아웃 실패:", error);
-    }
-  };
-
-  const showLogout =
-    !!user &&
-    (pathname === "/" ||
-      pathname.startsWith("/work/") ||
-      pathname.startsWith("/episode/") ||
-      pathname === "/points" ||
-      pathname === "/faq");
+  // 로그아웃 관련 로직(handleLogout, showLogout 등)은 모두 삭제합니다.
 
   return (
     <footer
@@ -46,29 +22,9 @@ export default function LayoutFooter() {
         textAlign: "center",
       }}
     >
-      {showLogout && (
-        <div
-          style={{
-            marginBottom: 10,
-          }}
-        >
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,0.65)",
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            로그아웃
-          </button>
-        </div>
-      )}
+      {/* 로그아웃 버튼 영역이 제거되었습니다 */}
 
+      {/* 약관 링크 영역 */}
       <div
         style={{
           fontSize: 12,
@@ -76,25 +32,31 @@ export default function LayoutFooter() {
           lineHeight: 1.8,
         }}
       >
-        <a href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>
-          개인정보처리방침
-        </a>{" "}
+        <a href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>개인정보처리방침</a>{" "}
         |{" "}
-        <a href="/terms" style={{ color: "inherit", textDecoration: "none" }}>
-          이용약관
-        </a>{" "}
+        <a href="/terms" style={{ color: "inherit", textDecoration: "none" }}>이용약관</a>{" "}
         |{" "}
-        <a href="/contact" style={{ color: "inherit", textDecoration: "none" }}>
-          문의
-        </a>{" "}
+        <a href="/contact" style={{ color: "inherit", textDecoration: "none" }}>문의</a>{" "}
         |{" "}
-        <a href="/about" style={{ color: "inherit", textDecoration: "none" }}>
-          사이트소개
-        </a>{" "}
+        <a href="/about" style={{ color: "inherit", textDecoration: "none" }}>사이트소개</a>{" "}
         |{" "}
-        <a href="/refund" style={{ color: "inherit", textDecoration: "none" }}>
-          환불규정
-        </a>
+        <a href="/refund" style={{ color: "inherit", textDecoration: "none" }}>환불규정</a>
+      </div>
+
+      {/* 사업자 정보 영역 */}
+      <div
+        style={{
+          marginTop: 20,
+          fontSize: 11,
+          color: "rgba(255,255,255,0.4)",
+          lineHeight: 1.6,
+        }}
+      >
+        상호명: 오늘의 살롱 | 사업자등록번호: 592-78-00172 | 대표자명: 고영광<br />
+        사업장 주소: 서울시 송파구 문정도 76-2 101호 | 전화번호: 02)6013-2299<br />
+        통신판매업 신고번호: 2019-서울송파-0635<br />
+        <br />
+        © 2026 오늘의살롱 All rights reserved.
       </div>
     </footer>
   );

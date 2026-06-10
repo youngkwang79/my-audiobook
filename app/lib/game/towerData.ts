@@ -1,6 +1,6 @@
 import { TowerArtifact } from "./types";
 
-export type TowerBuffTier = 
+type TowerBuffTier = 
   | "하급" 
   | "중하급" 
   | "중급" 
@@ -10,9 +10,9 @@ export type TowerBuffTier =
   | "신화" 
   | "우주";
 
-export type TowerBuffType = "공격" | "방어" | "신법" | "특수";
+type TowerBuffType = "공격" | "방어" | "신법" | "특수";
 
-export interface TowerRoguelikeBuff {
+interface TowerRoguelikeBuff {
   id: string;
   name: string;
   type: TowerBuffType;
@@ -73,7 +73,7 @@ export const TOWER_ROGUE_BUFF_POOL: TowerRoguelikeBuff[] = [
   { id: "cosmic_defense_1", name: "절대 방위", type: "방어", tier: "우주", description: "피해를 입을 때마다 공격력의 100% 반사 및 무적 보호막", effect: { type: "ABSOLUTE_DEFENSE", value: 100 }, tags: ["defense", "reflect", "special"] },
 ];
 
-export interface TowerSynergy {
+interface TowerSynergy {
   id: string;
   name: string;
   requiredTags?: string[];

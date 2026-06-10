@@ -87,7 +87,7 @@ export interface CompendiumSkill {
   mpCost: number;
 }
 
-export interface LearnedSkillState {
+interface LearnedSkillState {
   skillId: string;
   unlocked: boolean;
   stars: number; // 0 ~ 10
@@ -108,7 +108,7 @@ export interface SynthesisRecipe {
   goldCost: number;
 }
 
-export const REALM_ORDER_KEYS: RealmKey[] = [
+const REALM_ORDER_KEYS: RealmKey[] = [
   "필부",
   "삼류",
   "이류",
@@ -238,7 +238,7 @@ function buildDescription(
   return `${factionName}의 ${name}. ${categoryMap[category]}이며 ${elementMap[element]} 속성에 가까운 ${gradeMap[grade]} 무공입니다.`;
 }
 
-export function buildMartialCompendium(): CompendiumSkill[] {
+function buildMartialCompendium(): CompendiumSkill[] {
   const result: CompendiumSkill[] = [];
 
   FACTIONS.forEach((faction) => {
@@ -309,7 +309,7 @@ export function getFactionSkills(factionName: string) {
     .sort((a, b) => a.order - b.order);
 }
 
-export function getSkillById(skillId: string) {
+function getSkillById(skillId: string) {
   return MARTIAL_COMPENDIUM.find((skill) => skill.id === skillId);
 }
 
@@ -332,7 +332,7 @@ export function getRefineGoldCost(stars: number) {
   return 1000000 + stars * 5000000; // 단위 현실화 (100만 ~ )
 }
 
-export function getBaseSkillPrice(skill: CompendiumSkill) {
+function getBaseSkillPrice(skill: CompendiumSkill) {
   if (skill.skillType === "movement" && skill.order === 100) {
     return 100000;
   }
@@ -509,7 +509,7 @@ export function ensureLearnedSkill(
   ];
 }
 
-export function getCompendiumProgressByFaction(
+function getCompendiumProgressByFaction(
   factionName: string,
   learnedSkills: LearnedSkillState[]
 ) {

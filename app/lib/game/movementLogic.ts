@@ -6,7 +6,7 @@ import { FactionType } from "./types";
  * - 1성 ~ 10성 구간의 정밀 스케일링
  */
 
-export interface MovementBuffData {
+interface MovementBuffData {
   name: string;
   duration: number;
   multipliers: Record<string, number>;

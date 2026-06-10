@@ -498,13 +498,4 @@ export function saveGame(data: GameSaveData) {
     console.error("게임 저장 실패:", error);
   }
 }
-
-export function createCoinDrops(coinBonus: number): CoinItem[] {
-  return Array.from({ length: 12 }).map((_, index) => ({
-    id: Date.now() + index,
-    x: 6 + (index % 4) * 23,
-    y: 16 + Math.floor(index / 4) * 22,
-    amount: 6 + coinBonus + (index % 4),
-    claimed: false,
-  }));
-}
+

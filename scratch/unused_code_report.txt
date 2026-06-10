@@ -1,0 +1,84 @@
+=========================================
+          UNUSED CODE REPORT             
+=========================================
+
+--- 1. UNUSED FILES ---
+Total: 11 files
+- app\components\Header.tsx
+- app\components\game\elements\Dummy.tsx
+- app\components\game\factions.ts
+- app\components\game\storage.ts
+- app\components\work\WorkCard.tsx
+- app\lib\_game_types.ts
+- app\lib\game\martialBooks.ts
+- app\lib\game\shop.ts
+- app\lib\game\unlocks.ts
+- app\lib\payment.ts
+- lib\supabaseAdmin.ts
+
+--- 2. UNUSED EXPORTED FUNCTIONS / VARIABLES ---
+Total files with unused exports: 11
+- app\data\episodes\index.ts
+    * getEpisodeByWorkAndId
+    * getTotalPartsByWork
+- app\lib\game\commonSkills.ts
+    * COMMON_MARTIAL_ARTS
+- app\lib\game\items.ts
+    * SetType
+    * SetEffect
+    * SetGroup
+    * REALM_STATS
+    * LEGENDARY_OPTIONS
+- app\lib\game\martialArtsSystem.ts
+    * LearnedSkillState
+    * REALM_ORDER_KEYS
+    * buildMartialCompendium
+    * getSkillById
+    * getBaseSkillPrice
+    * getCompendiumProgressByFaction
+- app\lib\game\movementLogic.ts
+    * MovementBuffData
+- app\lib\game\nightSystem.ts
+    * GiruQuest
+    * GIRU_ILLUSTRATIONS
+    * GIRU_ACTION_LIMITS
+    * GIFT_FAVOR_REWARDS
+    * getFavorRewardMult
+    * checkActionRefund
+- app\lib\game\storage.ts
+    * createCoinDrops
+- app\lib\game\towerData.ts
+    * TowerBuffTier
+    * TowerBuffType
+    * TowerRoguelikeBuff
+    * TowerSynergy
+- app\lib\game\types.ts
+    * ItemId
+    * RandomOptionGrade
+    * LegendaryOption
+    * InnCombatState
+    * FootworkGameState
+    * NightLimits
+    * MovementBuffStatus
+- app\lib\game\useGameStore.ts
+    * STAT_INCREMENTS
+    * TOWER_BUFF_POOL
+    * TOWER_ARTIFACT_POOL
+    * TOWER_THEMES
+    * generateTowerBuffs
+    * generateTowerArtifacts
+    * generateTowerEnemy
+    * generateTowerWave
+    * STAT_UPGRADE_BASES
+    * getRealmSettings
+    * getBatteryInterval
+- lib\server\r2.ts
+    * r2Client
+
+--- 3. UNUSED NPM DEPENDENCIES ---
+Total: 5 libraries
+- @react-three/drei
+- @react-three/fiber
+- @types/web-push
+- dotenv
+- three
