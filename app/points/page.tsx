@@ -518,7 +518,7 @@ export default function PointsPage() {
           <button className="back-btn" onClick={() => router.back()}>
             <ArrowLeftIcon />
           </button>
-          <h1 className="store-title">무림북 스토어</h1>
+          <h1 className="store-title">무림북 상품 서비스</h1>
           <button className="restore-btn" onClick={handleRestore}>
             복구
           </button>
@@ -568,17 +568,17 @@ export default function PointsPage() {
 
         {/* 2. 멤버십 섹션 */}
         <div>
-          <h2 className="section-label">멤버십</h2>
+          <h2 className="section-label">멤버십 상품</h2>
           <div className="membership-section-wrap">
 
             {/* 주간 멤버십 */}
             <div
               className="membership-vip-card weekly-card gold-shine-card"
-              onClick={() => handleSubscribeMembership("weekly", "주간 멤버십: 작가에게 커피한잔!", 3000)}
+              onClick={() => handleSubscribeMembership("weekly", "주간 멤버십 서비스: 작가에게 커피한잔!", 3000)}
             >
               <div className="membership-card-top">
                 <span className="membership-card-label">
-                  {subscribedPlan === "weekly" ? "작가에게 커피한잔 후원중💖" : "멤버십 (작가에게 커피한잔!)"}
+                  {subscribedPlan === "weekly" ? "작가에게 커피한잔 후원중💖" : "주간 멤버십 서비스 (작가에게 커피한잔!)"}
                 </span>
                 <div className="membership-card-price-row">
                   <span className="membership-card-price">₩3,000</span>
@@ -611,13 +611,13 @@ export default function PointsPage() {
             {/* 연간 멤버십 */}
             <div
               className="membership-vip-card annual-card"
-              onClick={() => handleSubscribeMembership("annual", "연간 멤버십: 작가에게 따뜻한 국밥 한그릇!", 99900)}
+              onClick={() => handleSubscribeMembership("annual", "연간 멤버십 서비스: 작가에게 따뜻한 국밥 한그릇!", 99900)}
             >
               <span className="membership-badge-red">기간 한정 할인</span>
 
               <div className="membership-card-top">
                 <span className="membership-card-label annual-label">
-                  {subscribedPlan === "annual" || subscribedPlan === "yearly" ? "작가에게 따뜻한 국밥 후원중💖" : "멤버십 (작가에게 따뜻한 국밥 한그릇!)"}
+                  {subscribedPlan === "annual" || subscribedPlan === "yearly" ? "작가에게 따뜻한 국밥 후원중💖" : "연간 멤버십 서비스 (작가에게 따뜻한 국밥 한그릇!)"}
                 </span>
                 <div className="membership-card-price-row">
                   <span className="membership-card-price">₩99,900</span>

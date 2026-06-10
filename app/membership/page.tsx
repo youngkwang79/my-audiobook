@@ -192,14 +192,14 @@ export default function MembershipPage() {
 
       // 선택된 플랜에 따른 가격 및 이름 설정
       const price = selectedPlan === "weekly" ? 3000 : 99900;
-      const planName = selectedPlan === "weekly" ? "주간 멤버십" : "연간 멤버십";
+      const planName = selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스";
       const paymentId = `membership-${crypto.randomUUID()}`;
 
       // 1. 포트원 결제창 호출 (심사 필수)
       const response = await requestPayment({
         storeId: "store-본인의-상점아이디-입력", // ⚠️ 반드시 포트원 테스트 상점 ID로 교체하세요
         paymentId: paymentId,
-        orderName: `멤버십 구독: ${planName}`,
+        orderName: `멤버십 상품 구독: ${planName}`,
         totalAmount: price,
         currency: "CURRENCY_KRW",
         payMethod: "CARD",
@@ -747,7 +747,7 @@ export default function MembershipPage() {
         {/* 타이틀 */}
         <div className="support-info">
           <h1 className="support-title">&lt;문극_태양작가 후원하기&gt;</h1>
-          <p className="support-subtitle">멤버십 가입으로 작가를 후원해 주세요.</p>
+          <p className="support-subtitle">멤버십 상품 가입으로 작가를 후원해 주세요.</p>
         </div>
 
         {/* 플랜 카드 */}
@@ -761,7 +761,7 @@ export default function MembershipPage() {
             <div className="plan-info-right">
               <h3 className="plan-title">작가에게 커피한잔!</h3>
               <p className="plan-price">₩ 3000/주</p>
-              <span className="plan-duration-tag">주간 멤버십</span>
+              <span className="plan-duration-tag">주간 멤버십 서비스</span>
             </div>
           </div>
 
@@ -775,14 +775,14 @@ export default function MembershipPage() {
             <div className="plan-info-right">
               <h3 className="plan-title">작가에게 따뜻한 국밥 한그릇!</h3>
               <p className="plan-price">₩ 99900/년</p>
-              <span className="plan-duration-tag">연간 멤버십</span>
+              <span className="plan-duration-tag">연간 멤버십 서비스</span>
             </div>
           </div>
         </div>
 
         {/* 혜택 목록 */}
         <div className="benefits-section">
-          <h2 className="benefits-title">왜 멤버십에 가입해야 할까요?</h2>
+          <h2 className="benefits-title">왜 멤버십 상품에 가입해야 할까요?</h2>
           <div className="benefit-list">
             <div className="benefit-item">
               <div className="benefit-icon-wrapper">
