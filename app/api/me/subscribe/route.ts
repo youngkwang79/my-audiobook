@@ -69,8 +69,10 @@ export async function POST(req: Request) {
         },
         currency: "KRW",
         customer: {
-          email: order.customer_email || undefined,
-          name: order.customer_name,
+          email: order.customer_email || "customer@murimbook.com",
+          name: {
+            full: order.customer_name,
+          },
           phoneNumber: order.customer_phone ? order.customer_phone.replace(/[^0-9]/g, "") : undefined,
         },
         customData: {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/app/components/BottomNav";
+import { requestIdentityVerification } from "@portone/browser-sdk/v2";
 
 // 설정 기어 아이콘
 function GearIcon() {
@@ -375,6 +376,71 @@ export default function MePage() {
 
   const handleMembershipRedirect = () => {
     router.push("/membership");
+  };
+
+  const handleIdentityVerification = async () => {
+    if (!user) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
+      const channelKey = process.env.NEXT_PUBLIC_PORTONE_IDENTITY_CHANNEL_KEY || "YOUR_IDENTITY_CHANNEL_KEY";
+      const identityVerificationId = `identity-verification-${Math.random().toString(36).substring(2, 15)}`;
+
+      const identityVerificationParams: any = {
+        storeId,
+        identityVerificationId,
+        channelKey,
+        bypass: {
+          danal: {
+            CPTITLE: "무림북",
+          },
+          inicisUnified: {
+            flgFixedUser: "N",
+          },
+        },
+      };
+
+      if (user?.email) {
+        identityVerificationParams.customer = {
+          email: user.email,
+        };
+      }
+
+      const response = await requestIdentityVerification(identityVerificationParams);
+
+      if (!response || response.code !== undefined) {
+        alert(response?.message || "본인인증을 진행하지 못했거나 오류가 발생했습니다.");
+        return;
+      }
+
+      // 서버로 인증 완료 요청
+      const token = session?.access_token;
+      const verifyRes = await fetch("/api/me/verify-identity", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          identityVerificationId,
+        }),
+      });
+
+      const verifyData = await verifyRes.json().catch(() => null);
+      if (verifyRes.ok && verifyData?.success) {
+        alert("본인인증이 정상적으로 완료되었습니다!");
+        window.location.reload();
+      } else {
+        alert(`본인인증 완료 처리 실패: ${verifyData?.error || "서버 응답 오류"}`);
+      }
+    } catch (err: any) {
+      console.error("본인인증 에러:", err);
+      alert(`본인인증 진행 중 에러가 발생했습니다: ${err.message || err}`);
+    }
   };
 
   if (loading) {
@@ -1064,6 +1130,27 @@ export default function MePage() {
               <span className="menu-arrow"><ChevronRightIcon /></span>
             </div>
           </button>
+
+          {user?.user_metadata?.is_verified ? (
+            <div className="menu-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "default" }}>
+              <span className="menu-item-left">본인인증 설정</span>
+              <div className="menu-item-right">
+                <span style={{ fontSize: "14px", color: "#4cd964", fontWeight: "700", marginRight: "4px" }}>
+                  인증 완료 ({user.user_metadata.verified_name})
+                </span>
+              </div>
+            </div>
+          ) : (
+            <button className="menu-item" onClick={handleIdentityVerification}>
+              <span className="menu-item-left">본인인증 설정</span>
+              <div className="menu-item-right">
+                <span className="menu-badge" style={{ background: "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)", borderRadius: "12px", padding: "3px 8px", fontSize: "11px", fontWeight: "800" }}>
+                  인증 필요
+                </span>
+                <span className="menu-arrow"><ChevronRightIcon /></span>
+              </div>
+            </button>
+          )}
 
           <button className="menu-item" onClick={() => {
             if (confirm("안녕하세요. 고품격 무협 오디오 청취 플랫폼 '무림북'입니다. 이용문의 및 에러 사항은 언제든 1:1 채팅으로 남겨주세요.\n\n확인을 누르시면 1:1 문의 채팅방(카카오톡 오픈채팅)으로 이동합니다.")) {

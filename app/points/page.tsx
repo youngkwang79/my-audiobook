@@ -209,11 +209,11 @@ export default function PointsPage() {
       };
 
       if (paymentMethod === "KAKAOPAY") {
-        paymentParams.channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
+        paymentParams.channelKey = "channel-key-0551875c-6e36-430b-891b-91025c95afe1";
         paymentParams.payMethod = "EASY_PAY";
         paymentParams.easyPay = { easyPayProvider: "KAKAOPAY" };
       } else if (paymentMethod === "DANAL") {
-        paymentParams.channelKey = "channel-key-0551875c-6e36-430b-891b-91025c95afe1";
+        paymentParams.channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
         paymentParams.payMethod = "MOBILE";
       } else {
         paymentParams.payMethod = "CARD";

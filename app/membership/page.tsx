@@ -304,9 +304,12 @@ export default function MembershipPage() {
         issueId: paymentId,
         issueName: `멤버십 정기결제: ${planName}`,
         customer: {
-          email: session.user.email || undefined,
+          email: session.user.email || "customer@murimbook.com",
           fullName: buyerName.trim(),
           phoneNumber: buyerPhone.trim(),
+        },
+        offerPeriod: {
+          interval: selectedPlan === "weekly" ? "7d" : "1y",
         },
       };
 

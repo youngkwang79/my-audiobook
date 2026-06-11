@@ -65,9 +65,20 @@ export default function WalletPage() {
   const [coins, setCoins] = useState(0);
   const [rewardCoins, setRewardCoins] = useState(0);
   const [autoNextEpisode, setAutoNextEpisode] = useState(true);
-  const [openTab, setOpenTab] = useState<"charge" | "reward" | "use" | null>(null);
+  const [openTab, setOpenTab] = useState<"charge" | "reward" | "use" | "payment" | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  // 금액에 매핑된 지급 코인을 리턴하는 헬퍼 함수
+  const getPointsForAmount = (amount: number) => {
+    if (amount === 1090) return 700;
+    if (amount === 10900) return 1200;
+    if (amount === 14900) return 1400;
+    if (amount === 39800) return 4000;
+    return amount;
+  };
 
   const loadTransactions = async (type: "charge" | "reward" | "use") => {
     setTxLoading(true);
@@ -93,41 +104,108 @@ export default function WalletPage() {
     }
   };
 
-  const handleTabToggle = (tab: "charge" | "reward" | "use") => {
+  const loadOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .in("status", ["SUCCESS", "CANCELLED"])
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setOrders(data ?? []);
+    } catch (e) {
+      console.error("주문 내역 로드 에러:", e);
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleTabToggle = (tab: "charge" | "reward" | "use" | "payment") => {
     if (openTab === tab) {
       setOpenTab(null);
       setTransactions([]);
+      setOrders([]);
     } else {
       setOpenTab(tab);
-      loadTransactions(tab);
+      if (tab === "payment") {
+        loadOrders();
+      } else {
+        loadTransactions(tab);
+      }
+    }
+  };
+
+  const loadWallet = async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch("/api/me/wallet", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setCoins(Number(data.points ?? 0));
+        setRewardCoins(Number(data.reward_points ?? 0));
+      }
+    } catch (e) {
+      console.error("지갑 로드 오류:", e);
     }
   };
 
   // 코인 잔액 불러오기
   useEffect(() => {
-    const loadWallet = async () => {
-      try {
-        const token = await getAccessToken();
-        if (!token) return;
-        const res = await fetch("/api/me/wallet", {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-        const data = await res.json().catch(() => null);
-        if (res.ok && data) {
-          setCoins(Number(data.points ?? 0));
-          setRewardCoins(Number(data.reward_points ?? 0));
-        }
-      } catch (e) {
-        console.error("지갑 로드 오류:", e);
-      }
-    };
-
     if (user) {
       loadWallet();
     }
   }, [user]);
+
+  // 환불 처리 함수
+  const handleRefund = async (paymentId: string, amount: number) => {
+    const pointsToDeduct = getPointsForAmount(amount);
+    if (coins < pointsToDeduct) {
+      alert(`보유 코인이 부족합니다. 환불을 위해서는 최소 ${pointsToDeduct} 코인이 필요합니다.`);
+      return;
+    }
+
+    const reason = prompt("결제를 취소하시는 사유를 입력해 주세요. (예: 단순 변심, 오결제 등)");
+    if (reason === null) return; // 취소 버튼 클릭 시
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        alert("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+        return;
+      }
+
+      const res = await fetch("/api/payments/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          paymentId,
+          reason: reason.trim() || "고객 요청",
+        }),
+      });
+
+      const result = await res.json().catch(() => null);
+      if (res.ok && result?.success) {
+        alert("결제 취소(환불)가 정상적으로 완료되었습니다.");
+        await loadWallet();
+        await loadOrders();
+      } else {
+        alert(`환불 실패: ${result?.error || "서버 응답 오류"}`);
+      }
+    } catch (err: any) {
+      console.error("환불 에러:", err);
+      alert("환불 요청 처리 중 에러가 발생했습니다: " + err.message);
+    }
+  };
 
   // 다음화 자동해제 상태 로컬스토리지 동기화
   useEffect(() => {
@@ -638,6 +716,101 @@ export default function WalletPage() {
                   ))
                 ) : (
                   <div className="tx-empty">사용 내역이 없습니다.</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 결제 내역 (환불) */}
+          <div>
+            <button
+              className={`wallet-menu-item ${openTab === "payment" ? "active" : ""}`}
+              onClick={() => handleTabToggle("payment")}
+            >
+              <span className="wallet-menu-item-label">결제 내역 (환불)</span>
+              <div className={`wallet-menu-item-right ${openTab === "payment" ? "rotated" : ""}`}>
+                <ChevronRightIcon />
+              </div>
+            </button>
+            {openTab === "payment" && (
+              <div className="tx-list-container">
+                {ordersLoading ? (
+                  <div className="tx-empty">불러오는 중...</div>
+                ) : orders.length > 0 ? (
+                  orders.map((order) => {
+                    const pointsToDeduct = getPointsForAmount(Number(order.amount));
+                    const isCoin = order.type === "coin" || (!order.payment_id.startsWith("m-") && !order.product_name.includes("멤버십"));
+                    const canRefund = isCoin && order.status === "SUCCESS" && coins >= pointsToDeduct;
+
+                    return (
+                      <div key={order.id} className="tx-item" style={{ flexDirection: "column", alignItems: "stretch", gap: "8px", padding: "12px 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div className="tx-left">
+                            <span className="tx-desc">{order.product_name}</span>
+                            <span className="tx-date">{formatDate(order.created_at)}</span>
+                          </div>
+                          <span className="tx-amount charge" style={{ color: order.status === "CANCELLED" ? "#8c8c96" : "#10b981" }}>
+                            ₩{Number(order.amount).toLocaleString()}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                          <span
+                            className={`status-badge ${order.status === "CANCELLED" ? "inactive" : ""}`}
+                            style={{
+                              fontSize: "11px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: order.status === "CANCELLED" ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.1)",
+                              color: order.status === "CANCELLED" ? "#8c8c96" : "#10b981",
+                              fontWeight: "700"
+                            }}
+                          >
+                            {order.status === "SUCCESS" ? "결제 완료" : "취소됨"}
+                          </span>
+                          {order.status === "SUCCESS" && (
+                            isCoin ? (
+                              canRefund ? (
+                                <button
+                                  onClick={() => handleRefund(order.payment_id, Number(order.amount))}
+                                  style={{
+                                    background: "rgba(255, 42, 95, 0.15)",
+                                    border: "1px solid rgba(255, 42, 95, 0.3)",
+                                    color: "#ff2a5f",
+                                    borderRadius: "6px",
+                                    padding: "4px 10px",
+                                    fontSize: "12px",
+                                    fontWeight: "800",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#ff2a5f";
+                                    e.currentTarget.style.color = "#ffffff";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "rgba(255, 42, 95, 0.15)";
+                                    e.currentTarget.style.color = "#ff2a5f";
+                                  }}
+                                >
+                                  환불하기
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: "11px", color: "#8c8c96", fontWeight: "600" }}>
+                                  코인 사용으로 환불 불가 ({pointsToDeduct} 코인 필요)
+                                </span>
+                              )
+                            ) : (
+                              <span style={{ fontSize: "11px", color: "#8c8c96", fontWeight: "600" }}>
+                                멤버십 (해지만 가능)
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="tx-empty">결제 내역이 없습니다.</div>
                 )}
               </div>
             )}
