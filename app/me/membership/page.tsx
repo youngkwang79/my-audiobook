@@ -75,7 +75,7 @@ export default function MembershipManagePage() {
 
         localStorage.removeItem("membership");
         setSubscribedPlan(null);
-        alert("정기결제가 정상적으로 해지되었습니다.\n(Toss Payments 자동결제 빌링 취소 API 연동 완료 예정)");
+        alert("정기결제가 정상적으로 해지되었습니다.");
         window.dispatchEvent(new Event("wallet-updated"));
       } catch (e: any) {
         console.error("해지 에러:", e);
