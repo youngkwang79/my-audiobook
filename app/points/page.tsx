@@ -201,7 +201,7 @@ export default function PointsPage() {
         customer: {
           email: user?.email || undefined,
           fullName: name.trim(),
-          phoneNumber: phone.trim(),
+          phoneNumber: phone.replace(/[^0-9]/g, ""),
         },
         customData: {
           userId: user?.id,
@@ -249,9 +249,10 @@ export default function PointsPage() {
       } else {
         alert(`충전 승인 처리 실패: ${data?.error || "알 수 없는 오류"}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("결제 처리 중 에러가 발생했습니다.");
+      const errMsg = e?.message || e?.toString() || "알 수 없는 에러";
+      alert(`결제 처리 중 에러가 발생했습니다.\n에러 상세: ${errMsg}`);
     }
   };
 
