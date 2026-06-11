@@ -1,28 +1,19 @@
--- Create orders table
-CREATE TABLE IF NOT EXISTS public.orders (
-    id text PRIMARY KEY,                   -- paymentId
-    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    type text NOT NULL,                    -- 'coin' | 'membership'
-    product_name text NOT NULL,            -- e.g., '100 + 600 코인', '주간 멤버십 서비스'
-    amount numeric NOT NULL,               -- 결제 금액
-    buyer_name text NOT NULL,              -- 구매자 이름
-    buyer_phone text NOT NULL,             -- 구매자 전화번호
-    status text NOT NULL DEFAULT 'PENDING',-- 'PENDING' | 'SUCCESS' | 'FAILED'
-    created_at timestamp with time zone DEFAULT now()
+-- 주문 정보를 저장할 orders 테이블 생성
+create table public.orders (
+  id uuid default gen_random_uuid() primary key,
+  payment_id text unique not null,         -- 포트원과 연동할 고유 주문번호 (merchant_uid)
+  user_id uuid references auth.users(id), -- 로그인한 유저 ID
+  type text not null,                     -- 'coin' | 'membership'
+  customer_name text not null,            -- 주문자 성함
+  customer_phone text not null,           -- 주문자 연락처
+  customer_email text not null,           -- 주문자 이메일
+  product_name text not null,             -- 상품명 (예: 코인 1000개, 주간 멤버십)
+  amount numeric not null,                -- 결제 금액
+  status text default 'PENDING' not null, -- 주문 상태 (PENDING, SUCCESS, FAILED)
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- RLS (Row Level Security)
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-
--- Allow users to insert their own orders
-CREATE POLICY "Allow individual insert" 
-ON public.orders FOR INSERT 
-WITH CHECK (auth.uid() = user_id);
-
--- Allow users to read their own orders
-CREATE POLICY "Allow individual select" 
-ON public.orders FOR SELECT 
-USING (auth.uid() = user_id);
-
--- Allow service role to update orders (for webhook)
--- service role automatically bypasses RLS, so no policy is needed for UPDATE from supabaseAdmin.
+-- RLS 권한 설정
+alter table public.orders enable row level security;
+create policy "Allow insert for authenticated users" on public.orders for insert with check (auth.uid() = user_id);
+create policy "Allow select for own orders" on public.orders for select using (auth.uid() = user_id);

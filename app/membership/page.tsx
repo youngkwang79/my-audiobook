@@ -231,13 +231,14 @@ export default function MembershipPage() {
       const { error: dbError } = await supabase
         .from("orders")
         .insert({
-          id: paymentId,
+          payment_id: paymentId,
           user_id: session.user.id,
           type: "membership",
           product_name: planName,
           amount: price,
-          buyer_name: buyerName.trim(),
-          buyer_phone: buyerPhone.trim(),
+          customer_name: buyerName.trim(),
+          customer_phone: buyerPhone.trim(),
+          customer_email: session.user.email || "",
           status: "PENDING",
         });
 
@@ -271,7 +272,7 @@ export default function MembershipPage() {
         await supabase
           .from("orders")
           .update({ status: "FAILED" })
-          .eq("id", paymentId);
+          .eq("payment_id", paymentId);
         alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
         return;
       }

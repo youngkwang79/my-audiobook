@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select("*")
-      .eq("id", paymentId)
+      .eq("payment_id", paymentId)
       .maybeSingle();
 
     if (orderError || !order) {
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       await supabaseAdmin
         .from("orders")
         .update({ status: "FAILED" })
-        .eq("id", paymentId);
+        .eq("payment_id", paymentId);
       return json({ error: "Amount mismatch (forgery detected)" }, 400);
     }
 
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     const { error: updateOrderError } = await supabaseAdmin
       .from("orders")
       .update({ status: "SUCCESS" })
-      .eq("id", paymentId);
+      .eq("payment_id", paymentId);
 
     if (updateOrderError) {
       throw new Error(`Failed to update order status: ${updateOrderError.message}`);

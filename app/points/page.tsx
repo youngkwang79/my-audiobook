@@ -141,13 +141,14 @@ export default function PointsPage() {
       const { error: dbError } = await supabase
         .from("orders")
         .insert({
-          id: paymentId,
+          payment_id: paymentId,
           user_id: user?.id,
           type: "coin",
           product_name: `코인 충전: ${coinName}`,
           amount: amount,
-          buyer_name: name.trim(),
-          buyer_phone: phone.trim(),
+          customer_name: name.trim(),
+          customer_phone: phone.trim(),
+          customer_email: user?.email || "",
           status: "PENDING",
         });
 
@@ -180,7 +181,7 @@ export default function PointsPage() {
         await supabase
           .from("orders")
           .update({ status: "FAILED" })
-          .eq("id", paymentId);
+          .eq("payment_id", paymentId);
         alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
         return;
       }
@@ -248,13 +249,14 @@ export default function PointsPage() {
       const { error: dbError } = await supabase
         .from("orders")
         .insert({
-          id: paymentId,
+          payment_id: paymentId,
           user_id: session.user.id,
           type: "membership",
           product_name: planName,
           amount: price,
-          buyer_name: name.trim(),
-          buyer_phone: phone.trim(),
+          customer_name: name.trim(),
+          customer_phone: phone.trim(),
+          customer_email: session.user.email || "",
           status: "PENDING",
         });
 
@@ -287,7 +289,7 @@ export default function PointsPage() {
         await supabase
           .from("orders")
           .update({ status: "FAILED" })
-          .eq("id", paymentId);
+          .eq("payment_id", paymentId);
         alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
         return;
       }
