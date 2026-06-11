@@ -299,6 +299,13 @@ export default function EpisodePage() {
   const [points, setPointsState] = useState(0);
   const [autoNextEpisode, setAutoNextEpisode] = useState(true);
 
+  const [watchedEpisode, setWatchedEpisode] = useState<string | null>(null);
+
+  const watchedEpisodeNum = useMemo(() => {
+    if (!watchedEpisode) return 0;
+    return parseInt(String(watchedEpisode).split("-")[0], 10) || 0;
+  }, [watchedEpisode]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem("autoNextEpisode");
@@ -307,6 +314,20 @@ export default function EpisodePage() {
       }
     } catch (e) {}
   }, []);
+
+  useEffect(() => {
+    if (!workId) return;
+    try {
+      const progressRaw = localStorage.getItem("workProgress");
+      const progress = progressRaw ? JSON.parse(progressRaw) : {};
+      const lastEp = progress[workId];
+      if (lastEp) {
+        setWatchedEpisode(String(lastEp));
+      } else {
+        setWatchedEpisode(null);
+      }
+    } catch (e) {}
+  }, [workId]);
 
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const hasAutoUnlockedRef = useRef<string | null>(null);
@@ -641,6 +662,7 @@ export default function EpisodePage() {
       const progress = progressRaw ? JSON.parse(progressRaw) : {};
       progress[workId] = episodeKey;
       localStorage.setItem("workProgress", JSON.stringify(progress));
+      setWatchedEpisode(String(episodeKey));
     } catch { }
   }, [workId, episodeKey, part]);
 
@@ -1685,6 +1707,9 @@ export default function EpisodePage() {
         .sf-episode-cell.locked {
           color: rgba(255,255,255,0.34);
         }
+        .sf-episode-cell.watched {
+          color: #ffffff;
+        }
         .sf-episode-lock-icon {
           position: absolute;
           top: 4px;
@@ -2440,12 +2465,17 @@ export default function EpisodePage() {
                     <div className="sf-episode-grid">
                       {episodes.slice(activeRangeIndex * 30, (activeRangeIndex + 1) * 30).map((ep) => {
                         const isCurrent = String(ep.id) === String(episodeKey);
-                        const isLocked = isSubscribed ? false : (isCurrent ? locked : ep.locked);
+                        const epNum = parseInt(String(ep.id).split("-")[0], 10) || 0;
+                        const isWatched = watchedEpisodeNum > 0 && epNum <= watchedEpisodeNum;
+
+                        const isLocked = isSubscribed
+                          ? false
+                          : (isCurrent ? locked : (isWatched ? false : ep.locked));
 
                         return (
                           <button
                             key={ep.id}
-                            className={`sf-episode-cell ${isCurrent ? "active" : ""} ${isLocked ? "locked" : ""}`}
+                            className={`sf-episode-cell ${isCurrent ? "active" : (isWatched ? "watched" : "")} ${isLocked ? "locked" : ""}`}
                             onClick={() => {
                               setShowPartList(false);
                               router.replace(`/episode/${workId}/${ep.id}?part=1&autoplay=1`);
