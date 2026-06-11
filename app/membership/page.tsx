@@ -109,6 +109,46 @@ export default function MembershipPage() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "KAKAOPAY">("CARD");
+  const [allAgreed, setAllAgreed] = useState(false);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [financialAgreed, setFinancialAgreed] = useState(false);
+  const [purchaseAgreed, setPurchaseAgreed] = useState(false);
+  const [showDetailSection, setShowDetailSection] = useState<"privacy" | "financial" | "purchase" | null>(null);
+
+  const handleAgreeAllChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setAllAgreed(checked);
+    setPrivacyAgreed(checked);
+    setFinancialAgreed(checked);
+    setPurchaseAgreed(checked);
+  };
+
+  const handleIndividualAgree = (type: "privacy" | "financial" | "purchase", checked: boolean) => {
+    let p = privacyAgreed;
+    let f = financialAgreed;
+    let u = purchaseAgreed;
+
+    if (type === "privacy") {
+      setPrivacyAgreed(checked);
+      p = checked;
+    } else if (type === "financial") {
+      setFinancialAgreed(checked);
+      f = checked;
+    } else if (type === "purchase") {
+      setPurchaseAgreed(checked);
+      u = checked;
+    }
+
+    setAllAgreed(p && f && u);
+  };
+
+  const handleToggleDetail = (type: "privacy" | "financial" | "purchase") => {
+    if (showDetailSection === type) {
+      setShowDetailSection(null);
+    } else {
+      setShowDetailSection(type);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -194,6 +234,11 @@ export default function MembershipPage() {
         return;
       }
 
+      setAllAgreed(false);
+      setPrivacyAgreed(false);
+      setFinancialAgreed(false);
+      setPurchaseAgreed(false);
+      setShowDetailSection(null);
       setShowBuyerModal(true);
     } catch (e: any) {
       console.error(e);
@@ -856,6 +901,98 @@ export default function MembershipPage() {
         .buyer-input-group input:focus {
           border-color: #ffd700;
         }
+        .buyer-consent-group {
+          margin-top: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          padding-top: 12px;
+        }
+        .buyer-consent-all-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13.5px;
+          color: #ffd700;
+          cursor: pointer;
+          font-weight: 800;
+          user-select: none;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          padding-bottom: 8px;
+          margin-bottom: 4px;
+        }
+        .buyer-consent-all-label input {
+          width: 17px;
+          height: 17px;
+          accent-color: #ffd700;
+          cursor: pointer;
+        }
+        .buyer-consent-item-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .buyer-consent-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12.5px;
+          color: rgba(255, 255, 255, 0.9);
+          cursor: pointer;
+          font-weight: 600;
+          user-select: none;
+        }
+        .buyer-consent-label input {
+          width: 15px;
+          height: 15px;
+          accent-color: #ffd700;
+          cursor: pointer;
+        }
+        .consent-detail-btn {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 11.5px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          text-decoration: underline;
+        }
+        .consent-detail-btn:hover {
+          color: #ffd700;
+        }
+        .consent-detail-box {
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 8px;
+          padding: 10px;
+          font-size: 11.5px;
+          line-height: 1.5;
+          color: rgba(255, 255, 255, 0.75);
+          max-height: 120px;
+          overflow-y: auto;
+          text-align: left;
+        }
+        .consent-detail-box strong {
+          color: #ffffff;
+          display: block;
+          margin-bottom: 4px;
+        }
+        .consent-detail-box ul {
+          margin: 0;
+          padding-left: 14px;
+        }
+        .consent-detail-box li {
+          margin-bottom: 4px;
+        }
+        .buyer-modal-btn.submit.disabled {
+          background: rgba(255, 255, 255, 0.1) !important;
+          color: rgba(255, 255, 255, 0.3) !important;
+          cursor: not-allowed;
+          font-weight: 700;
+        }
         .pay-method-selector {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -1176,11 +1313,117 @@ export default function MembershipPage() {
               </div>
             </div>
 
+            <div className="buyer-consent-group">
+              <label className="buyer-consent-all-label">
+                <input 
+                  type="checkbox" 
+                  checked={allAgreed} 
+                  onChange={handleAgreeAllChange} 
+                />
+                <span>아래 결제 약관에 모두 동의합니다. (전체동의)</span>
+              </label>
+
+              <div className="buyer-consent-item-row">
+                <label className="buyer-consent-label">
+                  <input 
+                    type="checkbox" 
+                    checked={privacyAgreed} 
+                    onChange={(e) => handleIndividualAgree("privacy", e.target.checked)} 
+                  />
+                  <span>[필수] 개인정보 수집 및 이용 동의</span>
+                </label>
+                <button 
+                  type="button" 
+                  className="consent-detail-btn"
+                  onClick={() => handleToggleDetail("privacy")}
+                >
+                  {showDetailSection === "privacy" ? "닫기 ▲" : "보기 ▼"}
+                </button>
+              </div>
+
+              <div className="buyer-consent-item-row">
+                <label className="buyer-consent-label">
+                  <input 
+                    type="checkbox" 
+                    checked={financialAgreed} 
+                    onChange={(e) => handleIndividualAgree("financial", e.target.checked)} 
+                  />
+                  <span>[필수] 전자금융거래 이용약관 동의</span>
+                </label>
+                <button 
+                  type="button" 
+                  className="consent-detail-btn"
+                  onClick={() => handleToggleDetail("financial")}
+                >
+                  {showDetailSection === "financial" ? "닫기 ▲" : "보기 ▼"}
+                </button>
+              </div>
+
+              <div className="buyer-consent-item-row">
+                <label className="buyer-consent-label">
+                  <input 
+                    type="checkbox" 
+                    checked={purchaseAgreed} 
+                    onChange={(e) => handleIndividualAgree("purchase", e.target.checked)} 
+                  />
+                  <span>[필수] 구매 조건 확인 및 결제 진행 동의</span>
+                </label>
+                <button 
+                  type="button" 
+                  className="consent-detail-btn"
+                  onClick={() => handleToggleDetail("purchase")}
+                >
+                  {showDetailSection === "purchase" ? "닫기 ▲" : "보기 ▼"}
+                </button>
+              </div>
+
+              {showDetailSection && (
+                <div className="consent-detail-box">
+                  {showDetailSection === "privacy" && (
+                    <>
+                      <strong>개인정보 수집 및 이용 안내 (필수)</strong>
+                      <ul>
+                        <li><strong>수집 및 이용 목적:</strong> 상품 구매 및 결제 처리, 서비스 가입 정보 등록</li>
+                        <li><strong>수집 항목:</strong> 구매자 성함, 구매자 휴대폰 번호, 이메일</li>
+                        <li><strong>보유 및 이용 기간:</strong> 전자상거래등에서의 소비자보호에 관한 법률에 의거 5년간 보관 후 지체 없이 파기</li>
+                        <li>※ 본 동의를 거부할 권리가 있으나, 거부 시 상품 구매 및 결제가 불가능합니다.</li>
+                      </ul>
+                    </>
+                  )}
+                  {showDetailSection === "financial" && (
+                    <>
+                      <strong>전자금융거래 이용약관 안내 (필수)</strong>
+                      <ul>
+                        <li><strong>전자금융 서비스:</strong> 전자결제대행(PG) 서비스를 통한 안전한 거래 결제 승인 및 정산 처리</li>
+                        <li><strong>정보 제공:</strong> 거래 정보의 위변조 방지 및 안전한 한도 및 거래 관리를 위해 제공사인 포트원 및 연동된 카드사/은행/통신사에 결제 정보가 전달됩니다.</li>
+                        <li>※ 거래 안전성과 투명성 유지를 위해 필수적인 동의입니다.</li>
+                      </ul>
+                    </>
+                  )}
+                  {showDetailSection === "purchase" && (
+                    <>
+                      <strong>구매 조건 확인 및 결제 동의 (필수)</strong>
+                      <ul>
+                        <li><strong>구매 상품:</strong> {selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스"}</li>
+                        <li><strong>결제 금액:</strong> {selectedPlan === "weekly" ? "₩3,000" : "₩99,900"}</li>
+                        <li><strong>청약 철회 안내:</strong> 본 상품은 디지털 콘텐츠 상품 및 가입 즉시 효력이 개시되는 서비스이므로 결제 완료 후 중도 철회나 단순 변심으로 인한 환불이 불가능합니다.</li>
+                        <li>※ 상품 가격, 사용 기간 및 환불 규정을 확인하였으며 결제 진행에 동의합니다.</li>
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="buyer-modal-buttons">
               <button className="buyer-modal-btn cancel" onClick={() => setShowBuyerModal(false)}>
                 취소
               </button>
-              <button className="buyer-modal-btn submit" onClick={handleConfirmPayment}>
+              <button 
+                className={`buyer-modal-btn submit ${!(privacyAgreed && financialAgreed && purchaseAgreed) ? "disabled" : ""}`} 
+                onClick={(privacyAgreed && financialAgreed && purchaseAgreed) ? handleConfirmPayment : undefined}
+                disabled={!(privacyAgreed && financialAgreed && purchaseAgreed)}
+              >
                 확인 및 결제
               </button>
             </div>
