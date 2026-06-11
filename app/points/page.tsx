@@ -80,6 +80,15 @@ export default function PointsPage() {
 
 
 
+  const [showBuyerModal, setShowBuyerModal] = useState(false);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [pendingPurchase, setPendingPurchase] = useState<
+    | { type: "coin"; amount: number; coinName: string }
+    | { type: "membership"; plan: "weekly" | "annual"; planName: string; price: number }
+    | null
+  >(null);
+
   // 지갑 포인트 로드
   const loadWallet = async () => {
     try {
@@ -115,9 +124,8 @@ export default function PointsPage() {
     await loadWallet();
   };
 
-  // 코인 결제 (실제 confirm API에 매핑)
-  // ⚡ 결제 함수 시작점
-  const handlePurchaseCoin = async (amount: number, coinName: string) => {
+  // 코인 결제 실행 함수
+  const executePurchaseCoin = async (amount: number, coinName: string, name: string, phone: string) => {
     try {
       const token = await getAccessToken();
       if (!token) {
@@ -129,6 +137,26 @@ export default function PointsPage() {
       // 1. 포트원 결제창 띄우기 (심사 필수 요건)
       const paymentId = `coin-${crypto.randomUUID()}`;
 
+      // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
+      const { error: dbError } = await supabase
+        .from("orders")
+        .insert({
+          id: paymentId,
+          user_id: user?.id,
+          type: "coin",
+          product_name: `코인 충전: ${coinName}`,
+          amount: amount,
+          buyer_name: name.trim(),
+          buyer_phone: phone.trim(),
+          status: "PENDING",
+        });
+
+      if (dbError) {
+        console.error("Order creation failed in DB:", dbError);
+        alert("주문 대기 정보 등록에 실패했습니다: " + dbError.message);
+        return;
+      }
+
       const response = await requestPayment({
         storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4", // 포트원 관리자에서 확인한 ID로 교체하세요
         paymentId: paymentId,
@@ -137,14 +165,22 @@ export default function PointsPage() {
         totalAmount: amount,
         currency: "CURRENCY_KRW",
         payMethod: "CARD",
+        noticeUrls: [
+          `${window.location.origin}/api/webhook/portone`
+        ],
         customer: {
           email: user?.email || undefined,
-          phoneNumber: user?.phone || "010-0000-0000",
+          name: name.trim(),
+          phoneNumber: phone.trim(),
         },
       });
 
       // 2. 결제창에서 취소하거나 실패했을 경우
       if (!response || response.code != null) {
+        await supabase
+          .from("orders")
+          .update({ status: "FAILED" })
+          .eq("id", paymentId);
         alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
         return;
       }
@@ -172,10 +208,27 @@ export default function PointsPage() {
       alert("결제 처리 중 에러가 발생했습니다.");
     }
   };
-  // ⚡ 결제 함수 끝점
 
-  // 멤버십 가입 결제 (Weekly / Annual)
-  const handleSubscribeMembership = async (plan: "weekly" | "annual", planName: string, price: number) => {
+  // 코인 결제 시도 버튼 클릭시
+  const handlePurchaseCoin = async (amount: number, coinName: string) => {
+    const token = await getAccessToken();
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    setPendingPurchase({ type: "coin", amount, coinName });
+    setShowBuyerModal(true);
+  };
+
+  // 멤버십 가입 결제 실행 함수
+  const executeSubscribeMembership = async (
+    plan: "weekly" | "annual",
+    planName: string,
+    price: number,
+    name: string,
+    phone: string
+  ) => {
     try {
       const proceed = confirm(
         "🍵 [멤버십 서비스 가입 동의 및 안내]\n\n\"소중한 상품 가입에 감사드립니다! 본 상품은 디지털 콘텐츠 정기 멤버십 서비스 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 결정 부탁드립니다.\"\n\n동의하고 가입을 진행하시겠습니까?"
@@ -191,6 +244,26 @@ export default function PointsPage() {
 
       const paymentId = `membership-${crypto.randomUUID()}`;
 
+      // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
+      const { error: dbError } = await supabase
+        .from("orders")
+        .insert({
+          id: paymentId,
+          user_id: session.user.id,
+          type: "membership",
+          product_name: planName,
+          amount: price,
+          buyer_name: name.trim(),
+          buyer_phone: phone.trim(),
+          status: "PENDING",
+        });
+
+      if (dbError) {
+        console.error("Order creation failed in DB:", dbError);
+        alert("주문 대기 정보 등록에 실패했습니다: " + dbError.message);
+        return;
+      }
+
       // 1. 포트원 결제창 호출 (실제 결제창 연동)
       const response = await requestPayment({
         storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4",
@@ -200,13 +273,21 @@ export default function PointsPage() {
         totalAmount: price,
         currency: "CURRENCY_KRW",
         payMethod: "CARD",
+        noticeUrls: [
+          `${window.location.origin}/api/webhook/portone`
+        ],
         customer: {
           email: session.user.email || undefined,
-          phoneNumber: session.user.phone || "010-0000-0000",
+          name: name.trim(),
+          phoneNumber: phone.trim(),
         },
       });
 
       if (!response || response.code != null) {
+        await supabase
+          .from("orders")
+          .update({ status: "FAILED" })
+          .eq("id", paymentId);
         alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
         return;
       }
@@ -231,6 +312,43 @@ export default function PointsPage() {
       console.error(e);
       alert("구독 처리 중 오류가 발생했습니다: " + e.message);
     }
+  };
+
+  // 멤버십 가입 결제 버튼 클릭시
+  const handleSubscribeMembership = async (plan: "weekly" | "annual", planName: string, price: number) => {
+    const token = await getAccessToken();
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    setPendingPurchase({ type: "membership", plan, planName, price });
+    setShowBuyerModal(true);
+  };
+
+  // 정보 입력 모달 승인 핸들러
+  const handleConfirmPayment = async () => {
+    if (!buyerName.trim()) {
+      alert("구매자 이름을 입력해 주세요.");
+      return;
+    }
+    const rawPhone = buyerPhone.replace(/[^0-9]/g, "");
+    if (rawPhone.length < 10) {
+      alert("올바른 휴대폰 번호를 입력해 주세요.");
+      return;
+    }
+
+    setShowBuyerModal(false);
+
+    if (!pendingPurchase) return;
+
+    if (pendingPurchase.type === "coin") {
+      await executePurchaseCoin(pendingPurchase.amount, pendingPurchase.coinName, buyerName, buyerPhone);
+    } else if (pendingPurchase.type === "membership") {
+      await executeSubscribeMembership(pendingPurchase.plan, pendingPurchase.planName, pendingPurchase.price, buyerName, buyerPhone);
+    }
+
+    setPendingPurchase(null);
   };
 
   if (loading) {
@@ -555,6 +673,93 @@ export default function PointsPage() {
           16% { left: 120%; }
           100% { left: 120%; }
         }
+
+        /* 구매자 정보 입력 모달 스타일 */
+        .buyer-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.85);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          z-index: 999999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .buyer-modal-content {
+          width: 100%;
+          max-width: 380px;
+          background: #16161e;
+          border: 1px solid rgba(255, 215, 120, 0.2);
+          border-radius: 20px;
+          padding: 24px;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .buyer-modal-content h3 {
+          margin: 0;
+          font-size: 19px;
+          font-weight: 900;
+          color: #ffffff;
+          text-align: center;
+        }
+        .buyer-modal-content p {
+          margin: 0;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.6);
+          text-align: center;
+          line-height: 1.5;
+        }
+        .buyer-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .buyer-input-group label {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.8);
+          text-align: left;
+        }
+        .buyer-input-group input {
+          padding: 12px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          background: rgba(255, 255, 255, 0.05);
+          color: #ffffff;
+          font-size: 14px;
+          outline: none;
+        }
+        .buyer-input-group input:focus {
+          border-color: #ffd700;
+        }
+        .buyer-modal-buttons {
+          display: flex;
+          gap: 10px;
+          margin-top: 8px;
+        }
+        .buyer-modal-btn {
+          flex: 1;
+          height: 44px;
+          border-radius: 10px;
+          font-size: 14.5px;
+          font-weight: 800;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s;
+        }
+        .buyer-modal-btn.cancel {
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.7);
+        }
+        .buyer-modal-btn.submit {
+          background: linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%);
+          color: #2b1d00;
+          font-weight: 900;
+        }
       `}</style>
 
       <div className="store-container">
@@ -715,6 +920,45 @@ export default function PointsPage() {
         </div>
 
       </div>
+
+      {/* 구매자 정보 수입 모달 */}
+      {showBuyerModal && (
+        <div className="buyer-modal-overlay">
+          <div className="buyer-modal-content">
+            <h3>구매자 정보 입력</h3>
+            <p>안전한 결제 진행을 위해 구매 정보를 입력해 주세요.</p>
+            
+            <div className="buyer-input-group">
+              <label>구매자 성함</label>
+              <input 
+                type="text" 
+                placeholder="예: 홍길동" 
+                value={buyerName} 
+                onChange={(e) => setBuyerName(e.target.value)} 
+              />
+            </div>
+
+            <div className="buyer-input-group">
+              <label>구매자 휴대폰 번호</label>
+              <input 
+                type="tel" 
+                placeholder="예: 010-1234-5678" 
+                value={buyerPhone} 
+                onChange={(e) => setBuyerPhone(e.target.value)} 
+              />
+            </div>
+
+            <div className="buyer-modal-buttons">
+              <button className="buyer-modal-btn cancel" onClick={() => setShowBuyerModal(false)}>
+                취소
+              </button>
+              <button className="buyer-modal-btn submit" onClick={handleConfirmPayment}>
+                확인 및 결제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
