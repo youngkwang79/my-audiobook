@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     } else { // coin purchase
       const amountVal = Number(order.amount);
       let addPoints = 0;
-      if (amountVal === 990) {
+      if (amountVal === 1090) {
         addPoints = 700; // 100 + 600
       } else if (amountVal === 10900) {
         addPoints = 1200; // 700 + 500

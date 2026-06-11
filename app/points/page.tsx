@@ -778,13 +778,13 @@ export default function PointsPage() {
         <div>
           <h2 className="section-label">코인</h2>
           <div className="coin-grid">
-            <button className="coin-card gold-shine-card" onClick={() => handlePurchaseCoin(990, "100 + 600 코인")}>
+            <button className="coin-card gold-shine-card" onClick={() => handlePurchaseCoin(1090, "100 + 600 코인")}>
               <div className="coin-amount-row">
                 <span className="coin-yellow-icon">P</span>
                 <span className="coin-text-main">100</span>
                 <span className="coin-text-bonus">+ 600</span>
               </div>
-              <p className="coin-price">₩990</p>
+              <p className="coin-price">₩1,090</p>
             </button>
 
             <button className="coin-card" onClick={() => handlePurchaseCoin(10900, "700 + 500 코인")}>

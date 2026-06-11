@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
     // 금액에 따른 지급 포인트 매핑 (현 가격 정책 적용)
     let addPoints = 0;
-    if (amount === 990) {
+    if (amount === 1090) {
       addPoints = 700; // 100 + 600
     } else if (amount === 10900) {
       addPoints = 1200; // 700 + 500
