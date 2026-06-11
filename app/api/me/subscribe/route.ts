@@ -70,8 +70,8 @@ export async function POST(req: Request) {
         currency: "KRW",
         customer: {
           email: order.customer_email || undefined,
-          fullName: order.customer_name,
-          phoneNumber: order.customer_phone,
+          name: order.customer_name,
+          phoneNumber: order.customer_phone ? order.customer_phone.replace(/[^0-9]/g, "") : undefined,
         },
         customData: JSON.stringify({
           userId: user.id,
