@@ -261,7 +261,7 @@ export default function MembershipPage() {
         ],
         customer: {
           email: session.user.email || undefined,
-          name: buyerName.trim(),
+          fullName: buyerName.trim(),
           phoneNumber: buyerPhone.trim(),
         },
       });

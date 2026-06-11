@@ -170,7 +170,7 @@ export default function PointsPage() {
         ],
         customer: {
           email: user?.email || undefined,
-          name: name.trim(),
+          fullName: name.trim(),
           phoneNumber: phone.trim(),
         },
       });
@@ -278,7 +278,7 @@ export default function PointsPage() {
         ],
         customer: {
           email: session.user.email || undefined,
-          name: name.trim(),
+          fullName: name.trim(),
           phoneNumber: phone.trim(),
         },
       });
