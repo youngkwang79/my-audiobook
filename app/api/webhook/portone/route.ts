@@ -110,11 +110,11 @@ export async function POST(req: Request) {
     }
 
     // 7.5) 사용자 크로스 체크: customData.userId와 DB의 user_id 일치 확인
-    const customDataStr = paymentData?.customData;
+    const customDataRaw = paymentData?.customData;
     let customData = null;
     try {
-      if (customDataStr) {
-        customData = JSON.parse(customDataStr);
+      if (customDataRaw) {
+        customData = typeof customDataRaw === "string" ? JSON.parse(customDataRaw) : customDataRaw;
       }
     } catch (err) {
       console.error("Failed to parse customData:", err);

@@ -73,9 +73,9 @@ export async function POST(req: Request) {
           name: order.customer_name,
           phoneNumber: order.customer_phone ? order.customer_phone.replace(/[^0-9]/g, "") : undefined,
         },
-        customData: JSON.stringify({
+        customData: {
           userId: user.id,
-        }),
+        },
       }),
     });
 
