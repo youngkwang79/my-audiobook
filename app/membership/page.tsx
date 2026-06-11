@@ -1,6 +1,6 @@
 "use client";
 
-import { requestPayment } from "@portone/browser-sdk/v2";
+import { requestPayment, requestIssueBillingKey } from "@portone/browser-sdk/v2";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { works } from "@/app/data/works";
@@ -108,6 +108,7 @@ export default function MembershipPage() {
   const [showBuyerModal, setShowBuyerModal] = useState(false);
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "KAKAOPAY">("CARD");
 
   useEffect(() => {
     try {
@@ -247,46 +248,50 @@ export default function MembershipPage() {
         return;
       }
 
-      // 1. 포트원 결제창 호출 (심사 필수)
-      const response = await requestPayment({
-        storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4", // ⚠️ 반드시 포트원 테스트 상점 ID로 교체하세요
-        paymentId: paymentId,
-        channelKey: "channel-key-10ae1c88-a130-4f80-82b3-dd268f9b4ae4",
-        orderName: `멤버십 상품 구독: ${planName}`,
-        totalAmount: price,
-        currency: "CURRENCY_KRW",
-        payMethod: "CARD",
-        noticeUrls: [
-          `${window.location.origin}/api/webhook/portone`
-        ],
+      const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
+      let channelKey = "channel-key-6d5c990f-c644-474a-8137-460681d7d4aa";
+      let billingKeyMethod = "CARD";
+      let easyPay = undefined;
+
+      if (paymentMethod === "KAKAOPAY") {
+        channelKey = "channel-key-c63cece9-db7e-4971-bf31-216c32de0ed3";
+        billingKeyMethod = "EASY_PAY";
+        easyPay = { easyPayProvider: "KAKAOPAY" };
+      }
+
+      // 1. 포트원 빌링키 발급 호출
+      const response = await requestIssueBillingKey({
+        storeId,
+        channelKey,
+        billingKeyMethod,
+        issueId: paymentId,
+        issueName: `멤버십 정기결제: ${planName}`,
         customer: {
           email: session.user.email || undefined,
           fullName: buyerName.trim(),
           phoneNumber: buyerPhone.trim(),
         },
-        customData: {
-          userId: session.user.id,
-        },
+        easyPay,
       });
 
-      if (!response || response.code != null) {
+      if (!response || response.code != null || !response.billingKey) {
         // Update order status to FAILED in case of cancel/failure
         await supabase
           .from("orders")
           .update({ status: "FAILED" })
           .eq("payment_id", paymentId);
-        alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
+        alert(`빌링키 발급이 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
         return;
       }
 
-      // 2. 결제 성공 후 멤버십 활성화 API 호출
+      // 2. 빌링키 발급 성공 후 백엔드에 결제 승인 요청 및 멤버십 활성화 API 호출
       const res = await fetch("/api/me/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan: selectedPlan, paymentId }),
+        body: JSON.stringify({ plan: selectedPlan, paymentId, billingKey: response.billingKey }),
       });
 
       const data = await res.json();
@@ -851,6 +856,36 @@ export default function MembershipPage() {
         .buyer-input-group input:focus {
           border-color: #ffd700;
         }
+        .pay-method-selector {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          margin-top: 4px;
+        }
+        .pay-method-btn {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 10px;
+          color: #ffffff;
+          padding: 10px 4px;
+          font-size: 12.5px;
+          font-weight: 750;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+        }
+        .pay-method-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.25);
+        }
+        .pay-method-btn.active {
+          background: rgba(255, 215, 120, 0.1);
+          border-color: #ffd700;
+          color: #ffd700;
+        }
         .buyer-modal-buttons {
           display: flex;
           gap: 10px;
@@ -1119,6 +1154,26 @@ export default function MembershipPage() {
                 value={buyerPhone} 
                 onChange={(e) => setBuyerPhone(e.target.value)} 
               />
+            </div>
+
+            <div className="buyer-input-group">
+              <label>결제 수단</label>
+              <div className="pay-method-selector">
+                <button
+                  type="button"
+                  className={`pay-method-btn ${paymentMethod === "CARD" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("CARD")}
+                >
+                  💳 신용카드
+                </button>
+                <button
+                  type="button"
+                  className={`pay-method-btn ${paymentMethod === "KAKAOPAY" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("KAKAOPAY")}
+                >
+                  🟡 카카오페이
+                </button>
+              </div>
             </div>
 
             <div className="buyer-modal-buttons">

@@ -69,25 +69,11 @@ export default function PointsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [currentPoints, setCurrentPoints] = useState(0);
-  const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const plan = localStorage.getItem("membership");
-      if (plan) setSubscribedPlan(plan);
-    } catch (e) { }
-  }, []);
-
-
-
   const [showBuyerModal, setShowBuyerModal] = useState(false);
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
-  const [pendingPurchase, setPendingPurchase] = useState<
-    | { type: "coin"; amount: number; coinName: string }
-    | { type: "membership"; plan: "weekly" | "annual"; planName: string; price: number }
-    | null
-  >(null);
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "KAKAOPAY" | "DANAL">("CARD");
+  const [pendingPurchase, setPendingPurchase] = useState<{ type: "coin"; amount: number; coinName: string } | null>(null);
 
   // 지갑 포인트 로드
   const loadWallet = async () => {
@@ -125,6 +111,7 @@ export default function PointsPage() {
   };
 
   // 코인 결제 실행 함수
+  // 코인 결제 실행 함수
   const executePurchaseCoin = async (amount: number, coinName: string, name: string, phone: string) => {
     try {
       const token = await getAccessToken();
@@ -157,14 +144,29 @@ export default function PointsPage() {
         return;
       }
 
+      const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
+      let channelKey = "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
+      let payMethod = "CARD";
+      let easyPay = undefined;
+
+      if (paymentMethod === "KAKAOPAY") {
+        channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
+        payMethod = "EASY_PAY";
+        easyPay = { easyPayProvider: "KAKAOPAY" };
+      } else if (paymentMethod === "DANAL") {
+        channelKey = "channel-key-0551875c-6e36-430b-891b-91025c95afe1";
+        payMethod = "MOBILE";
+      }
+
       const response = await requestPayment({
-        storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4", // 포트원 관리자에서 확인한 ID로 교체하세요
+        storeId,
         paymentId: paymentId,
-        channelKey: "channel-key-10ae1c88-a130-4f80-82b3-dd268f9b4ae4",
+        channelKey,
         orderName: `코인 충전: ${coinName}`,
         totalAmount: amount,
         currency: "CURRENCY_KRW",
-        payMethod: "CARD",
+        payMethod,
+        easyPay,
         noticeUrls: [
           `${window.location.origin}/api/webhook/portone`
         ],
@@ -224,114 +226,6 @@ export default function PointsPage() {
     setShowBuyerModal(true);
   };
 
-  // 멤버십 가입 결제 실행 함수
-  const executeSubscribeMembership = async (
-    plan: "weekly" | "annual",
-    planName: string,
-    price: number,
-    name: string,
-    phone: string
-  ) => {
-    try {
-      const proceed = confirm(
-        "🍵 [멤버십 서비스 가입 동의 및 안내]\n\n\"소중한 상품 가입에 감사드립니다! 본 상품은 디지털 콘텐츠 정기 멤버십 서비스 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 결정 부탁드립니다.\"\n\n동의하고 가입을 진행하시겠습니까?"
-      );
-      if (!proceed) return;
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        alert("로그인이 필요합니다.");
-        router.push("/login");
-        return;
-      }
-
-      const paymentId = `m-${crypto.randomUUID()}`;
-
-      // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
-      const { error: dbError } = await supabase
-        .from("orders")
-        .insert({
-          payment_id: paymentId,
-          user_id: session.user.id,
-          product_name: planName,
-          amount: price,
-          customer_name: name.trim(),
-          customer_phone: phone.trim(),
-          customer_email: session.user.email || "",
-          status: "PENDING",
-        });
-
-      if (dbError) {
-        console.error("Order creation failed in DB:", dbError);
-        alert("주문 대기 정보 등록에 실패했습니다: " + dbError.message);
-        return;
-      }
-
-      // 1. 포트원 결제창 호출 (실제 결제창 연동)
-      const response = await requestPayment({
-        storeId: "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4",
-        paymentId: paymentId,
-        channelKey: "channel-key-10ae1c88-a130-4f80-82b3-dd268f9b4ae4",
-        orderName: `멤버십 상품 구독: ${planName}`,
-        totalAmount: price,
-        currency: "CURRENCY_KRW",
-        payMethod: "CARD",
-        noticeUrls: [
-          `${window.location.origin}/api/webhook/portone`
-        ],
-        customer: {
-          email: session.user.email || undefined,
-          fullName: name.trim(),
-          phoneNumber: phone.trim(),
-        },
-        customData: {
-          userId: session.user.id,
-        },
-      });
-
-      if (!response || response.code != null) {
-        await supabase
-          .from("orders")
-          .update({ status: "FAILED" })
-          .eq("payment_id", paymentId);
-        alert(`결제가 취소되었거나 실패했습니다: ${response?.message ?? "응답 없음"}`);
-        return;
-      }
-
-      // 2. 결제 성공 후 멤버십 활성화 API 호출
-      const res = await fetch("/api/me/subscribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ plan, paymentId }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "구독 처리 실패");
-
-      localStorage.setItem("membership", plan);
-      alert(`${planName} 가입이 완료되었습니다!`);
-      router.push("/");
-    } catch (e: any) {
-      console.error(e);
-      alert("구독 처리 중 오류가 발생했습니다: " + e.message);
-    }
-  };
-
-  // 멤버십 가입 결제 버튼 클릭시
-  const handleSubscribeMembership = async (plan: "weekly" | "annual", planName: string, price: number) => {
-    const token = await getAccessToken();
-    if (!token) {
-      alert("로그인이 필요합니다.");
-      router.push("/login");
-      return;
-    }
-    setPendingPurchase({ type: "membership", plan, planName, price });
-    setShowBuyerModal(true);
-  };
-
   // 정보 입력 모달 승인 핸들러
   const handleConfirmPayment = async () => {
     if (!buyerName.trim()) {
@@ -350,8 +244,6 @@ export default function PointsPage() {
 
     if (pendingPurchase.type === "coin") {
       await executePurchaseCoin(pendingPurchase.amount, pendingPurchase.coinName, buyerName, buyerPhone);
-    } else if (pendingPurchase.type === "membership") {
-      await executeSubscribeMembership(pendingPurchase.plan, pendingPurchase.planName, pendingPurchase.price, buyerName, buyerPhone);
     }
 
     setPendingPurchase(null);
@@ -742,6 +634,36 @@ export default function PointsPage() {
         .buyer-input-group input:focus {
           border-color: #ffd700;
         }
+        .pay-method-selector {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-top: 4px;
+        }
+        .pay-method-btn {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 10px;
+          color: #ffffff;
+          padding: 10px 4px;
+          font-size: 12.5px;
+          font-weight: 750;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+        }
+        .pay-method-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.25);
+        }
+        .pay-method-btn.active {
+          background: rgba(255, 215, 120, 0.1);
+          border-color: #ffd700;
+          color: #ffd700;
+        }
         .buyer-modal-buttons {
           display: flex;
           gap: 10px;
@@ -822,89 +744,7 @@ export default function PointsPage() {
           </div>
         </div>
 
-        {/* 2. 멤버십 섹션 */}
-        <div>
-          <h2 className="section-label">멤버십 상품</h2>
-          <div className="membership-section-wrap">
 
-            {/* 주간 멤버십 */}
-            <div
-              className="membership-vip-card weekly-card gold-shine-card"
-              onClick={() => handleSubscribeMembership("weekly", "주간 멤버십 서비스: 주간 무제한 이용권", 3000)}
-            >
-              <div className="membership-card-top">
-                <span className="membership-card-label">
-                  {subscribedPlan === "weekly" ? "주간 무제한 이용권 사용중💖" : "주간 멤버십 서비스 (주간 무제한 이용권)"}
-                </span>
-                <div className="membership-card-price-row">
-                  <span className="membership-card-price">₩3,000</span>
-                  <span className="membership-card-period">/주</span>
-                </div>
-                <p className="membership-card-caption">자동 갱신 · 언제든지 해지 가능</p>
-              </div>
-
-              {/* 혜택 2x2 */}
-              <div className="membership-benefits-grid">
-                <div className="benefit-card-item">
-                  <PlayIcon />
-                  <span>완결작 무료 청취</span>
-                </div>
-                <div className="benefit-card-item">
-                  <DownloadIcon />
-                  <span>다운로드</span>
-                </div>
-                <div className="benefit-card-item">
-                  <ThunderIcon />
-                  <span>창작 동력 급상승</span>
-                </div>
-                <div className="benefit-card-item">
-                  <SparklesIcon />
-                  <span>전용 콘텐츠 청취</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 연간 멤버십 */}
-            <div
-              className="membership-vip-card annual-card"
-              onClick={() => handleSubscribeMembership("annual", "연간 멤버십 서비스: 연간 무제한 이용권", 99900)}
-            >
-              <span className="membership-badge-red">기간 한정 할인</span>
-
-              <div className="membership-card-top">
-                <span className="membership-card-label annual-label">
-                  {subscribedPlan === "annual" || subscribedPlan === "yearly" ? "연간 무제한 이용권 사용중💖" : "연간 멤버십 서비스 (연간 무제한 이용권)"}
-                </span>
-                <div className="membership-card-price-row">
-                  <span className="membership-card-price">₩99,900</span>
-                  <span className="membership-card-period">/년</span>
-                </div>
-                <p className="membership-card-caption">자동 갱신 · 언제든지 해지 가능</p>
-              </div>
-
-              {/* 혜택 2x2 */}
-              <div className="membership-benefits-grid">
-                <div className="benefit-card-item">
-                  <PlayIcon />
-                  <span>완결작 무료 청취</span>
-                </div>
-                <div className="benefit-card-item">
-                  <DownloadIcon />
-                  <span>다운로드</span>
-                </div>
-                <div className="benefit-card-item">
-                  <ThunderIcon />
-                  <span>창작 동력 급상승</span>
-                </div>
-                <div className="benefit-card-item">
-                  <SparklesIcon />
-                  <span>전용 콘텐츠 청취</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
 
         {/* 3. 충전 안내 */}
         <div className="info-section">
@@ -952,6 +792,33 @@ export default function PointsPage() {
                 value={buyerPhone} 
                 onChange={(e) => setBuyerPhone(e.target.value)} 
               />
+            </div>
+
+            <div className="buyer-input-group">
+              <label>결제 수단</label>
+              <div className="pay-method-selector">
+                <button
+                  type="button"
+                  className={`pay-method-btn ${paymentMethod === "CARD" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("CARD")}
+                >
+                  💳 신용카드
+                </button>
+                <button
+                  type="button"
+                  className={`pay-method-btn ${paymentMethod === "KAKAOPAY" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("KAKAOPAY")}
+                >
+                  🟡 카카오페이
+                </button>
+                <button
+                  type="button"
+                  className={`pay-method-btn ${paymentMethod === "DANAL" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("DANAL")}
+                >
+                  📱 휴대폰결제
+                </button>
+              </div>
             </div>
 
             <div className="buyer-modal-buttons">
