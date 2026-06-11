@@ -116,7 +116,8 @@ export async function POST(req: Request) {
     }
 
     // 10) Grant subscription/coins
-    if (order.type === "membership") {
+    const isMembership = order.payment_id && order.payment_id.startsWith("membership-");
+    if (isMembership) {
       const plan = order.product_name.includes("주간") ? "weekly" : "annual";
       const daysToAdd = plan === "weekly" ? 7 : 365;
       const expiresAt = new Date();
@@ -133,7 +134,7 @@ export async function POST(req: Request) {
       if (upsertError) {
         throw new Error(`Failed to update subscription: ${upsertError.message}`);
       }
-    } else if (order.type === "coin") {
+    } else { // coin purchase
       const amountVal = Number(order.amount);
       let addPoints = 0;
       if (amountVal === 990) {

@@ -143,7 +143,6 @@ export default function PointsPage() {
         .insert({
           payment_id: paymentId,
           user_id: user?.id,
-          type: "coin",
           product_name: `코인 충전: ${coinName}`,
           amount: amount,
           customer_name: name.trim(),
@@ -251,7 +250,6 @@ export default function PointsPage() {
         .insert({
           payment_id: paymentId,
           user_id: session.user.id,
-          type: "membership",
           product_name: planName,
           amount: price,
           customer_name: name.trim(),

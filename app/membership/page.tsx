@@ -233,7 +233,6 @@ export default function MembershipPage() {
         .insert({
           payment_id: paymentId,
           user_id: session.user.id,
-          type: "membership",
           product_name: planName,
           amount: price,
           customer_name: buyerName.trim(),
