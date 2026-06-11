@@ -1327,7 +1327,7 @@ export default function EpisodePage() {
           left: 20px;
           right: 20px;
           top: 30%;
-          bottom: 220px;
+          bottom: calc(220px + env(safe-area-inset-bottom));
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -1353,7 +1353,7 @@ export default function EpisodePage() {
         /* 우측 액션 바 */
         .sf-right-bar {
           position: absolute;
-          bottom: 190px;
+          bottom: calc(190px + env(safe-area-inset-bottom));
           right: 12px;
           display: flex;
           flex-direction: column;
@@ -1402,7 +1402,7 @@ export default function EpisodePage() {
         /* 좌측 하단 메타 정보 */
         .sf-meta-left {
           position: absolute;
-          bottom: 125px;
+          bottom: calc(125px + env(safe-area-inset-bottom));
           left: 16px;
           right: 76px;
           z-index: 10;
@@ -1452,7 +1452,7 @@ export default function EpisodePage() {
         /* 하단 타임라인 */
         .sf-timeline {
           position: absolute;
-          bottom: 82px;
+          bottom: calc(82px + env(safe-area-inset-bottom));
           left: 16px;
           right: 16px;
           display: flex;
