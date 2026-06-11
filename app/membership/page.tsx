@@ -225,7 +225,7 @@ export default function MembershipPage() {
       // 선택된 플랜에 따른 가격 및 이름 설정
       const price = selectedPlan === "weekly" ? 3000 : 99900;
       const planName = selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스";
-      const paymentId = `membership-${crypto.randomUUID()}`;
+      const paymentId = `m-${crypto.randomUUID()}`;
 
       // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
       const { error: dbError } = await supabase

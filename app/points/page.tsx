@@ -135,7 +135,7 @@ export default function PointsPage() {
       }
 
       // 1. 포트원 결제창 띄우기 (심사 필수 요건)
-      const paymentId = `coin-${crypto.randomUUID()}`;
+      const paymentId = `c-${crypto.randomUUID()}`;
 
       // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
       const { error: dbError } = await supabase
@@ -242,7 +242,7 @@ export default function PointsPage() {
         return;
       }
 
-      const paymentId = `membership-${crypto.randomUUID()}`;
+      const paymentId = `m-${crypto.randomUUID()}`;
 
       // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
       const { error: dbError } = await supabase
