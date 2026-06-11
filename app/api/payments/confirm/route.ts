@@ -27,14 +27,35 @@ async function getUserSupabase() {
  */
 export async function POST(req: Request) {
   try {
-    const supabase = await getUserSupabase();
-    const { data: auth } = await supabase.auth.getUser();
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length)
+      : null;
 
-    if (!auth?.user) {
+    let user = null;
+    let user_created_at = "";
+    if (token) {
+      const { data: authData } = await supabaseAdmin.auth.getUser(token);
+      if (authData?.user) {
+        user = authData.user;
+        user_created_at = authData.user.created_at;
+      }
+    }
+
+    if (!user) {
+      const supabase = await getUserSupabase();
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth?.user) {
+        user = auth.user;
+        user_created_at = auth.user.created_at;
+      }
+    }
+
+    if (!user) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const user_id = auth.user.id;
+    const user_id = user.id;
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "invalid_json" }, { status: 400 });
 
@@ -59,7 +80,7 @@ export async function POST(req: Request) {
 
     let wallet;
     try {
-      wallet = await syncAndGetWallet(user_id, auth.user.created_at);
+      wallet = await syncAndGetWallet(user_id, user_created_at);
     } catch (e) {
       console.error("wallet read error in payments confirm:", e);
       return NextResponse.json({ error: "wallet_read_failed" }, { status: 500 });

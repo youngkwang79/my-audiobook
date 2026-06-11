@@ -264,6 +264,9 @@ export default function MembershipPage() {
           fullName: buyerName.trim(),
           phoneNumber: buyerPhone.trim(),
         },
+        customData: {
+          userId: session.user.id,
+        },
       });
 
       if (!response || response.code != null) {

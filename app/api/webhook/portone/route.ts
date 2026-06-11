@@ -8,6 +8,17 @@ function json(data: unknown, status = 200) {
 }
 
 export async function POST(req: Request) {
+  // 1) IP Whitelist Check (in production)
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd) {
+    const forwardedFor = req.headers.get("x-forwarded-for") || "";
+    const clientIp = forwardedFor.split(",")[0].trim() || req.headers.get("x-real-ip") || "";
+    if (clientIp !== "52.78.5.241") {
+      console.warn(`Blocked webhook request from unauthorized IP: ${clientIp}`);
+      return json({ error: "forbidden" }, 403);
+    }
+  }
+
   const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     return json({ error: "Missing env: PORTONE_WEBHOOK_SECRET" }, 500);
@@ -61,7 +72,7 @@ export async function POST(req: Request) {
       return json({ error: "Order not found" }, 404);
     }
 
-    // If order is already processed, return early to avoid duplicate processing
+    // 6.5) Idempotency check: If order is already processed, return early to avoid duplicate processing
     if (order.status === "SUCCESS") {
       return json({ ok: true, message: "Order already processed" });
     }
@@ -91,6 +102,22 @@ export async function POST(req: Request) {
     if (paymentStatus !== "PAID") {
       console.warn(`Payment status on PortOne is not PAID: ${paymentStatus}`);
       return json({ error: "Payment not completed on PortOne" }, 400);
+    }
+
+    // 7.5) 사용자 크로스 체크: customData.userId와 DB의 user_id 일치 확인
+    const customDataStr = paymentData?.customData;
+    let customData = null;
+    try {
+      if (customDataStr) {
+        customData = JSON.parse(customDataStr);
+      }
+    } catch (err) {
+      console.error("Failed to parse customData:", err);
+    }
+    const customUserId = customData?.userId;
+    if (customUserId !== order.user_id) {
+      console.error(`Security Warning: User ID mismatch! DB=${order.user_id}, PortOne customData=${customUserId}`);
+      return json({ error: "User mismatch" }, 400);
     }
 
     // 8) Compare payment amount with DB order amount

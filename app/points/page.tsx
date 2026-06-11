@@ -173,6 +173,9 @@ export default function PointsPage() {
           fullName: name.trim(),
           phoneNumber: phone.trim(),
         },
+        customData: {
+          userId: user?.id,
+        },
       });
 
       // 2. 결제창에서 취소하거나 실패했을 경우
@@ -280,6 +283,9 @@ export default function PointsPage() {
           email: session.user.email || undefined,
           fullName: name.trim(),
           phoneNumber: phone.trim(),
+        },
+        customData: {
+          userId: session.user.id,
         },
       });
 
