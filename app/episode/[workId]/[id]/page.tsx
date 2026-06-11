@@ -2440,7 +2440,7 @@ export default function EpisodePage() {
                     <div className="sf-episode-grid">
                       {episodes.slice(activeRangeIndex * 30, (activeRangeIndex + 1) * 30).map((ep) => {
                         const isCurrent = String(ep.id) === String(episodeKey);
-                        const isLocked = ep.locked;
+                        const isLocked = isSubscribed ? false : (isCurrent ? locked : ep.locked);
 
                         return (
                           <button
