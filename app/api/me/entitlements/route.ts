@@ -38,9 +38,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "wallet_query_failed" }, { status: 500 });
   }
 
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("expires_at")
+    .eq("user_id", user_id)
+    .maybeSingle();
+
+  const is_subscribed = sub ? new Date(sub.expires_at) > new Date() : false;
+
   const { data: ent, error: entError } = await supabaseAdmin
     .from("entitlements")
-    .select("unlocked_until_part")
+    .select("unlocked_until_part, episode_unlocked")
     .eq("user_id", user_id)
     .eq("work_id", work_id)
     .eq("episode_id", String(episode_id))
@@ -50,13 +58,39 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "entitlements_query_failed" }, { status: 500 });
   }
 
-  const { data: sub } = await supabaseAdmin
-    .from("subscriptions")
-    .select("expires_at")
-    .eq("user_id", user_id)
-    .maybeSingle();
+  let episode_unlocked = ent?.episode_unlocked ?? false;
 
-  const is_subscribed = sub ? new Date(sub.expires_at) > new Date() : false;
+  // 멤버십 회원이고 아직 에피소드가 영구 소장으로 기록되어있지 않은 경우
+  if (is_subscribed && !episode_unlocked) {
+    // 해당 에피소드가 실제로 유료(locked = true) 에피소드인지 확인
+    const { data: ep } = await supabaseAdmin
+      .from("episodes")
+      .select("locked")
+      .eq("work_id", work_id)
+      .eq("id", String(episode_id))
+      .maybeSingle();
+
+    if (ep?.locked) {
+      const { error: upsertErr } = await supabaseAdmin
+        .from("entitlements")
+        .upsert(
+          {
+            user_id,
+            work_id,
+            episode_id: String(episode_id),
+            episode_unlocked: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,work_id,episode_id" }
+        );
+
+      if (!upsertErr) {
+        episode_unlocked = true;
+      } else {
+        console.error("Failed to auto-unlock episode for subscriber in entitlements API:", upsertErr);
+      }
+    }
+  }
 
   const totalPoints = Number(wallet?.points ?? 0) + Number(wallet?.reward_points ?? 0);
 
@@ -64,5 +98,6 @@ export async function GET(req: Request) {
     points: totalPoints,
     is_subscribed,
     unlocked_until_part: ent?.unlocked_until_part ?? null,
+    episode_unlocked,
   });
 }

@@ -295,17 +295,9 @@ export default function MembershipPage() {
 
       const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
       let channelKey = "channel-key-6d5c990f-c644-474a-8137-460681d7d4aa";
-      let billingKeyMethod = "CARD";
-      let easyPay = undefined;
+      let billingKeyMethod: any = "CARD";
 
-      if (paymentMethod === "KAKAOPAY") {
-        channelKey = "channel-key-c63cece9-db7e-4971-bf31-216c32de0ed3";
-        billingKeyMethod = "EASY_PAY";
-        easyPay = { easyPayProvider: "KAKAOPAY" };
-      }
-
-      // 1. 포트원 빌링키 발급 호출
-      const response = await requestIssueBillingKey({
+      const billingKeyParams: any = {
         storeId,
         channelKey,
         billingKeyMethod,
@@ -316,8 +308,18 @@ export default function MembershipPage() {
           fullName: buyerName.trim(),
           phoneNumber: buyerPhone.trim(),
         },
-        easyPay,
-      });
+      };
+
+      if (paymentMethod === "KAKAOPAY") {
+        billingKeyParams.channelKey = "channel-key-c63cece9-db7e-4971-bf31-216c32de0ed3";
+        billingKeyParams.billingKeyMethod = "EASY_PAY";
+        billingKeyParams.easyPay = { easyPayProvider: "KAKAOPAY" };
+      } else {
+        billingKeyParams.billingKeyMethod = "CARD";
+      }
+
+      // 1. 포트원 빌링키 발급 호출
+      const response = await requestIssueBillingKey(billingKeyParams);
 
       if (!response || response.code != null || !response.billingKey) {
         // Update order status to FAILED in case of cancel/failure

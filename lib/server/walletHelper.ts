@@ -131,29 +131,35 @@ export async function syncAndGetWallet(userId: string, userCreatedAt?: string) {
     } else if (tx.transaction_type === "use") {
       let useAmount = Math.abs(tx.amount);
 
-      // 리워드 코인 버킷에서 우선 차감 (오래된 순)
-      for (const bucket of rewardBuckets) {
-        // 거래 시점에 이미 만료된 버킷은 차감 불가
-        if (txTime.getTime() - bucket.created_at.getTime() >= EXPIRATION_MS) {
-          bucket.remaining = 0;
-          continue;
-        }
-
-        if (bucket.remaining > 0) {
-          if (bucket.remaining >= useAmount) {
-            bucket.remaining -= useAmount;
-            useAmount = 0;
-            break;
-          } else {
-            useAmount -= bucket.remaining;
-            bucket.remaining = 0;
-          }
-        }
+      // 1. 유료 코인에서 우선 차감
+      if (paidPoints >= useAmount) {
+        paidPoints -= useAmount;
+        useAmount = 0;
+      } else {
+        useAmount -= paidPoints;
+        paidPoints = 0;
       }
 
-      // 남은 사용액은 유료 코인에서 차감
+      // 2. 남은 사용액은 리워드 코인 버킷에서 차감 (오래된 순)
       if (useAmount > 0) {
-        paidPoints = Math.max(0, paidPoints - useAmount);
+        for (const bucket of rewardBuckets) {
+          // 거래 시점에 이미 만료된 버킷은 차감 불가
+          if (txTime.getTime() - bucket.created_at.getTime() >= EXPIRATION_MS) {
+            bucket.remaining = 0;
+            continue;
+          }
+
+          if (bucket.remaining > 0) {
+            if (bucket.remaining >= useAmount) {
+              bucket.remaining -= useAmount;
+              useAmount = 0;
+              break;
+            } else {
+              useAmount -= bucket.remaining;
+              bucket.remaining = 0;
+            }
+          }
+        }
       }
     }
   }

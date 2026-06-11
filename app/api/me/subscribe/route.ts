@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     }
 
     const chargeResult = await chargeResponse.json();
-    const chargeStatus = chargeResult?.status;
+    const chargeStatus = chargeResult?.payment?.status || chargeResult?.status;
 
     if (chargeStatus !== "PAID") {
       console.warn("[subscribe] Charge status is not PAID:", chargeStatus);

@@ -186,27 +186,15 @@ export default function PointsPage() {
 
       const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
       let channelKey = "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
-      let payMethod = "CARD";
-      let easyPay = undefined;
+      let payMethod: any = "CARD";
 
-      if (paymentMethod === "KAKAOPAY") {
-        channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
-        payMethod = "EASY_PAY";
-        easyPay = { easyPayProvider: "KAKAOPAY" };
-      } else if (paymentMethod === "DANAL") {
-        channelKey = "channel-key-0551875c-6e36-430b-891b-91025c95afe1";
-        payMethod = "MOBILE";
-      }
-
-      const response = await requestPayment({
+      const paymentParams: any = {
         storeId,
         paymentId: paymentId,
         channelKey,
         orderName: `코인 충전: ${coinName}`,
         totalAmount: amount,
         currency: "CURRENCY_KRW",
-        payMethod,
-        easyPay,
         noticeUrls: [
           `${window.location.origin}/api/webhook/portone`
         ],
@@ -218,7 +206,20 @@ export default function PointsPage() {
         customData: {
           userId: user?.id,
         },
-      });
+      };
+
+      if (paymentMethod === "KAKAOPAY") {
+        paymentParams.channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
+        paymentParams.payMethod = "EASY_PAY";
+        paymentParams.easyPay = { easyPayProvider: "KAKAOPAY" };
+      } else if (paymentMethod === "DANAL") {
+        paymentParams.channelKey = "channel-key-0551875c-6e36-430b-891b-91025c95afe1";
+        paymentParams.payMethod = "MOBILE";
+      } else {
+        paymentParams.payMethod = "CARD";
+      }
+
+      const response = await requestPayment(paymentParams);
 
       // 2. 결제창에서 취소하거나 실패했을 경우
       if (!response || response.code != null) {
