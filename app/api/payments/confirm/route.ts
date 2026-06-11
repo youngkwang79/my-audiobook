@@ -112,6 +112,15 @@ export async function POST(req: Request) {
         description: "포인트 충전",
       });
 
+    // 주문 상태를 SUCCESS로 업데이트
+    const paymentId = body?.paymentId;
+    if (paymentId) {
+      await supabaseAdmin
+        .from("orders")
+        .update({ status: "SUCCESS" })
+        .eq("payment_id", paymentId);
+    }
+
     return NextResponse.json({ ok: true, points: current + addPoints });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "server_error" }, { status: 500 });

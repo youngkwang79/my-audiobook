@@ -8,11 +8,14 @@ function json(data: unknown, status = 200) {
 }
 
 export async function POST(req: Request) {
+  console.log("=== PortOne Webhook Triggered ===");
   // 1) IP Whitelist Check (in production)
   const isProd = process.env.NODE_ENV === "production";
+  const forwardedFor = req.headers.get("x-forwarded-for") || "";
+  const clientIp = forwardedFor.split(",")[0].trim() || req.headers.get("x-real-ip") || "";
+  console.log(`[Webhook IP Check] clientIp: ${clientIp}, forwardedFor: ${forwardedFor}`);
+
   if (isProd) {
-    const forwardedFor = req.headers.get("x-forwarded-for") || "";
-    const clientIp = forwardedFor.split(",")[0].trim() || req.headers.get("x-real-ip") || "";
     if (clientIp !== "52.78.5.241") {
       console.warn(`Blocked webhook request from unauthorized IP: ${clientIp}`);
       return json({ error: "forbidden" }, 403);
@@ -21,6 +24,7 @@ export async function POST(req: Request) {
 
   const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
   if (!webhookSecret) {
+    console.error("Webhook processing error: Missing env PORTONE_WEBHOOK_SECRET");
     return json({ error: "Missing env: PORTONE_WEBHOOK_SECRET" }, 500);
   }
 
@@ -80,6 +84,7 @@ export async function POST(req: Request) {
     // 7) 2차 검증: portone 단건조회 API 호출
     const portoneApiSecret = process.env.PORTONE_API_SECRET;
     if (!portoneApiSecret) {
+      console.error("Webhook processing error: Missing env PORTONE_API_SECRET");
       return json({ error: "Missing env: PORTONE_API_SECRET" }, 500);
     }
 

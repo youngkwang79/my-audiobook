@@ -39,7 +39,7 @@ export default function TopBar() {
         }
 
         if (alive) {
-          setPoints(Number(data?.points ?? 0));
+          setPoints(Number(data?.points ?? 0) + Number(data?.reward_points ?? 0));
         }
       } catch (error) {
         console.error(error);
