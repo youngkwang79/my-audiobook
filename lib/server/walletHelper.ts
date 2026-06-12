@@ -26,15 +26,15 @@ export async function syncAndGetWallet(userId: string, userCreatedAt?: string) {
     throw walletErr;
   }
 
-  // 지갑이 없으면 기본 1000 코인, 50 리워드 코인으로 생성
+  // 지갑이 없으면 기본 0 코인, 0 리워드 코인으로 생성
   if (!wallet) {
     const signupTime = userCreatedAt || new Date().toISOString();
     const { data: newWallet, error: initError } = await supabaseAdmin
       .from("wallets")
       .insert({
         user_id: userId,
-        points: 1000,
-        reward_points: 50,
+        points: 0,
+        reward_points: 0,
         updated_at: signupTime,
       })
       .select("points, reward_points, updated_at")
@@ -53,14 +53,14 @@ export async function syncAndGetWallet(userId: string, userCreatedAt?: string) {
       .insert([
         {
           user_id: userId,
-          amount: 1000,
+          amount: 0,
           transaction_type: "charge",
           description: "신규 가입 코인 지급",
           created_at: signupTime,
-        },
+         },
         {
           user_id: userId,
-          amount: 50,
+          amount: 0,
           transaction_type: "reward",
           description: "신규 가입 리워드 코인 지급",
           created_at: signupTime,
@@ -90,13 +90,13 @@ export async function syncAndGetWallet(userId: string, userCreatedAt?: string) {
     const signupTime = userCreatedAt || wallet.updated_at || new Date().toISOString();
     txList.unshift(
       {
-        amount: 1000,
+        amount: 0,
         transaction_type: "charge",
         description: "신규 가입 코인 지급",
         created_at: signupTime,
       },
       {
-        amount: 50,
+        amount: 0,
         transaction_type: "reward",
         description: "신규 가입 리워드 코인 지급",
         created_at: signupTime,
