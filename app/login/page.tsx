@@ -16,6 +16,7 @@ function toKoreanAuthError(message?: string) {
   if (msg.includes("user already registered")) return "이미 가입된 이메일입니다.";
   if (msg.includes("password")) return "비밀번호 조건을 확인해 주세요.";
   if (msg.includes("rate limit")) return "이메일 발송 제한을 초과했습니다. 잠시 후 다시 시도해 주세요.";
+  if (msg.includes("recovery email")) return "비밀번호 재설정 이메일 발송에 실패했습니다. 메일 주소나 SMTP 설정을 확인해 주세요.";
 
   return message || "오류가 발생했습니다.";
 }
