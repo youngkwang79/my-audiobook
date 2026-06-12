@@ -135,7 +135,7 @@ export default function AdminPage() {
   };
 
   // 탭 상태
-  const [activeTab, setActiveTab] = useState<"novels" | "episodes" | "edit" | "push">("novels");
+  const [activeTab, setActiveTab] = useState<"novels" | "episodes" | "edit" | "push" | "automation">("novels");
 
   // --- 소설 등록 상태 ---
   const [novelId, setNovelId] = useState("");
@@ -960,6 +960,7 @@ export default function AdminPage() {
           <button className={`admin-tab ${activeTab === "edit" ? "active" : ""}`} onClick={() => { setActiveTab("edit"); if (!editWorkId && worksList.length > 0) { setEditWorkId(worksList[0].id); fetchEditWork(worksList[0].id); } }}>작품 수정</button>
           <button className={`admin-tab ${activeTab === "episodes" ? "active" : ""}`} onClick={() => setActiveTab("episodes")}>회차 & 오디오 업로드</button>
           <button className={`admin-tab ${activeTab === "push" ? "active" : ""}`} onClick={() => setActiveTab("push")}>웹 푸시 발송</button>
+          <button className={`admin-tab ${activeTab === "automation" ? "active" : ""}`} onClick={() => setActiveTab("automation")}>오디오 자동연성 & 파일합포장</button>
         </div>
 
         {/* 탭 1: 소설 작품 관리 */}
@@ -1777,7 +1778,550 @@ export default function AdminPage() {
             </form>
           </>
         )}
+
+        {/* 탭 5: 오디오 자동 연성 및 파일 합포장 */}
+        {activeTab === "automation" && (
+          <AutomationPanel worksList={worksList} />
+        )}
       </div>
     </main>
+  );
+}
+
+function AutomationPanel({ worksList }: { worksList: any[] }) {
+  const [mergeFiles, setMergeFiles] = useState<File[]>([]);
+  const [merging, setMerging] = useState(false);
+
+  // TTS states
+  const [selectedWorkId, setSelectedWorkId] = useState(worksList[0]?.id || "");
+  const [episodeId, setEpisodeId] = useState("");
+  const [episodeTitle, setEpisodeTitle] = useState("");
+  const [episodeReleaseDate, setEpisodeReleaseDate] = useState("");
+  const [episodeLocked, setEpisodeLocked] = useState<"auto" | "free" | "locked">("auto");
+  const [textInput, setTextInput] = useState("");
+  const [txtFile, setTxtFile] = useState<File | null>(null);
+
+  const [voice, setVoice] = useState("ko-KR-InJoonNeural");
+  const [preset, setPreset] = useState("karisma");
+  const [pitch, setPitch] = useState("-6Hz");
+  const [rate, setRate] = useState("-6%");
+
+  const [customPitchVal, setCustomPitchVal] = useState(0);
+  const [customRateVal, setCustomRateVal] = useState(0);
+
+  const [previewText, setPreviewText] = useState("안녕하세요! 이 목소리로 무림북 오디오북이 제작됩니다. 들어보시고 음높이와 속도를 맞춰보세요.");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+
+  const [ttsStatus, setTtsStatus] = useState<"idle" | "tts" | "upload" | "db" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const applyPreset = (presetName: string) => {
+    setPreset(presetName);
+    if (presetName === "karisma") {
+      setVoice("ko-KR-InJoonNeural");
+      setPitch("-6Hz");
+      setRate("-6%");
+    } else if (presetName === "oe-yu") {
+      setVoice("ko-KR-HyunsuNeural");
+      setPitch("-3Hz");
+      setRate("-3%");
+    } else if (presetName === "cave") {
+      setVoice("ko-KR-InJoonNeural");
+      setPitch("-4Hz");
+      setRate("-5%");
+    } else if (presetName === "romance") {
+      setVoice("ko-KR-HyunsuNeural");
+      setPitch("+1Hz");
+      setRate("+0%");
+    } else if (presetName === "modern-fantasy") {
+      setVoice("ko-KR-HyunsuNeural");
+      setPitch("-1Hz");
+      setRate("+8%");
+    }
+  };
+
+  const handleCustomPitchChange = (val: number) => {
+    setCustomPitchVal(val);
+    const sign = val >= 0 ? "+" : "";
+    setPitch(`${sign}${val}Hz`);
+  };
+
+  const handleCustomRateChange = (val: number) => {
+    setCustomRateVal(val);
+    const sign = val >= 0 ? "+" : "";
+    setRate(`${sign}${val}%`);
+  };
+
+  // 텍스트 파일 로드 처리
+  const handleTxtFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setTxtFile(file);
+      const content = await file.text();
+      setTextInput(content);
+      
+      // 파일명에서 회차 번호와 제목 자동 추출 시도
+      const base = file.name.replace(/\.[^/.]+$/, "");
+      const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
+      if (match) {
+        setEpisodeId(String(Number(match[1])));
+        setEpisodeTitle(match[2].trim());
+      } else {
+        const onlyNumMatch = base.trim().match(/^(\d+)(?:화)?$/);
+        if (onlyNumMatch) {
+          setEpisodeId(String(Number(onlyNumMatch[1])));
+          setEpisodeTitle(`${Number(onlyNumMatch[1])}화`);
+        } else {
+          setEpisodeTitle(base.trim());
+        }
+      }
+    }
+  };
+
+  // 파일 합포장 (Merge) 실행
+  const handleMergeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mergeFiles.length === 0) {
+      alert("합포장할 텍스트 파일들을 선택해 주세요.");
+      return;
+    }
+    setMerging(true);
+    try {
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      const formData = new FormData();
+      for (const file of mergeFiles) {
+        formData.append("files", file);
+      }
+
+      const res = await fetch("/api/admin/merge-chapters", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "파일 합본 생성 실패");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "전체_합본_소설.txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      
+      alert("✨ 합포장이 완료되어 다운로드되었습니다!");
+      setMergeFiles([]);
+    } catch (err: any) {
+      alert("합포장 중 오류 발생: " + err.message);
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  // 목소리 미리듣기 재생
+  const handlePlayPreview = async () => {
+    if (!previewText.trim()) return;
+    
+    if (previewAudio) {
+      if (isPreviewPlaying) {
+        previewAudio.pause();
+        setIsPreviewPlaying(false);
+        return;
+      } else {
+        previewAudio.play();
+        setIsPreviewPlaying(true);
+        return;
+      }
+    }
+
+    setPreviewLoading(true);
+    try {
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      const res = await fetch("/api/admin/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          text: previewText,
+          voice,
+          pitch,
+          rate,
+          preview: true
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "미리듣기 음성 생성 실패");
+      }
+
+      const blob = await res.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        setIsPreviewPlaying(false);
+      };
+      
+      setPreviewAudio(audio);
+      audio.play();
+      setIsPreviewPlaying(true);
+    } catch (err: any) {
+      alert("미리듣기 실패: " + err.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // 미리듣기 톤 설정 변경 시 캐시 비우기
+  useEffect(() => {
+    if (previewAudio) {
+      previewAudio.pause();
+      setPreviewAudio(null);
+      setIsPreviewPlaying(false);
+    }
+  }, [voice, pitch, rate, previewText]);
+
+  // 에피소드 잠금 상태 자동 획득
+  const getEpisodeLockedStatus = (episodeIdStr: string) => {
+    if (episodeLocked === "free") return false;
+    if (episodeLocked === "locked") return true;
+    const work = worksList.find(w => w.id === selectedWorkId);
+    const freeCount = work?.free_episodes ?? 10;
+    const epNum = Number(episodeIdStr);
+    return isNaN(epNum) ? true : epNum > freeCount;
+  };
+
+  // TTS 오디오 자동 연성 및 홈페이지 즉시 반영
+  const handleTtsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWorkId || !episodeId || !episodeTitle || !episodeReleaseDate) {
+      alert("모든 메타데이터 항목을 입력해 주세요.");
+      return;
+    }
+    if (!textInput.trim()) {
+      alert("회차 본문 텍스트를 입력하거나 텍스트 파일을 첨부해 주세요.");
+      return;
+    }
+
+    setTtsStatus("tts");
+    setErrorMsg("");
+
+    try {
+      const token = await supabase.auth.getSession().then(s => s.data.session?.access_token);
+      
+      const res = await fetch("/api/admin/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          text: textInput,
+          voice,
+          pitch,
+          rate,
+          preview: false,
+          workId: selectedWorkId,
+          episodeId,
+          title: episodeTitle,
+          locked: getEpisodeLockedStatus(episodeId),
+          releaseDate: episodeReleaseDate
+        })
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.details || result.error || "오디오 생성/등록 실패");
+      }
+
+      setTtsStatus("success");
+      alert(`🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`);
+      
+      // 폼 초기화
+      setEpisodeId("");
+      setEpisodeTitle("");
+      setTextInput("");
+      setTxtFile(null);
+    } catch (err: any) {
+      console.error(err);
+      setTtsStatus("error");
+      setErrorMsg(err.message);
+    }
+  };
+
+  // 작품 선택 기본값 설정
+  useEffect(() => {
+    if (worksList.length > 0 && !selectedWorkId) {
+      setSelectedWorkId(worksList[0].id);
+    }
+  }, [worksList, selectedWorkId]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* 1. 텍스트 파일 합본기 */}
+      <form onSubmit={handleMergeSubmit} className="card-panel">
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>📝 텍스트 파일 합포장기 (TXT Merger)</h2>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 18, lineHeight: 1.5 }}>
+          50개 등 다수의 텍스트 파일(.txt)을 선택하면 파일 이름순으로 정렬하여 하나의 전체 합본 메모장 파일로 생성 및 다운로드합니다.
+        </p>
+        
+        <div className="form-group">
+          <label className="form-label">합포장할 텍스트 파일 선택 (다중 파일 선택 가능)</label>
+          <input 
+            type="file" 
+            accept=".txt" 
+            multiple 
+            disabled={merging}
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files) setMergeFiles(Array.from(files));
+            }}
+            className="form-input"
+          />
+        </div>
+
+        {mergeFiles.length > 0 && (
+          <div style={{ marginTop: 12, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>선택된 파일 목록 ({mergeFiles.length}개)</div>
+            <div style={{ maxHeight: 150, overflowY: "auto", background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+              {[...mergeFiles].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((f, i) => (
+                <div key={i} style={{ fontSize: 12, opacity: 0.7 }}>{i + 1}. {f.name}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button type="submit" className="btn-submit" disabled={merging || mergeFiles.length === 0}>
+          {merging ? "🔄 파일 정렬 및 합본 합포장 중..." : `50개 회차 메모장 합본 생성 및 다운로드 (${mergeFiles.length}개)`}
+        </button>
+      </form>
+
+      {/* 2. TTS 오디오 자동 연성기 */}
+      <form onSubmit={handleTtsSubmit} className="card-panel">
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>🎙️ TTS 오디오 자동 연성기 (edge-tts)</h2>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 18, lineHeight: 1.5 }}>
+          소설 텍스트 파일을 첨부하거나 입력하면 목소리를 입혀 mp3 파일로 제작하고, Cloudflare R2에 업로드한 뒤 홈페이지에 즉시 새 회차로 반영합니다.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="form-group">
+            <label className="form-label">대상 소설 작품 선택</label>
+            <select className="form-select" value={selectedWorkId} onChange={(e) => setSelectedWorkId(e.target.value)}>
+              {worksList.map(w => (
+                <option key={w.id} value={w.id}>{w.title}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">공개 예정 일시</label>
+            <input type="datetime-local" className="form-input" value={episodeReleaseDate} onChange={(e) => setEpisodeReleaseDate(e.target.value)} required />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          <div className="form-group">
+            <label className="form-label">회차 번호 (숫자)</label>
+            <input type="text" className="form-input" placeholder="1" value={episodeId} onChange={(e) => setEpisodeId(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">회차 제목</label>
+            <input type="text" className="form-input" placeholder="1화: 강호에 피는 꽃" value={episodeTitle} onChange={(e) => setEpisodeTitle(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">잠금 상태 설정</label>
+            <select className="form-select" value={episodeLocked} onChange={(e) => setEpisodeLocked(e.target.value as any)}>
+              <option value="auto">작품 설정에 따라 자동 무료/유료 분리</option>
+              <option value="free">🔓 전체 무료회차로 지정</option>
+              <option value="locked">🔒 전체 유료회차로 지정</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 목소리 톤 프리셋 설정 */}
+        <div style={{ background: "rgba(255,255,255,0.02)", padding: 18, borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)", marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>🔊 성우 및 목소리 톤 프리셋</div>
+          
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {[
+              { id: "karisma", label: "🗡️ 카리스마 무협 (인준, 동굴음)" },
+              { id: "oe-yu", label: "🦉 외유내강 (현수, 고결함)" },
+              { id: "cave", label: "🌲 진중 판타지 (인준, 느림)" },
+              { id: "romance", label: "🌸 로맨스 남주 (현수, 부드러움)" },
+              { id: "modern-fantasy", label: "⚡ 현대 판타지 (현수, 지루함없음)" },
+              { id: "custom", label: "⚙️ 사용자 직접 조절" }
+            ].map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p.id)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  background: preset === p.id ? "linear-gradient(135deg, #ff2a5f 0%, #ff7f00 100%)" : "rgba(255,255,255,0.05)",
+                  border: preset === p.id ? "1px solid #ff2a5f" : "1px solid rgba(255,255,255,0.12)",
+                  color: preset === p.id ? "white" : "rgba(255,255,255,0.7)",
+                  transition: "all 0.15s"
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="form-group">
+              <label className="form-label">AI 성우 선택</label>
+              <select className="form-select" value={voice} onChange={(e) => { setVoice(e.target.value); setPreset("custom"); }} disabled={preset !== "custom"}>
+                <option value="ko-KR-InJoonNeural">Standard InJoon (인준 - 차분함, 신뢰감)</option>
+                <option value="ko-KR-HyunsuNeural">Standard Hyunsu (현수 - 부드러움, 중저음)</option>
+              </select>
+            </div>
+            
+            <div style={{ display: "flex", gap: 16 }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">음높이 (Pitch): {pitch}</label>
+                <input 
+                  type="range" 
+                  min="-15" 
+                  max="15" 
+                  value={preset === "custom" ? customPitchVal : parseInt(pitch) || 0} 
+                  disabled={preset !== "custom"}
+                  onChange={(e) => handleCustomPitchChange(Number(e.target.value))}
+                  style={{ width: "100%" }}
+                />
+                <span style={{ fontSize: 11, opacity: 0.5 }}>-15Hz (동굴음) ~ +15Hz (하이톤)</span>
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">속도 (Rate): {rate}</label>
+                <input 
+                  type="range" 
+                  min="-30" 
+                  max="30" 
+                  value={preset === "custom" ? customRateVal : parseInt(rate) || 0} 
+                  disabled={preset !== "custom"}
+                  onChange={(e) => handleCustomRateChange(Number(e.target.value))}
+                  style={{ width: "100%" }}
+                />
+                <span style={{ fontSize: 11, opacity: 0.5 }}>-30% (천천히) ~ +30% (빠르게)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 목소리 미리듣기 테스트 */}
+          <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16, display: "flex", gap: 12, alignItems: "flex-end" }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 12, opacity: 0.8 }}>미리듣기 테스트 문장</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                value={previewText} 
+                onChange={(e) => setPreviewText(e.target.value)} 
+                style={{ fontSize: 13, height: 36, padding: "0 10px" }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handlePlayPreview}
+              disabled={previewLoading}
+              style={{
+                height: 36,
+                padding: "0 18px",
+                borderRadius: "8px",
+                border: "none",
+                background: isPreviewPlaying ? "#ff3b30" : "#ffd700",
+                color: isPreviewPlaying ? "white" : "#2b1d00",
+                fontWeight: 800,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              {previewLoading ? "🔊 생성 중..." : isPreviewPlaying ? "⏹️ 정지" : "🎧 톤 미리듣기"}
+            </button>
+          </div>
+        </div>
+
+        {/* 텍스트 파일 입력 */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div className="form-group">
+            <label className="form-label">소설 본문 텍스트 파일 (.txt) 업로드</label>
+            <input 
+              type="file" 
+              accept=".txt" 
+              onChange={handleTxtFileChange}
+              className="form-input"
+            />
+            <span style={{ fontSize: 11, opacity: 0.5 }}>* 파일 첨부 시 자동으로 본문 내용이 채워지며, 화수와 제목이 파일명에서 자동 파싱됩니다.</span>
+          </div>
+          {txtFile && (
+            <div style={{ alignSelf: "center", fontSize: 13, color: "#34c759", fontWeight: 700 }}>
+              ✅ {txtFile.name} 파일 로드 완료 ({(txtFile.size/1024).toFixed(1)} KB)
+            </div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">본문 텍스트 직접 입력/수정 (본문 {textInput.length}글자)</label>
+          <textarea
+            className="form-textarea"
+            rows={10}
+            placeholder="소설의 본문을 입력해 주세요. 위의 파일 업로드를 사용해 텍스트 파일을 불러오셔도 됩니다."
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+          />
+        </div>
+
+        {ttsStatus !== "idle" && (
+          <div style={{ 
+            background: ttsStatus === "success" ? "rgba(52,199,89,0.1)" : ttsStatus === "error" ? "rgba(255,59,48,0.1)" : "rgba(252,168,52,0.1)",
+            border: `1px solid ${ttsStatus === "success" ? "#34c759" : ttsStatus === "error" ? "#ff3b30" : "#fca834"}`,
+            borderRadius: 10,
+            padding: 16,
+            marginBottom: 20,
+            fontSize: 14,
+            lineHeight: 1.6
+          }}>
+            <div style={{ fontWeight: 800, color: ttsStatus === "success" ? "#34c759" : ttsStatus === "error" ? "#ff3b30" : "#fca834" }}>
+              {ttsStatus === "tts" && "🎙️ AI 성우가 소설을 낭독하는 중입니다 (오디오 파일 굽는 중)..."}
+              {ttsStatus === "upload" && "☁️ 생성된 오디오 파일을 Cloudflare R2 스토리지에 업로드하는 중..."}
+              {ttsStatus === "db" && "💾 데이터베이스에 에피소드를 등록 및 노출하는 중..."}
+              {ttsStatus === "success" && "🎉 [완료] 오디오가 정상적으로 연성 및 업로드되어 홈페이지에 즉시 발행되었습니다!"}
+              {ttsStatus === "error" && `❌ 연성 에러 발생: ${errorMsg}`}
+            </div>
+            {ttsStatus !== "success" && ttsStatus !== "error" && (
+              <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>* 브루(Vrew) 작업과 파일 R2 수동 업로드, DB 등록 작업이 백그라운드에서 한 번에 묶여 동작합니다.</div>
+            )}
+          </div>
+        )}
+
+        <button 
+          type="submit" 
+          className="btn-submit" 
+          disabled={ttsStatus === "tts" || ttsStatus === "upload" || ttsStatus === "db"}
+        >
+          {ttsStatus === "tts" || ttsStatus === "upload" || ttsStatus === "db"
+            ? "🔄 오디오 연성 및 자동 퍼블리싱 진행 중..."
+            : `🚀 오디오 자동 연성 및 홈페이지 반영 시작`
+          }
+        </button>
+      </form>
+    </div>
   );
 }

@@ -40,7 +40,7 @@ function LoginPageInner() {
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "find-email" | "forgot-password">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [capsOn, setCapsOn] = useState(false);
@@ -67,10 +67,22 @@ function LoginPageInner() {
 
   const pwCheck = useMemo(() => validatePassword(password), [password]);
 
-  const canSubmit = useMemo(
-    () => !!supabase && emailOk && pwCheck.ok && (mode !== "signup" || nickname.trim().length >= 2),
-    [emailOk, pwCheck.ok, mode, nickname]
-  );
+  const canSubmit = useMemo(() => {
+    if (!supabase) return false;
+    if (mode === "signup") {
+      return emailOk && pwCheck.ok && nickname.trim().length >= 2;
+    }
+    if (mode === "login") {
+      return emailOk && pwCheck.ok;
+    }
+    if (mode === "find-email") {
+      return nickname.trim().length >= 2;
+    }
+    if (mode === "forgot-password") {
+      return emailOk;
+    }
+    return false;
+  }, [supabase, mode, emailOk, pwCheck.ok, nickname]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -176,7 +188,7 @@ function LoginPageInner() {
             "메일함에서 인증을 완료한 뒤 로그인해 주세요.",
           ].join("\n")
         );
-      } else {
+      } else if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -185,6 +197,30 @@ function LoginPageInner() {
         if (error) throw error;
 
         router.replace(redirect);
+      } else if (mode === "find-email") {
+        const res = await fetch("/api/auth/find-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname }),
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.success) {
+          setMsg(`이메일 찾기 성공!\n가입된 이메일: ${data.email}`);
+        } else {
+          setMsg(data?.error || "이메일을 찾을 수 없습니다.");
+        }
+      } else if (mode === "forgot-password") {
+        const origin = window.location.origin;
+        const redirectTo = `${origin}/reset-password`;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo,
+        });
+
+        if (error) throw error;
+
+        setMsg("비밀번호 재설정 이메일이 발송되었습니다.\n입력하신 이메일의 메일함을 확인해 주세요.");
       }
     } catch (e: any) {
       setMsg(toKoreanAuthError(e?.message));
@@ -296,54 +332,59 @@ function LoginPageInner() {
         }}
       >
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>
-          {mode === "login" ? "로그인" : "회원가입"}
+          {mode === "login" ? "로그인" : 
+           mode === "signup" ? "회원가입" : 
+           mode === "find-email" ? "아이디(이메일) 찾기" : 
+           "비밀번호 재설정"}
         </h1>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-          <button
-            onClick={() => {
-              setMode("login");
-              setMsg(null);
-            }}
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background:
-                mode === "login"
-                  ? "rgba(255,255,255,0.12)"
-                  : "rgba(255,255,255,0.06)",
-              color: "white",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            로그인
-          </button>
+        {(mode === "login" || mode === "signup") && (
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <button
+              onClick={() => {
+                setMode("login");
+                setMsg(null);
+              }}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background:
+                  mode === "login"
+                    ? "rgba(255,255,255,0.12)"
+                    : "rgba(255,255,255,0.06)",
+                color: "white",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              로그인
+            </button>
 
-          <button
-            onClick={() => {
-              setMode("signup");
-              setMsg(null);
-            }}
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background:
-                mode === "signup"
-                  ? "rgba(255,255,255,0.12)"
-                  : "rgba(255,255,255,0.06)",
-              color: "white",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            회원가입
-          </button>
-        </div>
+            <button
+              onClick={() => {
+                setMode("signup");
+                setMsg(null);
+              }}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background:
+                  mode === "signup"
+                    ? "rgba(255,255,255,0.12)"
+                    : "rgba(255,255,255,0.06)",
+                color: "white",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              회원가입
+            </button>
+          </div>
+        )}
 
         {mode === "signup" && (
           <div className="helpBox">
@@ -357,8 +398,26 @@ function LoginPageInner() {
           </div>
         )}
 
+        {mode === "find-email" && (
+          <div className="helpBox" style={{ marginTop: 14 }}>
+            {"아이디(이메일) 찾기 안내\n"}
+            {"1. 회원가입 시 등록하신 닉네임을 정확히 입력해 주세요.\n"}
+            {"2. 아래 버튼을 누르면 닉네임에 매핑된 이메일을 알려드립니다.\n"}
+            {"* 개인정보 보호를 위해 찾으신 이메일 주소의 일부는 마스킹 처리되어 노출됩니다."}
+          </div>
+        )}
+
+        {mode === "forgot-password" && (
+          <div className="helpBox" style={{ marginTop: 14 }}>
+            {"비밀번호 재설정 안내\n"}
+            {"1. 가입 시 사용하신 이메일 주소를 입력해 주세요.\n"}
+            {"2. 아래 버튼을 클릭하면 비밀번호 재설정 링크가 담긴 인증 메일이 발송됩니다.\n"}
+            {"3. 수신하신 메일 안의 링크를 통해 새 비밀번호를 등록할 수 있습니다."}
+          </div>
+        )}
+
         <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-          {mode === "signup" && (
+          {(mode === "signup" || mode === "find-email") && (
             <input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
@@ -406,52 +465,56 @@ function LoginPageInner() {
             </label>
           )}
 
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일"
-            type="email"
-            style={{
-              padding: "12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(255,255,255,0.06)",
-              color: "white",
-              outline: "none",
-            }}
-          />
+          {(mode === "login" || mode === "signup" || mode === "forgot-password") && (
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="이메일"
+              type="email"
+              style={{
+                padding: "12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                outline: "none",
+              }}
+            />
+          )}
 
-          {!emailOk && email.trim().length > 0 && (
+          {(mode === "login" || mode === "signup" || mode === "forgot-password") && !emailOk && email.trim().length > 0 && (
             <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>
           )}
 
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              setCapsOn(e.getModifierState?.("CapsLock") ?? false);
-              if (e.key === "Enter" && canSubmit && !busy) {
-                onSubmit();
+          {(mode === "login" || mode === "signup") && (
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                setCapsOn(e.getModifierState?.("CapsLock") ?? false);
+                if (e.key === "Enter" && canSubmit && !busy) {
+                  onSubmit();
+                }
+              }}
+              onKeyUp={(e) =>
+                setCapsOn(e.getModifierState?.("CapsLock") ?? false)
               }
-            }}
-            onKeyUp={(e) =>
-              setCapsOn(e.getModifierState?.("CapsLock") ?? false)
-            }
-            placeholder="비밀번호(8자 이상, 영문+숫자+특수문자 포함)"
-            type="password"
-            style={{
-              padding: "12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(255,255,255,0.06)",
-              color: "white",
-              outline: "none",
-            }}
-          />
+              placeholder="비밀번호(8자 이상, 영문+숫자+특수문자 포함)"
+              type="password"
+              style={{
+                padding: "12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                outline: "none",
+              }}
+            />
+          )}
 
-          {capsOn && <div className="hint hintBad">Caps Lock이 켜져 있습니다.</div>}
+          {(mode === "login" || mode === "signup") && capsOn && <div className="hint hintBad">Caps Lock이 켜져 있습니다.</div>}
 
-          {password.length > 0 && (
+          {(mode === "login" || mode === "signup") && password.length > 0 && (
             <>
               <div className={`hint ${pwCheck.minLenOk ? "hintGood" : "hintBad"}`}>
                 • 8자 이상 {pwCheck.minLenOk ? "충족" : "필요"}
@@ -466,6 +529,25 @@ function LoginPageInner() {
                 • 특수문자 포함 {pwCheck.hasSpecial ? "충족" : "필요"}
               </div>
             </>
+          )}
+
+          {mode === "login" && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 2, marginBottom: 2, padding: "0 4px" }}>
+              <button 
+                type="button"
+                onClick={() => { setMode("find-email"); setMsg(null); }}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", padding: "6px 0", fontSize: 13 }}
+              >
+                아이디(이메일) 찾기
+              </button>
+              <button 
+                type="button"
+                onClick={() => { setMode("forgot-password"); setMsg(null); }}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", padding: "6px 0", fontSize: 13 }}
+              >
+                비밀번호 찾기 (재설정)
+              </button>
+            </div>
           )}
 
           <button
@@ -486,56 +568,79 @@ function LoginPageInner() {
               ? busy
                 ? "로그인 중..."
                 : "로그인"
-              : busy
-                ? "가입 중..."
-                : "회원가입"}
+              : mode === "signup"
+                ? busy
+                  ? "가입 중..."
+                  : "회원가입"
+                : mode === "find-email"
+                  ? busy
+                    ? "찾는 중..."
+                    : "이메일 찾기"
+                  : busy
+                    ? "메일 발송 중..."
+                    : "비밀번호 재설정 링크 발송"}
           </button>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {(mode === "find-email" || mode === "forgot-password") && (
             <button
               type="button"
-              className="socialBtn"
-              disabled={!!oauthBusy}
-              onClick={() => signInWithProvider("google")}
-              style={{
-                background: "#ffffff",
-                color: "#111111",
-                fontSize: 14,
-                opacity: oauthBusy ? 0.65 : 1,
-              }}
+              className="btnBase btnNormal"
+              onClick={() => { setMode("login"); setMsg(null); }}
+              style={{ marginTop: 4 }}
             >
-              구글 로그인
+              로그인 화면으로 돌아가기
             </button>
+          )}
 
-            <button
-              type="button"
-              className="socialBtn"
-              disabled={!!oauthBusy}
-              onClick={() => signInWithProvider("kakao")}
-              style={{
-                background: "#FEE500",
-                color: "#191919",
-                fontSize: 14,
-                opacity: oauthBusy ? 0.65 : 1,
-              }}
-            >
-              카카오 로그인
-            </button>
-          </div>
+          {(mode === "login" || mode === "signup") && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <button
+                  type="button"
+                  className="socialBtn"
+                  disabled={!!oauthBusy}
+                  onClick={() => signInWithProvider("google")}
+                  style={{
+                    background: "#ffffff",
+                    color: "#111111",
+                    fontSize: 14,
+                    opacity: oauthBusy ? 0.65 : 1,
+                  }}
+                >
+                  구글 로그인
+                </button>
 
-          <button
-            type="button"
-            className="socialBtn"
-            disabled={!!oauthBusy}
-            onClick={() => signInWithProvider("discord")}
-            style={{
-              background: "#5865F2",
-              color: "#ffffff",
-              opacity: oauthBusy ? 0.65 : 1,
-            }}
-          >
-            디스코드 로그인
-          </button>
+                <button
+                  type="button"
+                  className="socialBtn"
+                  disabled={!!oauthBusy}
+                  onClick={() => signInWithProvider("kakao")}
+                  style={{
+                    background: "#FEE500",
+                    color: "#191919",
+                    fontSize: 14,
+                    opacity: oauthBusy ? 0.65 : 1,
+                  }}
+                >
+                  카카오 로그인
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="socialBtn"
+                disabled={!!oauthBusy}
+                onClick={() => signInWithProvider("discord")}
+                style={{
+                  background: "#5865F2",
+                  color: "#ffffff",
+                  opacity: oauthBusy ? 0.65 : 1,
+                }}
+              >
+                디스코드 로그인
+              </button>
+            </>
+          )}
 
           {msg && <div className="helpBox">{msg}</div>}
 

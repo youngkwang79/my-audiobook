@@ -258,7 +258,7 @@ export default function MembershipPage() {
     }
 
     setShowBuyerModal(false);
-
+    let paymentId = "";
     try {
       const proceed = confirm(
         "🍵 [멤버십 서비스 가입 동의 및 안내]\n\n\"소중한 상품 가입에 감사드립니다! 본 상품은 디지털 콘텐츠 정기 멤버십 서비스 상품으로, 결제 완료와 동시에 혜택이 즉시 개시(감상 권한 활성화)되어 이후 취소 및 환불이 불가능하오니 신중한 결정 부탁드립니다.\"\n\n동의하고 가입을 진행하시겠습니까?"
@@ -271,7 +271,7 @@ export default function MembershipPage() {
       // 선택된 플랜에 따른 가격 및 이름 설정
       const price = selectedPlan === "weekly" ? 3000 : 99900;
       const planName = selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스";
-      const paymentId = `m-${crypto.randomUUID()}`;
+      paymentId = `m-${crypto.randomUUID()}`;
 
       // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
       const { error: dbError } = await supabase
@@ -307,7 +307,7 @@ export default function MembershipPage() {
         customData: {
           userId: session.user.id,
         },
-        redirectUrl: `${window.location.origin}/payments/redirect?type=membership&plan=${selectedPlan}`,
+        redirectUrl: `${window.location.origin}/payments/redirect?type=membership&plan=${selectedPlan}&paymentId=${paymentId}`,
         customer: {
           email: session.user.email || "customer@murimbook.com",
           fullName: buyerName.trim(),

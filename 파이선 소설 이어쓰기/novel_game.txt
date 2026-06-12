@@ -1,0 +1,96 @@
+import os
+import time
+import re
+import random
+import sys
+from google import genai
+
+sys.stdout.reconfigure(encoding='utf-8')
+client = genai.Client(api_key='[GOOGLE_API_KEY]')
+MODEL_NAME = 'gemini-2.5-flash'
+
+def generate_game(prompt, description="요청"):
+    for attempt in range(1, 4):
+        try:
+            response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+            if response and response.text and response.text.strip(): return response.text
+            time.sleep(2)
+        except Exception: time.sleep(3)
+    return "레벨 업 알림창이 눈앞에 가득 찼다. 올스탯 능력치가 한계를 넘어 폭발하기 시작했다."
+
+print("==================================================")
+print("🎮 [무림북 가상현실 게임 스트리머 자동화 가동] 🎮")
+print("==================================================")
+
+GAME_POOL = [
+    "동시 접속자 10억 명의 가상현실 게임 '아스달'에서, 5년간 광산만 캐던 흙수저 유저 주인공이 숨겨진 '고대 신의 대장장이' 히든 클래스를 해금하고 무기 하나로 게임 서버를 지배하는 스토리",
+    "게임 속 모든 몬스터의 약점과 숨겨진 이스터에그 보상 루트를 통째로 외우고 있는 고인물 유저 주인공이, 신규 서버 오픈과 동시에 랭킹 1위 자리를 단 한 번도 놓치지 않는 사이다 스토리",
+    "남들은 거들떠보지도 않는 '음유시인' 직업을 골랐으나, 주인공이 부르는 노래마다 주변 광역 디버프 및 아군 공격력 1000% 버프를 주는 '전장 위의 지배자' 사기 캐릭터가 되는 스토리",
+    "가상현실 게임 속에서 유일하게 '마물 요리사' 특성을 얻어 보스 마물을 요리해 먹을 때마다 영구적으로 최고 전설 스탯을 흡수하는 무한 성장 먼치킨 스토리",
+    "만년 파산 위기의 게임 유튜버 주인공이 우연히 발견한 s급 히든 던전을 혼자 클리어하는 과정을 실시간 방송으로 송출하여 전 세계 도네이션과 후원금을 싹쓸이하는 스트리머 스토리"
+]
+
+HISTORY_FILE = "game_history.txt"
+# novel_title = "예시제목" # 이어 쓰기 시 '#' 지우고 폴더명 넣기
+
+if 'novel_title' not in locals():
+    used_plots = []
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as h_f:
+            used_plots = [line.strip() for line in h_f.readlines() if line.strip()]
+    available_plots = [p for p in GAME_POOL if p not in used_plots]
+    if not available_plots:
+        used_plots = []; available_plots = GAME_POOL.copy()
+        if os.path.exists(HISTORY_FILE): os.remove(HISTORY_FILE)
+    selected_plot = random.choice(available_plots)
+    with open(HISTORY_FILE, "a", encoding="utf-8") as h_f: h_f.write(selected_plot + "\n")
+
+    prompt_msg = f"""당신은 전 세계 게임 판타지 장르 1위 소설 작가입니다. 다음 플롯을 바탕으로 소설을 기획하십시오. 한자 절대 금지.
+    플롯: {selected_plot}
+    제목 공식: 가상현실 고인물이 게임을 너무 잘함, 나 혼자 히든 클래스 대장장이
+    출력 형식:
+    제목: [작성]
+    소개글: [작성]
+    전체 줄거리: [작성]"""
+    concept_text = generate_game(prompt_msg, "기획 생성")
+    novel_title, novel_intro, overall_plot = "무명 게임물", "게임물 대작", ""
+    for line in concept_text.split('\n'):
+        if line.startswith("제목:"): novel_title = line.replace("제목:", "").strip()
+        if line.startswith("소개글:"): novel_intro = line.replace("소개글:", "").strip()
+        if line.startswith("전체 줄거리:"): overall_plot = line.replace("전체 줄거리:", "").strip()
+else: novel_intro, overall_plot = "이어서 쓰는 중", "이어서 쓰는 중"
+
+safe_title = re.sub(r'[^\w\s-]', '', novel_title).strip()
+output_dir = f"무림북_게임_{safe_title}"
+if not os.path.exists(output_dir): os.makedirs(output_dir)
+
+prompt_1_25 = f"소설 <{novel_title}> (줄거리: {overall_plot})의 1~25화 세부 시놉시스를 '1화: 내용' 형식으로 적어줘. 순수 한글만 사용."
+response_1_25 = generate_game(prompt_1_25, "시놉1")
+prompt_26_50 = f"소설 <{novel_title}> (줄거리: {overall_plot})의 26~50화 세부 시놉시스를 '26화: 내용' 형식으로 적어줘. 순수 한글만 사용."
+response_26_50 = generate_game(prompt_26_50, "시놉2")
+full_synopsis = response_1_25 + "\n" + response_26_50
+
+synopses = {}
+for i in range(1, 51):
+    search_key = f"{i}화:"
+    if search_key in full_synopsis:
+        part = full_synopsis.split(search_key)[1]
+        next_key = f"{i+1}화:"
+        synopses[i] = part.split(next_key)[0].strip() if next_key in part else part.split("\n\n")[0].strip()
+    else: synopses[i] = f"{novel_title}의 경이로운 제 {i}화 스토리가 전개됩니다."
+
+RULES = """틀딱 구어체 금지. '~했다'의 현대식 문체 사용. [알림: 크리티컬 히트가 작렬합니다!], [경험치가 대폭 상승했습니다.] 같은 인게임 시스템 창 및 실시간 시청자들의 트위치/유튜브 채팅 반응(채팅창 묘사)을 풍부하게 섞어 서술하십시오. 한자 절대 금지, 순수 한글로만 출력."""
+
+previous_summary = "없음"
+for chapter in range(1, 51):
+    filename = os.path.join(output_dir, f"{chapter:02d}화_{safe_title}.txt")
+    if os.path.exists(filename):
+        print(f"⏭️ [{chapter}/50화] 이미 집필된 파일 패스 (이어 쓰기 작동)"); continue
+    
+    print(f"▓ [{chapter}/50화] 게임 본문 폭풍 생성 중... 🔥")
+    prompt = f"{RULES}\n제목: {novel_title}\n이전 요약: {previous_summary}\n이번화 시놉시스: {synopses[chapter]}\n{chapter}화 본문을 집필해줘."
+    chapter_text = generate_game(prompt, "본문")
+    with open(filename, "w", encoding="utf-8") as f: f.write(chapter_text)
+    previous_summary = generate_game(f"다음 본문을 3줄 요약해줘.\n\n[본문]\n{chapter_text}", "요약")
+    time.sleep(1)
+print("\n==================================================\n🎉 게임물 완결!\n==================================================")

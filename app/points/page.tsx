@@ -195,7 +195,7 @@ export default function PointsPage() {
         orderName: `코인 충전: ${coinName}`,
         totalAmount: amount,
         currency: "CURRENCY_KRW",
-        redirectUrl: `${window.location.origin}/payments/redirect?type=coin`,
+        redirectUrl: `${window.location.origin}/payments/redirect?type=coin&paymentId=${paymentId}`,
         noticeUrls: window.location.hostname === "localhost" ? undefined : [
           `${window.location.origin}/api/webhook/portone`
         ],

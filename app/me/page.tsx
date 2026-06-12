@@ -1131,26 +1131,7 @@ export default function MePage() {
             </div>
           </button>
 
-          {user?.user_metadata?.is_verified ? (
-            <div className="menu-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "default" }}>
-              <span className="menu-item-left">본인인증 설정</span>
-              <div className="menu-item-right">
-                <span style={{ fontSize: "14px", color: "#4cd964", fontWeight: "700", marginRight: "4px" }}>
-                  인증 완료 ({user.user_metadata.verified_name})
-                </span>
-              </div>
-            </div>
-          ) : (
-            <button className="menu-item" onClick={handleIdentityVerification}>
-              <span className="menu-item-left">본인인증 설정</span>
-              <div className="menu-item-right">
-                <span className="menu-badge" style={{ background: "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)", borderRadius: "12px", padding: "3px 8px", fontSize: "11px", fontWeight: "800" }}>
-                  인증 필요
-                </span>
-                <span className="menu-arrow"><ChevronRightIcon /></span>
-              </div>
-            </button>
-          )}
+
 
           <button className="menu-item" onClick={() => {
             if (confirm("안녕하세요. 고품격 무협 오디오 청취 플랫폼 '무림북'입니다. 이용문의 및 에러 사항은 언제든 1:1 채팅으로 남겨주세요.\n\n확인을 누르시면 1:1 문의 채팅방(카카오톡 오픈채팅)으로 이동합니다.")) {

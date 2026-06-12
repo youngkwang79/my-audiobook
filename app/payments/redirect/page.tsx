@@ -17,10 +17,34 @@ function RedirectContent() {
     const paymentId = searchParams.get("paymentId") 
       || searchParams.get("payment_id") 
       || searchParams.get("issueId") 
-      || searchParams.get("issue_id");
-    const billingKey = searchParams.get("billingKey") || searchParams.get("billing_key");
+      || searchParams.get("issue_id")
+      || searchParams.get("merchant_order_ref")
+      || searchParams.get("merchantOrderRef")
+      || searchParams.get("merchant_issue_id")
+      || searchParams.get("merchantIssueId");
+    const billingKey = searchParams.get("billingKey") 
+      || searchParams.get("billing_key")
+      || searchParams.get("subscription_order_ref")
+      || searchParams.get("subscriptionOrderRef");
     const code = searchParams.get("code");
     const message = searchParams.get("message") || "결제에 실패했습니다.";
+
+    const safeRedirect = (targetPath: string) => {
+      if (typeof window !== "undefined" && window.history.length > 2) {
+        // 뒤로가기 2번을 수행하여 PG 결제창 진입 전 페이지로 이동한 뒤,
+        // 해당 상태를 목적지 경로로 대체하여 PG 페이지를 히스토리에서 제거합니다.
+        window.history.go(-2);
+        setTimeout(() => {
+          try {
+            window.location.replace(targetPath);
+          } catch (e) {
+            router.replace(targetPath);
+          }
+        }, 100);
+      } else {
+        router.replace(targetPath);
+      }
+    };
 
     async function handleRedirect() {
       if (!type || !paymentId) {
@@ -42,7 +66,7 @@ function RedirectContent() {
           console.error("Failed to update order status to FAILED:", dbErr);
         }
         alert(`결제 실패: ${message}`);
-        router.replace(type === "membership" ? "/membership" : "/points");
+        safeRedirect(type === "membership" ? "/membership" : "/points");
         return;
       }
 
@@ -74,16 +98,16 @@ function RedirectContent() {
 
           if (res.ok && data?.ok) {
             alert("충전이 완료되었습니다!");
-            router.replace("/points");
+            safeRedirect("/points");
           } else {
             alert(`충전 승인 처리 실패: ${data?.error || "알 수 없는 오류"}`);
-            router.replace("/points");
+            safeRedirect("/points");
           }
         } else if (type === "membership") {
           // 멤버십 정기결제 빌링키 승인 API 호출
           if (!billingKey) {
             alert("빌링키 발급 정보가 유효하지 않습니다.");
-            router.replace("/membership");
+            safeRedirect("/membership");
             return;
           }
 
@@ -101,16 +125,16 @@ function RedirectContent() {
           if (res.ok) {
             localStorage.setItem("membership", plan || "weekly");
             alert(`${plan === "weekly" ? "주간" : "연간"} 멤버십 가입이 완료되었습니다!`);
-            router.replace("/");
+            safeRedirect("/");
           } else {
             alert(`멤버십 구독 승인 실패: ${data?.error || "알 수 없는 오류"}`);
-            router.replace("/membership");
+            safeRedirect("/membership");
           }
         }
       } catch (err: any) {
         console.error("Error during payment redirect processing:", err);
         alert(`결제 승인 처리 중 에러가 발생했습니다: ${err.message || err}`);
-        router.replace(type === "membership" ? "/membership" : "/points");
+        safeRedirect(type === "membership" ? "/membership" : "/points");
       }
     }
 
