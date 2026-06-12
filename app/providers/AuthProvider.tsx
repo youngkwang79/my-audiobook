@@ -74,11 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = sb.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, newSession: Session | null) => {
+      (event: AuthChangeEvent, newSession: Session | null) => {
         if (!mounted) return;
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
+
+        // ✅ PASSWORD_RECOVERY 이벤트 발생 시 비밀번호 변경 페이지로 리다이렉트
+        if (event === "PASSWORD_RECOVERY") {
+          window.location.href = "/reset-password";
+        }
       }
     );
 

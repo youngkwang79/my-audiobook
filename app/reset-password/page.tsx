@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import TopBar from "@/app/components/TopBar";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 function validatePassword(pw: string) {
   const value = pw.trim();
@@ -22,11 +23,19 @@ function validatePassword(pw: string) {
 
 function ResetPasswordInner() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [capsOn, setCapsOn] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      alert("로그인이 필요하거나 유효하지 않은 접근입니다. 비밀번호 재설정 메일을 다시 요청해 주세요.");
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
 
   const pwCheck = useMemo(() => validatePassword(password), [password]);
   const passwordsMatch = password === confirmPassword && password.length > 0;
