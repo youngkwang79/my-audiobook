@@ -303,6 +303,7 @@ export default function MembershipPage() {
         billingKeyMethod,
         issueId: paymentId,
         issueName: `멤버십 정기결제: ${planName}`,
+        redirectUrl: `${window.location.origin}/payments/redirect?type=membership&plan=${selectedPlan}`,
         customer: {
           email: session.user.email || "customer@murimbook.com",
           fullName: buyerName.trim(),
