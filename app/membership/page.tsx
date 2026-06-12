@@ -303,6 +303,10 @@ export default function MembershipPage() {
         billingKeyMethod,
         issueId: paymentId,
         issueName: `멤버십 정기결제: ${planName}`,
+        customerId: session.user.id,
+        customData: {
+          userId: session.user.id,
+        },
         redirectUrl: `${window.location.origin}/payments/redirect?type=membership&plan=${selectedPlan}`,
         customer: {
           email: session.user.email || "customer@murimbook.com",
@@ -353,6 +357,14 @@ export default function MembershipPage() {
       router.push("/");
     } catch (e: any) {
       console.error(e);
+      try {
+        await supabase
+          .from("orders")
+          .update({ status: "FAILED" })
+          .eq("payment_id", paymentId);
+      } catch (dbErr) {
+        console.error("Failed to update order status to FAILED in catch:", dbErr);
+      }
       alert("구독 처리 중 오류가 발생했습니다: " + e.message);
     }
   };
