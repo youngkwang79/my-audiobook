@@ -72,7 +72,7 @@ export default function PointsPage() {
   const [showBuyerModal, setShowBuyerModal] = useState(false);
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "KAKAOPAY" | "DANAL">("CARD");
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "KAKAOPAY" | "PHONE">("CARD");
   const [pendingPurchase, setPendingPurchase] = useState<{ type: "coin"; amount: number; coinName: string } | null>(null);
   const [allAgreed, setAllAgreed] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
@@ -195,7 +195,7 @@ export default function PointsPage() {
         orderName: `코인 충전: ${coinName}`,
         totalAmount: amount,
         currency: "CURRENCY_KRW",
-        noticeUrls: [
+        noticeUrls: window.location.hostname === "localhost" ? undefined : [
           `${window.location.origin}/api/webhook/portone`
         ],
         customer: {
@@ -212,9 +212,10 @@ export default function PointsPage() {
         paymentParams.channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
         paymentParams.payMethod = "EASY_PAY";
         paymentParams.easyPay = { easyPayProvider: "KAKAOPAY" };
-      } else if (paymentMethod === "DANAL") {
-        paymentParams.channelKey = "channel-key-0551875c-6e36-430b-891b-91025c95afe1";
+      } else if (paymentMethod === "PHONE") {
+        paymentParams.channelKey = "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
         paymentParams.payMethod = "MOBILE";
+        paymentParams.productType = "DIGITAL";
       } else {
         paymentParams.payMethod = "CARD";
       }
@@ -952,8 +953,8 @@ export default function PointsPage() {
                 </button>
                 <button
                   type="button"
-                  className={`pay-method-btn ${paymentMethod === "DANAL" ? "active" : ""}`}
-                  onClick={() => setPaymentMethod("DANAL")}
+                  className={`pay-method-btn ${paymentMethod === "PHONE" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("PHONE")}
                 >
                   📱 휴대폰결제
                 </button>

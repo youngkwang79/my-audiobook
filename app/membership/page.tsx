@@ -309,7 +309,7 @@ export default function MembershipPage() {
           phoneNumber: buyerPhone.trim(),
         },
         offerPeriod: {
-          interval: selectedPlan === "weekly" ? "7d" : "1y",
+          interval: selectedPlan === "weekly" ? "1m" : "1y",
         },
       };
 

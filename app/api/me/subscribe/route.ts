@@ -75,9 +75,9 @@ export async function POST(req: Request) {
           },
           phoneNumber: order.customer_phone ? order.customer_phone.replace(/[^0-9]/g, "") : undefined,
         },
-        customData: {
+        customData: JSON.stringify({
           userId: user.id,
-        },
+        }),
       }),
     });
 
@@ -95,10 +95,12 @@ export async function POST(req: Request) {
     }
 
     const chargeResult = await chargeResponse.json();
-    const chargeStatus = chargeResult?.payment?.status || chargeResult?.status;
+    // PortOne V2 billing key payment returns a BillingKeyPaymentSummary in the payment field,
+    // which contains pgTxId and paidAt but no status field. If paidAt or pgTxId exists, it is PAID.
+    const chargeStatus = chargeResult?.payment?.status || chargeResult?.status || (chargeResult?.payment?.paidAt ? "PAID" : undefined);
 
     if (chargeStatus !== "PAID") {
-      console.warn("[subscribe] Charge status is not PAID:", chargeStatus);
+      console.warn("[subscribe] Charge status is not PAID:", chargeStatus, chargeResult);
       await supabaseAdmin
         .from("orders")
         .update({ status: "FAILED" })

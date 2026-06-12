@@ -9,14 +9,12 @@ async function run() {
   console.log("Querying work details...");
   const { data, error } = await supabase
     .from("works")
-    .select("*")
-    .eq("id", "Myeolsaguirim Chomuyeong")
-    .maybeSingle();
+    .select("id, title, thumbnail");
 
   if (error) {
     console.error("Error:", error);
   } else {
-    console.log("Work detail:", JSON.stringify(data, null, 2));
+    console.log("Works details:", JSON.stringify(data, null, 2));
   }
 }
 

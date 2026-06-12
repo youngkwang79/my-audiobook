@@ -93,28 +93,7 @@ export default function WorkPosterCard({ work }: Props) {
           </div>
         )}
 
-        {/* 이어듣기 표시 */}
-        {resumeHref && (
-          <div style={{
-            position: "absolute",
-            bottom: 22,
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            pointerEvents: "none",
-            zIndex: 4,
-          }}>
-            <span style={{
-              background: "rgba(0,0,0,0.7)",
-              color: "#ffffff",
-              fontSize: 10,
-              fontWeight: 800,
-              padding: "3px 8px",
-              borderRadius: 99,
-              letterSpacing: "-0.2px",
-            }}>▶ 이어듣기</span>
-          </div>
-        )}
+
 
         {/* 준비중 오버레이 */}
         {work.status === "준비중" && (

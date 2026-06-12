@@ -19,7 +19,7 @@ const supabase = createClient(
 );
 
 const WORK_ID = "Woonghon_Kkaedaleumui_Geomgwa_Sonyeon";
-const LOCAL_SRC = "C:\\Users\\owner\\.gemini\\antigravity-ide\\brain\\1bc60ce4-22e3-4edf-82e9-6005975be67c\\unghon_thumbnail_1781159596298.png";
+const LOCAL_SRC = "C:\\Users\\owner\\.gemini\\antigravity-ide\\brain\\6fff49c2-f667-4e65-a3fa-902fa5ba80db\\unghon_with_text.png";
 const FILE_NAME = "unghon_kkaedaleumui.png";
 
 async function run() {
@@ -45,7 +45,7 @@ async function run() {
   console.log("   업로드 완료!");
 
   // 3. Supabase works 테이블 업데이트
-  const finalUrl = `https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev/${r2Key}`;
+  const finalUrl = `/thumbnails/${FILE_NAME}`;
   console.log(`3. Supabase 업데이트 중...`);
   console.log(`   URL: ${finalUrl}`);
   const { data, error } = await supabase
