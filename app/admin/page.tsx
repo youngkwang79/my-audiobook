@@ -1799,7 +1799,7 @@ function AutomationPanel({ worksList }: { worksList: any[] }) {
   const [episodeReleaseDate, setEpisodeReleaseDate] = useState("");
   const [episodeLocked, setEpisodeLocked] = useState<"auto" | "free" | "locked">("auto");
   const [textInput, setTextInput] = useState("");
-  const [txtFile, setTxtFile] = useState<File | null>(null);
+  const [txtFiles, setTxtFiles] = useState<File[]>([]);
 
   const [voice, setVoice] = useState("ko-KR-InJoonNeural");
   const [preset, setPreset] = useState("karisma");
@@ -1856,26 +1856,43 @@ function AutomationPanel({ worksList }: { worksList: any[] }) {
 
   // 텍스트 파일 로드 처리
   const handleTxtFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setTxtFile(file);
-      const content = await file.text();
-      setTextInput(content);
-      
-      // 파일명에서 회차 번호와 제목 자동 추출 시도
-      const base = file.name.replace(/\.[^/.]+$/, "");
-      const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
-      if (match) {
-        setEpisodeId(String(Number(match[1])));
-        setEpisodeTitle(match[2].trim());
-      } else {
-        const onlyNumMatch = base.trim().match(/^(\d+)(?:화)?$/);
-        if (onlyNumMatch) {
-          setEpisodeId(String(Number(onlyNumMatch[1])));
-          setEpisodeTitle(`${Number(onlyNumMatch[1])}화`);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // 자연 정렬을 이용하여 파일명을 순서대로 정렬 (예: 1화, 2화, 10화 순서)
+      const fileList = Array.from(files).sort((a, b) => {
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setTxtFiles(fileList);
+
+      // 모든 파일의 텍스트를 순서대로 읽고 합칩니다.
+      const contentsArray = [];
+      for (const file of fileList) {
+        const text = await file.text();
+        contentsArray.push(text);
+      }
+      setTextInput(contentsArray.join("\n\n"));
+
+      // 파일이 한 개일 때만 자동으로 제목과 화수 파싱
+      if (fileList.length === 1) {
+        const file = fileList[0];
+        const base = file.name.replace(/\.[^/.]+$/, "");
+        const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
+        if (match) {
+          setEpisodeId(String(Number(match[1])));
+          setEpisodeTitle(match[2].trim());
         } else {
-          setEpisodeTitle(base.trim());
+          const onlyNumMatch = base.trim().match(/^(\d+)(?:화)?$/);
+          if (onlyNumMatch) {
+            setEpisodeId(String(Number(onlyNumMatch[1])));
+            setEpisodeTitle(`${Number(onlyNumMatch[1])}화`);
+          } else {
+            setEpisodeTitle(base.trim());
+          }
         }
+      } else {
+        setEpisodeTitle("");
+        setEpisodeId("");
       }
     }
   };
@@ -2265,14 +2282,20 @@ function AutomationPanel({ worksList }: { worksList: any[] }) {
             <input 
               type="file" 
               accept=".txt" 
+              multiple
               onChange={handleTxtFileChange}
               className="form-input"
             />
-            <span style={{ fontSize: 11, opacity: 0.5 }}>* 파일 첨부 시 자동으로 본문 내용이 채워지며, 화수와 제목이 파일명에서 자동 파싱됩니다.</span>
+            <span style={{ fontSize: 11, opacity: 0.5 }}>* 파일 여러 개를 선택하면 자동으로 내용이 순서대로 합쳐집니다.</span>
           </div>
-          {txtFile && (
+          {txtFiles.length > 0 && (
             <div style={{ alignSelf: "center", fontSize: 13, color: "#34c759", fontWeight: 700 }}>
-              ✅ {txtFile.name} 파일 로드 완료 ({(txtFile.size/1024).toFixed(1)} KB)
+              ✅ {txtFiles.length}개 파일 로드 완료 (총 {(txtFiles.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB)
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: "normal", marginTop: 4, maxHeight: 80, overflowY: "auto" }}>
+                {txtFiles.map((f, i) => (
+                  <div key={i}>- {f.name}</div>
+                ))}
+              </div>
             </div>
           )}
         </div>
