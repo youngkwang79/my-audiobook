@@ -30,17 +30,32 @@ function RedirectContent() {
     const message = searchParams.get("message") || "결제에 실패했습니다.";
 
     const safeRedirect = (targetPath: string) => {
-      if (typeof window !== "undefined" && window.history.length > 2) {
-        // 뒤로가기 2번을 수행하여 PG 결제창 진입 전 페이지로 이동한 뒤,
-        // 해당 상태를 목적지 경로로 대체하여 PG 페이지를 히스토리에서 제거합니다.
-        window.history.go(-2);
-        setTimeout(() => {
-          try {
-            window.location.replace(targetPath);
-          } catch (e) {
-            router.replace(targetPath);
-          }
-        }, 100);
+      if (typeof window !== "undefined") {
+        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (isMobile && window.history.length > 2) {
+          // 모바일: PG사 결제 인증창(전체 페이지 리다이렉트)을 스택에서 건너뛰기 위해 go(-2)
+          window.history.go(-2);
+          setTimeout(() => {
+            try {
+              window.location.replace(targetPath);
+            } catch (e) {
+              router.replace(targetPath);
+            }
+          }, 100);
+        } else if (window.history.length > 1) {
+          // PC: PG사가 팝업/이프레임으로 뜨므로 main 히스토리에 쌓이지 않음.
+          // /payments/redirect 임시 페이지만 지우기 위해 go(-1) 후 replace
+          window.history.go(-1);
+          setTimeout(() => {
+            try {
+              window.location.replace(targetPath);
+            } catch (e) {
+              router.replace(targetPath);
+            }
+          }, 100);
+        } else {
+          router.replace(targetPath);
+        }
       } else {
         router.replace(targetPath);
       }
