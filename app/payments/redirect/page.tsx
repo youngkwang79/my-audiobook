@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-export default function RedirectHandlerPage() {
+function RedirectContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [statusMessage, setStatusMessage] = useState("결제 상태를 확인하고 있습니다...");
@@ -114,6 +114,16 @@ export default function RedirectHandlerPage() {
   }, [searchParams, router]);
 
   return (
+    <div className="redirect-box">
+      <div className="spinner"></div>
+      <div className="status-text">{statusMessage}</div>
+      <div className="caption-text">창을 닫거나 뒤로 가기를 누르지 마세요.</div>
+    </div>
+  );
+}
+
+export default function RedirectHandlerPage() {
+  return (
     <div className="redirect-container">
       <style>{`
         .redirect-container {
@@ -166,11 +176,15 @@ export default function RedirectHandlerPage() {
         }
       `}</style>
       
-      <div className="redirect-box">
-        <div className="spinner"></div>
-        <div className="status-text">{statusMessage}</div>
-        <div className="caption-text">창을 닫거나 뒤로 가기를 누르지 마세요.</div>
-      </div>
+      <Suspense fallback={
+        <div className="redirect-box">
+          <div className="spinner"></div>
+          <div className="status-text">결제 정보 읽는 중...</div>
+          <div className="caption-text">창을 닫거나 뒤로 가기를 누르지 마세요.</div>
+        </div>
+      }>
+        <RedirectContent />
+      </Suspense>
     </div>
   );
 }
