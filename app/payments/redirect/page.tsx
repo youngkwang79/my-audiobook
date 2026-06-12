@@ -24,8 +24,9 @@ function RedirectContent() {
 
     async function handleRedirect() {
       if (!type || !paymentId) {
-        setStatusMessage("잘못된 접근입니다. 메인 페이지로 이동합니다.");
-        setTimeout(() => router.push("/"), 2000);
+        const rawSearch = typeof window !== "undefined" ? window.location.search : "";
+        setStatusMessage(`잘못된 접근입니다.\n(전송된 값 - type: ${type || '없음'}, ID: ${paymentId || '없음'})\nURL: ${rawSearch}`);
+        setTimeout(() => router.push("/"), 10000); // 10초 대기하여 사용자가 볼 수 있도록 함
         return;
       }
 
