@@ -97,6 +97,29 @@ const EmojiPickerChips = ({ onSelect }: { onSelect: (emoji: string) => void }) =
   );
 };
 
+// 한글 제목을 영문 고유 ID(Slug)로 변환하는 함수
+function romanizeHangeul(text: string): string {
+  const choMap = ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'];
+  const jungMap = ['a', 'ae', 'ya', 'yae', 'eo', 'e', 'ye', 'ye', 'o', 'wa', 'wae', 'oe', 'yo', 'u', 'wo', 'we', 'wi', 'yu', 'eu', 'ui', 'i'];
+  const jongMap = ['', 'g', 'kk', 'gs', 'n', 'nj', 'nh', 'd', 'l', 'lg', 'lm', 'lb', 'ls', 'lt', 'lp', 'lh', 'm', 'b', 'bs', 's', 'ss', 'ng', 'j', 'ch', 'k', 't', 'p', 'h'];
+
+  let result = "";
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const code = char.charCodeAt(0);
+    if (code >= 0xAC00 && code <= 0xD7A3) {
+      const offset = code - 0xAC00;
+      const cho = Math.floor(offset / 21 / 28);
+      const jung = Math.floor((offset % (21 * 28)) / 28);
+      const jong = offset % 28;
+      result += choMap[cho] + jungMap[jung] + jongMap[jong];
+    } else if (/[a-zA-Z0-9]/.test(char)) {
+      result += char.toLowerCase();
+    }
+  }
+  return result.replace(/[^a-z0-9]/g, "").slice(0, 30);
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -975,7 +998,18 @@ export default function AdminPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">소설 제목</label>
-                <input type="text" className="form-input" placeholder="천무진: 봉인된 천재" value={novelTitle} onChange={(e) => setNovelTitle(e.target.value)} required />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="천무진: 봉인된 천재" 
+                  value={novelTitle} 
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    setNovelTitle(title);
+                    setNovelId(romanizeHangeul(title));
+                  }} 
+                  required 
+                />
               </div>
             </div>
 
