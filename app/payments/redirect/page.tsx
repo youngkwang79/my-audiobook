@@ -26,7 +26,7 @@ function RedirectContent() {
       if (!type || !paymentId) {
         const rawSearch = typeof window !== "undefined" ? window.location.search : "";
         setStatusMessage(`잘못된 접근입니다.\n(전송된 값 - type: ${type || '없음'}, ID: ${paymentId || '없음'})\nURL: ${rawSearch}`);
-        setTimeout(() => router.push("/"), 10000); // 10초 대기하여 사용자가 볼 수 있도록 함
+        setTimeout(() => router.replace("/"), 10000); // 10초 대기하여 사용자가 볼 수 있도록 함
         return;
       }
 
@@ -42,7 +42,7 @@ function RedirectContent() {
           console.error("Failed to update order status to FAILED:", dbErr);
         }
         alert(`결제 실패: ${message}`);
-        router.push(type === "membership" ? "/membership" : "/points");
+        router.replace(type === "membership" ? "/membership" : "/points");
         return;
       }
 
@@ -53,7 +53,7 @@ function RedirectContent() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-          router.push("/login");
+          router.replace("/login");
           return;
         }
 
@@ -74,16 +74,16 @@ function RedirectContent() {
 
           if (res.ok && data?.ok) {
             alert("충전이 완료되었습니다!");
-            router.push("/points");
+            router.replace("/points");
           } else {
             alert(`충전 승인 처리 실패: ${data?.error || "알 수 없는 오류"}`);
-            router.push("/points");
+            router.replace("/points");
           }
         } else if (type === "membership") {
           // 멤버십 정기결제 빌링키 승인 API 호출
           if (!billingKey) {
             alert("빌링키 발급 정보가 유효하지 않습니다.");
-            router.push("/membership");
+            router.replace("/membership");
             return;
           }
 
@@ -101,16 +101,16 @@ function RedirectContent() {
           if (res.ok) {
             localStorage.setItem("membership", plan || "weekly");
             alert(`${plan === "weekly" ? "주간" : "연간"} 멤버십 가입이 완료되었습니다!`);
-            router.push("/");
+            router.replace("/");
           } else {
             alert(`멤버십 구독 승인 실패: ${data?.error || "알 수 없는 오류"}`);
-            router.push("/membership");
+            router.replace("/membership");
           }
         }
       } catch (err: any) {
         console.error("Error during payment redirect processing:", err);
         alert(`결제 승인 처리 중 에러가 발생했습니다: ${err.message || err}`);
-        router.push(type === "membership" ? "/membership" : "/points");
+        router.replace(type === "membership" ? "/membership" : "/points");
       }
     }
 
