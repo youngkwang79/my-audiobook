@@ -14,7 +14,10 @@ function RedirectContent() {
     const plan = searchParams.get("plan");
     
     // PortOne V2 redirects append these query params
-    const paymentId = searchParams.get("paymentId") || searchParams.get("payment_id");
+    const paymentId = searchParams.get("paymentId") 
+      || searchParams.get("payment_id") 
+      || searchParams.get("issueId") 
+      || searchParams.get("issue_id");
     const billingKey = searchParams.get("billingKey") || searchParams.get("billing_key");
     const code = searchParams.get("code");
     const message = searchParams.get("message") || "결제에 실패했습니다.";
