@@ -31,6 +31,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "no_files" }, { status: 400 });
     }
 
+    function cleanHanja(text: string): string {
+      const hanjaInParenthesesRegex = /\([^\)]*[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]+[^\)]*\)/g;
+      const hanjaInParenthesesFullWidthRegex = /（[^）]*[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]+[^）]*）/g;
+      return text
+        .replace(hanjaInParenthesesRegex, "")
+        .replace(hanjaInParenthesesFullWidthRegex, "");
+    }
+
     // 파일 이름순으로 정렬
     const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -42,7 +50,7 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const fileContent = await file.text();
+      const fileContent = cleanHanja(await file.text());
       const baseName = file.name.replace(/\.[^/.]+$/, ""); // 확장자 제거
       
       // 화수 헤더 추가

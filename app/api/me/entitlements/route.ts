@@ -7,9 +7,7 @@ export async function GET(req: Request) {
   const work_id = url.searchParams.get("work_id") || "cheonmujin";
   const episode_id = url.searchParams.get("episode_id");
 
-  if (!episode_id) {
-    return NextResponse.json({ error: "episode_id is required" }, { status: 400 });
-  }
+  // If episode_id is not provided, fetch and return all entitlements for this work
 
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ")
@@ -45,6 +43,25 @@ export async function GET(req: Request) {
     .maybeSingle();
 
   const is_subscribed = sub ? new Date(sub.expires_at) > new Date() : false;
+
+  if (!episode_id) {
+    const { data: ents, error: entError } = await supabaseAdmin
+      .from("entitlements")
+      .select("episode_id, unlocked_until_part, episode_unlocked")
+      .eq("user_id", user_id)
+      .eq("work_id", work_id);
+
+    if (entError) {
+      return NextResponse.json({ error: "entitlements_query_failed" }, { status: 500 });
+    }
+
+    const totalPoints = Number(wallet?.points ?? 0) + Number(wallet?.reward_points ?? 0);
+    return NextResponse.json({
+      points: totalPoints,
+      is_subscribed,
+      entitlements: ents || [],
+    });
+  }
 
   const { data: ent, error: entError } = await supabaseAdmin
     .from("entitlements")

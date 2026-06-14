@@ -84,7 +84,9 @@ export async function POST(req: Request) {
       episodeId, 
       title, 
       locked = true, 
-      releaseDate 
+      releaseDate,
+      effect = "none",
+      is_membership_only = false
     } = payload;
 
     if (!text || !text.trim()) {
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
         `--voice=${voice}`,
         `--pitch=${pitch}`,
         `--rate=${rate}`,
+        `--effect=${effect}`,
         `--output=${tempMp3Path}`
       ];
       
@@ -149,6 +152,7 @@ export async function POST(req: Request) {
       `--voice=${voice}`,
       `--pitch=${pitch}`,
       `--rate=${rate}`,
+      `--effect=${effect}`,
       `--output=${tempMp3Path}`
     ];
     
@@ -163,7 +167,7 @@ export async function POST(req: Request) {
     // R2 키 설정 (예: cheonmujin/001/01.mp3)
     const epNum = Number(episodeId);
     const folder = isNaN(epNum) ? String(episodeId) : String(epNum).padStart(3, "0");
-    const r2Key = `${workId}/${folder}/01.mp3`; // 기본 01 파트로 업로드
+    const r2Key = `${workId}/${folder}/01.MP3`; // 항상 01 파트로 업로드
     
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
     
@@ -186,7 +190,8 @@ export async function POST(req: Request) {
         title: title,
         locked: locked,
         parts: 1,
-        release_date: new Date(releaseDate).toISOString()
+        release_date: new Date(releaseDate).toISOString(),
+        is_membership_only: is_membership_only
       })
       .select();
       
@@ -194,7 +199,7 @@ export async function POST(req: Request) {
       throw new Error(`DB upsert failed: ${epError.message}`);
     }
     
-    // 작품의 총 에피소드 수 업데이트
+    // 작품의 총 에피소드 수 및 마지막 목소리 설정 업데이트
     const { data: currentEpList } = await supabaseAdmin
       .from("episodes")
       .select("id")
@@ -203,7 +208,12 @@ export async function POST(req: Request) {
     if (currentEpList) {
       await supabaseAdmin
         .from("works")
-        .update({ episode_count: currentEpList.length })
+        .update({ 
+          episode_count: currentEpList.length,
+          last_voice: voice,
+          last_pitch: pitch,
+          last_rate: rate
+        })
         .eq("id", workId);
     }
     

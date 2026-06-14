@@ -121,6 +121,11 @@ export default function QiCondenseGame({
         setLocked(true);
         setTimeout(() => {
           onStageClear(Math.floor(500 * powerFactor)); // Base clear bonus
+          setCurrentProgress(0);
+          setRadius(40);
+          setGrowing(true);
+          setResult(null);
+          setLocked(false);
         }, 800);
         return;
       }

@@ -166,6 +166,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     registerPush();
   }, [session, loading]);
 
+  // ✅ 계정 전환 시 localStorage 청소 (이전 아이디의 시청 기록 및 코인 정보 누수 방지)
+  useEffect(() => {
+    if (loading || typeof window === "undefined") return;
+
+    try {
+      const lastUserId = localStorage.getItem("last_logged_in_user_id");
+      const currentUserId = user?.id || null;
+
+      if (currentUserId !== lastUserId) {
+        localStorage.removeItem("lastPlayed");
+        localStorage.removeItem("workProgress");
+        localStorage.removeItem("last_played_episode");
+        localStorage.removeItem("points");
+
+        // 일일 시청 미션(watch_time_*) 및 관심작품(fav:*) 관련 키 일괄 삭제
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("watch_time_") || key.startsWith("fav:"))) {
+            localStorage.removeItem(key);
+            i--;
+          }
+        }
+
+        if (currentUserId) {
+          localStorage.setItem("last_logged_in_user_id", currentUserId);
+        } else {
+          localStorage.removeItem("last_logged_in_user_id");
+        }
+      }
+    } catch (e) {
+      console.error("Failed to clear user localStorage on account change:", e);
+    }
+  }, [user, loading]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,

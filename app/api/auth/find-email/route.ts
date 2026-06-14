@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         break;
       }
 
-      const match = users.find(u => u.raw_user_meta_data?.nickname === cleanNickname);
+      const match = users.find(u => u.user_metadata?.nickname === cleanNickname);
       if (match) {
         matchedEmail = match.email || null;
         break;

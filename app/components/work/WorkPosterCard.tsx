@@ -25,9 +25,14 @@ export default function WorkPosterCard({ work }: Props) {
         const lastPlayedRaw = localStorage.getItem("lastPlayed");
         if (lastPlayedRaw) {
           const lastPlayed = JSON.parse(lastPlayedRaw);
-          if (lastPlayed.workId === work.id && String(lastPlayed.episodeId) === String(lastEpisode)) {
+          if (
+            lastPlayed.workId === work.id &&
+            String(lastPlayed.episodeId) === String(lastEpisode)
+          ) {
             const part = lastPlayed.part ?? 1;
-            setResumeHref(`/episode/${work.id}/${lastEpisode}?part=${part}&autoplay=1`);
+            setResumeHref(
+              `/episode/${work.id}/${lastEpisode}?part=${part}&autoplay=1`,
+            );
             return;
           }
         }
@@ -45,8 +50,11 @@ export default function WorkPosterCard({ work }: Props) {
     firstEpId = episodes[0]?.id || null;
   }
 
-  const playHref = resumeHref
-    ?? (firstEpId ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1` : `/work/${work.id}`);
+  const playHref =
+    resumeHref ??
+    (firstEpId
+      ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1`
+      : `/work/${work.id}`);
 
   // 배지 색상 결정
   const getBadgeStyle = (badge: string) => {
@@ -92,8 +100,6 @@ export default function WorkPosterCard({ work }: Props) {
             {work.badge}
           </div>
         )}
-
-
 
         {/* 준비중 오버레이 */}
         {work.status === "준비중" && (

@@ -45,6 +45,20 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
 
+    // 만약 썸네일 파일 업로드인 경우, 로컬 디렉토리에도 동시 저장하여 401 권한 차단 우회
+    if (key.startsWith("thumbnails/")) {
+      const path = require("path");
+      const fs = require("fs");
+      const filename = key.substring("thumbnails/".length);
+      const publicThumbnailsDir = path.join(process.cwd(), "public", "thumbnails");
+      if (!fs.existsSync(publicThumbnailsDir)) {
+        fs.mkdirSync(publicThumbnailsDir, { recursive: true });
+      }
+      const localFilePath = path.join(publicThumbnailsDir, filename);
+      fs.writeFileSync(localFilePath, buffer);
+      console.log(`Saved manual upload thumbnail locally: ${localFilePath}`);
+    }
+
     // 3. R2에 업로드 (서버 -> R2 이므로 CORS 영향 없음)
     await s3.send(
       new PutObjectCommand({

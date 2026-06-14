@@ -32,35 +32,95 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
     }
 
-    // 2. Pollinations AI 이미지 생성 API 호출
-    // 책 표지 스타일로 600x900 크기로 어울리는 일러스트 생성 요청
-    const enhancePrompt = `${prompt}, book cover illustration, high quality, fantasy art, digital painting, 4k`;
-    const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancePrompt)}?width=600&height=900&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
-
-    const res = await fetch(pollUrl);
-    if (!res.ok) {
-      return NextResponse.json({ error: "image_generation_failed" }, { status: 500 });
+    // 2. Google AI Studio Imagen 4.0 이미지 생성 API 호출
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "missing_google_api_key" }, { status: 500 });
     }
 
-    const blob = await res.blob();
-    const buffer = Buffer.from(await blob.arrayBuffer());
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+    const enhancePrompt = `${prompt}, character-centric movie poster composition, close-up portrait of main character, book cover illustration, clean cover, textless, no text, no letters, no words, no writing, no Hanja, no Chinese characters, no signatures, high quality, fantasy art, digital painting, 4k`;
 
-    // 3. Cloudflare R2에 업로드
+    const imagenRes = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instances: [
+          {
+            prompt: enhancePrompt,
+          },
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "3:4",
+          outputMimeType: "image/jpeg",
+        },
+      }),
+    });
+
+    if (!imagenRes.ok) {
+      const errData = await imagenRes.json().catch(() => ({}));
+      console.error("Imagen API error response:", errData);
+      return NextResponse.json({ error: "image_generation_failed", details: errData }, { status: 500 });
+    }
+
+    const data = await imagenRes.json();
+    const prediction = data.predictions?.[0];
+    let imageBytes = prediction?.bytesBase64Encoded || prediction?.imageBytes || prediction?.image;
+    if (typeof imageBytes === "object" && imageBytes?.imageBytes) {
+      imageBytes = imageBytes.imageBytes;
+    }
+
+    if (!imageBytes) {
+      return NextResponse.json({ error: "image_bytes_missing" }, { status: 500 });
+    }
+
+    const buffer = Buffer.from(imageBytes, "base64");
+
+    // 3. 로컬 public/thumbnails/ 디렉토리에 저장 (웹서버에서 직접 서비스하므로 401 에러 원천 방지)
+    const fs = require("fs");
+    const path = require("path");
+    const timestamp = Date.now();
+    const publicThumbnailsDir = path.join(process.cwd(), "public", "thumbnails");
+    if (!fs.existsSync(publicThumbnailsDir)) {
+      fs.mkdirSync(publicThumbnailsDir, { recursive: true });
+    }
+    const localFileName = `${novelId}_${timestamp}.png`;
+    const localFilePath = path.join(publicThumbnailsDir, localFileName);
+    fs.writeFileSync(localFilePath, buffer);
+    
+    const relativeUrl = `/thumbnails/${localFileName}`;
+
+    // 4. Cloudflare R2에 백업 업로드
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
-    const key = `thumbnails/${novelId}.png`;
+    const key = `thumbnails/${novelId}_${timestamp}.png`;
 
     await s3.send(
       new PutObjectCommand({
         Bucket: bucketName,
         Key: key,
         Body: buffer,
-        ContentType: "image/png",
+        ContentType: "image/jpeg",
       })
     );
 
-    const publicUrl = `https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev/${key}`;
+    // 작품이 기존에 존재하는 경우 DB의 썸네일 URL을 즉시 자동 업데이트
+    const { data: existingWork } = await supabaseAdmin
+      .from("works")
+      .select("id")
+      .eq("id", novelId)
+      .maybeSingle();
 
-    return NextResponse.json({ thumbnailUrl: publicUrl });
+    if (existingWork) {
+      await supabaseAdmin
+        .from("works")
+        .update({ thumbnail: relativeUrl })
+        .eq("id", novelId);
+    }
+
+    return NextResponse.json({ thumbnailUrl: relativeUrl });
   } catch (error) {
     console.error("Generate thumbnail error:", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });

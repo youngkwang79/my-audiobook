@@ -42,7 +42,7 @@ function LoginPageInner() {
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
 
-  const [mode, setMode] = useState<"login" | "signup" | "find-email" | "forgot-password">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "find-email" | "forgot-password" | "magic-link">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [capsOn, setCapsOn] = useState(false);
@@ -76,6 +76,9 @@ function LoginPageInner() {
     }
     if (mode === "login") {
       return emailOk && pwCheck.ok;
+    }
+    if (mode === "magic-link") {
+      return emailOk;
     }
     if (mode === "find-email") {
       return nickname.trim().length >= 2;
@@ -199,6 +202,21 @@ function LoginPageInner() {
         if (error) throw error;
 
         router.replace(redirect);
+      } else if (mode === "magic-link") {
+        const origin = window.location.origin;
+        const emailRedirectTo = `${origin}/login?redirect=${encodeURIComponent(
+          redirect
+        )}`;
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            emailRedirectTo,
+          },
+        });
+
+        if (error) throw error;
+
+        setMsg("일회성 로그인 메일이 발송되었습니다.\n입력하신 이메일의 메일함을 확인하여 로그인을 완료해 주세요.");
       } else if (mode === "find-email") {
         const res = await fetch("/api/auth/find-email", {
           method: "POST",
@@ -337,10 +355,11 @@ function LoginPageInner() {
           {mode === "login" ? "로그인" : 
            mode === "signup" ? "회원가입" : 
            mode === "find-email" ? "아이디(이메일) 찾기" : 
+           mode === "magic-link" ? "매직링크 간편 로그인" :
            "비밀번호 재설정"}
         </h1>
 
-        {(mode === "login" || mode === "signup") && (
+        {(mode === "login" || mode === "signup" || mode === "magic-link") && (
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button
               onClick={() => {
@@ -362,6 +381,28 @@ function LoginPageInner() {
               }}
             >
               로그인
+            </button>
+
+            <button
+              onClick={() => {
+                setMode("magic-link");
+                setMsg(null);
+              }}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background:
+                  mode === "magic-link"
+                    ? "rgba(255,255,255,0.12)"
+                    : "rgba(255,255,255,0.06)",
+                color: "white",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              매직링크
             </button>
 
             <button
@@ -397,6 +438,15 @@ function LoginPageInner() {
             {"비밀번호 안내\n"}
             {"- 알파벳, 숫자, 특수문자를 조합하여 8자 이상으로 입력해 주세요.\n"}
             {"- 예시: Abcd1234#"}
+          </div>
+        )}
+
+        {mode === "magic-link" && (
+          <div className="helpBox">
+            {"매직링크 로그인 안내\n"}
+            {"1. 가입 시 사용하신 이메일 주소를 입력해 주세요.\n"}
+            {"2. 아래 버튼을 클릭하면 일회성 간편 로그인 링크가 메일로 발송됩니다.\n"}
+            {"3. 메일함에서 로그인 링크를 클릭하면 복잡한 비밀번호 입력 없이 즉시 입장 가능합니다."}
           </div>
         )}
 
@@ -467,7 +517,7 @@ function LoginPageInner() {
             </label>
           )}
 
-          {(mode === "login" || mode === "signup" || mode === "forgot-password") && (
+          {(mode === "login" || mode === "signup" || mode === "forgot-password" || mode === "magic-link") && (
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -484,7 +534,7 @@ function LoginPageInner() {
             />
           )}
 
-          {(mode === "login" || mode === "signup" || mode === "forgot-password") && !emailOk && email.trim().length > 0 && (
+          {(mode === "login" || mode === "signup" || mode === "forgot-password" || mode === "magic-link") && !emailOk && email.trim().length > 0 && (
             <div className="hint hintBad">이메일 형식을 확인해 주세요.</div>
           )}
 
@@ -570,6 +620,10 @@ function LoginPageInner() {
               ? busy
                 ? "로그인 중..."
                 : "로그인"
+              : mode === "magic-link"
+                ? busy
+                  ? "메일 발송 중..."
+                  : "매직링크 로그인 메일 받기"
               : mode === "signup"
                 ? busy
                   ? "가입 중..."
@@ -594,7 +648,7 @@ function LoginPageInner() {
             </button>
           )}
 
-          {(mode === "login" || mode === "signup") && (
+          {(mode === "login" || mode === "signup" || mode === "magic-link") && (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <button

@@ -10,7 +10,16 @@ import { requestIdentityVerification } from "@portone/browser-sdk/v2";
 // 설정 기어 아이콘
 function GearIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="3"></circle>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
     </svg>
@@ -20,7 +29,17 @@ function GearIcon() {
 // 복사 아이콘
 function CopyIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ opacity: 0.8 }}
+    >
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
     </svg>
@@ -30,7 +49,16 @@ function CopyIcon() {
 // 꺾쇠 오른쪽 아이콘
 function ChevronRightIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="9 18 15 12 9 6"></polyline>
     </svg>
   );
@@ -39,10 +67,33 @@ function ChevronRightIcon() {
 // 노란색 코인 아이콘
 function CoinIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 2 }}>
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      style={{ marginRight: 2 }}
+    >
       <circle cx="12" cy="12" r="10" fill="#fca834" />
-      <circle cx="12" cy="12" r="7" stroke="#ffffff" strokeWidth="1.5" fill="none" />
-      <text x="12" y="15" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">P</text>
+      <circle
+        cx="12"
+        cy="12"
+        r="7"
+        stroke="#ffffff"
+        strokeWidth="1.5"
+        fill="none"
+      />
+      <text
+        x="12"
+        y="15"
+        fill="#ffffff"
+        fontSize="9"
+        fontWeight="900"
+        textAnchor="middle"
+        fontFamily="sans-serif"
+      >
+        P
+      </text>
     </svg>
   );
 }
@@ -63,7 +114,16 @@ async function getAccessToken() {
 // 뒤로가기 아이콘
 function BackIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="15 18 9 12 15 6"></polyline>
     </svg>
   );
@@ -72,12 +132,291 @@ function BackIcon() {
 // 쓰레기통 아이콘
 function TrashIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ opacity: 0.8 }}
+    >
       <polyline points="3 6 5 6 21 6"></polyline>
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
       <line x1="10" y1="11" x2="10" y2="17"></line>
       <line x1="14" y1="11" x2="14" y2="17"></line>
     </svg>
+  );
+}
+
+// 비밀번호 강도 검사 헬퍼
+function validatePassword(pw: string) {
+  const value = pw.trim();
+  return {
+    ok:
+      value.length >= 8 &&
+      /[a-zA-Z]/.test(value) &&
+      /[0-9]/.test(value) &&
+      /[!@#$%^&*()_\-+=\[\]{}|;:'",.<>\/?]/.test(value),
+    minLenOk: value.length >= 8,
+    hasLetter: /[a-zA-Z]/.test(value),
+    hasNumber: /[0-9]/.test(value),
+    hasSpecial: /[!@#$%^&*()_\-+=\[\]{}|;:'",.<>\/?]/.test(value),
+  };
+}
+
+// 동양풍 아바타 프리셋 SVG 헬퍼
+function getAvatarPresetSvg(
+  preset: string | null | undefined,
+  textFallback: string,
+) {
+  const cleanPreset = (preset || "").toLowerCase();
+  const size = "100%";
+
+  if (cleanPreset === "sword") {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #2b0c0c 0%, #150505 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "2px solid #d4af37",
+          boxShadow: "0 0 10px rgba(212,175,55,0.4)",
+          boxSizing: "border-box",
+        }}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffd700"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="20" y1="10" x2="14" y2="4"></line>
+          <line x1="10" y1="20" x2="4" y2="14"></line>
+          <line x1="2" y1="22" x2="7" y2="17"></line>
+          <line x1="22" y1="2" x2="17" y2="7"></line>
+        </svg>
+      </div>
+    );
+  }
+  if (cleanPreset === "scholar") {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #0c182b 0%, #050a12 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "2px solid #d4af37",
+          boxShadow: "0 0 10px rgba(212,175,55,0.4)",
+          boxSizing: "border-box",
+        }}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffd700"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+      </div>
+    );
+  }
+  if (cleanPreset === "taoist") {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #0c2b14 0%, #051209 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "2px solid #d4af37",
+          boxShadow: "0 0 10px rgba(212,175,55,0.4)",
+          boxSizing: "border-box",
+        }}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffd700"
+          strokeWidth="1.5"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <path
+            d="M12 2a5 5 0 0 0 0 10 5 5 0 0 1 0 10 10 10 0 0 0 0-20z"
+            fill="#ffd700"
+            opacity="0.3"
+          ></path>
+          <circle cx="12" cy="7" r="1" fill="#ffd700"></circle>
+          <circle cx="12" cy="17" r="1" fill="#ffd700"></circle>
+        </svg>
+      </div>
+    );
+  }
+  if (cleanPreset === "dragon") {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #1c1c1e 0%, #09090a 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "2px solid #d4af37",
+          boxShadow: "0 0 10px rgba(212,175,55,0.4)",
+          boxSizing: "border-box",
+        }}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffd700"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4 1.8-4 4-4z" />
+        </svg>
+      </div>
+    );
+  }
+  if (cleanPreset === "poison") {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #230c2b 0%, #0f0512 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "2px solid #d4af37",
+          boxShadow: "0 0 10px rgba(212,175,55,0.4)",
+          boxSizing: "border-box",
+        }}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffd700"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+    );
+  }
+
+  // Default text circle fallback
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: "#ffffff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "1px solid rgba(255,255,255,0.1)",
+        boxSizing: "border-box",
+        padding: "4px",
+      }}
+    >
+      <span
+        className="profile-avatar-text"
+        style={{
+          color: "#333333",
+          fontSize: "8px",
+          fontWeight: "800",
+          lineHeight: "1.25",
+          textAlign: "center",
+          wordBreak: "keep-all",
+        }}
+      >
+        {textFallback
+          ? textFallback.length > 3
+            ? textFallback.slice(0, 3)
+            : textFallback
+          : "무림"}
+      </span>
+    </div>
+  );
+}
+
+// 소셜 계정 뱃지 컴포넌트
+function ProviderBadge({ provider }: { provider: string }) {
+  const prov = (provider || "email").toLowerCase();
+  let bg = "rgba(255,255,255,0.08)";
+  let fg = "#aaa";
+  let text = "이메일";
+  if (prov === "google") {
+    bg = "#ffffff";
+    fg = "#111";
+    text = "Google";
+  } else if (prov === "kakao") {
+    bg = "#FEE500";
+    fg = "#191919";
+    text = "카카오";
+  } else if (prov === "discord") {
+    bg = "#5865F2";
+    fg = "#ffffff";
+    text = "디스코드";
+  }
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "2px 7px",
+        borderRadius: "6px",
+        fontSize: "10px",
+        fontWeight: 800,
+        backgroundColor: bg,
+        color: fg,
+        marginLeft: "8px",
+        verticalAlign: "middle",
+      }}
+    >
+      {text} 연동
+    </span>
   );
 }
 
@@ -87,15 +426,32 @@ export default function MePage() {
   const [currentPoints, setCurrentPoints] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
-  const [remainingMissions, setRemainingMissions] = useState<number | null>(null);
+  const [remainingMissions, setRemainingMissions] = useState<number | null>(
+    null,
+  );
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [newNickname, setNewNickname] = useState("");
   const [newAllowNotifications, setNewAllowNotifications] = useState(false);
   const [modalBusy, setModalBusy] = useState(false);
 
+  // 계정 변경 관련 모달 상태 추가
+  const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  const [changeEmailVal, setChangeEmailVal] = useState("");
+  const [changeEmailBusy, setChangeEmailBusy] = useState(false);
+
+  const [changePwVal, setChangePwVal] = useState("");
+  const [changePwConfirmVal, setChangePwConfirmVal] = useState("");
+  const [changePwBusy, setChangePwBusy] = useState(false);
+  const [changePwCapsOn, setChangePwCapsOn] = useState(false);
+
   // 설정 화면 데이터 및 토글 상태
   const [allowMobileDownload, setAllowMobileDownload] = useState(false);
-  const [allowPersonalRecommendation, setAllowPersonalRecommendation] = useState(true);
+  const [allowPersonalRecommendation, setAllowPersonalRecommendation] =
+    useState(true);
   const [denySalePersonalInfo, setDenySalePersonalInfo] = useState(false);
   const [allowMarketingInfo, setAllowMarketingInfo] = useState(true);
   const [cacheSize, setCacheSize] = useState("0.0MB");
@@ -131,11 +487,19 @@ export default function MePage() {
 
   useEffect(() => {
     try {
-      setAllowMobileDownload(localStorage.getItem("allowMobileDownload") === "true");
-      setAllowPersonalRecommendation(localStorage.getItem("allowPersonalRecommendation") !== "false");
-      setDenySalePersonalInfo(localStorage.getItem("denySalePersonalInfo") === "true");
-      setAllowMarketingInfo(localStorage.getItem("allowMarketingInfo") !== "false");
-      
+      setAllowMobileDownload(
+        localStorage.getItem("allowMobileDownload") === "true",
+      );
+      setAllowPersonalRecommendation(
+        localStorage.getItem("allowPersonalRecommendation") !== "false",
+      );
+      setDenySalePersonalInfo(
+        localStorage.getItem("denySalePersonalInfo") === "true",
+      );
+      setAllowMarketingInfo(
+        localStorage.getItem("allowMarketingInfo") !== "false",
+      );
+
       const savedTheme = localStorage.getItem("theme") || "dark";
       setTheme(savedTheme);
       document.documentElement.className = savedTheme;
@@ -148,16 +512,28 @@ export default function MePage() {
   useEffect(() => {
     const handleMarketingSync = () => {
       try {
-        setAllowMarketingInfo(localStorage.getItem("allowMarketingInfo") !== "false");
+        setAllowMarketingInfo(
+          localStorage.getItem("allowMarketingInfo") !== "false",
+        );
       } catch (e) {}
     };
-    window.addEventListener("localstorage-marketing-updated", handleMarketingSync);
+    window.addEventListener(
+      "localstorage-marketing-updated",
+      handleMarketingSync,
+    );
     return () => {
-      window.removeEventListener("localstorage-marketing-updated", handleMarketingSync);
+      window.removeEventListener(
+        "localstorage-marketing-updated",
+        handleMarketingSync,
+      );
     };
   }, []);
 
-  const handleToggle = (key: string, value: boolean, setter: (val: boolean) => void) => {
+  const handleToggle = (
+    key: string,
+    value: boolean,
+    setter: (val: boolean) => void,
+  ) => {
     try {
       localStorage.setItem(key, String(value));
       setter(value);
@@ -169,20 +545,29 @@ export default function MePage() {
       const preserveKeys = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.includes("sb-") || key === "membership" || key.includes("auth"))) {
+        if (
+          key &&
+          (key.includes("sb-") || key === "membership" || key.includes("auth"))
+        ) {
           preserveKeys.push({ key, value: localStorage.getItem(key) });
         }
       }
       localStorage.clear();
-      
-      preserveKeys.forEach(item => {
+
+      preserveKeys.forEach((item) => {
         localStorage.setItem(item.key, item.value || "");
       });
-      
+
       // 설정값 재보존
       localStorage.setItem("allowMobileDownload", String(allowMobileDownload));
-      localStorage.setItem("allowPersonalRecommendation", String(allowPersonalRecommendation));
-      localStorage.setItem("denySalePersonalInfo", String(denySalePersonalInfo));
+      localStorage.setItem(
+        "allowPersonalRecommendation",
+        String(allowPersonalRecommendation),
+      );
+      localStorage.setItem(
+        "denySalePersonalInfo",
+        String(denySalePersonalInfo),
+      );
       localStorage.setItem("allowMarketingInfo", String(allowMarketingInfo));
 
       alert("캐시가 삭제되었습니다.");
@@ -195,12 +580,23 @@ export default function MePage() {
   useEffect(() => {
     if (user && !user.user_metadata?.nickname) {
       setShowNicknameModal(true);
-      const socialName = user.user_metadata?.full_name || user.user_metadata?.name || "";
+      const socialName =
+        user.user_metadata?.full_name || user.user_metadata?.name || "";
       setNewNickname(socialName);
     } else {
       setShowNicknameModal(false);
     }
   }, [user]);
+
+  // 수동 닉네임 변경 시 초기값 주입
+  useEffect(() => {
+    if (user && isNicknameModalOpen) {
+      setNewNickname(user.user_metadata?.nickname || "");
+      setNewAllowNotifications(
+        user.user_metadata?.allow_notifications || false,
+      );
+    }
+  }, [isNicknameModalOpen, user]);
 
   // 남은 미션 개수 불러오기
   const loadRemainingMissions = async () => {
@@ -219,7 +615,7 @@ export default function MePage() {
 
       if (res.ok && data?.completedTasks) {
         const completed: string[] = data.completedTasks;
-        
+
         // 오늘 날짜 포맷
         const d = new Date();
         const year = d.getFullYear();
@@ -236,10 +632,12 @@ export default function MePage() {
           "watch5_" + todayStr,
           "watch10_" + todayStr,
           "watch15_" + todayStr,
-          "share_" + todayStr
+          "share_" + todayStr,
         ];
 
-        const incompleteCount = missions.filter(m => !completed.includes(m)).length;
+        const incompleteCount = missions.filter(
+          (m) => !completed.includes(m),
+        ).length;
         setRemainingMissions(incompleteCount);
       } else {
         setRemainingMissions(null);
@@ -273,7 +671,9 @@ export default function MePage() {
       const data = await res.json().catch(() => null);
 
       if (res.ok && data) {
-        setCurrentPoints(Number(data.points ?? 0) + Number(data.reward_points ?? 0));
+        setCurrentPoints(
+          Number(data.points ?? 0) + Number(data.reward_points ?? 0),
+        );
         if (refCode) {
           localStorage.removeItem("referral_code");
         }
@@ -294,7 +694,7 @@ export default function MePage() {
 
       const res = await fetch("/api/me/restore", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
@@ -374,6 +774,65 @@ export default function MePage() {
     router.push("/points");
   };
 
+  const handleEmailChangeSubmit = async () => {
+    const emailTrimmed = changeEmailVal.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      alert("올바른 이메일 형식을 입력해 주세요.");
+      return;
+    }
+    if (emailTrimmed === user?.email) {
+      alert("현재 이메일과 동일합니다.");
+      return;
+    }
+
+    setChangeEmailBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser(
+        { email: emailTrimmed },
+        { emailRedirectTo: `${window.location.origin}/me` },
+      );
+      if (error) throw error;
+      alert(
+        "이메일 변경 인증 메일이 발송되었습니다!\n\n" +
+          "보안을 위해 기존 이메일 주소와 새 이메일 주소 양쪽의 메일함을 모두 확인하여 각각 발송된 인증 링크를 클릭해 주셔야 최종적으로 변경 완료됩니다.",
+      );
+      setIsEmailModalOpen(false);
+      setChangeEmailVal("");
+    } catch (err: any) {
+      alert(`이메일 변경 실패: ${err.message}`);
+    } finally {
+      setChangeEmailBusy(false);
+    }
+  };
+
+  const handlePasswordChangeSubmit = async () => {
+    const pwCheck = validatePassword(changePwVal);
+    if (!pwCheck.ok) {
+      alert("비밀번호 조건을 충족해 주세요.");
+      return;
+    }
+    if (changePwVal !== changePwConfirmVal) {
+      alert("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
+
+    setChangePwBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: changePwVal.trim(),
+      });
+      if (error) throw error;
+      alert("비밀번호가 성공적으로 변경되었습니다!");
+      setIsPasswordModalOpen(false);
+      setChangePwVal("");
+      setChangePwConfirmVal("");
+    } catch (err: any) {
+      alert(`비밀번호 변경 실패: ${err.message}`);
+    } finally {
+      setChangePwBusy(false);
+    }
+  };
+
   const handleMembershipRedirect = () => {
     router.push("/membership");
   };
@@ -387,7 +846,9 @@ export default function MePage() {
 
     try {
       const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
-      const channelKey = process.env.NEXT_PUBLIC_PORTONE_IDENTITY_CHANNEL_KEY || "YOUR_IDENTITY_CHANNEL_KEY";
+      const channelKey =
+        process.env.NEXT_PUBLIC_PORTONE_IDENTITY_CHANNEL_KEY ||
+        "YOUR_IDENTITY_CHANNEL_KEY";
       const identityVerificationId = `identity-verification-${Math.random().toString(36).substring(2, 15)}`;
 
       const identityVerificationParams: any = {
@@ -410,10 +871,15 @@ export default function MePage() {
         };
       }
 
-      const response = await requestIdentityVerification(identityVerificationParams);
+      const response = await requestIdentityVerification(
+        identityVerificationParams,
+      );
 
       if (!response || response.code !== undefined) {
-        alert(response?.message || "본인인증을 진행하지 못했거나 오류가 발생했습니다.");
+        alert(
+          response?.message ||
+            "본인인증을 진행하지 못했거나 오류가 발생했습니다.",
+        );
         return;
       }
 
@@ -435,7 +901,9 @@ export default function MePage() {
         alert("본인인증이 정상적으로 완료되었습니다!");
         window.location.reload();
       } else {
-        alert(`본인인증 완료 처리 실패: ${verifyData?.error || "서버 응답 오류"}`);
+        alert(
+          `본인인증 완료 처리 실패: ${verifyData?.error || "서버 응답 오류"}`,
+        );
       }
     } catch (err: any) {
       console.error("본인인증 에러:", err);
@@ -445,14 +913,25 @@ export default function MePage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: "100dvh", background: "#000000", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <main
+        style={{
+          minHeight: "100dvh",
+          background: "#000000",
+          color: "#ffffff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <span>불러오는 중...</span>
       </main>
     );
   }
 
   // 화면 렌더링에 사용할 유저 정보
-  const displayName = user?.user_metadata?.nickname || (user?.email ? user.email.split("@")[0] : "고영광");
+  const displayName =
+    user?.user_metadata?.nickname ||
+    (user?.email ? user.email.split("@")[0] : "고영광");
   const displayId = user?.id ? user.id.slice(0, 8) : "333418883";
   const displayCoins = currentPoints !== null ? currentPoints : 0;
 
@@ -1053,23 +1532,77 @@ export default function MePage() {
       <div className="me-container">
         {/* 헤더 */}
         <div className="me-header">
-          <button className="settings-btn" onClick={() => setIsSettingsOpen(true)}>
+          <button
+            className="settings-btn"
+            onClick={() => setIsSettingsOpen(true)}
+          >
             <GearIcon />
           </button>
         </div>
 
         {/* 프로필 */}
         <div className="profile-section">
-          <div className="profile-avatar">
-            <span className="profile-avatar-text">
-              생각하는대로<br />살지않으면<br />사는대로<br />생각하게<br />된다
-            </span>
+          <div
+            className="profile-avatar"
+            onClick={() => setIsAvatarModalOpen(true)}
+            style={{ cursor: "pointer", position: "relative" }}
+            title="프로필 아바타 변경"
+          >
+            {getAvatarPresetSvg(
+              user?.user_metadata?.avatar_preset,
+              displayName,
+            )}
+            <div
+              style={{
+                position: "absolute",
+                bottom: "-2px",
+                right: "-2px",
+                background: "#d4af37",
+                borderRadius: "50%",
+                width: "18px",
+                height: "18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #16161e",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+              }}
+            >
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#16161e"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </div>
           </div>
           <div className="profile-info">
-            <h2 className="profile-name">{displayName}</h2>
+            <h2
+              className="profile-name"
+              style={{ display: "flex", alignItems: "center" }}
+            >
+              {displayName}
+              <ProviderBadge
+                provider={
+                  user?.app_metadata?.provider ||
+                  user?.identities?.[0]?.provider ||
+                  "email"
+                }
+              />
+            </h2>
             <div className="profile-meta">
               <span>회원 ID {displayId}</span>
-              <button className="copy-btn" onClick={handleCopyId} title="회원 ID 복사">
+              <button
+                className="copy-btn"
+                onClick={handleCopyId}
+                title="회원 ID 복사"
+              >
                 <CopyIcon />
               </button>
             </div>
@@ -1083,16 +1616,23 @@ export default function MePage() {
               {subscribedPlan === "weekly"
                 ? "주간 무제한 이용권 사용 중🍵"
                 : subscribedPlan === "annual" || subscribedPlan === "yearly"
-                ? "연간 무제한 이용권 사용 중🍗"
-                : "멤버십 서비스 가입 (정액제 이용권)"}
+                  ? "연간 무제한 이용권 사용 중🍗"
+                  : "멤버십 서비스 가입 (정액제 이용권)"}
             </h3>
-            {!subscribedPlan && <p className="membership-banner-desc">소설 무제한 감상 및 전용 혜택을 누려보세요:</p>}
+            {!subscribedPlan && (
+              <p className="membership-banner-desc">
+                소설 무제한 감상 및 전용 혜택을 누려보세요:
+              </p>
+            )}
           </div>
           {!subscribedPlan && (
-            <button className="membership-banner-btn" onClick={(e) => {
-              e.stopPropagation();
-              handleMembershipRedirect();
-            }}>
+            <button
+              className="membership-banner-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMembershipRedirect();
+              }}
+            >
               가입
             </button>
           )}
@@ -1104,11 +1644,20 @@ export default function MePage() {
             <span className="menu-item-left">코인 충전</span>
             <div className="menu-item-right">
               {subscribedPlan && (
-                <span style={{ fontSize: "12px", color: "#ff2a5f", marginRight: "4px", fontWeight: "600" }}>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "#ff2a5f",
+                    marginRight: "4px",
+                    fontWeight: "600",
+                  }}
+                >
                   멤버십 회원
                 </span>
               )}
-              <span className="menu-arrow"><ChevronRightIcon /></span>
+              <span className="menu-arrow">
+                <ChevronRightIcon />
+              </span>
             </div>
           </button>
 
@@ -1117,7 +1666,9 @@ export default function MePage() {
             <div className="menu-item-right">
               <CoinIcon />
               <span className="menu-coin-text">{displayCoins}</span>
-              <span className="menu-arrow"><ChevronRightIcon /></span>
+              <span className="menu-arrow">
+                <ChevronRightIcon />
+              </span>
             </div>
           </button>
 
@@ -1127,20 +1678,29 @@ export default function MePage() {
               {remainingMissions !== null && remainingMissions > 0 && (
                 <span className="menu-badge">+{remainingMissions}</span>
               )}
-              <span className="menu-arrow"><ChevronRightIcon /></span>
+              <span className="menu-arrow">
+                <ChevronRightIcon />
+              </span>
             </div>
           </button>
 
-
-
-          <button className="menu-item" onClick={() => {
-            if (confirm("안녕하세요. 고품격 무협 오디오 청취 플랫폼 '무림북'입니다. 이용문의 및 에러 사항은 언제든 1:1 채팅으로 남겨주세요.\n\n확인을 누르시면 1:1 문의 채팅방(카카오톡 오픈채팅)으로 이동합니다.")) {
-              window.open("https://open.kakao.com/o/s4Da53xi", "_blank");
-            }
-          }}>
+          <button
+            className="menu-item"
+            onClick={() => {
+              if (
+                confirm(
+                  "안녕하세요. 고품격 무협 오디오 청취 플랫폼 '무림북'입니다. 이용문의 및 에러 사항은 언제든 1:1 채팅으로 남겨주세요.\n\n확인을 누르시면 1:1 문의 채팅방(카카오톡 오픈채팅)으로 이동합니다.",
+                )
+              ) {
+                window.open("https://open.kakao.com/o/s4Da53xi", "_blank");
+              }
+            }}
+          >
             <span className="menu-item-left">고객 문의 (1:1 문의)</span>
             <div className="menu-item-right">
-              <span className="menu-arrow"><ChevronRightIcon /></span>
+              <span className="menu-arrow">
+                <ChevronRightIcon />
+              </span>
             </div>
           </button>
         </div>
@@ -1151,7 +1711,10 @@ export default function MePage() {
         <div className="settings-content">
           {/* 헤더 */}
           <div className="settings-header">
-            <button className="settings-back-btn" onClick={() => setIsSettingsOpen(false)}>
+            <button
+              className="settings-back-btn"
+              onClick={() => setIsSettingsOpen(false)}
+            >
               <BackIcon />
             </button>
             <h3 className="settings-title">설정</h3>
@@ -1159,15 +1722,84 @@ export default function MePage() {
 
           {/* 설정 리스트 */}
           <div className="settings-list">
-            
+            {/* 0. 계정 및 보안 */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div className="settings-group-title">계정 및 보안</div>
+              <div className="settings-group">
+                <button
+                  className="settings-row"
+                  onClick={() => {
+                    setIsNicknameModalOpen(true);
+                  }}
+                >
+                  <span>닉네임 및 알림 수신 설정</span>
+                  <div className="settings-row-right">
+                    <span>{displayName}</span>
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  className="settings-row"
+                  onClick={() => {
+                    setIsEmailModalOpen(true);
+                  }}
+                >
+                  <span>이메일 주소 변경</span>
+                  <div className="settings-row-right">
+                    <span style={{ fontSize: "13px" }}>
+                      {user?.email || "미등록"}
+                    </span>
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  className="settings-row"
+                  onClick={() => {
+                    const provider =
+                      user?.app_metadata?.provider ||
+                      user?.identities?.[0]?.provider ||
+                      "email";
+                    if (provider !== "email") {
+                      alert(
+                        "소셜 계정(구글, 카카오, 디스코드 등)으로 로그인하신 회원은 소셜 인증 서비스(구글/카카오/디스코드)를 이용하므로 자체 비밀번호 변경 대상이 아닙니다. 각 소셜 서비스 홈페이지에서 비밀번호 변경을 진행해 주세요.",
+                      );
+                    } else {
+                      setIsPasswordModalOpen(true);
+                    }
+                  }}
+                >
+                  <span>비밀번호 변경</span>
+                  <div className="settings-row-right">
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* 1. 서비스 및 구독 */}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div className="settings-group-title">구독 및 서비스</div>
               <div className="settings-group">
-                <button className="settings-row" onClick={() => { setIsSettingsOpen(false); router.push("/me/membership"); }}>
+                <button
+                  className="settings-row"
+                  onClick={() => {
+                    setIsSettingsOpen(false);
+                    router.push("/me/membership");
+                  }}
+                >
                   <span>구독 및 멤버십 설정</span>
                   <div className="settings-row-right">
-                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
                   </div>
                 </button>
               </div>
@@ -1180,18 +1812,32 @@ export default function MePage() {
                 <button className="settings-row" onClick={handleThemeToggle}>
                   <span>화면 테마 설정</span>
                   <div className="settings-row-right">
-                    <span>{theme === "dark" ? "다크 모드" : "라이트 모드"}</span>
-                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                    <span>
+                      {theme === "dark" ? "다크 모드" : "라이트 모드"}
+                    </span>
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
                   </div>
                 </button>
 
-                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="settings-row"
+                  style={{ cursor: "default" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span>3G/LTE/5G 다운로드 허용</span>
                   <label className="switch-container">
                     <input
                       type="checkbox"
                       checked={allowMobileDownload}
-                      onChange={(e) => handleToggle("allowMobileDownload", e.target.checked, setAllowMobileDownload)}
+                      onChange={(e) =>
+                        handleToggle(
+                          "allowMobileDownload",
+                          e.target.checked,
+                          setAllowMobileDownload,
+                        )
+                      }
                     />
                     <span className="switch-slider"></span>
                   </label>
@@ -1200,7 +1846,9 @@ export default function MePage() {
                 <button className="settings-row" onClick={handleClearCache}>
                   <span>임시 저장 공간 비우기</span>
                   <div className="settings-row-right">
-                    <span style={{ fontSize: "14px", color: "#8c8c96" }}>{cacheSize}</span>
+                    <span style={{ fontSize: "14px", color: "#8c8c96" }}>
+                      {cacheSize}
+                    </span>
                     <TrashIcon />
                   </div>
                 </button>
@@ -1211,25 +1859,45 @@ export default function MePage() {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div className="settings-group-title">개인정보 보호</div>
               <div className="settings-group">
-                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="settings-row"
+                  style={{ cursor: "default" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span>개인정보 판매 및 제공 제한</span>
                   <label className="switch-container">
                     <input
                       type="checkbox"
                       checked={denySalePersonalInfo}
-                      onChange={(e) => handleToggle("denySalePersonalInfo", e.target.checked, setDenySalePersonalInfo)}
+                      onChange={(e) =>
+                        handleToggle(
+                          "denySalePersonalInfo",
+                          e.target.checked,
+                          setDenySalePersonalInfo,
+                        )
+                      }
                     />
                     <span className="switch-slider"></span>
                   </label>
                 </div>
 
-                <div className="settings-row" style={{ cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="settings-row"
+                  style={{ cursor: "default" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span>혜택 및 마케팅 정보 수신</span>
                   <label className="switch-container">
                     <input
                       type="checkbox"
                       checked={allowMarketingInfo}
-                      onChange={(e) => handleToggle("allowMarketingInfo", e.target.checked, setAllowMarketingInfo)}
+                      onChange={(e) =>
+                        handleToggle(
+                          "allowMarketingInfo",
+                          e.target.checked,
+                          setAllowMarketingInfo,
+                        )
+                      }
                     />
                     <span className="switch-slider"></span>
                   </label>
@@ -1241,26 +1909,38 @@ export default function MePage() {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div className="settings-group-title">기타</div>
               <div className="settings-group">
-                <button className="settings-row" onClick={() => { setIsSettingsOpen(false); router.push("/terms"); }}>
+                <button
+                  className="settings-row"
+                  onClick={() => {
+                    setIsSettingsOpen(false);
+                    router.push("/terms");
+                  }}
+                >
                   <span>무림북 정보 및 약관</span>
                   <div className="settings-row-right">
                     <span>1.0.0</span>
-                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
                   </div>
                 </button>
 
-                <button className="settings-row" onClick={() => {
-                  setIsSettingsOpen(false);
-                  router.push("/me/withdraw");
-                }}>
+                <button
+                  className="settings-row"
+                  onClick={() => {
+                    setIsSettingsOpen(false);
+                    router.push("/me/withdraw");
+                  }}
+                >
                   <span>회원 탈퇴 (계정 삭제)</span>
                   <div className="settings-row-right">
-                    <span className="settings-chevron"><ChevronRightIcon /></span>
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
                   </div>
                 </button>
               </div>
             </div>
-
           </div>
 
           {/* 로그아웃 버튼 */}
@@ -1272,8 +1952,8 @@ export default function MePage() {
         </div>
       </div>
 
-      {/* 닉네임 설정 모달 (소셜 가입자 및 미설정자용) */}
-      {showNicknameModal && (
+      {/* 닉네임 설정 모달 (소셜 가입자 및 미설정자용 또는 수동 설정 변경용) */}
+      {(showNicknameModal || isNicknameModalOpen) && (
         <div
           style={{
             position: "fixed",
@@ -1310,9 +1990,9 @@ export default function MePage() {
                 textAlign: "center",
               }}
             >
-              닉네임 설정
+              {isNicknameModalOpen ? "닉네임 및 알림 수신 설정" : "닉네임 설정"}
             </h3>
-            
+
             <p
               style={{
                 margin: 0,
@@ -1322,7 +2002,9 @@ export default function MePage() {
                 lineHeight: 1.5,
               }}
             >
-              댓글과 프로필에서 이메일 대신 노출될<br />닉네임을 설정해 주세요.
+              댓글과 프로필에서 이메일 대신 노출될
+              <br />
+              닉네임을 설정해 주세요.
             </p>
 
             <input
@@ -1373,7 +2055,14 @@ export default function MePage() {
               <span>신규 업데이트 알림 받기 (모바일 푸시)</span>
             </label>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                marginTop: 4,
+              }}
+            >
               <button
                 onClick={async () => {
                   if (newNickname.trim().length < 2) {
@@ -1391,6 +2080,7 @@ export default function MePage() {
                     if (error) throw error;
                     alert("설정이 저장되었습니다!");
                     setShowNicknameModal(false);
+                    setIsNicknameModalOpen(false);
                     window.location.reload();
                   } catch (err: any) {
                     alert(`저장 실패: ${err.message}`);
@@ -1403,32 +2093,186 @@ export default function MePage() {
                   padding: "14px",
                   borderRadius: 12,
                   border: "none",
-                  background: "linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%)",
+                  background:
+                    "linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%)",
                   color: "#2b1d00",
                   fontWeight: 900,
                   fontSize: 15,
-                  cursor: modalBusy || newNickname.trim().length < 2 ? "not-allowed" : "pointer",
+                  cursor:
+                    modalBusy || newNickname.trim().length < 2
+                      ? "not-allowed"
+                      : "pointer",
                   opacity: modalBusy || newNickname.trim().length < 2 ? 0.6 : 1,
                 }}
               >
                 {modalBusy ? "저장 중..." : "저장 완료"}
               </button>
 
+              {isNicknameModalOpen ? (
+                <button
+                  onClick={() => setIsNicknameModalOpen(false)}
+                  disabled={modalBusy}
+                  style={{
+                    padding: "12px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "transparent",
+                    color: "rgba(255, 255, 255, 0.4)",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  취소
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    const randomNum = Math.floor(1000 + Math.random() * 9000);
+                    const fallbackNick = `독자_${randomNum}`;
+                    supabase.auth
+                      .updateUser({
+                        data: {
+                          nickname: fallbackNick,
+                          allow_notifications: false,
+                        },
+                      })
+                      .then(() => {
+                        setShowNicknameModal(false);
+                        window.location.reload();
+                      });
+                  }}
+                  disabled={modalBusy}
+                  style={{
+                    padding: "12px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "transparent",
+                    color: "rgba(255, 255, 255, 0.4)",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  나중에 하기
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이메일 주소 변경 모달 */}
+      {isEmailModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999999,
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              background: "#16161e",
+              border: "1px solid rgba(255, 215, 120, 0.25)",
+              borderRadius: 20,
+              padding: 24,
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: 19,
+                fontWeight: 900,
+                color: "#ffffff",
+                textAlign: "center",
+              }}
+            >
+              이메일 주소 변경
+            </h3>
+
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "rgba(255, 255, 255, 0.6)",
+                textAlign: "center",
+                lineHeight: 1.5,
+              }}
+            >
+              새로운 이메일 주소를 입력해 주세요.
+              <br />
+              <strong style={{ color: "#ffd700" }}>
+                기존 및 신규 이메일의 메일함으로 각각 인증 메일이 발송되며, 두
+                링크를 모두 승인해야 주소 변경이 최종 완료됩니다.
+              </strong>
+            </p>
+
+            <input
+              value={changeEmailVal}
+              onChange={(e) => setChangeEmailVal(e.target.value)}
+              placeholder="새 이메일 주소"
+              type="email"
+              disabled={changeEmailBusy}
+              style={{
+                padding: "14px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                outline: "none",
+                fontSize: 15,
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                marginTop: 4,
+              }}
+            >
+              <button
+                onClick={handleEmailChangeSubmit}
+                disabled={changeEmailBusy || !changeEmailVal.trim()}
+                style={{
+                  padding: "14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background:
+                    "linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%)",
+                  color: "#2b1d00",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  cursor:
+                    changeEmailBusy || !changeEmailVal.trim()
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity: changeEmailBusy || !changeEmailVal.trim() ? 0.6 : 1,
+                }}
+              >
+                {changeEmailBusy ? "메일 발송 중..." : "이메일 변경 메일 전송"}
+              </button>
+
               <button
                 onClick={() => {
-                  const randomNum = Math.floor(1000 + Math.random() * 9000);
-                  const fallbackNick = `독자_${randomNum}`;
-                  supabase.auth.updateUser({
-                    data: {
-                      nickname: fallbackNick,
-                      allow_notifications: false
-                    }
-                  }).then(() => {
-                    setShowNicknameModal(false);
-                    window.location.reload();
-                  });
+                  setIsEmailModalOpen(false);
+                  setChangeEmailVal("");
                 }}
-                disabled={modalBusy}
+                disabled={changeEmailBusy}
                 style={{
                   padding: "12px",
                   borderRadius: 12,
@@ -1440,9 +2284,417 @@ export default function MePage() {
                   cursor: "pointer",
                 }}
               >
-                나중에 하기
+                취소
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 비밀번호 변경 모달 */}
+      {isPasswordModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999999,
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              background: "#16161e",
+              border: "1px solid rgba(255, 215, 120, 0.25)",
+              borderRadius: 20,
+              padding: 24,
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: 19,
+                fontWeight: 900,
+                color: "#ffffff",
+                textAlign: "center",
+              }}
+            >
+              비밀번호 변경
+            </h3>
+
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "rgba(255, 255, 255, 0.6)",
+                textAlign: "center",
+                lineHeight: 1.5,
+              }}
+            >
+              새롭게 사용할 비밀번호를 설정해 주세요.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                value={changePwVal}
+                onChange={(e) => setChangePwVal(e.target.value)}
+                onKeyDown={(e) => {
+                  setChangePwCapsOn(e.getModifierState?.("CapsLock") ?? false);
+                }}
+                placeholder="새 비밀번호 (8자 이상, 영문+숫자+특수문자)"
+                type="password"
+                disabled={changePwBusy}
+                style={{
+                  padding: "14px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  outline: "none",
+                  fontSize: 15,
+                }}
+              />
+
+              {changePwCapsOn && (
+                <div style={{ fontSize: 12, color: "#ff453a", marginTop: -6 }}>
+                  Caps Lock이 켜져 있습니다.
+                </div>
+              )}
+
+              {changePwVal.length > 0 && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    background: "rgba(0,0,0,0.2)",
+                    padding: 8,
+                    borderRadius: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      color: validatePassword(changePwVal).minLenOk
+                        ? "#34c759"
+                        : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    • 8자 이상{" "}
+                    {validatePassword(changePwVal).minLenOk ? "충족" : "필요"}
+                  </div>
+                  <div
+                    style={{
+                      color: validatePassword(changePwVal).hasLetter
+                        ? "#34c759"
+                        : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    • 영문 포함{" "}
+                    {validatePassword(changePwVal).hasLetter ? "충족" : "필요"}
+                  </div>
+                  <div
+                    style={{
+                      color: validatePassword(changePwVal).hasNumber
+                        ? "#34c759"
+                        : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    • 숫자 포함{" "}
+                    {validatePassword(changePwVal).hasNumber ? "충족" : "필요"}
+                  </div>
+                  <div
+                    style={{
+                      color: validatePassword(changePwVal).hasSpecial
+                        ? "#34c759"
+                        : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    • 특수문자 포함{" "}
+                    {validatePassword(changePwVal).hasSpecial ? "충족" : "필요"}
+                  </div>
+                </div>
+              )}
+
+              <input
+                value={changePwConfirmVal}
+                onChange={(e) => setChangePwConfirmVal(e.target.value)}
+                placeholder="비밀번호 확인"
+                type="password"
+                disabled={changePwBusy}
+                style={{
+                  padding: "14px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  outline: "none",
+                  fontSize: 15,
+                }}
+              />
+
+              {changePwConfirmVal.length > 0 &&
+                changePwVal !== changePwConfirmVal && (
+                  <div style={{ fontSize: 12, color: "#ff453a" }}>
+                    • 비밀번호가 일치하지 않습니다.
+                  </div>
+                )}
+              {changePwConfirmVal.length > 0 &&
+                changePwVal === changePwConfirmVal && (
+                  <div style={{ fontSize: 12, color: "#34c759" }}>
+                    • 비밀번호가 일치합니다.
+                  </div>
+                )}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                marginTop: 4,
+              }}
+            >
+              <button
+                onClick={handlePasswordChangeSubmit}
+                disabled={
+                  changePwBusy ||
+                  !validatePassword(changePwVal).ok ||
+                  changePwVal !== changePwConfirmVal
+                }
+                style={{
+                  padding: "14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background:
+                    "linear-gradient(135deg, #fff1a8 0%, #f3c969 50%, #d4a23c 100%)",
+                  color: "#2b1d00",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  cursor:
+                    changePwBusy ||
+                    !validatePassword(changePwVal).ok ||
+                    changePwVal !== changePwConfirmVal
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    changePwBusy ||
+                    !validatePassword(changePwVal).ok ||
+                    changePwVal !== changePwConfirmVal
+                      ? 0.6
+                      : 1,
+                }}
+              >
+                {changePwBusy ? "변경 처리 중..." : "비밀번호 변경 완료"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsPasswordModalOpen(false);
+                  setChangePwVal("");
+                  setChangePwConfirmVal("");
+                }}
+                disabled={changePwBusy}
+                style={{
+                  padding: "12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "rgba(255, 255, 255, 0.4)",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 아바타 선택 모달 */}
+      {isAvatarModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999999,
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              background: "#16161e",
+              border: "1px solid rgba(255, 215, 120, 0.25)",
+              borderRadius: 20,
+              padding: 24,
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: 19,
+                fontWeight: 900,
+                color: "#ffffff",
+                textAlign: "center",
+              }}
+            >
+              무림풍 프로필 아바타 선택
+            </h3>
+
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "rgba(255, 255, 255, 0.6)",
+                textAlign: "center",
+                lineHeight: 1.5,
+              }}
+            >
+              무림북 감성을 가득 담은 동양 무협풍 문양 아바타입니다.
+              <br />
+              원하시는 문양을 선택해 귀하의 문파 캐릭터를 지정해 주세요.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+                maxHeight: 300,
+                overflowY: "auto",
+                padding: "4px",
+              }}
+            >
+              {[
+                {
+                  key: "sword",
+                  name: "🗡️ 검협 (검의 문양)",
+                  desc: "무협의 상징",
+                },
+                {
+                  key: "scholar",
+                  name: "🪶 학사 (선비의 문양)",
+                  desc: "필체와 깨달음",
+                },
+                {
+                  key: "taoist",
+                  name: "🥋 도인 (태극의 문양)",
+                  desc: "음양과 선계",
+                },
+                {
+                  key: "dragon",
+                  name: "🐉 황룡 (군주의 문양)",
+                  desc: "천하를 다스리는 자",
+                },
+                {
+                  key: "poison",
+                  name: "🌸 화주 (백화의 문양)",
+                  desc: "꽃 and 독문의 비술",
+                },
+                {
+                  key: "default",
+                  name: "⚙️ 기본 원형 (문구)",
+                  desc: "기본 생각 명언구",
+                },
+              ].map((preset) => {
+                const isSelected =
+                  (user?.user_metadata?.avatar_preset || "default") ===
+                  preset.key;
+                return (
+                  <button
+                    key={preset.key}
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase.auth.updateUser({
+                          data: { avatar_preset: preset.key },
+                        });
+                        if (error) throw error;
+                        alert("프로필 아바타 문양이 변경되었습니다!");
+                        setIsAvatarModalOpen(false);
+                        window.location.reload();
+                      } catch (err: any) {
+                        alert(`아바타 변경 실패: ${err.message}`);
+                      }
+                    }}
+                    style={{
+                      background: isSelected
+                        ? "rgba(212, 175, 55, 0.15)"
+                        : "rgba(255,255,255,0.03)",
+                      border: isSelected
+                        ? "2px solid #d4af37"
+                        : "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 14,
+                      padding: 12,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8,
+                      textAlign: "center",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <div style={{ width: 50, height: 50, borderRadius: "50%" }}>
+                      {getAvatarPresetSvg(preset.key, displayName.slice(0, 2))}
+                    </div>
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 13,
+                          color: isSelected ? "#ffd700" : "#fff",
+                        }}
+                      >
+                        {preset.name}
+                      </div>
+                      <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
+                        {preset.desc}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setIsAvatarModalOpen(false)}
+              style={{
+                padding: "12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "transparent",
+                color: "rgba(255, 255, 255, 0.4)",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                marginTop: 4,
+              }}
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}
