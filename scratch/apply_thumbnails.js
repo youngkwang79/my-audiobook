@@ -10,9 +10,9 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
 const novels = [
   {
-    titleLike: '%구파일방 천재들%',
-    sourceImage: 'C:/Users/owner/.gemini/antigravity-ide/brain/561df978-aa12-4af7-98fe-0efbf3343ccb/nine_sects_underdog_1781525306390.png',
-    newFileName: `gupailbang_${Date.now()}.png`
+    titleLike: '%웅혼%',
+    sourceImage: 'C:/Users/owner/.gemini/antigravity-ide/brain/561df978-aa12-4af7-98fe-0efbf3343ccb/unghon_eastern_sword_1781531839815.png',
+    newFileName: `unghon_${Date.now()}.png`
   }
 ];
 
