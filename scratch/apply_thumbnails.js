@@ -11,7 +11,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 const novels = [
   {
     titleLike: '%웅혼%',
-    sourceImage: 'C:/Users/owner/.gemini/antigravity-ide/brain/561df978-aa12-4af7-98fe-0efbf3343ccb/unghon_eastern_sword_1781531839815.png',
+    sourceImage: 'C:/Users/owner/.gemini/antigravity-ide/brain/561df978-aa12-4af7-98fe-0efbf3343ccb/unghon_final_1781533261924.png',
     newFileName: `unghon_${Date.now()}.png`
   }
 ];
@@ -32,12 +32,10 @@ async function updateThumbnails() {
 
       console.log(`Found novel: ${data.title} (ID: ${data.id})`);
       
-      // Copy image to public/thumbnails
       const targetPath = path.join(__dirname, '../public/thumbnails', novel.newFileName);
       fs.copyFileSync(novel.sourceImage, targetPath);
       console.log(`Copied image to ${targetPath}`);
 
-      // Update Supabase
       const relativeUrl = `/api/thumbnails/${novel.newFileName}`;
       const { error: updateError } = await supabaseAdmin
         .from('works')

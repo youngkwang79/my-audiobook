@@ -1536,7 +1536,7 @@ export default function MePage() {
         <div className="me-header">
           <button
             className="settings-btn"
-            onClick={() => router.push("/me?settings=1")}
+            onClick={() => setIsSettingsOpen(true)}
           >
             <GearIcon />
           </button>
@@ -1715,7 +1715,7 @@ export default function MePage() {
           <div className="settings-header">
             <button
               className="settings-back-btn"
-              onClick={() => router.replace("/me")}
+              onClick={() => setIsSettingsOpen(false)}
             >
               <BackIcon />
             </button>
@@ -1944,6 +1944,60 @@ export default function MePage() {
                 </button>
               </div>
             </div>
+
+            {/* 관리자 특권 */}
+            {(user?.app_metadata?.role === "admin" || user?.user_metadata?.role === "admin" || user?.email === "youngkwang79@gmail.com" || user?.email === "admin@murimbook.com") && (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="settings-group-title" style={{ color: "#e8356d" }}>관리자 특권</div>
+                <div className="settings-group">
+                  <button
+                    className="settings-row"
+                    onClick={async () => {
+                      if (!confirm("연간 멤버십을 강제 활성화 하시겠습니까?")) return;
+                      try {
+                        const token = session?.access_token;
+                        if (!token) return;
+                        
+                        // 관리자 전용 멤버십 발급 API 호출 (임시적으로 /api/me/restore 흉내 또는 직접 DB)
+                        // 여기서는 간단하게 users 메타데이터나 서버에 직접 쏘는게 좋지만 클라이언트에서 supabase를 통해 memberships 테이블 upsert를 시도
+                        const { error } = await supabase.from('memberships').upsert({
+                          user_id: user.id,
+                          plan_type: 'yearly',
+                          status: 'active',
+                          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                          updated_at: new Date().toISOString()
+                        }, { onConflict: "user_id" });
+                        
+                        if (error) throw error;
+                        alert("관리자 권한으로 연간 멤버십이 활성화되었습니다!");
+                        syncSubscription();
+                      } catch(e) {
+                        alert("권한 부여 실패");
+                      }
+                    }}
+                  >
+                    <span>연간 멤버십 1년 무상 갱신</span>
+                  </button>
+                  <button
+                    className="settings-row"
+                    onClick={async () => {
+                      if (!confirm("멤버십을 즉시 해지 하시겠습니까?")) return;
+                      try {
+                        const { error } = await supabase.from('memberships').delete().eq('user_id', user.id);
+                        if (error) throw error;
+                        alert("멤버십이 해지되었습니다.");
+                        localStorage.removeItem("membership");
+                        setSubscribedPlan(null);
+                      } catch(e) {
+                        alert("해지 실패");
+                      }
+                    }}
+                  >
+                    <span>멤버십 즉시 해지</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 로그아웃 버튼 */}

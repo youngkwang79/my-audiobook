@@ -105,6 +105,12 @@ export default function MembershipPage() {
   const [selectedPlan, setSelectedPlan] = useState<"weekly" | "annual">("weekly");
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
   const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
+  const [promoPrices, setPromoPrices] = useState({ 
+    annualPrice: 29900, 
+    weeklyPrice: 1000, 
+    eligibleForAnnualPromo: true, 
+    eligibleForWeeklyPromo: true 
+  });
   const [showBuyerModal, setShowBuyerModal] = useState(false);
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
@@ -114,6 +120,21 @@ export default function MembershipPage() {
   const [financialAgreed, setFinancialAgreed] = useState(false);
   const [purchaseAgreed, setPurchaseAgreed] = useState(false);
   const [showDetailSection, setShowDetailSection] = useState<"privacy" | "financial" | "purchase" | null>(null);
+
+  const [exclusiveNovels, setExclusiveNovels] = useState<any[]>([]);
+  const [comingSoonDramas, setComingSoonDramas] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchWorks() {
+      const { data } = await supabase.from('works').select('*').order('created_at', { ascending: false });
+      if (data) {
+        setExclusiveNovels(data.filter(w => w.is_membership_only));
+        const now = new Date();
+        setComingSoonDramas(data.filter(w => w.status === "준비중" || (w.release_date && new Date(w.release_date) > now)));
+      }
+    }
+    fetchWorks();
+  }, []);
 
   const handleAgreeAllChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
@@ -157,10 +178,29 @@ export default function MembershipPage() {
     } catch (e) { }
   }, []);
 
-  // 멤버십 전용 소설 데이터 가공
-  const exclusiveNovels = works.filter(
-    (w) => w.id === "cheonmujin" || w.id === "hwansaeng-geomjon"
-  );
+  useEffect(() => {
+    async function checkPromo() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch("/api/me/membership-eligibility", {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPromoPrices({
+            annualPrice: data.annualPrice,
+            weeklyPrice: data.weeklyPrice,
+            eligibleForAnnualPromo: data.eligibleForAnnualPromo,
+            eligibleForWeeklyPromo: data.eligibleForWeeklyPromo
+          });
+        }
+      } catch(e) {}
+    }
+    checkPromo();
+  }, []);
+
+  // 멤버십 전용 소설 (DB에서 로드)
 
   const getPlayHref = (workId: string) => {
     const episodes = getEpisodesByWork(workId);
@@ -269,7 +309,7 @@ export default function MembershipPage() {
       if (!session) return;
 
       // 선택된 플랜에 따른 가격 및 이름 설정
-      const price = selectedPlan === "weekly" ? 3000 : 99900;
+      const price = selectedPlan === "weekly" ? promoPrices.weeklyPrice : promoPrices.annualPrice;
       const planName = selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스";
       paymentId = `m-${crypto.randomUUID()}`;
 
@@ -402,7 +442,7 @@ export default function MembershipPage() {
 
 
   // 공개 예정 소설 데이터
-  const comingSoonDramas: DramaItem[] = [];
+  // comingSoonDramas 상태로 대체됨
 
   return (
     <main className="membership-main">
@@ -1103,10 +1143,26 @@ export default function MembershipPage() {
             className={`plan-card ${selectedPlan === "weekly" ? "selected" : "unselected"}`}
             onClick={() => setSelectedPlan("weekly")}
           >
+            {promoPrices.eligibleForWeeklyPromo && (
+              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>첫 한 달 주당 1000원!</div>
+            )}
             {selectedPlan === "weekly" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
             <div className="plan-info-right">
               <h3 className="plan-title">주간 무제한 이용권</h3>
-              <p className="plan-price">₩ 3000/주</p>
+              <p className="plan-price">
+                {promoPrices.eligibleForWeeklyPromo ? (
+                  <>
+                    <span style={{ position: 'relative', display: 'inline-block', color: '#e0e0e0', fontSize: '24px', fontWeight: 800, marginRight: '10px' }}>
+                      ₩3,000
+                      <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '3px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(-20deg)', borderRadius: '2px' }}></span>
+                      <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '3px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(20deg)', borderRadius: '2px' }}></span>
+                    </span>
+                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '18px' }}>₩1,000/주</span>
+                  </>
+                ) : (
+                  "₩3,000/주"
+                )}
+              </p>
               <span className="plan-duration-tag">주간 멤버십 서비스</span>
             </div>
           </div>
@@ -1116,11 +1172,26 @@ export default function MembershipPage() {
             className={`plan-card ${selectedPlan === "annual" ? "selected" : "unselected"}`}
             onClick={() => setSelectedPlan("annual")}
           >
-            <div className="plan-badge">기간 한정 할인</div>
+            {promoPrices.eligibleForAnnualPromo ? (
+              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>가입 7일 한정 70% 할인</div>
+            ) : null}
             {selectedPlan === "annual" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
             <div className="plan-info-right">
               <h3 className="plan-title">연간 무제한 이용권</h3>
-              <p className="plan-price">₩ 99900/년</p>
+              <p className="plan-price">
+                {promoPrices.eligibleForAnnualPromo ? (
+                  <>
+                    <span style={{ position: 'relative', display: 'inline-block', color: '#e0e0e0', fontSize: '30px', fontWeight: 900, marginRight: '12px' }}>
+                      ₩99,900
+                      <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '4px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(-15deg)', borderRadius: '2px' }}></span>
+                      <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '4px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(15deg)', borderRadius: '2px' }}></span>
+                    </span>
+                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '20px' }}>₩29,900/년</span>
+                  </>
+                ) : (
+                  "₩99,900/년"
+                )}
+              </p>
               <span className="plan-duration-tag">연간 멤버십 서비스</span>
             </div>
           </div>

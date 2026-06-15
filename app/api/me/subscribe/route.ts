@@ -114,6 +114,30 @@ export async function POST(req: Request) {
       .update({ status: "SUCCESS" })
       .eq("payment_id", paymentId);
 
+    // Give first purchase gift (1000 coins)
+    const { data: firstTx } = await supabaseAdmin
+      .from("wallet_transactions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("description", "첫 결제 기념 선물")
+      .limit(1);
+    
+    if (!firstTx || firstTx.length === 0) {
+      let { data: wallet } = await supabaseAdmin.from("wallets").select("id, balance").eq("user_id", user.id).maybeSingle();
+      if (!wallet) {
+        const { data: newW } = await supabaseAdmin.from("wallets").insert({ user_id: user.id, balance: 1000 }).select("id, balance").single();
+        wallet = newW;
+      } else {
+        await supabaseAdmin.from("wallets").update({ balance: wallet.balance + 1000 }).eq("id", wallet.id);
+      }
+      await supabaseAdmin.from("wallet_transactions").insert({
+        user_id: user.id,
+        amount: 1000,
+        type: "EARN",
+        description: "첫 결제 기념 선물"
+      });
+    }
+
     const daysToAdd = plan === "weekly" ? 7 : 365;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + daysToAdd);

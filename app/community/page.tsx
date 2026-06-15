@@ -6,7 +6,7 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/app/components/BottomNav";
 
-const CATEGORIES = ["전체", "자유 대담", "소설 평론", "무공 비급", "창작 소설"];
+const CATEGORIES = ["전체", "자유 대담", "소설 평론", "무림북 삼행시", "창작 소설"];
 
 async function getAccessToken() {
   if (!supabase) return null;
@@ -39,6 +39,7 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("전체");
+  const [sortOption, setSortOption] = useState("latest");
 
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -227,8 +228,8 @@ export default function CommunityPage() {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const catParam = activeCategory !== "전체" ? `?category=${encodeURIComponent(activeCategory)}` : "";
-      const res = await fetch(`/api/community/posts${catParam}`, {
+      const catParam = activeCategory !== "전체" ? `category=${encodeURIComponent(activeCategory)}&` : "";
+      const res = await fetch(`/api/community/posts?${catParam}sort=${sortOption}`, {
         headers,
         cache: "no-store",
       });
@@ -250,7 +251,7 @@ export default function CommunityPage() {
   useEffect(() => {
     loadPosts();
     setCurrentPage(1);
-  }, [activeCategory]);
+  }, [activeCategory, sortOption]);
 
   // 특정 글 상세 조회 시 댓글도 함께 로드
   const loadComments = async (postId: string) => {
@@ -497,6 +498,25 @@ export default function CommunityPage() {
         }
 
         /* ── 포스트 리스트 ── */
+        .sort-buttons {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        .sort-btn {
+          background: none;
+          border: none;
+          color: #8c8c96;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0;
+        }
+        .sort-btn.active {
+          color: #ffd700;
+        }
+
         .post-list {
           display: flex;
           flex-direction: column;
@@ -978,15 +998,30 @@ export default function CommunityPage() {
         {/* 카테고리 탭 */}
         <div className="com-cats">
           {CATEGORIES.map((cat) => (
-            <button
-              id={`cat-${cat}`}
+            <div
               key={cat}
               className={`com-cat ${activeCategory === cat ? "active" : ""}`}
               onClick={() => setActiveCategory(cat)}
             >
               {cat}
-            </button>
+            </div>
           ))}
+        </div>
+
+        {activeCategory === "무림북 삼행시" && (
+          <div style={{ background: "rgba(255, 42, 95, 0.1)", border: "1px solid rgba(255, 42, 95, 0.3)", borderRadius: "12px", padding: "16px", marginBottom: "16px", textAlign: "center" }}>
+            <h3 style={{ color: "#ff2a5f", margin: "0 0 8px 0", fontSize: "15px", fontWeight: 800 }}>무림북 삼행시 이벤트 진행 중!</h3>
+            <p style={{ color: "rgba(255,255,255,0.8)", margin: "0", fontSize: "13px", lineHeight: "1.5" }}>
+              오픈일부터 20일간 진행됩니다.<br/>
+              1등: 3,000 코인 / 2등: 1,000 코인 / 3등: 500 코인 / 참여자 전원: 100 코인 지급!
+            </p>
+          </div>
+        )}
+
+        <div className="sort-buttons">
+          <button className={`sort-btn ${sortOption === "latest" ? "active" : ""}`} onClick={() => setSortOption("latest")}>최신순</button>
+          <span style={{ color: "#333", fontSize: "10px" }}>|</span>
+          <button className={`sort-btn ${sortOption === "popular" ? "active" : ""}`} onClick={() => setSortOption("popular")}>인기순</button>
         </div>
 
         {/* 창작 소설 안내 배너 */}
@@ -1317,6 +1352,38 @@ export default function CommunityPage() {
                             }}
                           >
                             {hideBusy ? "처리 중..." : detailPost.is_hidden ? "숨김 해제" : "숨기기"}
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={async () => {
+                              const amount = prompt("지급할 코인 액수를 입력하세요:");
+                              if (!amount || isNaN(Number(amount))) return;
+                              const num = Number(amount);
+                              try {
+                                const { data: { session } } = await supabase.auth.getSession();
+                                if (!session) return;
+                                const res = await fetch("/api/admin/grant-reward", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+                                  body: JSON.stringify({ userId: detailPost.user_id, amount: num, reason: "삼행시 이벤트 보상 지급" })
+                                });
+                                if (res.ok) alert(`보상 지급이 완료되었습니다. (+${num} P)`);
+                                else alert("보상 지급에 실패했습니다.");
+                              } catch(e) { alert("에러발생"); }
+                            }}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "16px",
+                              border: "1.5px solid rgba(0, 255, 127, 0.3)",
+                              background: "rgba(0, 255, 127, 0.08)",
+                              color: "#00ff7f",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            보상 지급
                           </button>
                         )}
                       </div>

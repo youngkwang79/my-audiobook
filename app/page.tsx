@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import WorkPosterCard from "@/app/components/work/WorkPosterCard";
 import BottomNav from "@/app/components/BottomNav";
 import MugongGameLauncher from "@/app/components/game/MugongGameLauncher";
+import GrandOpenPopup from "@/app/components/GrandOpenPopup";
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -1850,6 +1851,9 @@ export default function Home() {
           onFinished={handleGameFinished}
         />
       )}
+
+      {/* 이벤트 팝업 */}
+      <GrandOpenPopup />
 
       {/* 모바일 하단 네비게이션 바 */}
       <BottomNav />

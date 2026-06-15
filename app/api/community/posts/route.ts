@@ -45,11 +45,18 @@ export async function GET(req: Request) {
       hasIsHiddenFilter = true;
     }
 
-    // 최신글 순으로 정렬
-    let { data: posts, error } = await query.order("created_at", { ascending: false });
+    const sort = searchParams.get("sort") || "latest";
+
+    // 최신글/인기순 정렬
+    if (sort === "popular") {
+      query = query.order("likes_count", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
+    }
+    let { data: posts, error } = await query;
 
     if (error) {
-      // 만약 is_hidden 컬럼이 없어서 에러가 발생한 경우 (예: PGRST204 또는 컬럼이 없다는 에러)
+      // 만약 is_hidden 컬럼이 없어서 에러가 발생한 경우
       if (hasIsHiddenFilter && (error.code === "PGRST204" || error.message?.includes("is_hidden"))) {
         console.warn("Fallback query without is_hidden filter because column is missing");
         let fallbackQuery = supabaseAdmin
@@ -58,7 +65,12 @@ export async function GET(req: Request) {
         if (category && category !== "전체") {
           fallbackQuery = fallbackQuery.eq("category", category);
         }
-        const fallbackRes = await fallbackQuery.order("created_at", { ascending: false });
+        if (sort === "popular") {
+          fallbackQuery = fallbackQuery.order("likes_count", { ascending: false });
+        } else {
+          fallbackQuery = fallbackQuery.order("created_at", { ascending: false });
+        }
+        const fallbackRes = await fallbackQuery;
         posts = fallbackRes.data;
         error = fallbackRes.error;
       }

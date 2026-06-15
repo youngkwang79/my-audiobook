@@ -237,30 +237,46 @@ export default function CheckinPage() {
     loadCompletedTasks();
   }, [user, session]);
 
-  // 출석체크 데이터는 localStorage 유지 (날짜 기반)
+  // 출석체크 연속 일수 (DB에서 로드)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("checkin_data");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const todayStr = new Date().toDateString();
-        
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toDateString();
-
-        if (parsed.lastDate === todayStr) {
-          setCheckedIn(true);
-          setStreak(parsed.streak ?? 0);
-        } else if (parsed.lastDate === yesterdayStr) {
-          setStreak(parsed.streak ?? 0);
-        } else {
-          // 출석이 끊겼으므로 streak 초기화 (다음 출석시 1일차)
-          setStreak(0);
+    const loadStreak = async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          // 비로그인 시 기존 localStorage 로직 폴백
+          const saved = localStorage.getItem("checkin_data");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const todayStr = new Date().toDateString();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (parsed.lastDate === todayStr) {
+              setStreak(parsed.streak ?? 0);
+              setCheckedIn(true);
+            } else if (parsed.lastDate === yesterday.toDateString()) {
+              setStreak(parsed.streak ?? 0);
+            } else {
+              setStreak(0);
+            }
+          }
+          return;
         }
-      }
-    } catch (e) { /* ignore */ }
-  }, []);
+
+        const res = await fetch("/api/me/checkin/streak", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data) {
+          setStreak(data.streak || 0);
+          if (data.checkedInToday) {
+            setCheckedIn(true);
+          }
+        }
+      } catch (e) { /* ignore */ }
+    };
+    loadStreak();
+  }, [user, session]);
 
   const handleCheckin = async () => {
     if (checkedIn) {
