@@ -40,27 +40,15 @@ function getEpisodeFolder(episodeKey: string) {
   return `${pad3(Number(m[1]))}-${m[2]}`;
 }
 
-function lockedMemo(
-  isSubscribed: boolean,
-  part: number,
-  unlockedUntil: number,
-) {
+
+function lockedMemo(isSubscribed: boolean, part: number, unlockedUntil: number) {
   if (isSubscribed) return false;
   return part > unlockedUntil;
 }
 
 function DownloadIcon() {
   return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
@@ -80,10 +68,7 @@ async function getAccessToken() {
   return session?.access_token ?? null;
 }
 
-async function fetchEntitlement(
-  workId: string,
-  episodeKey: string,
-): Promise<EntitlementPayload> {
+async function fetchEntitlement(workId: string, episodeKey: string): Promise<EntitlementPayload> {
   const token = await getAccessToken();
 
   if (!token) {
@@ -137,7 +122,7 @@ function parseSegmentsFromSavedJson(saved: any): Segment[] {
         (s: Segment) =>
           Number.isFinite(s.start) &&
           Number.isFinite(s.end) &&
-          s.text.trim().length > 0,
+          s.text.trim().length > 0
       );
   }
 
@@ -156,9 +141,7 @@ export default function EpisodePage() {
   const searchParams = useSearchParams();
 
   const workId = decodeURIComponent(String((params as any).workId));
-  const [episodeKey, setEpisodeKey] = useState(
-    decodeURIComponent(String((params as any).id)),
-  );
+  const [episodeKey, setEpisodeKey] = useState(decodeURIComponent(String((params as any).id)));
 
   const [work, setWork] = useState<any>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
@@ -178,11 +161,7 @@ export default function EpisodePage() {
           .maybeSingle();
 
         if (workData) {
-          const isOldNew =
-            workData.badge === "신작" &&
-            workData.created_at &&
-            new Date().getTime() - new Date(workData.created_at).getTime() >
-              30 * 24 * 60 * 60 * 1000;
+          const isOldNew = workData.badge === "신작" && workData.created_at && (new Date().getTime() - new Date(workData.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
           setWork({
             id: workData.id,
             title: workData.title,
@@ -197,6 +176,7 @@ export default function EpisodePage() {
             views: String(workData.views),
             exclusive: workData.exclusive,
             featured: workData.featured,
+            is_membership_only: workData.is_membership_only
           });
         }
 
@@ -209,22 +189,20 @@ export default function EpisodePage() {
           .order("id", { ascending: true });
 
         if (epData) {
-          const sorted = epData
-            .map((e: any) => ({
-              id: e.id,
-              title: e.title,
-              locked: e.locked,
-              parts: e.parts,
-              is_membership_only: e.is_membership_only,
-            }))
-            .sort((a, b) => {
-              const aNum = parseFloat(a.id);
-              const bNum = parseFloat(b.id);
-              if (isNaN(aNum) || isNaN(bNum)) {
-                return String(a.id).localeCompare(String(b.id));
-              }
-              return aNum - bNum;
-            });
+          const sorted = epData.map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            locked: e.locked,
+            parts: e.parts,
+            is_membership_only: e.is_membership_only
+          })).sort((a, b) => {
+            const aNum = parseFloat(a.id);
+            const bNum = parseFloat(b.id);
+            if (isNaN(aNum) || isNaN(bNum)) {
+              return String(a.id).localeCompare(String(b.id));
+            }
+            return aNum - bNum;
+          });
           setEpisodes(sorted);
         }
       } catch (err) {
@@ -238,8 +216,12 @@ export default function EpisodePage() {
 
   const currentEpisode = useMemo(
     () => episodes.find((ep) => String(ep.id) === episodeKey),
-    [episodes, episodeKey],
+    [episodes, episodeKey]
   );
+
+  const isMembershipOnlyContent = useMemo(() => {
+    return !!(work?.is_membership_only || currentEpisode?.is_membership_only);
+  }, [work, currentEpisode]);
 
   const workThumbnail = work?.thumbnail ?? "/thumbnails/cheonmujin.jpg";
   const SERIES_PREFIX = workId;
@@ -249,9 +231,11 @@ export default function EpisodePage() {
 
   const TOTAL_PARTS = currentEpisode?.parts ?? 1;
 
+
+
   const currentEpisodeIndex = useMemo(
     () => episodes.findIndex((ep) => String(ep.id) === episodeKey),
-    [episodes, episodeKey],
+    [episodes, episodeKey]
   );
 
   const [captionFontSize, setCaptionFontSize] = useState(32);
@@ -267,16 +251,14 @@ export default function EpisodePage() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [showDescriptionPopup, setShowDescriptionPopup] = useState(false);
   const [showCommentsPopup, setShowCommentsPopup] = useState(false);
-  const [activeSheetTab, setActiveSheetTab] = useState<"story" | "episodes">(
-    "episodes",
-  );
+  const [activeSheetTab, setActiveSheetTab] = useState<"story" | "episodes">("episodes");
   const [activeRangeIndex, setActiveRangeIndex] = useState(0);
 
   useEffect(() => {
     try {
       const fav = localStorage.getItem(`fav:${workId}`) === "true";
       setIsFavorited(fav);
-    } catch {}
+    } catch { }
   }, [workId]);
 
   const toggleFavorite = () => {
@@ -284,7 +266,7 @@ export default function EpisodePage() {
       const next = !isFavorited;
       setIsFavorited(next);
       localStorage.setItem(`fav:${workId}`, String(next));
-    } catch {}
+    } catch { }
   };
 
   const handleShare = () => {
@@ -376,9 +358,9 @@ export default function EpisodePage() {
     try {
       localStorage.setItem(
         "last_played_episode",
-        JSON.stringify({ workId, episodeId: episodeKey, part }),
+        JSON.stringify({ workId, episodeId: episodeKey, part })
       );
-    } catch (e) {}
+    } catch (e) { }
   }, [workId, episodeKey, part]);
 
   // 실제 오디오 청취 시작 시 1회 유니크 카운트 API 전송
@@ -392,9 +374,9 @@ export default function EpisodePage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ workId }),
+            body: JSON.stringify({ workId })
           });
         } catch (e) {
           console.error("Play tracking error:", e);
@@ -416,16 +398,16 @@ export default function EpisodePage() {
 
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${currentEpisode.title || episodeKey + "화"} - ${part}편`,
+        title: `${currentEpisode.title || (episodeKey + "화")} - ${part}편`,
         artist: work.title || "무림북",
         album: "무림북 오디오북",
         artwork: [
           {
             src: currentImageSrc || "/logo.png",
             sizes: "512x512",
-            type: "image/png",
-          },
-        ],
+            type: "image/png"
+          }
+        ]
       });
     } catch (err) {
       console.error("Media Session metadata error:", err);
@@ -442,24 +424,14 @@ export default function EpisodePage() {
 
   // Media Session API - Position State 연동
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      !("mediaSession" in navigator) ||
-      !audioRef.current
-    )
-      return;
+    if (typeof window === "undefined" || !("mediaSession" in navigator) || !audioRef.current) return;
     try {
       const a = audioRef.current;
-      if (
-        a &&
-        a.duration &&
-        Number.isFinite(a.duration) &&
-        Number.isFinite(a.currentTime)
-      ) {
+      if (a && a.duration && Number.isFinite(a.duration) && Number.isFinite(a.currentTime)) {
         navigator.mediaSession.setPositionState({
           duration: a.duration,
           playbackRate: a.playbackRate || 1.0,
-          position: a.currentTime,
+          position: a.currentTime
         });
       }
     } catch (_) {}
@@ -520,20 +492,21 @@ export default function EpisodePage() {
         const key = `watch_time_${todayStr}`;
         const current = Number(localStorage.getItem(key) || 0);
         localStorage.setItem(key, String(current + 1));
-      } catch (e) {}
+      } catch (e) { }
     }, 1000);
     return () => clearInterval(interval);
   }, [isPlaying]);
 
   // 에피소드 자체 잠금 여부: episodes.locked=true이고 멤버십/코인해제 모두 아닌 경우
   const locked = useMemo(() => {
-    if (entBusy) return false; // 로딩 중에는 잠금 판단 보류 (플래시 방지)
-    if (isSubscribed) return false; // 멤버십 회원 → 항상 열림
-    if (currentEpisode?.is_membership_only) return true; // 멤버십 전용 → 멤버십 없으면 무조건 잠김
-    if (!currentEpisode?.locked) return false; // 무료 에피소드
-    if (episodeUnlocked) return false; // 코인으로 이미 해제
+    if (entBusy) return false;                   // 로딩 중에는 잠금 판단 보류 (플래시 방지)
+    if (isSubscribed) return false;              // 멤버십 회원 → 항상 열림
+    if (work?.is_membership_only) return true;   // 멤버십 전용 작품 → 멤버십 없으면 무조건 잠김
+    if (currentEpisode?.is_membership_only) return true; // 멤버십 전용 에피소드 → 멤버십 없으면 무조건 잠김
+    if (!currentEpisode?.locked) return false;   // 무료 에피소드
+    if (episodeUnlocked) return false;           // 코인으로 이미 해제
     return true;
-  }, [entBusy, isSubscribed, currentEpisode, episodeUnlocked]);
+  }, [entBusy, isSubscribed, work, currentEpisode, episodeUnlocked]);
 
   useEffect(() => {
     if (locked) {
@@ -551,9 +524,9 @@ export default function EpisodePage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ workId, episodeId: episodeKey, part }),
+          body: JSON.stringify({ workId, episodeId: episodeKey, part })
         });
 
         if (res.ok) {
@@ -563,11 +536,7 @@ export default function EpisodePage() {
           }
         } else {
           const errData = await res.json().catch(() => ({}));
-          console.error(
-            "오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:",
-            res.status,
-            errData,
-          );
+          console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
         }
       } catch (err) {
         console.error("Signed URL 발급 실패:", err);
@@ -578,15 +547,17 @@ export default function EpisodePage() {
 
     fetchSignedUrl();
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [locked, workId, episodeKey, part]);
+
+
 
   const getWorkerUrl = (episodeKeyValue: string, partValue: number) =>
     `/api/media/transcribe?workId=${encodeURIComponent(SERIES_PREFIX)}&episode=${encodeURIComponent(
-      episodeKeyValue,
+      episodeKeyValue
     )}&part=${encodeURIComponent(String(partValue))}`;
+
+
 
   const audioSrc = signedAudioSrc;
 
@@ -595,32 +566,24 @@ export default function EpisodePage() {
   const handleDownload = async () => {
     // 3G/LTE/5G 다운로드 허용 여부 체크
     try {
-      const allowMobileDownload =
-        localStorage.getItem("allowMobileDownload") === "true";
+      const allowMobileDownload = localStorage.getItem("allowMobileDownload") === "true";
       if (!allowMobileDownload) {
-        const conn =
-          (navigator as any).connection ||
-          (navigator as any).mozConnection ||
-          (navigator as any).webkitConnection;
+        const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
         if (conn) {
           // 안드로이드 크롬 등 네트워크 정보 API를 지원하는 환경
-          const isCellular =
-            conn.type === "cellular" ||
-            ["2g", "3g", "4g"].includes(conn.effectiveType);
+          const isCellular = conn.type === "cellular" || ["2g", "3g", "4g"].includes(conn.effectiveType);
           if (isCellular) {
             alert(
-              "⚠️ [데이터 다운로드 차단]\n\n현재 3G/LTE/5G 데이터 연결 상태입니다. 데이터 사용량 절약을 위해 와이파이(Wi-Fi) 환경에서 다운로드하시거나, 마이페이지 설정에서 '3G/LTE/5G 다운로드 허용'을 켜주세요.",
+              "⚠️ [데이터 다운로드 차단]\n\n현재 3G/LTE/5G 데이터 연결 상태입니다. 데이터 사용량 절약을 위해 와이파이(Wi-Fi) 환경에서 다운로드하시거나, 마이페이지 설정에서 '3G/LTE/5G 다운로드 허용'을 켜주세요."
             );
             return;
           }
         } else {
           // 아이폰 사파리 등 네트워크 정보 API를 지원하지 않는 환경 (User-Agent 검사로 모바일 판별)
-          const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(
-            navigator.userAgent,
-          );
+          const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
           if (isMobileDevice) {
             const confirmWifi = confirm(
-              "⚠️ [데이터 요금 주의 안내]\n\n현재 설정에서 '3G/LTE/5G 다운로드 허용'이 비활성화되어 있습니다. 데이터 요금이 청구될 수 있으니 현재 와이파이(Wi-Fi) 연결 상태인지 확인해 주세요.\n\n다운로드를 계속 진행하시겠습니까?",
+              "⚠️ [데이터 요금 주의 안내]\n\n현재 설정에서 '3G/LTE/5G 다운로드 허용'이 비활성화되어 있습니다. 데이터 요금이 청구될 수 있으니 현재 와이파이(Wi-Fi) 연결 상태인지 확인해 주세요.\n\n다운로드를 계속 진행하시겠습니까?"
             );
             if (!confirmWifi) return;
           }
@@ -661,9 +624,9 @@ export default function EpisodePage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ workId, episodeId: episodeKey, part }),
+            body: JSON.stringify({ workId, episodeId: episodeKey, part })
           });
         }
       } catch (err) {
@@ -701,7 +664,7 @@ export default function EpisodePage() {
           episodeId: episodeKey,
           part,
           updatedAt: Date.now(),
-        }),
+        })
       );
 
       // 개별 작품별 시청한 마지막 에피소드 저장
@@ -710,15 +673,12 @@ export default function EpisodePage() {
       progress[workId] = episodeKey;
       localStorage.setItem("workProgress", JSON.stringify(progress));
       setWatchedEpisode(String(episodeKey));
-    } catch {}
+    } catch { }
   }, [workId, episodeKey, part]);
 
   useEffect(() => {
     const p = Number(searchParams.get("part") || 1);
-    const safeP = Math.max(
-      1,
-      Math.min(TOTAL_PARTS, Number.isFinite(p) ? p : 1),
-    );
+    const safeP = Math.max(1, Math.min(TOTAL_PARTS, Number.isFinite(p) ? p : 1));
     setPart(safeP);
   }, [episodeKey, searchParams, TOTAL_PARTS]);
 
@@ -726,12 +686,9 @@ export default function EpisodePage() {
     try {
       const token = await getAccessToken();
       if (!token) return [];
-      const res = await fetch(
-        `/api/me/entitlements?work_id=${encodeURIComponent(workId)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const res = await fetch(`/api/me/entitlements?work_id=${encodeURIComponent(workId)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         return data.entitlements || [];
@@ -750,15 +707,13 @@ export default function EpisodePage() {
       try {
         const [data, listData] = await Promise.all([
           fetchEntitlement(workId, episodeKey),
-          fetchAllEntitlements(),
+          fetchAllEntitlements()
         ]);
         if (!alive) return;
 
         setIsSubscribed(!!data.is_subscribed);
         setEpisodeUnlocked(!!data.episode_unlocked);
-        setPointsState(
-          Number.isFinite(data.points) ? Math.max(0, data.points) : 0,
-        );
+        setPointsState(Number.isFinite(data.points) ? Math.max(0, data.points) : 0);
         setAllEntitlements(listData || []);
       } catch (error) {
         console.error(error);
@@ -783,9 +738,7 @@ export default function EpisodePage() {
     if (episodes.length === 0) return;
 
     // 현재 에피소드의 인덱스 찾기
-    const currIdx = episodes.findIndex(
-      (ep) => String(ep.id) === String(episodeKey),
-    );
+    const currIdx = episodes.findIndex((ep) => String(ep.id) === String(episodeKey));
     if (currIdx <= 0) return; // 첫 화거나 못 찾았으면 패스
 
     // 이전 화 중 잠겨있고(유료) 아직 해제되지 않은 첫 번째 화 찾기
@@ -793,32 +746,21 @@ export default function EpisodePage() {
       const ep = episodes[i];
       if (ep.locked) {
         const isUnlocked = allEntitlements.some(
-          (ent) =>
-            String(ent.episode_id) === String(ep.id) && ent.episode_unlocked,
+          (ent) => String(ent.episode_id) === String(ep.id) && ent.episode_unlocked
         );
         if (!isUnlocked) {
-          alert(
-            `이전 회차(제 ${ep.id}화)를 순서대로 감상해 주세요.\n먼저 잠금 해제되지 않은 이전 화로 이동합니다.`,
-          );
+          alert(`이전 회차(제 ${ep.id}화)를 순서대로 감상해 주세요.\n먼저 잠금 해제되지 않은 이전 화로 이동합니다.`);
           navigateToEpisode(String(ep.id), 1, false);
           return;
         }
       }
     }
-  }, [
-    loadingData,
-    entBusy,
-    isSubscribed,
-    episodes,
-    allEntitlements,
-    episodeKey,
-    workId,
-  ]);
+  }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, workId]);
 
   // locked 상태 감지 및 자동해제 / 팝업 제어
   useEffect(() => {
     if (locked && !entBusy) {
-      if (autoNextEpisode && points >= COINS_PER_EPISODE) {
+      if (autoNextEpisode && points >= COINS_PER_EPISODE && !isMembershipOnlyContent) {
         if (hasAutoUnlockedRef.current !== episodeKey) {
           hasAutoUnlockedRef.current = episodeKey;
           (async () => {
@@ -835,7 +777,9 @@ export default function EpisodePage() {
     } else {
       setShowUnlockModal(false);
     }
-  }, [locked, autoNextEpisode, points, entBusy, episodeKey]);
+  }, [locked, autoNextEpisode, points, entBusy, episodeKey, isMembershipOnlyContent]);
+
+
 
   useEffect(() => {
     let alive = true;
@@ -875,14 +819,9 @@ export default function EpisodePage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({
-            workId,
-            episodeId: episodeKey,
-            part,
-            type: "caption",
-          }),
+          body: JSON.stringify({ workId, episodeId: episodeKey, part, type: "caption" })
         });
         if (res.ok) {
           const data = await res.json();
@@ -897,9 +836,7 @@ export default function EpisodePage() {
         // 실패 시 워커를 호출하도록 아래 로직으로 넘기기 위해 임시 빈 주소
       }
 
-      const r2 = signedCaptionUrl
-        ? await fetchJsonSafe(signedCaptionUrl)
-        : { ok: false as const, status: 0, text: "" };
+      const r2 = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
       if (r2.ok) {
@@ -924,9 +861,7 @@ export default function EpisodePage() {
         return;
       }
 
-      const r2b = signedCaptionUrl
-        ? await fetchJsonSafe(signedCaptionUrl)
-        : { ok: false as const, status: 0, text: "" };
+      const r2b = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
       if (!r2b.ok) {
@@ -1092,7 +1027,7 @@ export default function EpisodePage() {
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen();
       }
-    } catch {}
+    } catch { }
   };
 
   const exitCinemaMode = async () => {
@@ -1105,14 +1040,10 @@ export default function EpisodePage() {
       if (document.fullscreenElement && document.exitFullscreen) {
         await document.exitFullscreen();
       }
-    } catch {}
+    } catch { }
   };
 
-  const navigateToEpisode = (
-    nextEpKey: string,
-    nextPart: number,
-    shouldAutoplay = true,
-  ) => {
+  const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true) => {
     setEpisodeKey(nextEpKey);
     setPart(nextPart);
     if (shouldAutoplay) {
@@ -1154,7 +1085,7 @@ export default function EpisodePage() {
       setTimeout(() => {
         setIsFlashing(false);
       }, 800);
-    } catch {}
+    } catch { }
 
     resetHideTimer();
   };
@@ -1163,10 +1094,7 @@ export default function EpisodePage() {
     const a = audioRef.current;
     if (!a) return;
 
-    const next = Math.max(
-      0,
-      Math.min(a.duration || 0, (a.currentTime || 0) + delta),
-    );
+    const next = Math.max(0, Math.min(a.duration || 0, (a.currentTime || 0) + delta));
     a.currentTime = next;
     setCurrentTime(next);
     updateCaptionByTime(next);
@@ -1230,9 +1158,7 @@ export default function EpisodePage() {
       if (autoNextEpisode) {
         const token = await getAccessToken();
         if (token && points >= COINS_PER_EPISODE) {
-          setStatus(
-            `다음 화가 유료입니다. ${COINS_PER_EPISODE}코인으로 자동 오픈 중...`,
-          );
+          setStatus(`다음 화가 유료입니다. ${COINS_PER_EPISODE}코인으로 자동 오픈 중...`);
 
           const unlockRes = await fetch("/api/unlock/episode", {
             method: "POST",
@@ -1249,13 +1175,9 @@ export default function EpisodePage() {
           const unlockData = await unlockRes.json().catch(() => null);
 
           if (unlockRes.ok) {
-            const nextCoinBalance = Number(
-              unlockData?.coins_left ?? points - COINS_PER_EPISODE,
-            );
+            const nextCoinBalance = Number(unlockData?.coins_left ?? points - COINS_PER_EPISODE);
             setPointsState(nextCoinBalance);
-            try {
-              localStorage.setItem("points", String(nextCoinBalance));
-            } catch {}
+            try { localStorage.setItem("points", String(nextCoinBalance)); } catch { }
             window.dispatchEvent(new Event("wallet-updated"));
             navigateToEpisode(nextEpisodeKey, 1, true);
             return;
@@ -1296,9 +1218,7 @@ export default function EpisodePage() {
 
       if (!res.ok) {
         if (data?.error === "not_enough_coins") {
-          alert(
-            `코인이 부족합니다. (${data?.need ?? COINS_PER_EPISODE}코인 필요, 현재 ${data?.current ?? points}코인)`,
-          );
+          alert(`코인이 부족합니다. (${data?.need ?? COINS_PER_EPISODE}코인 필요, 현재 ${data?.current ?? points}코인)`);
           return false;
         }
         if (data?.error === "unauthorized") {
@@ -1313,10 +1233,8 @@ export default function EpisodePage() {
       const nextCoins = Number(data?.coins_left ?? points - COINS_PER_EPISODE);
       setPointsState(nextCoins);
       setEpisodeUnlocked(true);
-
-      try {
-        localStorage.setItem("points", String(nextCoins));
-      } catch {}
+      
+      try { localStorage.setItem("points", String(nextCoins)); } catch { }
       window.dispatchEvent(new Event("wallet-updated"));
       navigateToEpisode(episodeKey, 1, true);
       return true;
@@ -1357,9 +1275,7 @@ export default function EpisodePage() {
           justifyContent: "center",
         }}
       >
-        <div style={{ fontSize: 18, fontWeight: 800 }}>
-          데이터를 불러오는 중...
-        </div>
+        <div style={{ fontSize: 18, fontWeight: 800 }}>데이터를 불러오는 중...</div>
       </main>
     );
   }
@@ -2024,7 +1940,7 @@ export default function EpisodePage() {
       {/* 오디오 엘리먼트 (가로/세로 모드에 무관하게 마운트 유지) */}
       <audio
         ref={audioRef}
-        src={!locked && audioSrc ? audioSrc : ""}
+        src={(!locked && audioSrc) ? audioSrc : ""}
         preload="auto"
         style={{ display: "none" }}
         onLoadedMetadata={() => {
@@ -2079,43 +1995,28 @@ export default function EpisodePage() {
 
       {!playerLandscapeMode ? (
         <div className="sf-container">
+
           {/* 블러 썸네일 배경 */}
           <img src={currentImageSrc} className="sf-blur-bg" alt="" />
           <div className="sf-overlay" />
 
           {/* 상단 탑바 */}
           <div className="sf-header">
-            <button
-              className="sf-back-btn"
-              onClick={() => {
-                let backPath = "/";
-                try {
-                  backPath = sessionStorage.getItem("episodeBackPath") || "/";
-                } catch (e) {}
-                router.push(backPath);
-              }}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+            <button className="sf-back-btn" onClick={() => {
+              let backPath = "/";
+              try {
+                backPath = sessionStorage.getItem("episodeBackPath") || "/";
+              } catch (e) {}
+              router.push(backPath);
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
               <span>{episodeKey}화</span>
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button
-                onClick={() =>
-                  changePlaybackRate(
-                    Math.max(0.5, Number((playbackRate - 0.05).toFixed(2))),
-                  )
-                }
+              <button 
+                onClick={() => changePlaybackRate(Math.max(0.5, Number((playbackRate - 0.05).toFixed(2))))}
                 style={{
                   background: "rgba(255, 255, 255, 0.12)",
                   border: "1px solid rgba(255, 255, 255, 0.15)",
@@ -2129,23 +2030,16 @@ export default function EpisodePage() {
                   fontSize: "14px",
                   fontWeight: "bold",
                   cursor: "pointer",
-                  backdropFilter: "blur(8px)",
+                  backdropFilter: "blur(8px)"
                 }}
               >
                 -
               </button>
-              <button
-                className="sf-speed-btn"
-                onClick={() => setShowSpeedMenu(true)}
-              >
+              <button className="sf-speed-btn" onClick={() => setShowSpeedMenu(true)}>
                 ⏱️ {playbackRate}x
               </button>
-              <button
-                onClick={() =>
-                  changePlaybackRate(
-                    Math.min(2.0, Number((playbackRate + 0.05).toFixed(2))),
-                  )
-                }
+              <button 
+                onClick={() => changePlaybackRate(Math.min(2.0, Number((playbackRate + 0.05).toFixed(2))))}
                 style={{
                   background: "rgba(255, 255, 255, 0.12)",
                   border: "1px solid rgba(255, 255, 255, 0.15)",
@@ -2159,16 +2053,12 @@ export default function EpisodePage() {
                   fontSize: "14px",
                   fontWeight: "bold",
                   cursor: "pointer",
-                  backdropFilter: "blur(8px)",
+                  backdropFilter: "blur(8px)"
                 }}
               >
                 +
               </button>
-              <button
-                className="sf-more-btn"
-                onClick={toggleLandscapePlayer}
-                title="시네마(가로) 모드"
-              >
+              <button className="sf-more-btn" onClick={toggleLandscapePlayer} title="시네마(가로) 모드">
                 ⋮
               </button>
             </div>
@@ -2183,33 +2073,16 @@ export default function EpisodePage() {
               <div className="sf-center-play-btn">
                 {isFlashing ? (
                   flashType === "play" ? (
-                    <svg
-                      width="36"
-                      height="36"
-                      viewBox="0 0 24 24"
-                      fill="#ffffff"
-                      style={{ marginLeft: "4px" }}
-                    >
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff" style={{ marginLeft: "4px" }}>
                       <path d="M8 5v14l11-7z" />
                     </svg>
                   ) : (
-                    <svg
-                      width="36"
-                      height="36"
-                      viewBox="0 0 24 24"
-                      fill="#ffffff"
-                    >
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff">
                       <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
                     </svg>
                   )
                 ) : (
-                  <svg
-                    width="36"
-                    height="36"
-                    viewBox="0 0 24 24"
-                    fill="#ffffff"
-                    style={{ marginLeft: "4px" }}
-                  >
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff" style={{ marginLeft: "4px" }}>
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 )}
@@ -2232,8 +2105,7 @@ export default function EpisodePage() {
                   backdropFilter: "blur(20px)",
                   WebkitBackdropFilter: "blur(20px)",
                   border: "1px solid rgba(255, 215, 0, 0.22)",
-                  boxShadow:
-                    "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.1)",
+                  boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.1)",
                   color: "#ffffff",
                   pointerEvents: "auto",
                   textAlign: "left",
@@ -2243,71 +2115,50 @@ export default function EpisodePage() {
                   setShowUnlockModal(true);
                 }}
               >
-                <div
-                  style={{
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    background: "rgba(255, 215, 0, 0.1)",
+                    border: "1.5px solid rgba(255, 215, 0, 0.3)",
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: "50%",
-                      background: "rgba(255, 215, 0, 0.1)",
-                      border: "1.5px solid rgba(255, 215, 0, 0.3)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 24,
-                      boxShadow: "0 0 16px rgba(255, 215, 0, 0.15)",
-                    }}
-                  >
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 24,
+                    boxShadow: "0 0 16px rgba(255, 215, 0, 0.15)",
+                  }}>
                     🔒
                   </div>
-                  <span
-                    style={{
-                      padding: "4px 10px",
-                      background:
-                        "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)",
-                      borderRadius: 12,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      letterSpacing: "0.05em",
-                      textTransform: "uppercase",
-                      boxShadow: "0 2px 8px rgba(255, 42, 95, 0.3)",
-                    }}
-                  >
-                    유료 에피소드
+                  <span style={{
+                    padding: "4px 10px",
+                    background: isMembershipOnlyContent
+                      ? "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)"
+                      : "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)",
+                    borderRadius: 12,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    color: isMembershipOnlyContent ? "#1a1000" : "#ffffff",
+                    boxShadow: isMembershipOnlyContent
+                      ? "0 2px 8px rgba(255, 215, 0, 0.3)"
+                      : "0 2px 8px rgba(255, 42, 95, 0.3)"
+                  }}>
+                    {isMembershipOnlyContent ? "👑 멤버십 전용" : "유료 에피소드"}
                   </span>
                 </div>
 
-                <div
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 900,
-                    marginTop: 16,
-                    lineHeight: 1.3,
-                    letterSpacing: "-0.5px",
-                  }}
-                >
+                <div style={{ fontSize: 20, fontWeight: 900, marginTop: 16, lineHeight: 1.3, letterSpacing: "-0.5px" }}>
                   {work.title} {episodeKey}화
                 </div>
-                <div
-                  style={{
-                    marginTop: 5,
-                    fontSize: 13,
-                    color: "rgba(255,255,255,0.55)",
-                    fontWeight: 500,
-                  }}
-                >
-                  이 에피소드는 유료 콘텐츠입니다.
+                <div style={{ marginTop: 5, fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+                  {isMembershipOnlyContent ? "본 콘텐츠는 멤버십 전용 작품입니다." : "이 에피소드는 유료 콘텐츠입니다."}
                 </div>
 
                 {/* 보유 코인 표시 영역 */}
-                <div
-                  style={{
+                {!isMembershipOnlyContent && (
+                  <div style={{
                     marginTop: 18,
                     padding: "12px 16px",
                     background: "rgba(255, 255, 255, 0.04)",
@@ -2316,99 +2167,51 @@ export default function EpisodePage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" fill="#ffd700" />
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="7"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                        fill="none"
-                      />
-                      <text
-                        x="12"
-                        y="15"
-                        fill="#1a1000"
-                        fontSize="9"
-                        fontWeight="900"
-                        textAnchor="middle"
-                        fontFamily="sans-serif"
-                      >
-                        P
-                      </text>
-                    </svg>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "rgba(255,255,255,0.85)",
-                      }}
-                    >
-                      보유 코인
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" fill="#ffd700" />
+                        <circle cx="12" cy="12" r="7" stroke="#ffffff" strokeWidth="1.5" fill="none" />
+                        <text x="12" y="15" fill="#1a1000" fontSize="9" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">P</text>
+                      </svg>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>보유 코인</span>
+                    </div>
+                    <span style={{ fontSize: 16, fontWeight: 900, color: points >= COINS_PER_EPISODE ? "#ffd700" : "#ff5a5a" }}>
+                      {points.toLocaleString()}코인
                     </span>
                   </div>
-                  <span
-                    style={{
-                      fontSize: 16,
-                      fontWeight: 900,
-                      color:
-                        points >= COINS_PER_EPISODE ? "#ffd700" : "#ff5a5a",
-                    }}
-                  >
-                    {points.toLocaleString()}코인
-                  </span>
-                </div>
+                )}
 
                 {/* 액션 버튼 */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr",
-                    gap: 10,
-                    marginTop: 18,
-                  }}
-                >
-                  {points >= COINS_PER_EPISODE ? (
-                    <button
-                      onClick={unlockEpisodeWithCoins}
-                      style={{
-                        height: 52,
-                        borderRadius: 16,
-                        border: "none",
-                        background:
-                          "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
-                        color: "#1a1000",
-                        fontWeight: 900,
-                        fontSize: 16,
-                        cursor: "pointer",
-                        boxShadow: "0 6px 20px rgba(255, 215, 0, 0.35)",
-                        transition: "transform 0.15s, opacity 0.15s",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                      onMouseDown={(e) =>
-                        (e.currentTarget.style.transform = "scale(0.97)")
-                      }
-                      onMouseUp={(e) =>
-                        (e.currentTarget.style.transform = "scale(1)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.transform = "scale(1)")
-                      }
-                    >
-                      🔓 {COINS_PER_EPISODE}코인으로 잠금 해제
-                    </button>
-                  ) : (
-                    <div
-                      style={{
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 18 }}>
+                  {!isMembershipOnlyContent && (
+                    points >= COINS_PER_EPISODE ? (
+                      <button
+                        onClick={unlockEpisodeWithCoins}
+                        style={{
+                          height: 52,
+                          borderRadius: 16,
+                          border: "none",
+                          background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
+                          color: "#1a1000",
+                          fontWeight: 900,
+                          fontSize: 16,
+                          cursor: "pointer",
+                          boxShadow: "0 6px 20px rgba(255, 215, 0, 0.35)",
+                          transition: "transform 0.15s, opacity 0.15s",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                        }}
+                        onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                        onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      >
+                        🔓 {COINS_PER_EPISODE}코인으로 잠금 해제
+                      </button>
+                    ) : (
+                      <div style={{
                         padding: "12px 16px",
                         background: "rgba(255, 107, 107, 0.12)",
                         border: "1px solid rgba(255, 107, 107, 0.25)",
@@ -2420,12 +2223,11 @@ export default function EpisodePage() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <span>⚠️</span> 코인이 부족합니다 ({COINS_PER_EPISODE}코인
-                      필요)
-                    </div>
+                        gap: 6
+                      }}>
+                        <span>⚠️</span> 코인이 부족합니다 ({COINS_PER_EPISODE}코인 필요)
+                      </div>
+                    )
                   )}
 
                   <button
@@ -2446,78 +2248,54 @@ export default function EpisodePage() {
                       boxShadow: "0 4px 15px rgba(255, 215, 0, 0.08)",
                       transition: "transform 0.15s, background 0.15s",
                     }}
-                    onMouseDown={(e) =>
-                      (e.currentTarget.style.transform = "scale(0.97)")
-                    }
-                    onMouseUp={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
+                    onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                    onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
                   >
                     👑 멤버십 가입 (전 에피소드 무제한)
                   </button>
 
-                  <button
-                    onClick={() => router.push("/points")}
-                    style={{
-                      height: 50,
-                      borderRadius: 16,
-                      border: "none",
-                      background:
-                        points < COINS_PER_EPISODE
-                          ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)"
+                  {!isMembershipOnlyContent && (
+                    <button
+                      onClick={() => router.push("/points")}
+                      style={{
+                        height: 50,
+                        borderRadius: 16,
+                        border: "none",
+                        background: points < COINS_PER_EPISODE 
+                          ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" 
                           : "rgba(255,255,255,0.06)",
-                      color: "#ffffff",
-                      fontWeight: 800,
-                      fontSize: 14.5,
-                      cursor: "pointer",
-                      boxShadow:
-                        points < COINS_PER_EPISODE
-                          ? "0 6px 20px rgba(255, 42, 95, 0.3)"
-                          : "none",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      transition: "transform 0.15s",
-                    }}
-                    onMouseDown={(e) =>
-                      (e.currentTarget.style.transform = "scale(0.97)")
-                    }
-                    onMouseUp={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
-                  >
-                    🪙 코인 충전하기
-                  </button>
+                        color: "#ffffff",
+                        fontWeight: 800,
+                        fontSize: 14.5,
+                        cursor: "pointer",
+                        boxShadow: points < COINS_PER_EPISODE ? "0 6px 20px rgba(255, 42, 95, 0.3)" : "none",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        transition: "transform 0.15s",
+                      }}
+                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                    >
+                      🪙 코인 충전하기
+                    </button>
+                  )}
                 </div>
 
                 {/* 다음 화 자동 해제 설정 스위치 */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "12px 4px 4px",
-                    marginTop: 10,
-                    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "rgba(255,255,255,0.5)",
-                      fontWeight: 600,
-                    }}
-                  >
-                    다음 화 자동 해제
-                  </span>
-                  <label
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 4px 4px",
+                  marginTop: 10,
+                  borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+                }}>
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>다음 화 자동 해제</span>
+                  <label 
                     style={{
                       position: "relative",
                       display: "inline-block",
@@ -2525,65 +2303,49 @@ export default function EpisodePage() {
                       height: 26,
                       cursor: "pointer",
                       userSelect: "none",
-                    }}
+                    }} 
                     onClick={(e) => {
                       e.stopPropagation();
                       const next = !autoNextEpisode;
                       setAutoNextEpisode(next);
-                      try {
-                        localStorage.setItem("autoNextEpisode", String(next));
-                      } catch {}
+                      try { localStorage.setItem("autoNextEpisode", String(next)); } catch {}
                     }}
                   >
-                    <div
-                      style={{
+                    <div style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: 100,
+                      background: autoNextEpisode ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" : "rgba(255,255,255,0.15)",
+                      transition: "background 0.25s"
+                    }}>
+                      <div style={{
                         position: "absolute",
-                        inset: 0,
-                        borderRadius: 100,
-                        background: autoNextEpisode
-                          ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)"
-                          : "rgba(255,255,255,0.15)",
-                        transition: "background 0.25s",
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 2,
-                          left: autoNextEpisode ? 20 : 2,
-                          width: 22,
-                          height: 22,
-                          borderRadius: "50%",
-                          background: "#ffffff",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                          transition: "left 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-                        }}
-                      />
+                        top: 2,
+                        left: autoNextEpisode ? 20 : 2,
+                        width: 22,
+                        height: 22,
+                        borderRadius: "50%",
+                        background: "#ffffff",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                        transition: "left 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
+                      }} />
                     </div>
                   </label>
                 </div>
               </div>
             ) : (
-              <div className="sf-caption-text">{caption || " "}</div>
+              <div className="sf-caption-text">
+                {caption || " "}
+              </div>
             )}
           </div>
 
           {/* 우측 액션 바 */}
           <div className="sf-right-bar">
             {/* 즐겨찾기 */}
-            <button
-              className={`sf-action-item ${isFavorited ? "active" : ""}`}
-              onClick={toggleFavorite}
-            >
+            <button className={`sf-action-item ${isFavorited ? "active" : ""}`} onClick={toggleFavorite}>
               <div className="sf-action-icon">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill={isFavorited ? "#ffd700" : "none"}
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill={isFavorited ? "#ffd700" : "none"} stroke="currentColor" strokeWidth="2.5">
                   <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                 </svg>
               </div>
@@ -2591,22 +2353,12 @@ export default function EpisodePage() {
             </button>
 
             {/* 회차 선택 */}
-            <button
-              className="sf-action-item"
-              onClick={() => {
-                setActiveSheetTab("episodes");
-                setShowPartList(true);
-              }}
-            >
+            <button className="sf-action-item" onClick={() => {
+              setActiveSheetTab("episodes");
+              setShowPartList(true);
+            }}>
               <div className="sf-action-icon">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="8" y1="6" x2="21" y2="6"></line>
                   <line x1="8" y1="12" x2="21" y2="12"></line>
                   <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -2619,19 +2371,9 @@ export default function EpisodePage() {
             </button>
 
             {/* 댓글 */}
-            <button
-              className="sf-action-item"
-              onClick={() => setShowCommentsPopup(true)}
-            >
+            <button className="sf-action-item" onClick={() => setShowCommentsPopup(true)}>
               <div className="sf-action-icon">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
               </div>
@@ -2641,16 +2383,7 @@ export default function EpisodePage() {
             {/* 공유 */}
             <button className="sf-action-item" onClick={handleShare}>
               <div className="sf-action-icon">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="18" cy="5" r="3"></circle>
                   <circle cx="6" cy="12" r="3"></circle>
                   <circle cx="18" cy="19" r="3"></circle>
@@ -2664,32 +2397,19 @@ export default function EpisodePage() {
 
           {/* 좌측 하단 메타 영역 */}
           <div className="sf-meta-left">
-            <div
-              className="sf-meta-title"
-              onClick={() => router.push(`/work/${workId}`)}
-            >
+            <div className="sf-meta-title" onClick={() => router.push(`/work/${workId}`)}>
               <span>{work.title}</span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </div>
-            <div className="sf-meta-desc-wrap">{work.description}</div>
-            <button
-              className="sf-more-link"
-              onClick={() => {
-                setActiveSheetTab("story");
-                setShowPartList(true);
-              }}
-            >
+            <div className="sf-meta-desc-wrap">
+              {work.description}
+            </div>
+            <button className="sf-more-link" onClick={() => {
+              setActiveSheetTab("story");
+              setShowPartList(true);
+            }}>
               ... 더 보기
             </button>
           </div>
@@ -2710,10 +2430,7 @@ export default function EpisodePage() {
           </div>
 
           {/* 맨 하단 가입 액션 */}
-          <div
-            className="sf-bottom-bar"
-            style={{ display: "flex", gap: "10px", alignItems: "center" }}
-          >
+          <div className="sf-bottom-bar" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <button
               className="sf-membership-btn"
               style={{ flex: 1, opacity: isSubscribed ? 0.7 : 1 }}
@@ -2731,7 +2448,7 @@ export default function EpisodePage() {
                 fontWeight: "800",
                 cursor: "pointer",
                 padding: "0 10px",
-                whiteSpace: "nowrap",
+                whiteSpace: "nowrap"
               }}
               onClick={handleDownload}
             >
@@ -2742,44 +2459,23 @@ export default function EpisodePage() {
           {/* 회차 선택 바텀 시트 */}
           {showPartList && (
             <>
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.5)",
-                  zIndex: 99,
-                }}
-                onClick={() => setShowPartList(false)}
-              />
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} onClick={() => setShowPartList(false)} />
               <div className="sf-bottom-sheet">
                 {/* 상단 스와이프 핸들바 */}
                 <div className="sf-sheet-handle" />
 
                 {/* 닫기 헤더 */}
                 <div className="sf-sheet-header">
-                  <button
-                    className="sf-sheet-close-btn"
-                    onClick={() => setShowPartList(false)}
-                  >
-                    ×
-                  </button>
+                  <button className="sf-sheet-close-btn" onClick={() => setShowPartList(false)}>×</button>
                 </div>
 
                 {/* 작품 정보 영역 */}
                 <div className="sf-sheet-info">
-                  <img
-                    src={workThumbnail}
-                    alt={work.title}
-                    className="sf-sheet-thumb"
-                  />
+                  <img src={workThumbnail} alt={work.title} className="sf-sheet-thumb" />
                   <div className="sf-sheet-meta">
                     <div className="sf-sheet-meta-title">{work.title}</div>
-                    <div className="sf-sheet-meta-views">
-                      조회수 {work.views || "0"}
-                    </div>
-                    <div className="sf-sheet-meta-rating">
-                      ⭐ 4.9 (2.4K) 평가하기 &gt;
-                    </div>
+                    <div className="sf-sheet-meta-views">조회수 {work.views || "0"}</div>
+                    <div className="sf-sheet-meta-rating">⭐ 4.9 (2.4K) 평가하기 &gt;</div>
                   </div>
                 </div>
 
@@ -2801,15 +2497,7 @@ export default function EpisodePage() {
 
                 {activeSheetTab === "story" ? (
                   /* 줄거리 탭 활성화 */
-                  <div
-                    style={{
-                      textAlign: "left",
-                      fontSize: 14,
-                      color: "rgba(255,255,255,0.8)",
-                      lineHeight: 1.6,
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
+                  <div style={{ textAlign: "left", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                     {work.description}
                   </div>
                 ) : (
@@ -2818,9 +2506,7 @@ export default function EpisodePage() {
                     {/* 30화 단위 페이징 영역 */}
                     {episodes.length > 30 && (
                       <div className="sf-sheet-ranges">
-                        {Array.from({
-                          length: Math.ceil(episodes.length / 30),
-                        }).map((_, idx) => {
+                        {Array.from({ length: Math.ceil(episodes.length / 30) }).map((_, idx) => {
                           const start = idx * 30 + 1;
                           const end = Math.min((idx + 1) * 30, episodes.length);
                           return (
@@ -2844,26 +2530,13 @@ export default function EpisodePage() {
                           padding: "12px",
                           background: "rgba(255,255,255,0.04)",
                           borderRadius: "12px",
-                          textAlign: "left",
+                          textAlign: "left"
                         }}
                       >
-                        <div
-                          style={{
-                            fontSize: "13px",
-                            fontWeight: "700",
-                            marginBottom: "8px",
-                            color: "rgba(255,255,255,0.6)",
-                          }}
-                        >
+                        <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px", color: "rgba(255,255,255,0.6)" }}>
                           {episodeKey}화의 다른 편 선택:
                         </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "8px",
-                            flexWrap: "wrap",
-                          }}
-                        >
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                           {Array.from({ length: TOTAL_PARTS }).map((_, idx) => {
                             const partNum = idx + 1;
                             const isCurrentPart = partNum === part;
@@ -2878,16 +2551,12 @@ export default function EpisodePage() {
                                 style={{
                                   padding: "6px 12px",
                                   borderRadius: "8px",
-                                  border: isCurrentPart
-                                    ? "1.5px solid #e8356d"
-                                    : "1px solid rgba(255,255,255,0.14)",
-                                  background: isCurrentPart
-                                    ? "rgba(232,53,109,0.12)"
-                                    : "rgba(255,255,255,0.06)",
+                                  border: isCurrentPart ? "1.5px solid #e8356d" : "1px solid rgba(255,255,255,0.14)",
+                                  background: isCurrentPart ? "rgba(232,53,109,0.12)" : "rgba(255,255,255,0.06)",
                                   color: "white",
                                   fontSize: "12px",
                                   fontWeight: "700",
-                                  cursor: "pointer",
+                                  cursor: "pointer"
                                 }}
                               >
                                 {partNum}편 {isCurrentPart ? "▶" : ""}
@@ -2900,48 +2569,30 @@ export default function EpisodePage() {
 
                     {/* 6열 에피소드 그리드 */}
                     <div className="sf-episode-grid">
-                      {episodes
-                        .slice(
-                          activeRangeIndex * 30,
-                          (activeRangeIndex + 1) * 30,
-                        )
-                        .map((ep) => {
-                          const isCurrent =
-                            String(ep.id) === String(episodeKey);
-                          const epNum =
-                            parseInt(String(ep.id).split("-")[0], 10) || 0;
-                          const isWatched =
-                            watchedEpisodeNum > 0 && epNum <= watchedEpisodeNum;
+                      {episodes.slice(activeRangeIndex * 30, (activeRangeIndex + 1) * 30).map((ep) => {
+                        const isCurrent = String(ep.id) === String(episodeKey);
+                        const epNum = parseInt(String(ep.id).split("-")[0], 10) || 0;
+                        const isWatched = watchedEpisodeNum > 0 && epNum <= watchedEpisodeNum;
 
-                          const isLocked = isSubscribed
-                            ? false
-                            : isCurrent
-                              ? locked
-                              : isWatched
-                                ? false
-                                : ep.locked;
+                        const isLocked = isSubscribed
+                          ? false
+                          : (isCurrent ? locked : (isWatched ? false : ep.locked));
 
-                          return (
-                            <button
-                              key={ep.id}
-                              className={`sf-episode-cell ${isCurrent ? "active" : isWatched ? "watched" : ""} ${isLocked ? "locked" : ""}`}
-                              onClick={() => {
-                                setShowPartList(false);
-                                navigateToEpisode(String(ep.id), 1, true);
-                              }}
-                            >
-                              <span>{ep.id}</span>
-                              {isLocked && (
-                                <span className="sf-episode-lock-icon">🔒</span>
-                              )}
-                              {isCurrent && (
-                                <span className="sf-episode-playing-icon">
-                                  📊
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                        return (
+                          <button
+                            key={ep.id}
+                            className={`sf-episode-cell ${isCurrent ? "active" : (isWatched ? "watched" : "")} ${isLocked ? "locked" : ""}`}
+                            onClick={() => {
+                              setShowPartList(false);
+                              navigateToEpisode(String(ep.id), 1, true);
+                            }}
+                          >
+                            <span>{ep.id}</span>
+                            {isLocked && <span className="sf-episode-lock-icon">🔒</span>}
+                            {isCurrent && <span className="sf-episode-playing-icon">📊</span>}
+                          </button>
+                        );
+                      })}
                     </div>
                   </>
                 )}
@@ -2952,24 +2603,11 @@ export default function EpisodePage() {
           {/* 재생 속도 조절 팝업 */}
           {showSpeedMenu && (
             <>
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.5)",
-                  zIndex: 99,
-                }}
-                onClick={() => setShowSpeedMenu(false)}
-              />
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} onClick={() => setShowSpeedMenu(false)} />
               <div className="sf-bottom-sheet">
                 <div className="sf-sheet-title">
                   <span>재생 속도 설정</span>
-                  <button
-                    className="sf-sheet-close"
-                    onClick={() => setShowSpeedMenu(false)}
-                  >
-                    닫기
-                  </button>
+                  <button className="sf-sheet-close" onClick={() => setShowSpeedMenu(false)}>닫기</button>
                 </div>
                 <div className="sf-speed-list">
                   {[0.8, 1.0, 1.2, 1.5].map((rate) => (
@@ -2991,27 +2629,11 @@ export default function EpisodePage() {
 
           {/* 작품 설명 더보기 팝업 모달 */}
           {showDescriptionPopup && (
-            <div
-              className="sf-popup-overlay"
-              onClick={() => setShowDescriptionPopup(false)}
-            >
-              <div
-                className="sf-popup-card"
-                onClick={(e) => e.stopPropagation()}
-              >
+            <div className="sf-popup-overlay" onClick={() => setShowDescriptionPopup(false)}>
+              <div className="sf-popup-card" onClick={(e) => e.stopPropagation()}>
                 <div className="sf-popup-title">{work.title} 줄거리</div>
-                <div
-                  className="sf-popup-body"
-                  style={{ maxHeight: "50dvh", overflowY: "auto" }}
-                >
-                  {work.description}
-                </div>
-                <button
-                  className="sf-popup-btn"
-                  onClick={() => setShowDescriptionPopup(false)}
-                >
-                  닫기
-                </button>
+                <div className="sf-popup-body" style={{ maxHeight: "50dvh", overflowY: "auto" }}>{work.description}</div>
+                <button className="sf-popup-btn" onClick={() => setShowDescriptionPopup(false)}>닫기</button>
               </div>
             </div>
           )}
@@ -3019,24 +2641,11 @@ export default function EpisodePage() {
           {/* 댓글 팝업 바텀 시트 */}
           {showCommentsPopup && (
             <>
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.5)",
-                  zIndex: 199,
-                }}
-                onClick={() => setShowCommentsPopup(false)}
-              />
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 199 }} onClick={() => setShowCommentsPopup(false)} />
               <div className="sf-comments-sheet">
                 <div className="sf-comments-header">
                   <span>댓글 목록</span>
-                  <button
-                    className="sf-sheet-close"
-                    onClick={() => setShowCommentsPopup(false)}
-                  >
-                    닫기
-                  </button>
+                  <button className="sf-sheet-close" onClick={() => setShowCommentsPopup(false)}>닫기</button>
                 </div>
                 <div className="sf-comments-body">
                   <Comments workId={workId} episodeId={String(episodeKey)} />
@@ -3153,11 +2762,7 @@ export default function EpisodePage() {
                   max={1}
                   step={0.01}
                   value={volume}
-                  onInput={(e) =>
-                    handleVolumeChange(
-                      Number((e.target as HTMLInputElement).value),
-                    )
-                  }
+                  onInput={(e) => handleVolumeChange(Number((e.target as HTMLInputElement).value))}
                   onChange={(e) => handleVolumeChange(Number(e.target.value))}
                   style={{
                     writingMode: "vertical-lr" as any,
@@ -3358,18 +2963,11 @@ export default function EpisodePage() {
                     gap: 12,
                   }}
                 >
-                  <div
-                    style={{ display: "flex", gap: 10, alignItems: "center" }}
-                  >
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        changePlaybackRate(
-                          Math.max(
-                            0.5,
-                            Number((playbackRate - 0.05).toFixed(2)),
-                          ),
-                        );
+                        changePlaybackRate(Math.max(0.5, Number((playbackRate - 0.05).toFixed(2))));
                       }}
                       style={{
                         padding: "12px 14px",
@@ -3410,12 +3008,7 @@ export default function EpisodePage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        changePlaybackRate(
-                          Math.min(
-                            2.0,
-                            Number((playbackRate + 0.05).toFixed(2)),
-                          ),
-                        );
+                        changePlaybackRate(Math.min(2.0, Number((playbackRate + 0.05).toFixed(2))));
                       }}
                       style={{
                         padding: "12px 14px",
@@ -3635,17 +3228,8 @@ export default function EpisodePage() {
                       </button>
                     </div>
 
-                    <div
-                      style={{
-                        height: "calc(100% - 58px)",
-                        overflowY: "auto",
-                        padding: 12,
-                      }}
-                    >
-                      <Comments
-                        workId={workId}
-                        episodeId={String(episodeKey)}
-                      />
+                    <div style={{ height: "calc(100% - 58px)", overflowY: "auto", padding: 12 }}>
+                      <Comments workId={workId} episodeId={String(episodeKey)} />
                     </div>
                   </div>
                 )}
@@ -3687,83 +3271,46 @@ export default function EpisodePage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 19,
-                fontWeight: 900,
-                color: "#ffffff",
-                textAlign: "center",
-              }}
-            >
-              {currentEpisode?.is_membership_only
-                ? "👑 멤버십 전용 에피소드"
-                : "유료 에피소드 감상"}
+            <h3 style={{ margin: 0, fontSize: 19, fontWeight: 900, color: "#ffffff", textAlign: "center" }}>
+              {isMembershipOnlyContent ? "👑 멤버십 전용 콘텐츠" : "유료 에피소드 감상"}
             </h3>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13.5,
-                color: "rgba(255, 255, 255, 0.65)",
-                textAlign: "center",
-                lineHeight: 1.5,
-              }}
-            >
-              {currentEpisode?.is_membership_only ? (
+            <p style={{ margin: 0, fontSize: 13.5, color: "rgba(255, 255, 255, 0.65)", textAlign: "center", lineHeight: 1.5 }}>
+              {isMembershipOnlyContent ? (
                 <>
-                  본 회차는 멤버십 전용 콘텐츠입니다.
-                  <br />
+                  본 콘텐츠는 멤버십 전용 작품입니다.<br />
                   멤버십 회원은 모든 회차를 제한 없이 감상할 수 있습니다.
                 </>
               ) : (
                 <>
-                  본 회차는 유료 콘텐츠입니다.
-                  <br />
-                  <strong>{COINS_PER_EPISODE}코인</strong>을 사용하여
-                  감상하시겠습니까?
+                  본 회차는 유료 콘텐츠입니다.<br />
+                  <strong>{COINS_PER_EPISODE}코인</strong>을 사용하여 감상하시겠습니까?
                 </>
               )}
             </p>
 
             {/* 보유 코인 표시 */}
-            {!currentEpisode?.is_membership_only && (
-              <div
-                style={{
-                  padding: "10px 14px",
-                  background: "rgba(255, 255, 255, 0.04)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 14,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <span style={{ color: "rgba(255,255,255,0.6)" }}>
-                  보유 코인
-                </span>
-                <span
-                  style={{
-                    color: points >= COINS_PER_EPISODE ? "#ffd700" : "#ff5a5a",
-                    fontWeight: 900,
-                  }}
-                >
+            {!isMembershipOnlyContent && (
+              <div style={{
+                padding: "10px 14px",
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: 14,
+                fontSize: 13,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
+                <span style={{ color: "rgba(255,255,255,0.6)" }}>보유 코인</span>
+                <span style={{ color: points >= COINS_PER_EPISODE ? "#ffd700" : "#ff5a5a", fontWeight: 900 }}>
                   {points.toLocaleString()}코인
                 </span>
               </div>
             )}
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: 10,
-                marginTop: 4,
-              }}
-            >
-              {!currentEpisode?.is_membership_only &&
-                (points >= COINS_PER_EPISODE ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 4 }}>
+              {!isMembershipOnlyContent && (
+                points >= COINS_PER_EPISODE ? (
                   <button
                     onClick={async () => {
                       const success = await unlockEpisodeWithCoins();
@@ -3775,33 +3322,31 @@ export default function EpisodePage() {
                       height: 48,
                       borderRadius: 14,
                       border: "none",
-                      background:
-                        "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
+                      background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
                       color: "#1a1000",
                       fontWeight: 900,
                       fontSize: 15,
                       cursor: "pointer",
-                      boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)",
+                      boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)"
                     }}
                   >
                     🔓 30코인 사용하고 감상하기
                   </button>
                 ) : (
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "rgba(255, 107, 107, 0.12)",
-                      border: "1px solid rgba(255, 107, 107, 0.25)",
-                      borderRadius: 14,
-                      fontSize: 13,
-                      color: "#ff8b8b",
-                      fontWeight: 700,
-                      textAlign: "center",
-                    }}
-                  >
+                  <div style={{
+                    padding: "12px",
+                    background: "rgba(255, 107, 107, 0.12)",
+                    border: "1px solid rgba(255, 107, 107, 0.25)",
+                    borderRadius: 14,
+                    fontSize: 13,
+                    color: "#ff8b8b",
+                    fontWeight: 700,
+                    textAlign: "center"
+                  }}>
                     코인이 부족합니다 ({COINS_PER_EPISODE}코인 필요)
                   </div>
-                ))}
+                )
+              )}
 
               <button
                 onClick={() => {
@@ -3816,13 +3361,13 @@ export default function EpisodePage() {
                   color: "#ffd700",
                   fontWeight: 900,
                   fontSize: 14.5,
-                  cursor: "pointer",
+                  cursor: "pointer"
                 }}
               >
                 👑 멤버십 가입 (전 에피소드 무제한)
               </button>
 
-              {!currentEpisode?.is_membership_only && (
+              {!isMembershipOnlyContent && (
                 <button
                   onClick={() => {
                     setShowUnlockModal(false);
@@ -3832,18 +3377,14 @@ export default function EpisodePage() {
                     height: 46,
                     borderRadius: 14,
                     border: "none",
-                    background:
-                      points < COINS_PER_EPISODE
-                        ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)"
-                        : "rgba(255,255,255,0.06)",
+                    background: points < COINS_PER_EPISODE 
+                      ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" 
+                      : "rgba(255,255,255,0.06)",
                     color: "#ffffff",
                     fontWeight: 800,
                     fontSize: 14,
                     cursor: "pointer",
-                    boxShadow:
-                      points < COINS_PER_EPISODE
-                        ? "0 4px 15px rgba(255, 42, 95, 0.3)"
-                        : "none",
+                    boxShadow: points < COINS_PER_EPISODE ? "0 4px 15px rgba(255, 42, 95, 0.3)" : "none",
                   }}
                 >
                   🪙 코인 충전하기
@@ -3861,7 +3402,7 @@ export default function EpisodePage() {
                   fontWeight: 700,
                   fontSize: 13.5,
                   cursor: "pointer",
-                  marginTop: 4,
+                  marginTop: 4
                 }}
               >
                 닫기

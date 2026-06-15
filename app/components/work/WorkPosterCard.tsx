@@ -25,14 +25,9 @@ export default function WorkPosterCard({ work }: Props) {
         const lastPlayedRaw = localStorage.getItem("lastPlayed");
         if (lastPlayedRaw) {
           const lastPlayed = JSON.parse(lastPlayedRaw);
-          if (
-            lastPlayed.workId === work.id &&
-            String(lastPlayed.episodeId) === String(lastEpisode)
-          ) {
+          if (lastPlayed.workId === work.id && String(lastPlayed.episodeId) === String(lastEpisode)) {
             const part = lastPlayed.part ?? 1;
-            setResumeHref(
-              `/episode/${work.id}/${lastEpisode}?part=${part}&autoplay=1`,
-            );
+            setResumeHref(`/episode/${work.id}/${lastEpisode}?part=${part}&autoplay=1`);
             return;
           }
         }
@@ -50,11 +45,8 @@ export default function WorkPosterCard({ work }: Props) {
     firstEpId = episodes[0]?.id || null;
   }
 
-  const playHref =
-    resumeHref ??
-    (firstEpId
-      ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1`
-      : `/work/${work.id}`);
+  const playHref = resumeHref
+    ?? (firstEpId ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1` : `/work/${work.id}`);
 
   // 배지 색상 결정
   const getBadgeStyle = (badge: string) => {
@@ -95,11 +87,23 @@ export default function WorkPosterCard({ work }: Props) {
     >
       <div className="poster-thumb-wrap">
         {/* 배지 */}
-        {work.badge && (
+        {work.is_membership_only ? (
+          <div className="poster-badge" style={{
+            background: "linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)",
+            color: "#ffffff",
+            fontWeight: "bold",
+            border: "1px solid rgba(255, 215, 0, 0.5)",
+            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.4)"
+          }}>
+            멤버십
+          </div>
+        ) : work.badge ? (
           <div className="poster-badge" style={getBadgeStyle(work.badge)}>
             {work.badge}
           </div>
-        )}
+        ) : null}
+
+
 
         {/* 준비중 오버레이 */}
         {work.status === "준비중" && (

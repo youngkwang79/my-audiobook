@@ -6,6 +6,61 @@
 // node scripts/generate-captions.mjs --workId=hwansaeng-geomjon --episodes=1-52 --concurrency=1 --force
 // node scripts/generate-captions.mjs --workId=hwansaeng-geomjon --episodes=1-5 --dryRun
 
+import fs from "fs";
+import path from "path";
+import { S3Client, HeadObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
+
+// .env.local 파일 수동 로드
+try {
+  const envPath = path.resolve(process.cwd(), ".env.local");
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, "utf8");
+    for (const line of envContent.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+        const [key, ...valParts] = trimmed.split("=");
+        const val = valParts.join("=");
+        process.env[key.trim()] = val.trim().replace(/^['"]|['"]$/g, "");
+      }
+    }
+  }
+} catch (e) {
+  console.error("Failed to load .env.local:", e);
+}
+
+// R2 클라이언트 초기화
+let s3Client = null;
+if (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
+  s3Client = new S3Client({
+    region: "auto",
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+} else {
+  console.warn("⚠️ Warning: S3 credentials not found in environment or .env.local. Auto-copy logic will be disabled.");
+}
+
+const BUCKET_NAME = process.env.R2_BUCKET_NAME || "murimbook-audio";
+
+async function existsInR2(key, publicUrl) {
+  if (s3Client) {
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+      return true;
+    } catch (err) {
+      if (err.name !== "NotFound") {
+        console.error(`S3 HeadObject checking error for ${key}:`, err.message);
+      }
+      return false;
+    }
+  } else {
+    return existsByHead(publicUrl);
+  }
+}
+
 const DEFAULT_R2_BASE =
   process.env.R2_PUBLIC_BASE_URL ||
   "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
@@ -441,9 +496,13 @@ async function main() {
     const jsonUrl = getCaptionJsonUrl(r2Base, workId, episodeKey, part);
 
     try {
+      const folder = getEpisodeFolder(episodeKey);
+      const partPadded = pad2(part);
+      const jsonKey = `${workId}/${folder}/${partPadded}.json`;
+
       // 1) 이미 자막이 있으면 스킵
       if (!force) {
-        const hasJson = await existsByHead(jsonUrl);
+        const hasJson = await existsInR2(jsonKey, jsonUrl);
         if (hasJson) {
           skippedCount++;
           console.log(`⏭️ SKIP existing caption work=${workId} ep=${episodeKey} part=${part}`);
@@ -453,10 +512,49 @@ async function main() {
       }
 
       // 2) MP3가 실제로 있는지 확인
-      const hasMp3 = await existsByHead(mp3Url);
+      const mp3Key = `${workId}/${folder}/${partPadded}.MP3`;
+      let hasMp3 = await existsInR2(mp3Key, mp3Url);
+      if (!hasMp3) {
+        // 다른 확장자 탐색
+        const alternateExtensions = ["mp3", "WAV", "wav", "M4A", "m4a"];
+        let foundExt = null;
+
+        for (const ext of alternateExtensions) {
+          const probeKey = `${workId}/${folder}/${partPadded}.${ext}`;
+          const probeUrl = `${r2Base}/${probeKey}`;
+          const exists = await existsInR2(probeKey, probeUrl);
+          if (exists) {
+            foundExt = ext;
+            break;
+          }
+        }
+
+        if (foundExt) {
+          const sourceKey = `${workId}/${folder}/${partPadded}.${foundExt}`;
+          const destKey = `${workId}/${folder}/${partPadded}.MP3`;
+
+          if (s3Client) {
+            console.log(`🔄 Found alternate format (${foundExt}). Copying to ${destKey} in R2 for worker transcription...`);
+            try {
+              await s3Client.send(new CopyObjectCommand({
+                Bucket: BUCKET_NAME,
+                CopySource: encodeURIComponent(`${BUCKET_NAME}/${sourceKey}`),
+                Key: destKey,
+              }));
+              hasMp3 = true;
+              console.log(`✅ Copy successful!`);
+            } catch (err) {
+              console.error(`❌ Failed to copy alternate format to .MP3: ${err.message}`);
+            }
+          } else {
+            console.warn(`⚠️ Found alternate format (${foundExt}), but S3 client is not initialized to perform auto-copy.`);
+          }
+        }
+      }
+
       if (!hasMp3) {
         failCount++;
-        const msg = `mp3_not_found :: ${mp3Url}`;
+        const msg = `mp3_not_found :: ${mp3Url} (and no alternate formats found)`;
         failures.push(`ep=${episodeKey} part=${part} :: ${msg}`);
         console.log(`❌ FAIL work=${workId} ep=${episodeKey} part=${part} :: ${msg}`);
         await sleep(BETWEEN_JOBS_MS);
@@ -486,7 +584,7 @@ async function main() {
       }
 
       // 4) 생성 후 json 존재 확인
-      const generated = await existsByHead(jsonUrl);
+      const generated = await existsInR2(jsonKey, jsonUrl);
       if (!generated) {
         failCount++;
         const msg = `worker_called_but_json_missing :: ${jsonUrl}`;

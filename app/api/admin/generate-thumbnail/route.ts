@@ -33,13 +33,13 @@ export async function POST(req: Request) {
     }
 
     // 2. Google AI Studio Imagen 4.0 이미지 생성 API 호출
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GOOGLE_PAID_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "missing_google_api_key" }, { status: 500 });
+      return NextResponse.json({ error: "missing_google_paid_api_key" }, { status: 500 });
     }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
-    const enhancePrompt = `${prompt}, character-centric movie poster composition, close-up portrait of main character, book cover illustration, clean cover, textless, no text, no letters, no words, no writing, no Hanja, no Chinese characters, no signatures, high quality, fantasy art, digital painting, 4k`;
+    const enhancePrompt = `${prompt}, character-centric movie poster composition, close-up portrait of main character, clean graphic cover art, completely textless, zero text, zero letters, zero signatures, zero words, blank background, no font lettering, pure character portrait illustration, high quality digital painting, 4k`;
 
     const imagenRes = await fetch(url, {
       method: "POST",
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     const localFilePath = path.join(publicThumbnailsDir, localFileName);
     fs.writeFileSync(localFilePath, buffer);
     
-    const relativeUrl = `/thumbnails/${localFileName}`;
+    const relativeUrl = `/api/thumbnails/${localFileName}`;
 
     // 4. Cloudflare R2에 백업 업로드
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";

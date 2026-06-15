@@ -7,6 +7,16 @@ const nextConfig: any = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async rewrites() {
+    return {
+      afterFiles: [
+        {
+          source: "/thumbnails/:path*",
+          destination: "/api/thumbnails/:path*",
+        },
+      ],
+    };
+  },
 };
 
 export default nextConfig;

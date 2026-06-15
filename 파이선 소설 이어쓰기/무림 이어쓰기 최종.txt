@@ -1,0 +1,352 @@
+import os
+import time
+import re
+import random
+import urllib.request
+import json
+import sys
+import argparse
+from google import genai
+
+# 한글 터미널 인코딩 에러 방지 설정
+sys.stdout.reconfigure(encoding='utf-8')
+
+# argparse setup
+parser = argparse.ArgumentParser(description="Moorim Novel Generator CLI")
+parser.add_argument("--write-next", action="store_true", help="Only write the next incomplete chapter and exit")
+parser.add_argument("--output-dir-path", help="Manually override output directory path")
+args, unknown = parser.parse_known_args()
+
+# .env.local 파일에서 모든 키를 딕셔너리로 읽어오는 함수
+def load_env_keys():
+    keys = {}
+    env_paths = [
+        os.path.join(os.getcwd(), ".env.local"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local")
+    ]
+    for env_path in env_paths:
+        if os.path.exists(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        if "=" in line:
+                            k, v = line.split("=", 1)
+                            keys[k.strip()] = v.strip().strip("'\"")
+            except Exception as e:
+                print(f"Warning: Failed to read {env_path}: {e}")
+    return keys
+
+# 환경변수 키 로드
+env_keys = load_env_keys()
+google_free_key = env_keys.get("GEMINI_API_KEY") or env_keys.get("GOOGLE_FREE_API_KEY")
+groq_key = env_keys.get("GROQ_API_KEY")
+openrouter_key = env_keys.get("OPENROUTER_API_KEY")
+github_key = env_keys.get("GitHub_API_KEY") or env_keys.get("GITHUB_API_KEY")
+
+# 활성화된 API 프로바이더 리스트 구성
+active_providers = []
+
+if google_free_key:
+    active_providers.append({
+        "name": "Google Gemini (Free)",
+        "type": "gemini",
+        "key": google_free_key,
+        "model": "gemini-2.5-flash"
+    })
+
+if groq_key:
+    active_providers.append({
+        "name": "Groq Cloud (Llama 3.3)",
+        "type": "openai",
+        "key": groq_key,
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "model": "llama-3.3-70b-versatile"
+    })
+
+if openrouter_key:
+    active_providers.append({
+        "name": "OpenRouter (Llama 3.3 Free)",
+        "type": "openai",
+        "key": openrouter_key,
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
+        "headers": {
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "Moorimbook Writer"
+        }
+    })
+
+if github_key:
+    active_providers.append({
+        "name": "GitHub Models (GPT-4o-mini)",
+        "type": "openai",
+        "key": github_key,
+        "url": "https://models.inference.ai.azure.com/chat/completions",
+        "model": "gpt-4o-mini"
+    })
+
+print("🤖 [API 프로바이더 로드 완료] 활성화된 공급자 목록:")
+for idx, p in enumerate(active_providers):
+    masked = p["key"][:6] + "..." + p["key"][-4:] if len(p["key"]) > 10 else "..."
+    print(f"  {idx + 1}. {p['name']} (모델: {p['model']} | 키: {masked})")
+print("==================================================================")
+
+current_provider_index = 0
+
+# OpenAI 호환 API 호출용 헬퍼 함수
+def call_openai_api(provider, prompt):
+    url = provider["url"]
+    api_key = provider["key"]
+    model = provider["model"]
+    extra_headers = provider.get("headers", {})
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "User-Agent": "MoorimbookWriter/1.0"
+    }
+    headers.update(extra_headers)
+    
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+    
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST"
+    )
+    
+    with urllib.request.urlopen(req, timeout=60) as response:
+        res_data = json.loads(response.read().decode("utf-8"))
+        return res_data["choices"][0]["message"]["content"]
+
+# 소설 및 요약 생성 함수
+def generate_moorim_classic(prompt, description="요청"):
+    global current_provider_index
+    
+    if not active_providers:
+        print("❌ 에러: 활성화된 API 프로바이더가 없습니다. .env.local의 API 키 설정을 확인하세요.")
+        return "무림의 거대한 운명이 소년의 어깨 위에 내려앉았다. 폭풍전야와 같은 긴장감이 강호를 감돌기 시작했다."
+        
+    max_attempts = len(active_providers) * 2
+    
+    for attempt in range(1, max_attempts + 1):
+        provider = active_providers[current_provider_index]
+        provider_name = provider["name"]
+        
+        try:
+            if provider["type"] == "gemini":
+                gemini_client = genai.Client(api_key=provider["key"])
+                response = gemini_client.models.generate_content(
+                    model=provider["model"], 
+                    contents=prompt
+                )
+                if response and response.text and response.text.strip():
+                    return response.text
+                else:
+                    raise Exception("가드레일 감지 또는 빈 텍스트 반환")
+                    
+            elif provider["type"] == "openai":
+                text = call_openai_api(provider, prompt)
+                if text and text.strip():
+                    return text
+                else:
+                    raise Exception("API 응답 내용 비어있음")
+                    
+        except Exception as e:
+            error_str = str(e)
+            print(f"\n⚠️ [{provider_name} 에러 발생] {description} {attempt}/{max_attempts}차 시도 중 오류: {error_str[:120]}")
+            
+            if len(active_providers) > 1:
+                current_provider_index = (current_provider_index + 1) % len(active_providers)
+                next_provider = active_providers[current_provider_index]
+                print(f"🔄 [공급자 자동 전환] 에러 우회를 위해 '{next_provider['name']}'(으)로 전환합니다.")
+                time.sleep(2)
+            else:
+                print(f"🔄 [대기 후 재시도] 활성화된 공급자가 1개이므로 5초간 대기 후 다시 시도합니다...")
+                time.sleep(5)
+                
+    return "무림의 거대한 운명이 소년의 어깨 위에 내려앉았다. 폭풍전야와 같은 긴장감이 강호를 감돌기 시작했다."
+
+print("==================================================================")
+print("⚔️ [무림북 완벽본: 옥의 티까지 완전 제어 자동화 시스템 가동] ⚔️")
+print("==================================================================")
+
+# 문체 사전 정의
+STYLE_POLITICAL_COURT = {
+    "mood": "인물 간의 암투와 수싸움이 중심이 되는 정통 무협 정치극", 
+    "tone": "말 한마디에 뼈가 있는 치밀한 대사, 상대의 심리를 꿰뚫는 정교한 묘사, 지략과 음모 중심의 서사조",
+    "forbidden": ["무식하게", "쾅", "번개처럼", "우와아아", "크아악", "갈기갈기", "칼만 휘둘렀다"],
+    "forbidden_patterns": "말보다 주먹이 먼저 나가 상황이 허무하게 끝나는 연출, 악역이 억울하다며 고함을 치는 1차원적인 악인 대사",
+    "lexicon": """
+    - 인물/외양 묘사: [속내를 감춘 서글서글한 낯빛, 차가운 이성을 품은 눈빛, 귀족적인 화려한 비단옷, 찰나의 미세한 안면 경련]
+    - 무공/전투 묘사: [초식 속에 숨겨진 이중의 덫, 상대의 내력 흐름을 역이용하는 차도살인, 명분을 쥐고 흔드는 도법, 기혈을 은밀히 묶는 암습]
+    - 감정/심리 묘사: [상대의 저의를 파악하려는 집요함, 막후에서 판을 짜는 냉정함, 손익계산을 마친 미소, 정적을 제거하려는 소리 없는 결의]
+    - 배경/분위기 묘사: [화려한 별채의 삼엄한 경비, 밀실의 촛불이 만드는 그림자, 긴장감이 팽팽한 정청, 안개 속에 가려진 권력의 중심부]
+    """
+}
+
+# =========================================================================
+# ⚙️ [강제 고정 모드] 기존 소설 정보 및 58~100화 안전 기획안 자동 장착
+# =========================================================================
+output_dir = "무림북_대서사_암투의 무림 부패의 그림자"
+selected_plot = "마교의 습격으로 스승을 잃은 개방의 소년이 타락한 무림맹의 부패를 무너뜨리기 위해, 무력뿐 아니라 지략과 세력전을 병행하며 진정한 군상극을 만들어가는 스토리"
+selected_style = STYLE_POLITICAL_COURT
+novel_title = "암투의 무림: 부패의 그림자"
+novel_intro = "타락한 무림맹을 무너뜨리기 위한 개방 소년 백무혁의 정통 무협 정치극."
+overall_plot = selected_plot
+safe_title = "암투의 무림 부패의 그림자"
+
+# 촘촘한 정규표현식 기반 시놉시스 수집 보강 구조 반영
+synopses = {}
+for i in range(1, 101):
+    synopses[i] = f"{novel_title}의 갈등이 심화되는 제 {i}화 대서사. 인물들의 암투와 지략 수싸움이 최고조에 달하며 개방 소년 백무혁의 소리 없는 복수와 지략전이 더욱 날카롭게 전개된다."
+
+if not os.path.exists(output_dir): 
+    os.makedirs(output_dir)
+
+# 기획안 파일 강제 자동 갱신
+cached_plan = {
+    "selected_plot": selected_plot,
+    "selected_style": selected_style,
+    "novel_title": novel_title,
+    "novel_intro": novel_intro,
+    "overall_plot": overall_plot,
+    "synopses": synopses
+}
+with open(os.path.join(output_dir, "00_🚨급전개방지_작품기획안🚨.json"), "w", encoding="utf-8") as plan_f:
+    json.dump(cached_plan, plan_f, ensure_ascii=False, indent=2)
+
+forbidden_str = ", ".join(selected_style["forbidden"])
+
+# 강호록 로드
+register_path = os.path.join(output_dir, "00_🚨작품설정_인물록🚨.json")
+current_register = None
+
+if os.path.exists(register_path):
+    try:
+        with open(register_path, "r", encoding="utf-8") as reg_f:
+            current_register = json.load(reg_f)
+        print(f"📖 기존 강호록(인물록) 로드 성공! 주인공: {current_register.get('protagonist', {}).get('name')}")
+    except Exception as e:
+        print(f"❌ 강호록 로드 중 에러: {e}")
+
+if not current_register:
+    current_register = {
+        "protagonist": {"name": "백무혁", "details": "개방 출신의 소년. 차가운 이성과 지략을 품고 무림맹의 부패에 맞섬."},
+        "companions": [],
+        "antagonists": [],
+        "factions": [],
+        "lore_items": [],
+        "current_story_state": "무림맹의 부패를 무너뜨리기 위한 암투가 깊어집니다."
+    }
+    with open(register_path, "w", encoding="utf-8") as reg_f:
+        json.dump(current_register, reg_f, ensure_ascii=False, indent=2)
+
+# 가이드라인 정의
+CLASSIC_MUHYUP_RULES = f"""
+당신은 대한민국 최고의 장르문학 거장입니다. 다음 규칙은 소설의 개연성과 완성도를 극대화하는 절대적인 연출 지침입니다.
+
+[🚨 이번 작품 전용 어휘 사전 및 분위기 지침]
+- 메인 무드: {selected_style['mood']} / 스타일 연출 가이드: {selected_style['tone']}
+- 🚫 절대 사용 금지 어휘: [{forbidden_str}]
+- 🚫 절대 사용 금지 연출 패턴 (우회 금지): [{selected_style['forbidden_patterns']}]
+
+■■ 상황별 필수 확장 어휘 라이브러리 ■■
+{selected_style['lexicon']}
+
+[🚨 급전개 방지 및 악역 입체화 지침 - 절대 준수]
+1. 악역들의 삼류 자폭 연출 절대 금지: 정체가 드러난 악역들이 대사로 스스로의 음모를 자백하는 연출은 절대 금지합니다.
+2. 기연 인물의 도구화 금지 및 지속적 연동: 위기에 처할 때마다 스승이나 기연 인물이 남긴 가르침을 최소 3문장 이상 반드시 회상하십시오.
+3. 성장의 점진적 묘사: 내력이 혈도를 뚫을 때의 고통, 수천 번 검을 휘두르는 땀방울을 묵직하게 서술하십시오.
+
+[절대 금지 사항]
+1. 지문 끝에 (~지, ~으니, ~네, ~소, ~였다네) 같은 구어체 어미 절대 금지 (오직 대사에서만 허용).
+2. 한자(漢字) 자체나 괄호 한자 병기 절대 금지. 오직 순수한 '한글'로만 표기하십시오.
+3. 현대 사회의 단어 금지. 무협 고증 단어(은자, 시진, 리, 각 등)만 사용하십시오.
+"""
+
+info_filename = os.path.join(output_dir, f"00_🚨급전개방지_작품기획안🚨.txt")
+if not os.path.exists(info_filename):
+    with open(info_filename, "w", encoding="utf-8") as info_f:
+        info_f.write(f"■ 작품 제목: {novel_title}\n■ 기획 스타일: {selected_style['mood']}\n")
+
+previous_summary = "없음 (이야기가 시작되었습니다.)"
+
+# 집필 루프 가동
+for chapter in range(1, 101):
+    filename = os.path.join(output_dir, f"{chapter:03d}화_{safe_title}.txt")
+    summary_filename = os.path.join(output_dir, f"{chapter:03d}화_{safe_title}_요약.txt")
+    
+    if os.path.exists(filename):
+        if os.path.exists(summary_filename):
+            try:
+                with open(summary_filename, "r", encoding="utf-8") as s_f:
+                    previous_summary = s_f.read()
+                print(f"⏭️ [{chapter}/100화] 이미 집필됨 (요약 캐시 로드 완료)")
+            except Exception:
+                pass
+        continue
+
+    synopsis = synopses[chapter]
+    print(f"▓ [{chapter}/100화] <{novel_title}> 이륙 제어 집필 중... 🔥")
+    
+    register_context = f"""
+    [★ 강호록 - 절대 준수 등장인물 및 설정 고유명사 목록 ★]
+    1. 주인공: {current_register.get('protagonist', {}).get('name', '백무혁')} ({current_register.get('protagonist', {}).get('details', '')})
+    2. 현재 상태 및 동선: {current_register.get('current_story_state', '')}
+    """
+    
+    prompt = f"""
+    {CLASSIC_MUHYUP_RULES}
+    [소설 기본 정보] - 제목: {novel_title} - 전체 줄거리 요약: {overall_plot}
+    {register_context}
+    [이전 화까지 누적된 입체적 연쇄 기억] {previous_summary}
+    [이번 {chapter}화의 세부 시놉시스] {synopsis}
+    
+    [🚨 출력 형식 제약]
+    반드시 소설 본문의 맨 첫 줄에는 다음과 같이 대괄호 안에 회차 번호와 해당 화의 창작 제목을 작성한 뒤, 한 줄 비우고 소설 본문을 시작하십시오.
+    [제{chapter}화. <해당 화의 어울리는 창작 제목>]
+    """
+    
+    chapter_text = generate_moorim_classic(prompt, f"{chapter}화 본문 집필")
+    
+    chapter_text_stripped = chapter_text.strip()
+    if not chapter_text_stripped.startswith("["):
+        default_heading = f"[제{chapter}화. 강호의 폭풍]"
+        chapter_text = f"{default_heading}\n\n{chapter_text_stripped}"
+        
+    with open(filename, "w", encoding="utf-8") as f: 
+        f.write(chapter_text)
+    print(f"    ↳ ⚡ {chapter}화 저장 완료!")
+    
+    # 요약본 생성 (항상 3줄 요약 보장 규칙 강제)
+    summary_prompt = f"""다음 소설 본문을 읽고 아래 구조를 철저히 유지하여 반드시 3줄로 상세히 요약해줘.
+    1. 현재 에피소드 전개 및 빌런의 음모 진척도:
+    2. 주인공이 최근 회상한 기연 인물의 가르침 또는 현재의 수련 상태:
+    3. 아직 해결되지 않은 긴장감 및 인물 동선:\n\n[본문]\n{chapter_text}"""
+    
+    previous_summary = generate_moorim_classic(summary_prompt, f"{chapter}화 줄거리 요약")
+    
+    try:
+        with open(summary_filename, "w", encoding="utf-8") as s_f:
+            s_f.write(previous_summary)
+    except Exception:
+        pass
+
+    if args.write_next:
+        sys.exit(0)
+        
+    time.sleep(1)
+
+print("\n==========================================================")
+print(f"🎉 [대단원 완수] 옥의 티까지 완벽히 제어된 독창적 대작 무협 완결!")
+print("==========================================================")

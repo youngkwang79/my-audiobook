@@ -21,17 +21,7 @@ type LastPlayed = {
 // SVG 아이콘 컴포넌트
 function SearchIcon() {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ opacity: 0.6 }}
-    >
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
       <circle cx="11" cy="11" r="8"></circle>
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
@@ -40,13 +30,7 @@ function SearchIcon() {
 
 function MembershipIcon() {
   return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}
-    >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>
       <defs>
         <linearGradient id="vipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#ff2a5f" />
@@ -54,12 +38,7 @@ function MembershipIcon() {
         </linearGradient>
       </defs>
       <rect x="3" y="6" width="18" height="12" rx="2" fill="url(#vipGrad)" />
-      <path
-        d="M7 10h4M7 13h2"
-        stroke="#ffffff"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+      <path d="M7 10h4M7 13h2" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx="16" cy="12" r="2" fill="#ffffff" />
     </svg>
   );
@@ -67,50 +46,18 @@ function MembershipIcon() {
 
 function CoinIcon() {
   return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}
-    >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>
       <circle cx="12" cy="12" r="10" fill="#fca834" />
-      <circle
-        cx="12"
-        cy="12"
-        r="7"
-        stroke="#ffffff"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <text
-        x="12"
-        y="15.5"
-        fill="#ffffff"
-        fontSize="9"
-        fontWeight="900"
-        textAnchor="middle"
-        fontFamily="sans-serif"
-      >
-        P
-      </text>
+      <circle cx="12" cy="12" r="7" stroke="#ffffff" strokeWidth="1.5" fill="none" />
+      <text x="12" y="15.5" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">P</text>
     </svg>
   );
 }
 
+
 function ClockIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: 5 }}
-    >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
       <circle cx="12" cy="12" r="10"></circle>
       <polyline points="12 6 12 12 16 14"></polyline>
     </svg>
@@ -119,17 +66,7 @@ function ClockIcon() {
 
 function CheckIconSmall() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: 5 }}
-    >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
   );
@@ -148,20 +85,12 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("추천");
 
   // ✅ 남은 미션 개수 상태
-  const [remainingMissions, setRemainingMissions] = useState<number | null>(
-    null,
-  );
+  const [remainingMissions, setRemainingMissions] = useState<number | null>(null);
 
   // 무공 수련 관련 상태
-  const [activeLauncherGame, setActiveLauncherGame] = useState<
-    null | "breath" | "pulse" | "puzzle" | "dodge"
-  >(null);
-  const [selectedLeaderboardGame, setSelectedLeaderboardGame] = useState<
-    "breath" | "pulse" | "puzzle" | "dodge"
-  >("breath");
-  const [leaderboardPeriod, setLeaderboardPeriod] = useState<
-    "weekly" | "allTime"
-  >("weekly");
+  const [activeLauncherGame, setActiveLauncherGame] = useState<null | "breath" | "pulse" | "puzzle" | "dodge">(null);
+  const [selectedLeaderboardGame, setSelectedLeaderboardGame] = useState<"breath" | "pulse" | "puzzle" | "dodge">("breath");
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<"weekly" | "allTime">("weekly");
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [weeklyRankings, setWeeklyRankings] = useState<any[]>([]);
   const [allTimeRankings, setAllTimeRankings] = useState<any[]>([]);
@@ -172,9 +101,7 @@ export default function Home() {
   const loadLeaderboard = async (gameId: string) => {
     try {
       setLoadingLeaderboard(true);
-      const res = await fetch(`/api/game/leaderboard?gameId=${gameId}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/game/leaderboard?gameId=${gameId}`, { cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
         setWeeklyRankings(data.weeklyRankings ?? []);
@@ -208,9 +135,7 @@ export default function Home() {
     try {
       const token = session?.access_token;
       if (!token) {
-        alert(
-          `수련이 끝났습니다! 최종 점수: ${score.toLocaleString()} (로그인을 하시면 점수가 랭킹에 기록되고 미션 코인을 받을 수 있습니다.)`,
-        );
+        alert(`수련이 끝났습니다! 최종 점수: ${score.toLocaleString()} (로그인을 하시면 점수가 랭킹에 기록되고 미션 코인을 받을 수 있습니다.)`);
         return;
       }
 
@@ -218,24 +143,20 @@ export default function Home() {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ gameId, score }),
+        body: JSON.stringify({ gameId, score })
       });
 
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? "기록 등록 실패");
 
       if (data?.earnedMissionReward) {
-        alert(
-          `✨ 수련 성공! ✨\n\n최종 점수: ${score.toLocaleString()}\n점수가 랭킹에 등록되었습니다.\n\n🎁 일일 무공 수련 미션 완료 보상 +10 코인 지급 완료!`,
-        );
+        alert(`✨ 수련 성공! ✨\n\n최종 점수: ${score.toLocaleString()}\n점수가 랭킹에 등록되었습니다.\n\n🎁 일일 무공 수련 미션 완료 보상 +10 코인 지급 완료!`);
         // 코인 및 미션 개수 동기화
         window.dispatchEvent(new Event("wallet-updated"));
       } else {
-        alert(
-          `✨ 수련 성공! ✨\n\n최종 점수: ${score.toLocaleString()}\n점수가 랭킹에 등록되었습니다.`,
-        );
+        alert(`✨ 수련 성공! ✨\n\n최종 점수: ${score.toLocaleString()}\n점수가 랭킹에 등록되었습니다.`);
       }
 
       // 리더보드 갱신
@@ -273,7 +194,7 @@ export default function Home() {
 
       if (res.ok && data?.completedTasks) {
         const completed: string[] = data.completedTasks;
-
+        
         // 오늘 날짜 포맷
         const d = new Date();
         const year = d.getFullYear();
@@ -290,12 +211,10 @@ export default function Home() {
           "watch5_" + todayStr,
           "watch10_" + todayStr,
           "watch15_" + todayStr,
-          "share_" + todayStr,
+          "share_" + todayStr
         ];
 
-        const incompleteCount = missions.filter(
-          (m) => !completed.includes(m),
-        ).length;
+        const incompleteCount = missions.filter((m) => !completed.includes(m)).length;
         setRemainingMissions(incompleteCount);
       } else {
         setRemainingMissions(null);
@@ -348,32 +267,24 @@ export default function Home() {
         setLoadingWorks(true);
         const { data, error } = await supabase
           .from("works")
-          .select(
-            `
+          .select(`
             *,
             episodes (
               id,
               release_date
             )
-          `,
-          )
+          `)
           .order("created_at", { ascending: false });
 
         if (error) {
           console.error("Error fetching works:", error);
         } else if (data) {
           const mapped = data.map((w: any) => {
-            const isOldNew =
-              w.badge === "신작" &&
-              w.created_at &&
-              new Date().getTime() - new Date(w.created_at).getTime() >
-                30 * 24 * 60 * 60 * 1000;
-
+            const isOldNew = w.badge === "신작" && w.created_at && (new Date().getTime() - new Date(w.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+            
             // Find the first published episode ID
             const publishedEpisodes = (w.episodes || [])
-              .filter(
-                (e: any) => new Date(e.release_date).getTime() <= Date.now(),
-              )
+              .filter((e: any) => new Date(e.release_date).getTime() <= Date.now())
               .sort((a: any, b: any) => {
                 const aNum = parseFloat(a.id);
                 const bNum = parseFloat(b.id);
@@ -383,6 +294,21 @@ export default function Home() {
                 return aNum - bNum;
               });
             const firstEpisodeId = publishedEpisodes[0]?.id || null;
+
+            // Determine if the work itself is published/active dynamically
+            const isPublished = publishedEpisodes.length > 0 || (w.status !== "준비중" && (w.episodes || []).length === 0);
+
+            // Determine scheduled release date for upcoming section
+            let scheduledReleaseDate = null;
+            const futureEpisodes = (w.episodes || []).filter((e: any) => new Date(e.release_date).getTime() > Date.now());
+            if (futureEpisodes.length > 0) {
+              const dates = futureEpisodes.map((e: any) => new Date(e.release_date).getTime());
+              scheduledReleaseDate = new Date(Math.min(...dates));
+            } else if (w.created_at) {
+              scheduledReleaseDate = new Date(w.created_at);
+            } else {
+              scheduledReleaseDate = new Date();
+            }
 
             return {
               id: w.id,
@@ -401,6 +327,8 @@ export default function Home() {
               is_membership_only: w.is_membership_only,
               firstEpisodeId,
               created_at: w.created_at,
+              isPublished,
+              scheduledReleaseDate
             };
           });
           setWorksList(mapped);
@@ -415,9 +343,7 @@ export default function Home() {
   }, []);
 
   // ✅ 알림 설정 로컬스토리지 연동
-  const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
   const [shouldPulse, setShouldPulse] = useState(false);
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
 
@@ -497,9 +423,7 @@ export default function Home() {
       const updated = { ...alarmSettings, [workId]: true };
       setAlarmSettings(updated);
       localStorage.setItem("alarmSettings", JSON.stringify(updated));
-      alert(
-        "알림 설정이 완료되었습니다! (알림을 지원하지 않는 브라우저이므로 설정만 완료되었습니다)",
-      );
+      alert("알림 설정이 완료되었습니다! (알림을 지원하지 않는 브라우저이므로 설정만 완료되었습니다)");
       return;
     }
 
@@ -509,13 +433,9 @@ export default function Home() {
         const updated = { ...alarmSettings, [workId]: true };
         setAlarmSettings(updated);
         localStorage.setItem("alarmSettings", JSON.stringify(updated));
-        alert(
-          "알림이 정상적으로 허용 및 설정되었습니다! 작품이 공개되면 알림을 보내드리겠습니다.",
-        );
+        alert("알림이 정상적으로 허용 및 설정되었습니다! 작품이 공개되면 알림을 보내드리겠습니다.");
       } else {
-        alert(
-          "알림 권한이 거부되었습니다. 기기 설정에서 알림 권한을 허용해 주셔야 알림을 받으실 수 있습니다.",
-        );
+        alert("알림 권한이 거부되었습니다. 기기 설정에서 알림 권한을 허용해 주셔야 알림을 받으실 수 있습니다.");
       }
     } catch (error) {
       Notification.requestPermission((permission) => {
@@ -523,13 +443,9 @@ export default function Home() {
           const updated = { ...alarmSettings, [workId]: true };
           setAlarmSettings(updated);
           localStorage.setItem("alarmSettings", JSON.stringify(updated));
-          alert(
-            "알림이 정상적으로 허용 및 설정되었습니다! 작품이 공개되면 알림을 보내드리겠습니다.",
-          );
+          alert("알림이 정상적으로 허용 및 설정되었습니다! 작품이 공개되면 알림을 보내드리겠습니다.");
         } else {
-          alert(
-            "알림 권한이 거부되었습니다. 기기 설정에서 알림 권한을 허용해 주셔야 알림을 받으실 수 있습니다.",
-          );
+          alert("알림 권한이 거부되었습니다. 기기 설정에서 알림 권한을 허용해 주셔야 알림을 받으실 수 있습니다.");
         }
       });
     }
@@ -561,10 +477,7 @@ export default function Home() {
   }, [lastPlayed]);
   const lastPlayedWorkTitle = useMemo(() => {
     if (!lastPlayed?.workId) return "";
-    return (
-      worksList.find((work) => work.id === lastPlayed.workId)?.title ??
-      lastPlayed.workId
-    );
+    return worksList.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;
   }, [lastPlayed, worksList]);
 
   // ✅ 검색 및 탭 필터링/정렬 로직
@@ -572,7 +485,7 @@ export default function Home() {
     // 실시간 DB 재생 횟수를 정적 데이터와 병합
     let result = worksList.map((w) => ({
       ...w,
-      views: String(playCounts[w.id] ?? w.views ?? "0"),
+      views: String(playCounts[w.id] ?? w.views ?? "0")
     }));
 
     // 1. 검색어 필터링
@@ -582,16 +495,17 @@ export default function Home() {
         (w) =>
           w.title.toLowerCase().includes(q) ||
           w.description.toLowerCase().includes(q) ||
-          (w.subtitle && w.subtitle.toLowerCase().includes(q)),
+          (w.subtitle && w.subtitle.toLowerCase().includes(q))
       );
     }
 
     // 2. 카테고리 탭 필터링 및 정렬
     if (activeTab === "신작") {
-      result = result.filter((w) => w.badge === "신작");
+      result = result.filter((w) => w.badge === "신작" && w.is_membership_only !== true);
     } else if (activeTab === "멤버십전용") {
       result = result.filter((w) => w.is_membership_only === true);
     } else if (activeTab === "인기 순위") {
+      result = result.filter((w) => w.is_membership_only !== true);
       const parseViews = (viewsStr?: string) => {
         if (!viewsStr) return 0;
         const s = viewsStr.toUpperCase();
@@ -600,26 +514,27 @@ export default function Home() {
         return parseFloat(s) || 0;
       };
       // 조회수 내림차순 정렬
-      result = [...result].sort(
-        (a, b) => parseViews(b.views) - parseViews(a.views),
-      );
+      result = [...result].sort((a, b) => parseViews(b.views) - parseViews(a.views));
+    } else {
+      // 기본/추천 등 기타 탭
+      result = result.filter((w) => w.is_membership_only !== true);
     }
 
     return result;
   }, [searchQuery, activeTab, playCounts, worksList]);
 
-  // 메인 그리드용 작품 (준비중인 작품 제외)
+  // 메인 그리드용 작품 (공개된 작품만)
   const mainGridWorks = useMemo(() => {
-    return filteredWorks.filter((w) => w.status !== "준비중");
+    return filteredWorks.filter((w) => w.isPublished);
   }, [filteredWorks]);
 
-  // 공개 예정 섹션용 작품 (준비중인 작품만)
+  // 공개 예정 섹션용 작품 (공개 예정이며 미래 예약된 작품만)
   const comingSoonWorks = useMemo(() => {
     return worksList
-      .filter((w) => w.status === "준비중")
+      .filter((w) => !w.isPublished)
       .map((w) => ({
         ...w,
-        views: String(playCounts[w.id] ?? w.views ?? "0"),
+        views: String(playCounts[w.id] ?? w.views ?? "0")
       }));
   }, [playCounts, worksList]);
 
@@ -1109,18 +1024,10 @@ export default function Home() {
         </div>
 
         <div className="header-icons">
-          <button
-            className="icon-btn"
-            onClick={() => router.push("/membership")}
-            title="멤버십 가입"
-          >
+          <button className="icon-btn" onClick={() => router.push("/membership")} title="멤버십 가입">
             <MembershipIcon />
           </button>
-          <button
-            className="icon-btn"
-            onClick={() => router.push("/checkin")}
-            title="출석체크 / 무료코인 받기"
-          >
+          <button className="icon-btn" onClick={() => router.push("/checkin")} title="출석체크 / 무료코인 받기">
             <CoinIcon />
             {remainingMissions !== null && remainingMissions > 0 && (
               <div className="gift-badge">+{remainingMissions}</div>
@@ -1148,8 +1055,7 @@ export default function Home() {
           {lastPlayed && (
             <div className="continue-play-card">
               <div className="continue-play-title">
-                <span className="play-icon">▶</span> {lastPlayedWorkTitle} ·{" "}
-                {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
+                <span className="play-icon">▶</span> {lastPlayedWorkTitle} · {lastPlayed.episodeId}화 · {lastPlayed.part}편부터
               </div>
               <Link
                 href={
@@ -1164,7 +1070,9 @@ export default function Home() {
                   } catch (e) {}
                 }}
               >
-                <div className="continue-play-btn">이어서 듣기</div>
+                <div className="continue-play-btn">
+                  이어서 듣기
+                </div>
               </Link>
             </div>
           )}
@@ -1204,9 +1112,7 @@ export default function Home() {
                 margin: 0,
               }}
             >
-              무림북은 창작 무협 소설과 오디오 스토리를 중심으로, 에피소드별
-              음성과 자막을 함께 제공하는 감상형 플랫폼입니다. 강호의 서사를
-              보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
+              무림북은 창작 무협 소설과 오디오 스토리를 중심으로, 에피소드별 음성과 자막을 함께 제공하는 감상형 플랫폼입니다. 강호의 서사를 보다 깊고 편안하게 즐길 수 있도록 구성했습니다.
             </p>
           </div>
 
@@ -1218,14 +1124,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div
-              style={{
-                padding: "80px 20px",
-                textAlign: "center",
-                color: "rgba(255, 255, 255, 0.4)",
-                fontSize: 15,
-              }}
-            >
+            <div style={{ padding: "80px 20px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: 15 }}>
               검색 결과에 맞는 작품이 없습니다.
             </div>
           )}
@@ -1235,84 +1134,68 @@ export default function Home() {
             <div className="coming-soon-section" id="coming-soon-section">
               <h2 className="section-title">공개 예정</h2>
 
-              {comingSoonWorks.length > 0 ? (
-                (() => {
-                  // created_at 기준 날짜 그룹핑
-                  const groups: {
-                    dateLabel: string;
-                    works: typeof comingSoonWorks;
-                  }[] = [];
-                  comingSoonWorks.forEach((work) => {
-                    let dateLabel = "";
-                    if (work.created_at) {
-                      const d = new Date(work.created_at);
-                      const mm = String(d.getMonth() + 1).padStart(2, "0");
-                      const dd = String(d.getDate()).padStart(2, "0");
-                      dateLabel = `${mm}. ${dd}.`;
-                    }
-                    const existing = groups.find(
-                      (g) => g.dateLabel === dateLabel,
-                    );
-                    if (existing) {
-                      existing.works.push(work);
-                    } else {
-                      groups.push({ dateLabel, works: [work] });
-                    }
-                  });
-                  return (
-                    <>
-                      {groups.map((group) => (
-                        <div key={group.dateLabel}>
-                          {group.dateLabel && (
-                            <div className="coming-soon-date-header">
-                              <span className="coming-soon-date">
-                                {group.dateLabel}
-                              </span>
-                              <div className="coming-soon-divider" />
-                            </div>
-                          )}
-                          <div className="coming-soon-grid">
-                            {group.works.map((work) => (
-                              <div
-                                key={work.id}
-                                className="coming-soon-item-container"
-                              >
-                                <WorkPosterCard work={work} />
-                                <button
-                                  className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
-                                  onClick={() =>
-                                    handleRequestNotification(work.id)
-                                  }
-                                >
-                                  {alarmSettings[work.id] ? (
-                                    <>
-                                      <CheckIconSmall />
-                                      <span>알림 설정 완료</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ClockIcon />
-                                      <span>알림 받기</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            ))}
+              {comingSoonWorks.length > 0 ? (() => {
+                // scheduledReleaseDate 기준 날짜 그룹핑
+                const groups: { dateLabel: string; time: number; works: typeof comingSoonWorks }[] = [];
+                comingSoonWorks.forEach((work) => {
+                  let dateLabel = "";
+                  let time = 0;
+                  if (work.scheduledReleaseDate) {
+                    const d = new Date(work.scheduledReleaseDate);
+                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                    const dd = String(d.getDate()).padStart(2, "0");
+                    dateLabel = `${mm}. ${dd}.`;
+                    time = d.getTime();
+                  }
+                  const existing = groups.find((g) => g.dateLabel === dateLabel);
+                  if (existing) {
+                    existing.works.push(work);
+                  } else {
+                    groups.push({ dateLabel, time, works: [work] });
+                  }
+                });
+                
+                // 시간 오름차순 정렬
+                groups.sort((a, b) => a.time - b.time);
+                return (
+                  <>
+                    {groups.map((group) => (
+                      <div key={group.dateLabel}>
+                        {group.dateLabel && (
+                          <div className="coming-soon-date-header">
+                            <span className="coming-soon-date">{group.dateLabel}</span>
+                            <div className="coming-soon-divider" />
                           </div>
+                        )}
+                        <div className="coming-soon-grid">
+                          {group.works.map((work) => (
+                            <div key={work.id} className="coming-soon-item-container">
+                              <WorkPosterCard work={work} />
+                              <button
+                                className={`alarm-btn ${alarmSettings[work.id] ? "active" : ""} ${shouldPulse ? "pulse" : ""}`}
+                                onClick={() => handleRequestNotification(work.id)}
+                              >
+                                {alarmSettings[work.id] ? (
+                                  <>
+                                    <CheckIconSmall />
+                                    <span>알림 설정 완료</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ClockIcon />
+                                    <span>알림 받기</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </>
-                  );
-                })()
-              ) : (
-                <div
-                  style={{
-                    padding: "30px 10px",
-                    textAlign: "center",
-                    color: "rgba(255, 255, 255, 0.4)",
-                    fontSize: "14px",
-                  }}
-                >
+                      </div>
+                    ))}
+                  </>
+                );
+              })() : (
+                <div style={{ padding: "30px 10px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
                   새로운 작품을 준비 중입니다.
                 </div>
               )}
@@ -1320,10 +1203,7 @@ export default function Home() {
           )}
         </>
       ) : (
-        <div
-          className="game-tab-content"
-          style={{ textAlign: "left", marginTop: 8 }}
-        >
+        <div className="game-tab-content" style={{ textAlign: "left", marginTop: 8 }}>
           <style>{`
             .game-grid {
               display: grid;
@@ -1708,20 +1588,9 @@ export default function Home() {
           <div className="game-welcome-banner">
             <div className="banner-content">
               <span className="banner-badge">코인 획득</span>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  width: "100%",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <h4 className="banner-title" style={{ margin: 0 }}>
-                  🎮 강호 무공 수련관 (미니게임)
-                </h4>
-                <button
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px", flexWrap: "wrap" }}>
+                <h4 className="banner-title" style={{ margin: 0 }}>🎮 강호 무공 수련관 (미니게임)</h4>
+                <button 
                   className="guide-details-btn"
                   onClick={() => setShowGuideModal(true)}
                 >
@@ -1729,11 +1598,8 @@ export default function Home() {
                 </button>
               </div>
               <p className="banner-desc" style={{ marginTop: "6px" }}>
-                4가지 무공 수련 미니게임을 플레이하고 기록을 등록하세요!
-                <br />
-                매일 첫 수련 완료 시 <strong>+10 코인</strong> 즉시 지급 & 주간
-                랭킹 Top 3 진입 시 <strong>최대 500 코인</strong> 상금이
-                지급됩니다.
+                4가지 무공 수련 미니게임을 플레이하고 기록을 등록하세요!<br />
+                매일 첫 수련 완료 시 <strong>+10 코인</strong> 즉시 지급 & 주간 랭킹 Top 3 진입 시 <strong>최대 500 코인</strong> 상금이 지급됩니다.
               </p>
             </div>
             <div className="banner-accent-icon">🪙</div>
@@ -1741,91 +1607,50 @@ export default function Home() {
 
           {/* Mini-game List */}
           <div className="game-grid">
-            <div
-              className="game-card"
-              onClick={() => {
-                if (!user) {
-                  alert(
-                    "로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!",
-                  );
-                  return;
-                }
-                setActiveLauncherGame("breath");
-              }}
-            >
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("breath");
+            }}>
               <div className="game-icon-box">🌬️</div>
               <div className="game-info">
                 <div className="game-title-text">호흡 수련 (조식조양)</div>
-                <div className="game-desc-text">
-                  기운을 조화롭게 다스려 적의 예리한 암습을 무력화하십시오.
-                </div>
+                <div className="game-desc-text">기운을 조화롭게 다스려 적의 예리한 암습을 무력화하십시오.</div>
                 <div className="game-badge-text">콤보 방어전</div>
               </div>
             </div>
 
-            <div
-              className="game-card"
-              onClick={() => {
-                if (!user) {
-                  alert(
-                    "로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!",
-                  );
-                  return;
-                }
-                setActiveLauncherGame("pulse");
-              }}
-            >
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("pulse");
+            }}>
               <div className="game-icon-box">☯️</div>
               <div className="game-info">
                 <div className="game-title-text">기운 응축 (단전응축)</div>
-                <div className="game-desc-text">
-                  단전에 순수한 진기를 모으고 극의 상태로 정밀 압축하십시오.
-                </div>
+                <div className="game-desc-text">단전에 순수한 진기를 모으고 극의 상태로 정밀 압축하십시오.</div>
                 <div className="game-badge-text">타이밍 미니게임</div>
               </div>
             </div>
 
-            <div
-              className="game-card"
-              onClick={() => {
-                if (!user) {
-                  alert(
-                    "로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!",
-                  );
-                  return;
-                }
-                setActiveLauncherGame("puzzle");
-              }}
-            >
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("puzzle");
+            }}>
               <div className="game-icon-box">🧩</div>
               <div className="game-info">
                 <div className="game-title-text">내공 정렬 (단전정렬)</div>
-                <div className="game-desc-text">
-                  단전의 흐트러진 내공 기맥을 한 줄로 정렬해 진기를
-                  일깨우십시오.
-                </div>
+                <div className="game-desc-text">단전의 흐트러진 내공 기맥을 한 줄로 정렬해 진기를 일깨우십시오.</div>
                 <div className="game-badge-text">내공 매치 3 퍼즐</div>
               </div>
             </div>
 
-            <div
-              className="game-card"
-              onClick={() => {
-                if (!user) {
-                  alert(
-                    "로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!",
-                  );
-                  return;
-                }
-                setActiveLauncherGame("dodge");
-              }}
-            >
+            <div className="game-card" onClick={() => {
+              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              setActiveLauncherGame("dodge");
+            }}>
               <div className="game-icon-box">👟</div>
               <div className="game-info">
                 <div className="game-title-text">보법 수련 (梅화樁)</div>
-                <div className="game-desc-text">
-                  매화장 위에서 몸을 놀려 신비로운 신법보법을 연마하십시오.
-                </div>
+                <div className="game-desc-text">매화장 위에서 몸을 놀려 신비로운 신법보법을 연마하십시오.</div>
                 <div className="game-badge-text">신법 회피 게임</div>
               </div>
             </div>
@@ -1856,71 +1681,23 @@ export default function Home() {
               {/* 주간 랭킹 보상 활성화 조건 요약 박스 */}
               {leaderboardPeriod === "weekly" && (
                 <div className="leaderboard-prizes">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontWeight: "900",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    <span style={{ color: "#ffd700" }}>
-                      🏆 주간 Top 3 상금 (비례 보상제)
-                    </span>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "900", marginBottom: "4px" }}>
+                    <span style={{ color: "#ffd700" }}>🏆 주간 Top 3 상금 (비례 보상제)</span>
                     {participantsCount >= 30 ? (
                       <span style={{ color: "#4dff70" }}>활성화 (100%)</span>
                     ) : participantsCount >= 10 ? (
-                      <span style={{ color: "#ffcc00" }}>
-                        부분 활성화 (50%)
-                      </span>
+                      <span style={{ color: "#ffcc00" }}>부분 활성화 (50%)</span>
                     ) : (
                       <span style={{ color: "#ff4d4d" }}>비활성화</span>
                     )}
                   </div>
                   <div style={{ color: "#8c8c96", fontSize: "11px" }}>
-                    이번 주 고유 참여자:{" "}
-                    <span style={{ color: "#ffd700", fontWeight: "bold" }}>
-                      {participantsCount}명
-                    </span>{" "}
-                    (최소 10명 시 50% 지급, 30명 시 100% 지급)
+                    이번 주 고유 참여자: <span style={{ color: "#ffd700", fontWeight: "bold" }}>{participantsCount}명</span> (최소 10명 시 50% 지급, 30명 시 100% 지급)
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "10px",
-                      marginTop: "6px",
-                      fontSize: "11px",
-                      color: "#d1d1d6",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <span>
-                      🥇 1등:{" "}
-                      {participantsCount >= 30
-                        ? "500"
-                        : participantsCount >= 10
-                          ? "250"
-                          : "0"}
-                      코인
-                    </span>
-                    <span>
-                      🥈 2등:{" "}
-                      {participantsCount >= 30
-                        ? "300"
-                        : participantsCount >= 10
-                          ? "150"
-                          : "0"}
-                      코인
-                    </span>
-                    <span>
-                      🥉 3등:{" "}
-                      {participantsCount >= 30
-                        ? "100"
-                        : participantsCount >= 10
-                          ? "50"
-                          : "0"}
-                      코인
-                    </span>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "6px", fontSize: "11px", color: "#d1d1d6", justifyContent: "space-between" }}>
+                    <span>🥇 1등: {participantsCount >= 30 ? "500" : participantsCount >= 10 ? "250" : "0"}코인</span>
+                    <span>🥈 2등: {participantsCount >= 30 ? "300" : participantsCount >= 10 ? "150" : "0"}코인</span>
+                    <span>🥉 3등: {participantsCount >= 30 ? "100" : participantsCount >= 10 ? "50" : "0"}코인</span>
                   </div>
                 </div>
               )}
@@ -1955,62 +1732,33 @@ export default function Home() {
 
               {/* Ranking List */}
               {loadingLeaderboard ? (
-                <div
-                  style={{
-                    padding: "40px 0",
-                    color: "#ffd700",
-                    fontWeight: 800,
-                    textAlign: "center",
-                  }}
-                >
-                  전령 비급을 조회하는 중... 🍃
-                </div>
-              ) : (leaderboardPeriod === "weekly"
-                  ? weeklyRankings
-                  : allTimeRankings
-                ).length === 0 ? (
-                <div
-                  style={{
-                    padding: "40px 0",
-                    color: "rgba(255,255,255,0.3)",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
+                <div style={{ padding: "40px 0", color: "#ffd700", fontWeight: 800, textAlign: "center" }}>전령 비급을 조회하는 중... 🍃</div>
+              ) : (leaderboardPeriod === "weekly" ? weeklyRankings : allTimeRankings).length === 0 ? (
+                <div style={{ padding: "40px 0", color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center" }}>
                   기록된 수련 점수가 없습니다. 첫 강호 랭킹에 이름을 새기십시오!
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  {(leaderboardPeriod === "weekly"
-                    ? weeklyRankings
-                    : allTimeRankings
-                  ).map((rank, idx) => (
+                  {(leaderboardPeriod === "weekly" ? weeklyRankings : allTimeRankings).map((rank, idx) => (
                     <div key={idx} className="rank-row">
                       <div className="rank-user">
                         <span className="rank-num">
-                          {idx === 0
-                            ? "🥇"
-                            : idx === 1
-                              ? "🥈"
-                              : idx === 2
-                                ? "🥉"
-                                : `${idx + 1}`}
+                          {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
                         </span>
                         <span className="rank-username">{rank.username}</span>
                       </div>
-                      <span className="rank-score">
-                        {rank.score.toLocaleString()} 점
-                      </span>
+                      <span className="rank-score">{rank.score.toLocaleString()} 점</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+
           </div>
 
           {/* 가이드 모달 */}
           {showGuideModal && (
-            <div
+            <div 
               className="guide-modal-overlay"
               onClick={() => setShowGuideModal(false)}
               style={{
@@ -2022,10 +1770,10 @@ export default function Home() {
                 alignItems: "center",
                 justifyContent: "center",
                 zIndex: 1000,
-                padding: "20px",
+                padding: "20px"
               }}
             >
-              <div
+              <div 
                 className="training-guide-container"
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -2050,7 +1798,7 @@ export default function Home() {
                     fontSize: "20px",
                     cursor: "pointer",
                     padding: "4px",
-                    zIndex: 10,
+                    zIndex: 10
                   }}
                 >
                   ✕
@@ -2061,51 +1809,30 @@ export default function Home() {
                 </div>
                 <div className="guide-body">
                   <div className="guide-section">
-                    <div className="guide-section-title">
-                      🏆 주간 Top 3 비례 상금제 (대안 A)
-                    </div>
+                    <div className="guide-section-title">🏆 주간 Top 3 비례 상금제 (대안 A)</div>
                     <div className="guide-section-desc">
-                      주간 고유 수련 참여자 수에 비례하여 랭킹 보상이 차등
-                      활성화됩니다. 참여율이 높을수록 상금이 증폭됩니다.
+                      주간 고유 수련 참여자 수에 비례하여 랭킹 보상이 차등 활성화됩니다. 참여율이 높을수록 상금이 증폭됩니다.
                       <div className="guide-sub-rules">
-                        <div>
-                          • <strong>30명 이상 (100%):</strong> 1등 500 / 2등 300
-                          / 3등 100 코인
-                        </div>
-                        <div>
-                          • <strong>10명 ~ 30명 (50%):</strong> 1등 250 / 2등
-                          150 / 3등 50 코인
-                        </div>
-                        <div>
-                          • <strong>10명 미만 (비활성):</strong> 인원 미달 시
-                          주간 상금 미지급
-                        </div>
+                        <div>• <strong>30명 이상 (100%):</strong> 1등 500 / 2등 300 / 3등 100 코인</div>
+                        <div>• <strong>10명 ~ 30명 (50%):</strong> 1등 250 / 2등 150 / 3등 50 코인</div>
+                        <div>• <strong>10명 미만 (비활성):</strong> 인원 미달 시 주간 상금 미지급</div>
                       </div>
                     </div>
                   </div>
 
                   <div className="guide-section">
-                    <div className="guide-section-title">
-                      📅 일일 수련 임무 보상
-                    </div>
+                    <div className="guide-section-title">📅 일일 수련 임무 보상</div>
                     <div className="guide-section-desc">
-                      매일 4종 무공 수련 중 아무 게임이나 1회 이상 완수하여
-                      점수를 등록하십시오. 금일 수련이 마감되며 즉시{" "}
-                      <strong>+10 코인</strong>의 일일 보상이 적립됩니다.
+                      매일 4종 무공 수련 중 아무 게임이나 1회 이상 완수하여 점수를 등록하십시오. 금일 수련이 마감되며 즉시 <strong>+10 코인</strong>의 일일 보상이 적립됩니다.
                     </div>
                   </div>
 
                   <div className="guide-section">
-                    <div className="guide-section-title">
-                      ⚖️ 수련 및 정산 규칙
-                    </div>
+                    <div className="guide-section-title">⚖️ 수련 및 정산 규칙</div>
                     <div className="guide-section-desc">
-                      • <strong>매주 월요일 00:00 KST</strong> 기준으로 지난주
-                      랭킹 성적이 정산되어 지갑에 즉시 지급됩니다.
-                      <br />
-                      • 비정상적인 방법으로 기록을 조작하거나 대리 수련 시, 공적
-                      회수 및 플랫폼 이용 제재가 가해집니다.
-                      <br />• 수련 항목은 추가되거나 교체 될 수 있습니다.
+                      • <strong>매주 월요일 00:00 KST</strong> 기준으로 지난주 랭킹 성적이 정산되어 지갑에 즉시 지급됩니다.<br />
+                      • 비정상적인 방법으로 기록을 조작하거나 대리 수련 시, 공적 회수 및 플랫폼 이용 제재가 가해집니다.<br />
+                      • 수련 항목은 추가되거나 교체 될 수 있습니다.
                     </div>
                   </div>
                 </div>

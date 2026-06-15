@@ -22,9 +22,9 @@ export async function POST(req: Request) {
     }
 
     // 2. Google Gemini 2.0 API 호출하여 썸네일용 프롬프트 생성
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GOOGLE_PAID_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "missing_google_api_key" }, { status: 500 });
+      return NextResponse.json({ error: "missing_google_paid_api_key" }, { status: 500 });
     }
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -40,7 +40,7 @@ CRITICAL COMPOSITION:
 4. Avoid wide landscape-focused shots where the character is small. The character must be the main, large focus of the image.
 
 CRITICAL TEXT RULE:
-The generated prompt must explicitly request a clean, textless illustration with absolutely NO text, NO book titles, NO words, NO letters, NO signatures, and NO Hanja or Chinese/Korean/English characters written on the image.
+The generated prompt must explicitly request a clean, textless, blank illustration. It must describe a pure character portrait without mentioning any title text, book covers, letters, signatures, characters, or words. Keep the prompt completely focused on visual imagery (e.g., "completely textless, clean character portrait, zero lettering, empty background, pure visual illustration").
 
 The output MUST be only the raw prompt itself. Do not include any quotes, markdown formatting, or introductory phrases.
 

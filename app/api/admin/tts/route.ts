@@ -86,7 +86,8 @@ export async function POST(req: Request) {
       locked = true, 
       releaseDate,
       effect = "none",
-      is_membership_only = false
+      is_membership_only = false,
+      voiceGuide
     } = payload;
 
     if (!text || !text.trim()) {
@@ -112,6 +113,10 @@ export async function POST(req: Request) {
         `--effect=${effect}`,
         `--output=${tempMp3Path}`
       ];
+      
+      if (voiceGuide) {
+        args.push(`--voice-guide=${voiceGuide}`);
+      }
       
       await runTtsScript(args);
       
@@ -155,6 +160,10 @@ export async function POST(req: Request) {
       `--effect=${effect}`,
       `--output=${tempMp3Path}`
     ];
+    
+    if (voiceGuide) {
+      args.push(`--voice-guide=${voiceGuide}`);
+    }
     
     await runTtsScript(args);
     

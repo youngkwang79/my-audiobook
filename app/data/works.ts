@@ -12,6 +12,7 @@ export type Work = {
   badge?: string;
   views?: string;
   exclusive?: boolean;
+  is_membership_only?: boolean;
 };
 
 export const works: Work[] = [

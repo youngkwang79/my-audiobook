@@ -23,14 +23,12 @@ export default function MembershipManagePage() {
 
     const syncSub = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session || !alive) return;
 
         const res = await fetch("/api/me/restore", {
           method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${session.access_token}` }
         });
         const data = await res.json().catch(() => null);
         if (res.ok && data && alive) {
@@ -55,15 +53,9 @@ export default function MembershipManagePage() {
   }, []);
 
   const handleCancelMembership = async () => {
-    if (
-      confirm(
-        "정말 멤버십 자동결제를 해지하시겠습니까? 해지 시 다음 결제일부터 멤버십 전용 혜택이 중단됩니다.",
-      )
-    ) {
+    if (confirm("정말 멤버십 자동결제를 해지하시겠습니까? 해지 시 다음 결제일부터 멤버십 전용 혜택이 중단됩니다.")) {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           alert("로그인이 필요합니다.");
           return;
@@ -94,16 +86,7 @@ export default function MembershipManagePage() {
 
   if (loading) {
     return (
-      <main
-        style={{
-          minHeight: "100dvh",
-          background: "#000000",
-          color: "#ffffff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <main style={{ minHeight: "100dvh", background: "#000000", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span>불러오는 중...</span>
       </main>
     );
@@ -288,16 +271,7 @@ export default function MembershipManagePage() {
         {/* 헤더 */}
         <div className="manage-header">
           <button className="back-btn-manage" onClick={() => router.back()}>
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
@@ -310,19 +284,13 @@ export default function MembershipManagePage() {
             <>
               <div className="status-badge">구독 중</div>
               <div>
-                <h3 className="plan-info-title">
-                  {getPlanName(subscribedPlan)}
-                </h3>
+                <h3 className="plan-info-title">{getPlanName(subscribedPlan)}</h3>
                 <p className="plan-info-desc" style={{ marginTop: 8 }}>
-                  자동 결제 예정일: 다음 주기 결제일
-                  <br />
+                  자동 결제 예정일: 다음 주기 결제일<br />
                   매주/매년 정기 결제가 진행됩니다.
                 </p>
               </div>
-              <button
-                className="btn-manage-action cancel"
-                onClick={handleCancelMembership}
-              >
+              <button className="btn-manage-action cancel" onClick={handleCancelMembership}>
                 해제하기
               </button>
             </>
@@ -332,15 +300,11 @@ export default function MembershipManagePage() {
               <div>
                 <h3 className="plan-info-title">가입된 멤버십이 없습니다.</h3>
                 <p className="plan-info-desc" style={{ marginTop: 8 }}>
-                  멤버십에 가입하시면 오디오북 무제한 듣기,
-                  <br />
+                  멤버십에 가입하시면 오디오북 무제한 듣기,<br />
                   신작 우선 공개 등 풍성한 혜택을 누리실 수 있습니다.
                 </p>
               </div>
-              <button
-                className="btn-manage-action join"
-                onClick={() => router.push("/membership")}
-              >
+              <button className="btn-manage-action join" onClick={() => router.push("/membership")}>
                 멤버십 가입하기
               </button>
             </>

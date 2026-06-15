@@ -3,6 +3,67 @@ import argparse
 import sys
 import os
 import edge_tts
+import edge_tts.communicate
+import re
+
+# Custom mkssml that detects if the text is already an SSML document
+def custom_mkssml(tc, escaped_text):
+    if isinstance(escaped_text, bytes):
+        escaped_text = escaped_text.decode("utf-8")
+    if escaped_text.strip().startswith("<speak"):
+        return escaped_text
+    return (
+        "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>"
+        f"<voice name='{tc.voice}'>"
+        f"<prosody pitch='{tc.pitch}' rate='{tc.rate}' volume='{tc.volume}'>"
+        f"{escaped_text}"
+        "</prosody>"
+        "</voice>"
+        "</speak>"
+    )
+
+# Apply monkeypatch
+edge_tts.communicate.mkssml = custom_mkssml
+
+def preprocess_content_to_ssml_body(content, boosted_pitch):
+    # Normalize quotes
+    content = content.replace("“", '"').replace("”", '"')
+    content = content.replace("‘", "'").replace("’", "'")
+    
+    # Split text into sentences using sentence punctuation (. ! ? \n)
+    parts = re.split(r'([.!?\n])', content)
+    sentences = []
+    temp = ""
+    for part in parts:
+        if not part:
+            continue
+        temp += part
+        if part in ('.', '!', '?', '\n'):
+            sentences.append(temp)
+            temp = ""
+    if temp.strip():
+        sentences.append(temp)
+        
+    def xml_escape(s):
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&apos;")
+
+    body_parts = []
+    for s in sentences:
+        is_question = s.strip().endswith('?')
+        escaped_s = xml_escape(s)
+        
+        # Apply pauses on ellipses U+2026 or double+ dots
+        escaped_s = re.sub(r'\.{2,}|…', '<break time="500ms"/>', escaped_s)
+        
+        # Dialogue pause (700ms after dialogue quote ends)
+        escaped_s = re.sub(r'&quot;(.*?)&quot;', r'&quot;\1&quot;<break time="700ms"/>', escaped_s)
+        
+        if is_question:
+            body_parts.append(f"<prosody pitch='{boosted_pitch}'>{escaped_s}</prosody>")
+        else:
+            body_parts.append(escaped_s)
+            
+    return "".join(body_parts)
 
 # Handle UTF-8 encoding for standard output on Windows
 if sys.platform.startswith('win'):
@@ -38,7 +99,7 @@ def get_openai_api_key():
     return None
 
 def get_google_api_key():
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = os.environ.get("GOOGLE_PAID_API_KEY")
     if api_key:
         return api_key
     
@@ -58,7 +119,7 @@ def get_google_api_key():
                             continue
                         if "=" in line:
                             key, val = line.split("=", 1)
-                            if key.strip() == "GOOGLE_API_KEY":
+                            if key.strip() == "GOOGLE_PAID_API_KEY":
                                 return val.strip().strip("'\"")
             except Exception:
                 pass
@@ -73,6 +134,7 @@ async def amain():
     parser.add_argument("--rate", default="+0%", help="Voice speed rate adjustment (e.g. -6%)")
     parser.add_argument("--output", required=True, help="Output MP3 file path")
     parser.add_argument("--effect", default="none", help="Special effect filter (none, echo, radio, robot)")
+    parser.add_argument("--voice-guide", help="Voice guide system instructions for audio modality")
     args = parser.parse_args()
 
     content = ""
@@ -93,8 +155,6 @@ async def amain():
         sys.exit(1)
 
     print(f"Synthesizing with Voice: {args.voice}, Pitch: {args.pitch}, Rate: {args.rate}, Effect: {args.effect}")
-    
-    import re
     
     # 1. Determine voice engine
     openai_voices = ["onyx", "alloy", "echo", "fable", "nova", "shimmer"]
@@ -124,38 +184,91 @@ async def amain():
         import urllib.request
         import json
         
-        url = "https://api.openai.com/v1/audio/speech"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": "gpt-4o-mini-tts",
-            "input": content,
-            "voice": args.voice.lower()
-        }
-        
-        req = urllib.request.Request(
-            url, 
-            data=json.dumps(payload).encode("utf-8"), 
-            headers=headers, 
-            method="POST"
-        )
-        
-        try:
-            print(f"Calling OpenAI TTS API for voice '{args.voice}'...")
-            with urllib.request.urlopen(req) as response:
-                with open(temp_raw, "wb") as f:
-                    f.write(response.read())
-        except Exception as e:
-            print(f"Error calling OpenAI TTS API: {e}", file=sys.stderr)
-            sys.exit(1)
+        if args.voice_guide:
+            import base64
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "gpt-audio-mini",
+                "modalities": ["text", "audio"],
+                "audio": {
+                    "voice": args.voice.lower(),
+                    "format": "mp3"
+                },
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": args.voice_guide
+                    },
+                    {
+                        "role": "user",
+                        "content": content
+                    }
+                ]
+            }
+            
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode("utf-8"), 
+                headers=headers, 
+                method="POST"
+            )
+            
+            try:
+                print(f"Calling OpenAI Chat Completions Audio API for voice '{args.voice}' with voice guide...")
+                with urllib.request.urlopen(req) as response:
+                    resp_data = json.loads(response.read().decode("utf-8"))
+                    if "choices" in resp_data and len(resp_data["choices"]) > 0:
+                        audio_data = resp_data["choices"][0]["message"]["audio"]["data"]
+                        with open(temp_raw, "wb") as f:
+                            f.write(base64.b64decode(audio_data))
+                    else:
+                        print(f"Error: OpenAI response did not contain audio data: {resp_data}", file=sys.stderr)
+                        sys.exit(1)
+            except Exception as e:
+                if hasattr(e, "read"):
+                    try:
+                        print(f"Response body: {e.read().decode('utf-8')}", file=sys.stderr)
+                    except Exception:
+                        pass
+                print(f"Error calling OpenAI Chat Completions Audio API: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            url = "https://api.openai.com/v1/audio/speech"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "gpt-4o-mini-tts",
+                "input": content,
+                "voice": args.voice.lower()
+            }
+            
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode("utf-8"), 
+                headers=headers, 
+                method="POST"
+            )
+            
+            try:
+                print(f"Calling OpenAI TTS API for voice '{args.voice}'...")
+                with urllib.request.urlopen(req) as response:
+                    with open(temp_raw, "wb") as f:
+                        f.write(response.read())
+            except Exception as e:
+                print(f"Error calling OpenAI TTS API: {e}", file=sys.stderr)
+                sys.exit(1)
 
     elif is_google:
         # Google Cloud Premium TTS Generation
         api_key = get_google_api_key()
         if not api_key:
-            print("Error: GOOGLE_API_KEY is not set in environment or .env.local", file=sys.stderr)
+            print("Error: GOOGLE_PAID_API_KEY is not set in environment or .env.local", file=sys.stderr)
             sys.exit(1)
             
         import urllib.request
@@ -181,9 +294,25 @@ async def amain():
         if len(parts) >= 2:
             lang_code = f"{parts[0]}-{parts[1]}"
                 
+        # SSML formatting
+        boosted_pitch = "+12Hz"
+        pitch_match = re.match(r'^([+-]?\d+)(Hz|%)$', args.pitch)
+        if pitch_match:
+            val = int(pitch_match.group(1))
+            unit = pitch_match.group(2)
+            if unit == 'Hz':
+                boosted_val = val + 15
+                boosted_pitch = f"{'+' if boosted_val >= 0 else ''}{boosted_val}Hz"
+            else:
+                boosted_val = val + 22
+                boosted_pitch = f"{'+' if boosted_val >= 0 else ''}{boosted_val}%"
+                
+        body_content = preprocess_content_to_ssml_body(content, boosted_pitch)
+        gcp_ssml = f"<speak>{body_content}</speak>"
+        
         payload = {
             "input": {
-                "text": content
+                "ssml": gcp_ssml
             },
             "voice": {
                 "languageCode": lang_code,
@@ -227,7 +356,7 @@ async def amain():
         )
         
         try:
-            print(f"Calling Google Cloud TTS API for voice '{gcp_voice_name}' (Rate: {rate_val}, Pitch semitones: {pitch_semitones})...")
+            print(f"Calling Google Cloud TTS API for voice '{gcp_voice_name}' with SSML (Rate: {rate_val}, Pitch semitones: {pitch_semitones})...")
             with urllib.request.urlopen(req) as response:
                 resp_data = json.loads(response.read().decode("utf-8"))
                 if "audioContent" in resp_data:
@@ -242,8 +371,7 @@ async def amain():
             sys.exit(1)
             
     else:
-        # Standard Microsoft Edge TTS Generation
-        # Calculate boosted pitch for question sentences
+        # Standard Microsoft Edge TTS Generation using SSML
         boosted_pitch = "+12Hz"
         pitch_match = re.match(r'^([+-]?\d+)(Hz|%)$', args.pitch)
         if pitch_match:
@@ -255,93 +383,28 @@ async def amain():
             else:
                 boosted_val = val + 22
                 boosted_pitch = f"{'+' if boosted_val >= 0 else ''}{boosted_val}%"
-
-        # Split text into sentences using sentence punctuation (. ! ? \n)
-        parts = re.split(r'([.!?\n])', content)
-        sentences = []
-        temp = ""
-        for part in parts:
-            if not part:
-                continue
-            temp += part
-            if part in ('.', '!', '?', '\n'):
-                sentences.append(temp)
-                temp = ""
-        if temp.strip():
-            sentences.append(temp)
-
-        # Group consecutive normal sentences together, and keep question sentences separate
-        chunks = []
-        current_chunk = []
-
-        for s in sentences:
-            is_question = s.strip().endswith('?')
-            if is_question:
-                if current_chunk:
-                    chunks.append({
-                        'text': "".join(current_chunk),
-                        'is_question': False
-                    })
-                    current_chunk = []
-                chunks.append({
-                    'text': s,
-                    'is_question': True
-                })
-            else:
-                current_chunk.append(s)
-
-        if current_chunk:
-            chunks.append({
-                'text': "".join(current_chunk),
-                'is_question': False
-            })
-
-        # Filter out empty chunks
-        chunks = [c for c in chunks if c['text'].strip()]
-        if not chunks:
-            print("Error: No valid text chunks to synthesize", file=sys.stderr)
-            sys.exit(1)
-
-        if len(chunks) == 1:
-            # Optimization: Only 1 chunk, synthesize directly without split/concat
-            pitch_to_use = boosted_pitch if chunks[0]['is_question'] else args.pitch
-            communicate = edge_tts.Communicate(
-                text=chunks[0]['text'],
-                voice=args.voice,
-                pitch=pitch_to_use,
-                rate=args.rate
-            )
+                
+        body_content = preprocess_content_to_ssml_body(content, boosted_pitch)
+        
+        ssml = (
+            "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>"
+            f"<voice name='{args.voice}'>"
+            f"<prosody pitch='{args.pitch}' rate='{args.rate}'>"
+            f"{body_content}"
+            f"</prosody>"
+            f"</voice>"
+            "</speak>"
+        )
+        
+        print("Generated Custom Edge TTS SSML...")
+        communicate = edge_tts.Communicate(text="dummy", voice=args.voice, pitch=args.pitch, rate=args.rate)
+        communicate.texts = [ssml]
+        
+        try:
             await communicate.save(temp_raw)
-        else:
-            # Multiple chunks: synthesize in parallel with semaphore, then concat bytes in memory
-            sem = asyncio.Semaphore(5)
-            async def get_audio_bytes(chunk_item):
-                async with sem:
-                    pitch_to_use = boosted_pitch if chunk_item['is_question'] else args.pitch
-                    communicate = edge_tts.Communicate(
-                        text=chunk_item['text'],
-                        voice=args.voice,
-                        pitch=pitch_to_use,
-                        rate=args.rate
-                    )
-                    data = bytearray()
-                    async for message in communicate.stream():
-                        if message["type"] == "audio":
-                            data.extend(message["data"])
-                    return data
-
-            # Run all synthesis tasks in parallel in memory
-            tasks = [get_audio_bytes(c) for c in chunks]
-            results = await asyncio.gather(*tasks)
-
-            # Concatenate all MP3 byte data
-            combined_data = bytearray()
-            for r in results:
-                combined_data.extend(r)
-
-            # Write the combined data to output file
-            with open(temp_raw, "wb") as f:
-                f.write(combined_data)
+        except Exception as e:
+            print(f"Error calling Edge TTS: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if has_filters:
         import subprocess
@@ -386,12 +449,25 @@ async def amain():
         elif args.effect == "robot":
             filters.append("flanger=delay=10:depth=0.9:regen=70")
             
+        # Check if local ffmpeg.exe exists in scripts/ or root directory
+        ffmpeg_bin = "ffmpeg"
+        local_paths = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg.exe"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ffmpeg.exe"),
+            os.path.join(os.getcwd(), "ffmpeg.exe"),
+            os.path.join(os.getcwd(), "bin", "ffmpeg.exe"),
+        ]
+        for p in local_paths:
+            if os.path.exists(p):
+                ffmpeg_bin = p
+                break
+
         if filters:
             filter_str = ",".join(filters)
-            cmd = ["ffmpeg", "-y", "-i", temp_raw, "-af", filter_str, final_output]
+            cmd = [ffmpeg_bin, "-y", "-i", temp_raw, "-af", filter_str, final_output]
             
             try:
-                print(f"Applying voice effects chain ({filter_str}) via ffmpeg...")
+                print(f"Applying voice effects chain ({filter_str}) via ffmpeg ({ffmpeg_bin})...")
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if os.path.exists(temp_raw):
                     os.remove(temp_raw)

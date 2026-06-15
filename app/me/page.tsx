@@ -445,6 +445,7 @@ export default function MePage() {
 
   const [changePwVal, setChangePwVal] = useState("");
   const [changePwConfirmVal, setChangePwConfirmVal] = useState("");
+  const [currentPwVal, setCurrentPwVal] = useState("");
   const [changePwBusy, setChangePwBusy] = useState(false);
   const [changePwCapsOn, setChangePwCapsOn] = useState(false);
 
@@ -826,6 +827,7 @@ export default function MePage() {
       setIsPasswordModalOpen(false);
       setChangePwVal("");
       setChangePwConfirmVal("");
+      setCurrentPwVal("");
     } catch (err: any) {
       alert(`비밀번호 변경 실패: ${err.message}`);
     } finally {
@@ -1534,7 +1536,7 @@ export default function MePage() {
         <div className="me-header">
           <button
             className="settings-btn"
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => router.push("/me?settings=1")}
           >
             <GearIcon />
           </button>
@@ -1713,7 +1715,7 @@ export default function MePage() {
           <div className="settings-header">
             <button
               className="settings-back-btn"
-              onClick={() => setIsSettingsOpen(false)}
+              onClick={() => router.replace("/me")}
             >
               <BackIcon />
             </button>
@@ -1791,8 +1793,11 @@ export default function MePage() {
                 <button
                   className="settings-row"
                   onClick={() => {
-                    setIsSettingsOpen(false);
-                    router.push("/me/membership");
+                    if (subscribedPlan) {
+                      router.push("/me/membership");
+                    } else {
+                      router.push("/membership");
+                    }
                   }}
                 >
                   <span>구독 및 멤버십 설정</span>
@@ -1912,7 +1917,6 @@ export default function MePage() {
                 <button
                   className="settings-row"
                   onClick={() => {
-                    setIsSettingsOpen(false);
                     router.push("/terms");
                   }}
                 >
@@ -1928,7 +1932,6 @@ export default function MePage() {
                 <button
                   className="settings-row"
                   onClick={() => {
-                    setIsSettingsOpen(false);
                     router.push("/me/withdraw");
                   }}
                 >
@@ -2346,6 +2349,23 @@ export default function MePage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <input
+                value={currentPwVal}
+                onChange={(e) => setCurrentPwVal(e.target.value)}
+                placeholder="현재 비밀번호"
+                type="password"
+                disabled={changePwBusy}
+                style={{
+                  padding: "14px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  outline: "none",
+                  fontSize: 15,
+                }}
+              />
+
+              <input
                 value={changePwVal}
                 onChange={(e) => setChangePwVal(e.target.value)}
                 onKeyDown={(e) => {
@@ -2503,6 +2523,7 @@ export default function MePage() {
                   setIsPasswordModalOpen(false);
                   setChangePwVal("");
                   setChangePwConfirmVal("");
+                  setCurrentPwVal("");
                 }}
                 disabled={changePwBusy}
                 style={{
