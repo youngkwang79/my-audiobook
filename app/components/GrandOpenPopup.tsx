@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function GrandOpenPopup() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen1, setIsOpen1] = useState(false);
+  const [isOpen2, setIsOpen2] = useState(false);
   const [hasReceivedWelcome, setHasReceivedWelcome] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -30,18 +31,20 @@ export default function GrandOpenPopup() {
           }
         } catch (e) {}
       }
-      setIsOpen(true);
+      setIsOpen1(true);
+      setIsOpen2(true);
     }
     init();
   }, []);
 
-  const handleClose = () => {
-    setIsOpen(false);
-  };
+  const handleClose1 = () => setIsOpen1(false);
+  const handleClose2 = () => setIsOpen2(false);
 
   const handleHideToday = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       localStorage.setItem("hideGrandOpenPopup", new Date().toDateString());
+      setIsOpen1(false);
+      setIsOpen2(false);
     } else {
       localStorage.removeItem("hideGrandOpenPopup");
     }
@@ -75,67 +78,90 @@ export default function GrandOpenPopup() {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen1 && !isOpen2) return null;
 
   return (
     <div className="popup-overlay">
-      <div className="popup-content">
-        <h2 className="popup-title">
-          <span className="title-sub">무림북 강호 출두</span>
-          <br />그랜드 오픈 특별 이벤트!
-        </h2>
-        
-        <div className="benefits-list">
-          <div className="benefit-item">
-            <div className="b-num">1</div>
-            <div className="b-desc">
-              <strong>가입 축하 선물 3500 코인!</strong>
-              <p>모든 가입자에게 5만원 상당의 코인 지급!</p>
-              {!hasReceivedWelcome ? (
-                <button className="claim-btn" onClick={handleClaimWelcomeGift} disabled={loading}>
-                  {loading ? "지급중..." : "지금 받기"}
-                </button>
-              ) : (
-                <button className="claim-btn disabled" disabled>지급 완료</button>
-              )}
+      {isOpen2 && (
+        <div className="popup-content popup2">
+          <h2 className="popup-title">
+            <span className="title-sub">무림북 강호 출두</span>
+            <br />창작 소설 공모!
+          </h2>
+          
+          <div className="benefits-list">
+            <div className="benefit-item" style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <img src="/novel_contest.jpg" alt="공모전 이미지" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px', display: 'none' }} onError={(e) => e.currentTarget.style.display = 'none'} />
+              <div className="b-desc" style={{ width: '100%' }}>
+                <strong style={{ fontSize: '18px', marginBottom: '12px' }}>무림북 창작 소설 공모!</strong>
+                <p style={{ fontSize: '15px', color: '#fff', marginBottom: '10px' }}>sun_writer@murimbook.com 으로<br/>줄거리를 보내주세요.</p>
+                <p style={{ fontSize: '15px', color: '#ffd700', marginBottom: '16px' }}>분량에 따라 코인 차등 지급!<br/><span style={{color:"#ff2a5f", fontWeight:"bold", fontSize: '18px'}}>(최대 15,000 코인)</span></p>
+                <span style={{fontSize:"12px", color:"#888"}}>※ 소설 제출 후 심사를 통해 결과 안내</span>
+              </div>
             </div>
           </div>
 
-          <div className="benefit-item">
-            <div className="b-num">2</div>
-            <div className="b-desc">
-              <strong>멤버십 오픈 특가 파격 할인!</strong>
-              <p>연간 멤버십 70% 할인! (가입 후 7일 한정)<br/>주간 멤버십 첫 한 달간 주당 1000원!</p>
-              <button className="go-btn" onClick={() => { setIsOpen(false); window.location.href='/membership'; }}>멤버십 보러가기</button>
-            </div>
-          </div>
-
-          <div className="benefit-item">
-            <div className="b-num">3</div>
-            <div className="b-desc">
-              <strong>무림북 삼행시 이벤트!</strong>
-              <p>게시판에서 삼행시를 지어주세요.<br/>1등 3,000코인 등 푸짐한 경품이!</p>
-              <button className="go-btn" onClick={() => { setIsOpen(false); window.location.href='/community?category=무림북 삼행시'; }}>참여하기</button>
-            </div>
-          </div>
-
-          <div className="benefit-item">
-            <div className="b-num">4</div>
-            <div className="b-desc">
-              <strong>무림북 창작 소설 공모!</strong>
-              <p>sun_writer@murimbook.com 으로 줄거리를 보내주세요.<br/>분량에 따라 코인 차등 지급! <span style={{color:"#ff2a5f", fontWeight:"bold"}}>(최대 15,000 코인)</span><br/><span style={{fontSize:"11px", color:"#888"}}>※ 소설 제출 후 심사를 통해 결과 안내</span></p>
-            </div>
+          <div className="popup-footer">
+            <label className="hide-today">
+              <input type="checkbox" onChange={handleHideToday} />
+              <span>오늘은 그만보기</span>
+            </label>
+            <button className="close-btn" onClick={handleClose2}>닫기</button>
           </div>
         </div>
+      )}
 
-        <div className="popup-footer">
-          <label className="hide-today">
-            <input type="checkbox" onChange={handleHideToday} />
-            <span>오늘은 그만보기</span>
-          </label>
-          <button className="close-btn" onClick={handleClose}>닫기</button>
+      {isOpen1 && (
+        <div className="popup-content popup1">
+          <h2 className="popup-title">
+            <span className="title-sub">무림북 강호 출두</span>
+            <br />그랜드 오픈 특별 이벤트!
+          </h2>
+          
+          <div className="benefits-list">
+            <div className="benefit-item">
+              <div className="b-num">1</div>
+              <div className="b-desc">
+                <strong>가입 축하 선물 3500 코인!</strong>
+                <p>모든 가입자에게 5만원 상당의 코인 지급!</p>
+                {!hasReceivedWelcome ? (
+                  <button className="claim-btn" onClick={handleClaimWelcomeGift} disabled={loading}>
+                    {loading ? "지급중..." : "지금 받기"}
+                  </button>
+                ) : (
+                  <button className="claim-btn disabled" disabled>지급 완료</button>
+                )}
+              </div>
+            </div>
+
+            <div className="benefit-item">
+              <div className="b-num">2</div>
+              <div className="b-desc">
+                <strong>멤버십 오픈 특가 파격 할인!</strong>
+                <p>연간 멤버십 70% 할인! (가입 후 7일 한정)<br/>주간 멤버십 첫 한 달간 주당 1000원!</p>
+                <button className="go-btn" onClick={() => { setIsOpen1(false); setIsOpen2(false); window.location.href='/membership'; }}>멤버십 보러가기</button>
+              </div>
+            </div>
+
+            <div className="benefit-item">
+              <div className="b-num">3</div>
+              <div className="b-desc">
+                <strong>무림북 삼행시 이벤트!</strong>
+                <p>게시판에서 삼행시를 지어주세요.<br/>1등 3,000코인 등 푸짐한 경품이!</p>
+                <button className="go-btn" onClick={() => { setIsOpen1(false); setIsOpen2(false); window.location.href='/community?category=무림북 삼행시'; }}>참여하기</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="popup-footer">
+            <label className="hide-today">
+              <input type="checkbox" onChange={handleHideToday} />
+              <span>오늘은 그만보기</span>
+            </label>
+            <button className="close-btn" onClick={handleClose1}>닫기</button>
+          </div>
         </div>
-      </div>
+      )}
 
       <style jsx>{`
         .popup-overlay {
@@ -150,10 +176,11 @@ export default function GrandOpenPopup() {
           padding: 20px;
         }
         .popup-content {
+          position: absolute;
           background: linear-gradient(180deg, #1f1a18 0%, #111012 100%);
           border: 2px solid #b38728;
           border-radius: 12px;
-          width: 100%;
+          width: calc(100% - 40px);
           max-width: 420px;
           max-height: 85vh;
           display: flex;
@@ -163,6 +190,26 @@ export default function GrandOpenPopup() {
           box-shadow: 0 0 40px rgba(179, 135, 40, 0.4), inset 0 0 20px rgba(0,0,0,0.8);
           animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           font-family: 'Noto Serif KR', serif;
+        }
+        .popup1 {
+          z-index: 2;
+        }
+        .popup2 {
+          z-index: 1;
+          transform: translateY(-20px) scale(0.95);
+          opacity: 0.8;
+          filter: brightness(0.7);
+          transition: all 0.3s ease;
+        }
+        /* When popup1 is closed, bring popup2 forward */
+        .popup-overlay:has(.popup1) .popup2 {
+          transform: translateY(-20px) scale(0.95);
+        }
+        .popup-overlay:not(:has(.popup1)) .popup2 {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+          filter: brightness(1);
+          z-index: 3;
         }
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(20px); }
