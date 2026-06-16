@@ -1,3 +1,14 @@
 *.exe
 ffmpeg.exe
 scripts/ffmpeg.exe
+_temp_plan_*
+무림북_*
+무명 무협소설
+무명지협
+파이선 소설 이어쓰기
+*.mp3
+*.zip
+*.patch
+*.log
+*.txt
+__pycache__

@@ -3,6 +3,11 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "functions": {
+    "app/api/**/*": {
+      "excludeFiles": "{ffmpeg.exe,*.exe,*.py,*.mp3,*.zip,_temp_plan_*/**/*,무림북_*/**/*,무명지협/**/*,scripts/**/*,node_modules/{@next/swc-win32-x64-msvc}/**/*}"
+    }
+  },
   "regions": [
     "icn1"
   ],
