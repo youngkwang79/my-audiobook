@@ -33,7 +33,6 @@ def get_api_key(key_name):
 
 GOOGLE_API_KEY = get_api_key("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
-    # Fallback just in case
     GOOGLE_API_KEY = get_api_key("GOOGLE_PAID_API_KEY")
 
 if not GOOGLE_API_KEY:
@@ -41,4 +40,4 @@ if not GOOGLE_API_KEY:
     print("해결방법: .env.local 파일에 GOOGLE_API_KEY='본인의_구글_유료_API_키' 형태로 등록해 주세요.", file=sys.stderr)
     sys.exit(1)
 
-GOOGLE_FREE_API_KEY = get_api_key("GOOGLE_FREE_API_KEY")
+GOOGLE_FREE_API_KEY = None

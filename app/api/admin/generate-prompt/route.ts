@@ -21,62 +21,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "title_required" }, { status: 400 });
     }
 
-    // 2. Google Gemini 2.0 API 호출하여 썸네일용 프롬프트 생성
-    const apiKey = process.env.GOOGLE_PAID_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "missing_google_paid_api_key" }, { status: 500 });
+    // 2. GitHub Models API 호출하여 썸네일용 프롬프트 생성
+    const githubKey = process.env.GitHub_API_KEY || process.env.GITHUB_API_KEY;
+    if (!githubKey) {
+      return NextResponse.json({ error: "missing_github_api_key" }, { status: 500 });
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const githubUrl = "https://models.inference.ai.azure.com/chat/completions";
     
-    const instructions = `You are an expert AI art prompt engineer for Google Imagen 4.
-Given the Title and Synopsis of an East Asian martial arts / fantasy web novel, analyze the themes, characters, Robes/weapons, and mood to generate a highly detailed and visually descriptive English image prompt for Google Imagen 4.
-The prompt must be in English and specify visual details (clothing, weapons, background, lighting, artistic style).
+    const instructions = `You are a world-class AI art prompt engineer for Google Imagen 4, specializing in premium web novel cover illustrations.
+Given the Title and Synopsis of an East Asian martial arts / fantasy web novel, analyze the themes, characters, weapons, and mood to generate a highly detailed and visually stunning English image prompt.
 
-CRITICAL COMPOSITION:
-1. The composition MUST be character-centric, styled like a professional movie poster focusing intensely on the main character.
-2. Place a single main character (face/upper body close-up, or medium shot) as the absolute central focus of the image, dominating the composition with highly detailed features.
-3. The background should be atmospheric (e.g. dramatic sky, mountains, energy effects) but secondary to the prominent central character.
-4. Avoid wide landscape-focused shots where the character is small. The character must be the main, large focus of the image.
+To guarantee a masterpiece-level illustration, your prompt MUST include:
+1. CORE SUBJECT: A detailed description of the main character (e.g., intense gaze, sharp facial features, determined expression, dynamic action pose). Specify premium traditional East Asian martial arts robes (e.g., detailed silk textures, wind-blown folds, rich HSL colors).
+2. WEAPON & EFFECTS: If they wield a weapon, describe it in detail (e.g., a glowing sword or saber with sharp light reflections). Add glowing energy effects (e.g., vibrant energy arcs, swirling dust particles, floating embers, blue or red aura).
+3. LIGHTING & ATMOSPHERE: Dramatic cinematic lighting (e.g., dramatic side lighting, chiaroscuro, volumetric fog, god rays filtering through shadows).
+4. ART STYLE: Specify "A premium fantasy digital painting, high-end web novel cover art, cinematic masterpiece, trending on ArtStation, sharp focus, incredibly detailed, octane render, 8k resolution."
+5. CRITICAL COMPOSITION: The composition must be character-centric, styled like a professional movie poster focusing intensely on the main character (medium close-up or upper body shot dominating the center). The background (mountains, dramatic clouds) should be atmospheric but secondary.
+6. TEXTLESS CONSTRAINT: The prompt must explicitly request a clean, textless illustration with zero text, zero letters, zero signatures, zero words, and blank background elements.
 
-CRITICAL TEXT RULE:
-The generated prompt must explicitly request a clean, textless, blank illustration. It must describe a pure character portrait without mentioning any title text, book covers, letters, signatures, characters, or words. Keep the prompt completely focused on visual imagery (e.g., "completely textless, clean character portrait, zero lettering, empty background, pure visual illustration").
-
-The output MUST be only the raw prompt itself. Do not include any quotes, markdown formatting, or introductory phrases.
+The output MUST be only the raw prompt itself in English. Do not include any quotes, markdown formatting, or introductory phrases.
 
 Novel Title: ${title}
 Novel Synopsis: ${description || "N/A"}`;
 
-    const geminiRes = await fetch(geminiUrl, {
+    const githubRes = await fetch(githubUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${githubKey}`,
       },
       body: JSON.stringify({
-        contents: [
+        model: "gpt-4o-mini",
+        messages: [
           {
-            parts: [
-              {
-                text: instructions,
-              },
-            ],
+            role: "user",
+            content: instructions,
           },
         ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 250,
-        },
+        temperature: 0.7,
+        max_tokens: 250,
       }),
     });
 
-    if (!geminiRes.ok) {
-      const errData = await geminiRes.json().catch(() => ({}));
-      console.error("Gemini prompt generation error:", errData);
-      return NextResponse.json({ error: "gemini_error", details: errData }, { status: 500 });
+    if (!githubRes.ok) {
+      const errData = await githubRes.text();
+      console.error("GitHub Models prompt generation error:", errData);
+      return NextResponse.json({ error: "github_models_error", details: errData }, { status: 500 });
     }
 
-    const data = await geminiRes.json();
-    const generatedPrompt = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+    const data = await githubRes.json();
+    const generatedPrompt = data.choices?.[0]?.message?.content?.trim() || "";
 
     if (!generatedPrompt) {
       return NextResponse.json({ error: "empty_generation" }, { status: 500 });

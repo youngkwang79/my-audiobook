@@ -52,31 +52,38 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
       }
 
-      // 멤버십 확인
-      const { data: sub } = await supabaseAdmin
-        .from("subscriptions")
-        .select("expires_at")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "admin@murimbook.com";
+      const isAdmin = user.app_metadata?.role === "admin" || user.user_metadata?.role === "admin" || hasAdminEmail;
 
-      const isSubscribed =
-        sub?.expires_at && new Date(sub.expires_at).getTime() > Date.now();
-
-      if (isSubscribed) {
+      if (isAdmin) {
         isAuthorized = true;
       } else {
-        // 단건 소장권 확인
-        const { data: ent } = await supabaseAdmin
-          .from("entitlements")
-          .select("unlocked_until_part")
+        // 멤버십 확인
+        const { data: sub } = await supabaseAdmin
+          .from("subscriptions")
+          .select("expires_at")
           .eq("user_id", user.id)
-          .eq("work_id", workId)
-          .eq("episode_id", String(episodeId))
           .maybeSingle();
 
-        const unlockedUntil = ent?.unlocked_until_part || FREE_PARTS;
-        if (part <= unlockedUntil) {
+        const isSubscribed =
+          sub?.expires_at && new Date(sub.expires_at).getTime() > Date.now();
+
+        if (isSubscribed) {
           isAuthorized = true;
+        } else {
+          // 단건 소장권 확인
+          const { data: ent } = await supabaseAdmin
+            .from("entitlements")
+            .select("unlocked_until_part")
+            .eq("user_id", user.id)
+            .eq("work_id", workId)
+            .eq("episode_id", String(episodeId))
+            .maybeSingle();
+
+          const unlockedUntil = ent?.unlocked_until_part || FREE_PARTS;
+          if (part <= unlockedUntil) {
+            isAuthorized = true;
+          }
         }
       }
     }

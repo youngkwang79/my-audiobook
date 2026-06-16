@@ -46,6 +46,23 @@ export async function POST(req: Request) {
 
     fs.renameSync(tempDirPath, finalDirPath);
 
+    // Update novel_title in the plan JSON to match the clean final folder name
+    const planPath = path.join(finalDirPath, "00_🚨급전개방지_작품기획안🚨.json");
+    if (fs.existsSync(planPath)) {
+      try {
+        const planContent = fs.readFileSync(planPath, "utf8");
+        const planObj = JSON.parse(planContent);
+        
+        const folderName = path.basename(finalDirPath);
+        const cleanTitle = folderName.replace(/^(무림북_대서사_|무림북_|무명_)/, "");
+        planObj.novel_title = cleanTitle;
+        
+        fs.writeFileSync(planPath, JSON.stringify(planObj, null, 2), "utf8");
+      } catch (jsonErr) {
+        console.error("Failed to update novel_title in plan JSON:", jsonErr);
+      }
+    }
+
     return NextResponse.json({ success: true, finalDir, finalDirPath });
   } catch (error: any) {
     console.error("Approve Plan API Error:", error);

@@ -412,11 +412,11 @@ export async function POST(req: Request) {
             sendLog("info", "[5단계] 1화 감지: 소설 표지 일러스트 생성을 시작합니다.");
             const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
             
-            // Gemini로 프롬프트 빌드
-            sendLog("info", "Google Gemini를 사용하여 Imagen 4.0 전용 프롬프트를 작성 중...");
-            const apiKey = process.env.GOOGLE_PAID_API_KEY;
-            if (!apiKey) {
-              throw new Error("소설 표지 프롬프트 생성을 위한 GOOGLE_PAID_API_KEY가 유실되었습니다.");
+            // GitHub Models로 프롬프트 빌드
+            sendLog("info", "GitHub Models (GPT-4o-mini)를 사용하여 Imagen 4.0 전용 프롬프트를 작성 중...");
+            const githubKey = process.env.GitHub_API_KEY || process.env.GITHUB_API_KEY;
+            if (!githubKey) {
+              throw new Error("소설 표지 프롬프트 생성을 위한 GitHub_API_KEY가 유실되었습니다.");
             }
             
             let synopsisText = "";
@@ -430,47 +430,52 @@ export async function POST(req: Request) {
               }
             }
 
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const instructions = `You are an expert AI art prompt engineer for Google Imagen 4.
-Given the Title and Synopsis of an East Asian martial arts / fantasy web novel, analyze the themes, characters, Robes/weapons, and mood to generate a highly detailed and visually descriptive English image prompt for Google Imagen 4.
-The prompt must be in English and specify visual details (clothing, weapons, background, lighting, artistic style).
+            const instructions = `You are a world-class AI art prompt engineer for Google Imagen 4, specializing in premium web novel cover illustrations.
+Given the Title and Synopsis of an East Asian martial arts / fantasy web novel, analyze the themes, characters, weapons, and mood to generate a highly detailed and visually stunning English image prompt.
 
-CRITICAL COMPOSITION:
-1. The composition MUST be character-centric, styled like a professional movie poster focusing intensely on the main character.
-2. Place a single main character (face/upper body close-up, or medium shot) as the absolute central focus of the image, dominating the composition with highly detailed features.
-3. The background should be atmospheric (e.g. dramatic sky, mountains, energy effects) but secondary to the prominent central character.
-4. Avoid wide landscape-focused shots where the character is small. The character must be the main, large focus of the image.
+To guarantee a masterpiece-level illustration, your prompt MUST include:
+1. CORE SUBJECT: A detailed description of the main character (e.g., intense gaze, sharp facial features, determined expression, dynamic action pose). Specify premium traditional East Asian martial arts robes (e.g., detailed silk textures, wind-blown folds, rich HSL colors).
+2. WEAPON & EFFECTS: If they wield a weapon, describe it in detail (e.g., a glowing sword or saber with sharp light reflections). Add glowing energy effects (e.g., vibrant energy arcs, swirling dust particles, floating embers, blue or red aura).
+3. LIGHTING & ATMOSPHERE: Dramatic cinematic lighting (e.g., dramatic side lighting, chiaroscuro, volumetric fog, god rays filtering through shadows).
+4. ART STYLE: Specify "A premium fantasy digital painting, high-end web novel cover art, cinematic masterpiece, trending on ArtStation, sharp focus, incredibly detailed, octane render, 8k resolution."
+5. CRITICAL COMPOSITION: The composition must be character-centric, styled like a professional movie poster focusing intensely on the main character (medium close-up or upper body shot dominating the center). The background (mountains, dramatic clouds) should be atmospheric but secondary.
+6. TEXTLESS CONSTRAINT: The prompt must explicitly request a clean, textless illustration with zero text, zero letters, zero signatures, zero words, and blank background elements.
 
-CRITICAL TEXT RULE:
-The generated prompt must explicitly request a clean, textless, blank illustration. It must describe a pure character portrait without mentioning any title text, book covers, letters, signatures, characters, or words. Keep the prompt completely focused on visual imagery (e.g., "completely textless, clean character portrait, zero lettering, empty background, pure visual illustration").
-
-The output MUST be only the raw prompt itself. Do not include any quotes, markdown formatting, or introductory phrases.
+The output MUST be only the raw prompt itself in English. Do not include any quotes, markdown formatting, or introductory phrases.
 
 Novel Title: ${genResult.novel_title}
 Novel Synopsis: ${synopsisText || "N/A"}`;
 
-            const geminiRes = await fetch(geminiUrl, {
+            const githubUrl = "https://models.inference.ai.azure.com/chat/completions";
+            const githubRes = await fetch(githubUrl, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${githubKey}`,
+              },
               body: JSON.stringify({
-                contents: [{ parts: [{ text: instructions }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 250 }
+                model: "gpt-4o-mini",
+                messages: [
+                  { role: "user", content: instructions }
+                ],
+                temperature: 0.7,
+                max_tokens: 250
               })
             });
 
-            if (!geminiRes.ok) {
-              throw new Error(`Gemini 프롬프트 생성 실패: ${await geminiRes.text()}`);
+            if (!githubRes.ok) {
+              throw new Error(`GitHub Models 프롬프트 생성 실패: ${await githubRes.text()}`);
             }
 
-            const geminiData = await geminiRes.json();
-            const generatedPrompt = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+            const githubData = await githubRes.json();
+            const generatedPrompt = githubData.choices?.[0]?.message?.content?.trim() || "";
             sendLog("info", `프롬프트 생성 완료: "${generatedPrompt}"`);
 
             // Imagen 4.0으로 이미지 바이트 생성 (유료키 최우선 적용)
             sendLog("info", "Google Imagen 4.0으로 표지 이미지 렌더링 중...");
-            const paidApiKey = process.env.GOOGLE_PAID_API_KEY;
+            const paidApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_PAID_API_KEY;
             if (!paidApiKey) {
-              throw new Error("Imagen 4.0 이미지 생성을 위한 GOOGLE_PAID_API_KEY가 유실되었습니다.");
+              throw new Error("Imagen 4.0 이미지 생성을 위한 GOOGLE_API_KEY가 유실되었습니다.");
             }
             const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${paidApiKey}`;
             const enhancePrompt = `${generatedPrompt}, character-centric movie poster composition, close-up portrait of main character, clean graphic cover art, completely textless, zero text, zero letters, zero signatures, zero words, blank background, no font lettering, pure character portrait illustration, high quality digital painting, 4k`;

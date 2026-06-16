@@ -65,6 +65,13 @@ export default function Home() {
   const pathname = usePathname();
   const { user, session, loading } = useAuth();
 
+  const isAdmin = !!user && (
+    user.email === "youngkwang79@gmail.com" || 
+    user.email === "admin@murimbook.com" || 
+    user.app_metadata?.role === "admin" || 
+    user.user_metadata?.role === "admin"
+  );
+
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loginHover, setLoginHover] = useState(false);
 
@@ -272,7 +279,7 @@ export default function Home() {
             
             // Find the first published episode ID
             const publishedEpisodes = (w.episodes || [])
-              .filter((e: any) => new Date(e.release_date).getTime() <= Date.now())
+              .filter((e: any) => isAdmin || new Date(e.release_date).getTime() <= Date.now())
               .sort((a: any, b: any) => {
                 const aNum = parseFloat(a.id);
                 const bNum = parseFloat(b.id);
@@ -284,7 +291,7 @@ export default function Home() {
             const firstEpisodeId = publishedEpisodes[0]?.id || null;
 
             // Determine if the work itself is published/active dynamically
-            const isPublished = w.status !== "준비중" && w.status !== "공개예정" && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0);
+            const isPublished = isAdmin || (w.status !== "준비중" && w.status !== "공개예정" && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0));
 
             // Determine scheduled release date for upcoming section
             let scheduledReleaseDate = null;
@@ -328,7 +335,7 @@ export default function Home() {
       }
     };
     fetchWorks();
-  }, []);
+  }, [isAdmin]);
 
   const [shouldPulse, setShouldPulse] = useState(false);
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
@@ -459,8 +466,18 @@ export default function Home() {
 
   // 메인 그리드용 작품 (공개된 작품만)
   const mainGridWorks = useMemo(() => {
-    return filteredWorks.filter((w) => w.isPublished);
-  }, [filteredWorks]);
+      const ordered = filteredWorks.filter((w) => w.isPublished);
+      const bottomTitles = ["야장신검", "무명지협", "남궁의 잔혼", "하오의 비검"];
+      // Stable sort: keep original order, but push bottom titles to end
+      ordered.sort((a, b) => {
+        const aBottom = bottomTitles.includes(a.title);
+        const bBottom = bottomTitles.includes(b.title);
+        if (aBottom && !bBottom) return 1;
+        if (!aBottom && bBottom) return -1;
+        return 0; // preserve relative order otherwise
+      });
+      return ordered;
+    }, [filteredWorks]);
 
   // 공개 예정 섹션용 작품 (status === "공개예정")
   const comingSoonWorks = useMemo(() => {

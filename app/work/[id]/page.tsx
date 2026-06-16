@@ -47,6 +47,13 @@ export default function WorkDetailPage() {
     return parseInt(String(watchedEpisode).split("-")[0], 10) || 0;
   }, [watchedEpisode]);
 
+  const isAdmin = !!user && (
+    user.email === "youngkwang79@gmail.com" || 
+    user.email === "admin@murimbook.com" || 
+    user.app_metadata?.role === "admin" || 
+    user.user_metadata?.role === "admin"
+  );
+
   useEffect(() => {
     if (!workId) return;
     const fetchData = async () => {
@@ -80,13 +87,17 @@ export default function WorkDetailPage() {
           });
         }
 
-        // Fetch episodes (published only)
-        const { data: epData, error: epErr } = await supabase
+        // Fetch episodes (published only, or all if admin)
+        let query = supabase
           .from("episodes")
           .select("*")
-          .eq("work_id", workId)
-          .lte("release_date", new Date().toISOString())
-          .order("id", { ascending: true });
+          .eq("work_id", workId);
+
+        if (!isAdmin) {
+          query = query.lte("release_date", new Date().toISOString());
+        }
+
+        const { data: epData, error: epErr } = await query.order("id", { ascending: true });
 
         if (epErr) {
           console.error("Error fetching episodes:", epErr);
@@ -113,7 +124,7 @@ export default function WorkDetailPage() {
       }
     };
     fetchData();
-  }, [workId]);
+  }, [workId, isAdmin]);
 
   const DEFAULT_FREE_UNTIL = work?.freeEpisodes ?? 1;
   const total = episodes.length || work?.totalEpisodes || work?.episodeCount || 0;
@@ -344,7 +355,7 @@ export default function WorkDetailPage() {
         >
           {episodes.map((ep) => {
             const episodeNo = String(ep.id);
-            const isLocked = ep.locked;
+            const isLocked = isAdmin ? false : ep.locked;
             const href = `/episode/${work.id}/${episodeNo}?part=1&autoplay=1`;
             const epNum = parseInt(episodeNo.split("-")[0], 10) || 0;
             const isWatched = watchedEpisodeNum > 0 && epNum <= watchedEpisodeNum;

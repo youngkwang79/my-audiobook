@@ -135,7 +135,7 @@ function parseSegmentsFromSavedJson(saved: any): Segment[] {
 }
 
 export default function EpisodePage() {
-  const { session } = useAuth();
+  const { user, session } = useAuth();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -146,6 +146,13 @@ export default function EpisodePage() {
   const [work, setWork] = useState<any>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  const isAdmin = !!user && (
+    user.email === "youngkwang79@gmail.com" || 
+    user.email === "admin@murimbook.com" || 
+    user.app_metadata?.role === "admin" || 
+    user.user_metadata?.role === "admin"
+  );
 
   useEffect(() => {
     if (!workId) return;
@@ -180,13 +187,17 @@ export default function EpisodePage() {
           });
         }
 
-        // Fetch episodes (published only)
-        const { data: epData } = await supabase
+        // Fetch episodes (published only, or all if admin)
+        let query = supabase
           .from("episodes")
           .select("*")
-          .eq("work_id", workId)
-          .lte("release_date", new Date().toISOString())
-          .order("id", { ascending: true });
+          .eq("work_id", workId);
+
+        if (!isAdmin) {
+          query = query.lte("release_date", new Date().toISOString());
+        }
+
+        const { data: epData } = await query.order("id", { ascending: true });
 
         if (epData) {
           const sorted = epData.map((e: any) => ({
@@ -212,8 +223,7 @@ export default function EpisodePage() {
       }
     };
     fetchData();
-  }, [workId]);
-
+  }, [workId, isAdmin]);
   const currentEpisode = useMemo(
     () => episodes.find((ep) => String(ep.id) === episodeKey),
     [episodes, episodeKey]
@@ -499,6 +509,7 @@ export default function EpisodePage() {
 
   // 에피소드 자체 잠금 여부: episodes.locked=true이고 멤버십/코인해제 모두 아닌 경우
   const locked = useMemo(() => {
+    if (isAdmin) return false;                   // 관리자 무조건 열림
     if (entBusy) return false;                   // 로딩 중에는 잠금 판단 보류 (플래시 방지)
     if (isSubscribed) return false;              // 멤버십 회원 → 항상 열림
     if (work?.is_membership_only) return true;   // 멤버십 전용 작품 → 멤버십 없으면 무조건 잠김
@@ -506,7 +517,7 @@ export default function EpisodePage() {
     if (!currentEpisode?.locked) return false;   // 무료 에피소드
     if (episodeUnlocked) return false;           // 코인으로 이미 해제
     return true;
-  }, [entBusy, isSubscribed, work, currentEpisode, episodeUnlocked]);
+  }, [isAdmin, entBusy, isSubscribed, work, currentEpisode, episodeUnlocked]);
 
   useEffect(() => {
     if (locked) {
@@ -734,6 +745,7 @@ export default function EpisodePage() {
 
   // 순차 오픈 검증
   useEffect(() => {
+    if (isAdmin) return; // 관리자는 검사 패스
     if (loadingData || entBusy || isSubscribed) return;
     if (episodes.length === 0) return;
 
@@ -755,7 +767,7 @@ export default function EpisodePage() {
         }
       }
     }
-  }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, workId]);
+  }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, workId, isAdmin]);
 
   // locked 상태 감지 및 자동해제 / 팝업 제어
   useEffect(() => {
