@@ -177,8 +177,8 @@ async def amain():
     is_openai = args.voice.lower() in openai_voices
     is_google = args.voice.lower() in google_voices
 
-    is_openai_modified = is_openai and (args.pitch != "+0Hz" or args.rate != "+0%" or args.effect != "none")
-    has_filters = (args.effect and args.effect != "none") or is_openai_modified
+    is_pitch_rate_modified = (args.pitch != "+0Hz" or args.rate != "+0%")
+    has_filters = (args.effect and args.effect != "none") or is_pitch_rate_modified
 
     # Output targets
     final_output = args.output
@@ -322,7 +322,7 @@ async def amain():
                 boosted_val = val + 22
                 boosted_pitch = f"{'+' if boosted_val >= 0 else ''}{boosted_val}%"
                 
-        body_content = preprocess_content_to_ssml_body(content, boosted_pitch)
+        body_content = preprocess_content_to_ssml_body(content, "+0Hz")
         gcp_ssml = f"<speak>{body_content}</speak>"
         
         payload = {
@@ -338,30 +338,9 @@ async def amain():
             }
         }
         
-        # Rate mapping
-        rate_val = 1.0
-        rate_match = re.match(r'^([+-]?\d+)%$', args.rate)
-        if rate_match:
-            pct = int(rate_match.group(1))
-            rate_val = round(1.0 + (pct / 100.0), 2)
-            rate_val = max(0.25, min(4.0, rate_val))
-        payload["audioConfig"]["speakingRate"] = rate_val
+        payload["audioConfig"]["speakingRate"] = 1.0
         
-        # Pitch mapping
-        pitch_semitones = 0.0
-        pitch_match = re.match(r'^([+-]?\d+)Hz$', args.pitch)
-        if pitch_match:
-            hz = int(pitch_match.group(1))
-            pitch_semitones = round(hz / 8.0, 1)
-            pitch_semitones = max(-20.0, min(20.0, pitch_semitones))
-        elif args.pitch.endswith("%"):
-            pct_match = re.match(r'^([+-]?\d+)%$', args.pitch)
-            if pct_match:
-                pct = int(pct_match.group(1))
-                pitch_semitones = round(pct * 0.12, 1)
-                pitch_semitones = max(-20.0, min(20.0, pitch_semitones))
-                
-        payload["audioConfig"]["pitch"] = pitch_semitones
+        payload["audioConfig"]["pitch"] = 0.0
         
         req = urllib.request.Request(
             url, 
@@ -399,12 +378,12 @@ async def amain():
                 boosted_val = val + 22
                 boosted_pitch = f"{'+' if boosted_val >= 0 else ''}{boosted_val}%"
                 
-        body_content = preprocess_content_to_ssml_body(content, boosted_pitch=args.pitch, boost_questions=False, use_break=False)
+        body_content = preprocess_content_to_ssml_body(content, boosted_pitch="+0Hz", boost_questions=False, use_break=False)
         
         ssml = (
             "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>"
             f"<voice name='{args.voice}'>"
-            f"<prosody pitch='{args.pitch}' rate='{args.rate}'>"
+            f"<prosody pitch='+0Hz' rate='+0%'>"
             f"{body_content}"
             f"</prosody>"
             f"</voice>"
@@ -413,7 +392,7 @@ async def amain():
         
         print("Generated Custom Edge TTS SSML...")
         print("SSML:", ssml)
-        communicate = edge_tts.Communicate(text="dummy", voice=args.voice, pitch=args.pitch, rate=args.rate)
+        communicate = edge_tts.Communicate(text="dummy", voice=args.voice, pitch="+0Hz", rate="+0%")
         communicate.texts = [ssml]
         
         try:
@@ -427,8 +406,8 @@ async def amain():
         # Build filter chain
         filters = []
 
-        # OpenAI 음높이/속도 조절 필터 추가
-        if is_openai:
+        # 모든 음성에 대해 ffmpeg로 음높이/속도 조절 적용 (UI의 미리보기와 동일한 효과 제공)
+        if True:
             # Parse pitch factor
             pitch_match = re.match(r'^([+-]?\d+)(Hz|%)$', args.pitch)
             pitch_factor = 1.0

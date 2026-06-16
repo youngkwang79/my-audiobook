@@ -4,6 +4,22 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { parseFilename } from "../utils/stringHelpers";
 
+// SRT 파일명에서 회차/파트 파싱 헬퍼
+function parseSrtFilename(name: string): { episodeId: string; part: number } {
+  const clean = name.replace(/\.srt$/i, "");
+  // "숫자-숫자" 또는 "숫자_숫자" 패턴 (예: 1-2, 001-02)
+  const dashMatch = clean.match(/^(\d+)[-_](\d+)$/);
+  if (dashMatch)
+    return {
+      episodeId: String(Number(dashMatch[1])),
+      part: Number(dashMatch[2]),
+    };
+  // 숫자만 (예: "3" → 3화 1편)
+  const numMatch = clean.match(/^(\d+)$/);
+  if (numMatch) return { episodeId: String(Number(numMatch[1])), part: 1 };
+  return { episodeId: clean, part: 1 };
+}
+
 interface EpisodeUploadProps {
   worksList: any[];
   fetchWorks: () => Promise<void>;
@@ -15,7 +31,9 @@ export default function EpisodeUpload({
 }: EpisodeUploadProps) {
   const [selectedWorkId, setSelectedWorkId] = useState("");
   const [episodeReleaseDate, setEpisodeReleaseDate] = useState("");
-  const [episodeLocked, setEpisodeLocked] = useState<"auto" | "free" | "locked">("auto");
+  const [episodeLocked, setEpisodeLocked] = useState<
+    "auto" | "free" | "locked"
+  >("auto");
   const [episodeIsMembershipOnly, setEpisodeIsMembershipOnly] = useState(false);
 
   // 다중 파일 벌크 업로드용 큐 상태
@@ -31,6 +49,117 @@ export default function EpisodeUpload({
     }>
   >([]);
   const [isQueueUploading, setIsQueueUploading] = useState(false);
+
+  // SRT 자막 업로드 큐
+  const [srtQueue, setSrtQueue] = useState<
+    Array<{
+      episodeId: string;
+      part: number;
+      file: File;
+      progress: number;
+      status: "idle" | "uploading" | "success" | "error";
+      errorMsg?: string;
+    }>
+  >([]);
+  const [isSrtUploading, setIsSrtUploading] = useState(false);
+
+  const handleSrtFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newItems: typeof srtQueue = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const { episodeId, part } = parseSrtFilename(file.name);
+      newItems.push({ episodeId, part, file, progress: 0, status: "idle" });
+    }
+    setSrtQueue((prev) => [...prev, ...newItems]);
+    e.target.value = "";
+  };
+
+  const handleSrtUpload = async () => {
+    if (!selectedWorkId) {
+      alert("작품을 선택해 주세요.");
+      return;
+    }
+    const pending = srtQueue.filter(
+      (s) => s.status === "idle" || s.status === "error",
+    );
+    if (pending.length === 0) {
+      alert("업로드할 대기 중인 SRT 파일이 없습니다.");
+      return;
+    }
+
+    setIsSrtUploading(true);
+    try {
+      const token = await supabase.auth
+        .getSession()
+        .then((s) => s.data.session?.access_token);
+      if (!token) throw new Error("로그인 세션이 만료되었습니다.");
+
+      for (let i = 0; i < srtQueue.length; i++) {
+        const item = srtQueue[i];
+        if (item.status === "success") continue;
+
+        setSrtQueue((prev) =>
+          prev.map((q, idx) =>
+            idx === i ? { ...q, status: "uploading", progress: 0 } : q,
+          ),
+        );
+
+        try {
+          const isPureNumber = /^\d+$/.test(item.episodeId);
+          const epFolder = isPureNumber
+            ? String(Number(item.episodeId)).padStart(3, "0")
+            : item.episodeId;
+          const partPadded = String(item.part).padStart(2, "0");
+          const r2Key = `${selectedWorkId}/${epFolder}/${partPadded}.srt`;
+
+          const formData = new FormData();
+          formData.append("file", item.file);
+          formData.append("key", r2Key);
+
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/admin/direct-upload", true);
+            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                const pct = Math.round((event.loaded / event.total) * 100);
+                setSrtQueue((prev) =>
+                  prev.map((q, idx) =>
+                    idx === i ? { ...q, progress: pct } : q,
+                  ),
+                );
+              }
+            };
+            xhr.onload = () => {
+              if (xhr.status === 200) resolve();
+              else reject(new Error(`업로드 실패 (${xhr.status})`));
+            };
+            xhr.onerror = () => reject(new Error("네트워크 오류"));
+            xhr.send(formData);
+          });
+
+          setSrtQueue((prev) =>
+            prev.map((q, idx) =>
+              idx === i ? { ...q, status: "success", progress: 100 } : q,
+            ),
+          );
+        } catch (err: any) {
+          setSrtQueue((prev) =>
+            prev.map((q, idx) =>
+              idx === i ? { ...q, status: "error", errorMsg: err.message } : q,
+            ),
+          );
+        }
+      }
+      alert("🎉 SRT 자막 업로드가 완료되었습니다!");
+    } catch (err: any) {
+      alert("업로드 오류: " + err.message);
+    } finally {
+      setIsSrtUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (worksList.length > 0 && !selectedWorkId) {
@@ -220,32 +349,431 @@ export default function EpisodeUpload({
   };
 
   return (
-    <form onSubmit={handleEpisodeSubmit} className="card-panel">
-      <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 18 }}>
-        📚 신규 회차(에피소드) 일괄 추가 및 업로드
-      </h2>
-      <p
-        style={{
-          fontSize: 13,
-          color: "rgba(255,255,255,0.6)",
-          marginBottom: 20,
-          lineHeight: 1.5,
-        }}
-      >
-        여러 개의 오디오 파일을 한 번에 선택하여 일괄 순차 업로드할 수
-        있습니다. 파일명에서 회차 번호와 제목이 자동으로 파싱되며, 업로드
-        전에 직접 수정할 수 있습니다.
-      </p>
+    <>
+      <form onSubmit={handleEpisodeSubmit} className="card-panel">
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 18 }}>
+          📚 신규 회차(에피소드) 일괄 추가 및 업로드
+        </h2>
+        <p
+          style={{
+            fontSize: 13,
+            color: "rgba(255,255,255,0.6)",
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          여러 개의 오디오 파일을 한 번에 선택하여 일괄 순차 업로드할 수
+          있습니다. 파일명에서 회차 번호와 제목이 자동으로 파싱되며, 업로드 전에
+          직접 수정할 수 있습니다.
+        </p>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 16,
-        }}
-      >
-        <div className="form-group">
-          <label className="form-label">대상 소설 작품 선택</label>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 16,
+          }}
+        >
+          <div className="form-group">
+            <label className="form-label">대상 소설 작품 선택</label>
+            <select
+              className="form-select"
+              value={selectedWorkId}
+              onChange={(e) => setSelectedWorkId(e.target.value)}
+            >
+              {worksList.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">일괄 공개 예정 일시</label>
+            <input
+              type="datetime-local"
+              className="form-input"
+              value={episodeReleaseDate}
+              onChange={(e) => setEpisodeReleaseDate(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 16,
+            marginTop: 8,
+          }}
+        >
+          <div className="form-group">
+            <label className="form-label">기본 잠금 상태 설정</label>
+            <select
+              className="form-select"
+              value={episodeLocked}
+              onChange={(e) => setEpisodeLocked(e.target.value as any)}
+            >
+              <option value="auto">
+                ✨ 작품 설정에 따라 자동 지정 (무료/유료 자동 분리)
+              </option>
+              <option value="free">
+                🔓 전체 무료회차로 지정 (포인트 불필요)
+              </option>
+              <option value="locked">
+                🔒 전체 유료회차로 지정 (포인트 필요)
+              </option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">멤버십 전용 기본값</label>
+            <label
+              className="form-label"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                cursor: "pointer",
+                height: "42px",
+                color: "#ff2a5f",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={episodeIsMembershipOnly}
+                onChange={(e) => setEpisodeIsMembershipOnly(e.target.checked)}
+              />
+              👑 멤버십 전용으로 지정
+            </label>
+          </div>
+          <div className="form-group">
+            <label className="form-label">
+              오디오 음원 파일 선택 (여러 파일 선택 가능, .mp3, .m4a)
+            </label>
+            <input
+              type="file"
+              accept="audio/*"
+              multiple
+              disabled={isQueueUploading}
+              onChange={handleAudioFilesChange}
+              className="form-input"
+              style={{ padding: "8px 12px" }}
+            />
+          </div>
+        </div>
+
+        {episodeQueue.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h3
+              style={{
+                fontSize: 15,
+                fontWeight: 800,
+                marginBottom: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span>📋 업로드 대기열 ({episodeQueue.length}개 파일)</span>
+              {!isQueueUploading && (
+                <button
+                  type="button"
+                  onClick={() => setEpisodeQueue([])}
+                  style={{
+                    background: "rgba(255, 59, 48, 0.15)",
+                    border: "1px solid #ff3b30",
+                    color: "#ff453a",
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  목록 비우기
+                </button>
+              )}
+            </h3>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                maxHeight: 400,
+                overflowY: "auto",
+                paddingRight: 4,
+              }}
+            >
+              {episodeQueue.map((item, index) => {
+                const fileSizeMB = (item.file.size / 1024 / 1024).toFixed(2);
+                let statusColor = "rgba(255,255,255,0.4)";
+                let statusText = "대기 중";
+                let isProcessing = item.status === "uploading";
+                let isSuccess = item.status === "success";
+                let isError = item.status === "error";
+
+                if (isProcessing) {
+                  statusColor = "#fca834";
+                  statusText = `업로드 중 (${item.progress}%)`;
+                } else if (isSuccess) {
+                  statusColor = "#34c759";
+                  statusText = "완료";
+                } else if (isError) {
+                  statusColor = "#ff453a";
+                  statusText = "실패";
+                }
+
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: isProcessing
+                        ? "1px solid #fca834"
+                        : isSuccess
+                          ? "1px solid rgba(52,199,89,0.3)"
+                          : "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      padding: 16,
+                      position: "relative",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            background: statusColor + "1a",
+                            color: statusColor,
+                            border: `1px solid ${statusColor}`,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                          }}
+                        >
+                          {statusText}
+                        </span>
+                        {(() => {
+                          const actualLocked = getEpisodeLockedStatus(item.id);
+                          const lockColor = actualLocked
+                            ? "#ff453a"
+                            : "#34c759";
+                          const lockText = actualLocked ? "🔒 유료" : "🔓 무료";
+                          return (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                background: lockColor + "1a",
+                                color: lockColor,
+                                border: `1px solid ${lockColor}`,
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                              }}
+                            >
+                              {lockText}
+                            </span>
+                          );
+                        })()}
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "rgba(255,255,255,0.4)",
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {item.file.name} ({fileSizeMB} MB)
+                        </span>
+                      </div>
+                      {!isQueueUploading && !isSuccess && (
+                        <button
+                          type="button"
+                          onClick={() => removeQueueItem(index)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#ff453a",
+                            fontSize: 12,
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          제거
+                        </button>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "80px 1fr 120px",
+                        gap: 12,
+                      }}
+                    >
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label
+                          className="form-label"
+                          style={{ fontSize: 11, opacity: 0.6 }}
+                        >
+                          회차 번호
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ padding: "6px 10px", fontSize: 13 }}
+                          value={item.id}
+                          disabled={isQueueUploading || isSuccess}
+                          onChange={(e) =>
+                            updateQueueItem(index, "id", e.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label
+                          className="form-label"
+                          style={{ fontSize: 11, opacity: 0.6 }}
+                        >
+                          회차 제목
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ padding: "6px 10px", fontSize: 13 }}
+                          value={item.title}
+                          disabled={isQueueUploading || isSuccess}
+                          onChange={(e) =>
+                            updateQueueItem(index, "title", e.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div
+                        className="form-group"
+                        style={{
+                          marginBottom: 0,
+                          justifyContent: "center",
+                        }}
+                      >
+                        <label
+                          className="form-label"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            cursor: "pointer",
+                            fontSize: 12,
+                            color: "#ff2a5f",
+                            height: "100%",
+                            marginTop: "18px",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.is_membership_only ?? false}
+                            disabled={isQueueUploading || isSuccess}
+                            onChange={(e) =>
+                              updateQueueItem(
+                                index,
+                                "is_membership_only",
+                                e.target.checked,
+                              )
+                            }
+                          />
+                          👑 멤버십 전용
+                        </label>
+                      </div>
+                    </div>
+
+                    {isProcessing && (
+                      <div style={{ marginTop: 12 }}>
+                        <div className="progress-bar-container">
+                          <div
+                            className="progress-bar-fill"
+                            style={{
+                              width: `${item.progress}%`,
+                              background: "#fca834",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {isError && item.errorMsg && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#ff453a",
+                          marginTop: 8,
+                          background: "rgba(255,69,58,0.08)",
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,69,58,0.2)",
+                        }}
+                      >
+                        ⚠️ {item.errorMsg}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="btn-submit"
+          disabled={isQueueUploading || episodeQueue.length === 0}
+          style={{ marginTop: 24 }}
+        >
+          {isQueueUploading
+            ? "🚀 일괄 오디오 파일 순차 업로드 중..."
+            : `회차 일괄 등록 및 파일 전송 시작 (${episodeQueue.length}개 파일)`}
+        </button>
+      </form>
+
+      {/* ─────────── SRT 자막 업로드 ─────────── */}
+      <div className="card-panel" style={{ marginTop: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>
+          🗒️ SRT 자막 파일 업로드
+        </h2>
+        <p
+          style={{
+            fontSize: 13,
+            color: "rgba(255,255,255,0.55)",
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          .srt 파일을 여러 개 선택하면 파일명에서 회차·파트를 자동 파싱합니다.
+          <br />
+          <span style={{ opacity: 0.7 }}>
+            파일명 규칙 예시: <code>1-2.srt</code> → 1화 2편 /{" "}
+            <code>3.srt</code> → 3화 1편
+          </span>
+        </p>
+
+        {/* 작품 선택 (오디오 탭과 동일한 workId 공유) */}
+        <div className="form-group" style={{ maxWidth: 360 }}>
+          <label className="form-label">
+            대상 소설 작품 (위 오디오 탭과 동일)
+          </label>
           <select
             className="form-select"
             value={selectedWorkId}
@@ -258,303 +786,216 @@ export default function EpisodeUpload({
             ))}
           </select>
         </div>
-        <div className="form-group">
-          <label className="form-label">일괄 공개 예정 일시</label>
-          <input
-            type="datetime-local"
-            className="form-input"
-            value={episodeReleaseDate}
-            onChange={(e) => setEpisodeReleaseDate(e.target.value)}
-            required
-          />
-        </div>
-      </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 16,
-          marginTop: 8,
-        }}
-      >
-        <div className="form-group">
-          <label className="form-label">기본 잠금 상태 설정</label>
-          <select
-            className="form-select"
-            value={episodeLocked}
-            onChange={(e) => setEpisodeLocked(e.target.value as any)}
-          >
-            <option value="auto">
-              ✨ 작품 설정에 따라 자동 지정 (무료/유료 자동 분리)
-            </option>
-            <option value="free">
-              🔓 전체 무료회차로 지정 (포인트 불필요)
-            </option>
-            <option value="locked">
-              🔒 전체 유료회차로 지정 (포인트 필요)
-            </option>
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">멤버십 전용 기본값</label>
-          <label
-            className="form-label"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              cursor: "pointer",
-              height: "42px",
-              color: "#ff2a5f",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={episodeIsMembershipOnly}
-              onChange={(e) => setEpisodeIsMembershipOnly(e.target.checked)}
-            />
-            👑 멤버십 전용으로 지정
-          </label>
-        </div>
         <div className="form-group">
           <label className="form-label">
-            오디오 음원 파일 선택 (여러 파일 선택 가능, .mp3, .m4a)
+            SRT 자막 파일 선택 (여러 파일 가능, .srt)
           </label>
           <input
             type="file"
-            accept="audio/*"
+            accept=".srt"
             multiple
-            disabled={isQueueUploading}
-            onChange={handleAudioFilesChange}
+            disabled={isSrtUploading}
+            onChange={handleSrtFilesChange}
             className="form-input"
             style={{ padding: "8px 12px" }}
           />
         </div>
-      </div>
 
-      {episodeQueue.length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <h3
-            style={{
-              fontSize: 15,
-              fontWeight: 800,
-              marginBottom: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span>📋 업로드 대기열 ({episodeQueue.length}개 파일)</span>
-            {!isQueueUploading && (
-              <button
-                type="button"
-                onClick={() => setEpisodeQueue([])}
-                style={{
-                  background: "rgba(255, 59, 48, 0.15)",
-                  border: "1px solid #ff3b30",
-                  color: "#ff453a",
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  cursor: "pointer",
-                  fontWeight: 700,
-                }}
-              >
-                목록 비우기
-              </button>
-            )}
-          </h3>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              maxHeight: 400,
-              overflowY: "auto",
-              paddingRight: 4,
-            }}
-          >
-            {episodeQueue.map((item, index) => {
-              const fileSizeMB = (item.file.size / 1024 / 1024).toFixed(2);
-              let statusColor = "rgba(255,255,255,0.4)";
-              let statusText = "대기 중";
-              let isProcessing = item.status === "uploading";
-              let isSuccess = item.status === "success";
-              let isError = item.status === "error";
-
-              if (isProcessing) {
-                statusColor = "#fca834";
-                statusText = `업로드 중 (${item.progress}%)`;
-              } else if (isSuccess) {
-                statusColor = "#34c759";
-                statusText = "완료";
-              } else if (isError) {
-                statusColor = "#ff453a";
-                statusText = "실패";
-              }
-
-              return (
-                <div
-                  key={index}
+        {srtQueue.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 800,
+                marginBottom: 10,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span>📋 SRT 업로드 대기열 ({srtQueue.length}개)</span>
+              {!isSrtUploading && (
+                <button
+                  type="button"
+                  onClick={() => setSrtQueue([])}
                   style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: isProcessing
-                      ? "1px solid #fca834"
-                      : isSuccess
-                        ? "1px solid rgba(52,199,89,0.3)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 12,
-                    padding: 16,
-                    position: "relative",
+                    background: "rgba(255,59,48,0.15)",
+                    border: "1px solid #ff3b30",
+                    color: "#ff453a",
+                    padding: "3px 10px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    fontWeight: 700,
                   }}
                 >
+                  목록 비우기
+                </button>
+              )}
+            </h3>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                maxHeight: 320,
+                overflowY: "auto",
+              }}
+            >
+              {srtQueue.map((item, i) => {
+                const isProcessing = item.status === "uploading";
+                const isSuccess = item.status === "success";
+                const isError = item.status === "error";
+                const statusColor = isProcessing
+                  ? "#fca834"
+                  : isSuccess
+                    ? "#34c759"
+                    : isError
+                      ? "#ff453a"
+                      : "rgba(255,255,255,0.4)";
+                const statusText = isProcessing
+                  ? `업로드 중 (${item.progress}%)`
+                  : isSuccess
+                    ? "완료 ✅"
+                    : isError
+                      ? "실패"
+                      : "대기 중";
+
+                return (
                   <div
+                    key={i}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 12,
+                      background: "rgba(255,255,255,0.02)",
+                      border: `1px solid ${isSuccess ? "rgba(52,199,89,0.3)" : isProcessing ? "#fca834" : "rgba(255,255,255,0.08)"}`,
+                      borderRadius: 10,
+                      padding: "12px 14px",
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: 8,
+                        marginBottom: 8,
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 800,
-                          background: statusColor + "1a",
-                          color: statusColor,
-                          border: `1px solid ${statusColor}`,
-                          padding: "2px 8px",
-                          borderRadius: 6,
-                        }}
-                      >
-                        {statusText}
-                      </span>
-                      {(() => {
-                        const actualLocked = getEpisodeLockedStatus(item.id);
-                        const lockColor = actualLocked ? "#ff453a" : "#34c759";
-                        const lockText = actualLocked ? "🔒 유료" : "🔓 무료";
-                        return (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 800,
-                              background: lockColor + "1a",
-                              color: lockColor,
-                              border: `1px solid ${lockColor}`,
-                              padding: "2px 8px",
-                              borderRadius: 6,
-                            }}
-                          >
-                            {lockText}
-                          </span>
-                        );
-                      })()}
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: "rgba(255,255,255,0.4)",
-                          wordBreak: "break-all",
-                        }}
-                      >
-                        {item.file.name} ({fileSizeMB} MB)
-                      </span>
-                    </div>
-                    {!isQueueUploading && !isSuccess && (
-                      <button
-                        type="button"
-                        onClick={() => removeQueueItem(index)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#ff453a",
-                          fontSize: 12,
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        제거
-                      </button>
-                    )}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "80px 1fr 120px",
-                      gap: 12,
-                    }}
-                  >
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>
-                        회차 번호
-                      </label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        style={{ padding: "6px 10px", fontSize: 13 }}
-                        value={item.id}
-                        disabled={isQueueUploading || isSuccess}
-                        onChange={(e) => updateQueueItem(index, "id", e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>
-                        회차 제목
-                      </label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        style={{ padding: "6px 10px", fontSize: 13 }}
-                        value={item.title}
-                        disabled={isQueueUploading || isSuccess}
-                        onChange={(e) => updateQueueItem(index, "title", e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom: 0,
-                        justifyContent: "center",
-                      }}
-                    >
-                      <label
-                        className="form-label"
+                      <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 6,
-                          cursor: "pointer",
-                          fontSize: 12,
-                          color: "#ff2a5f",
-                          height: "100%",
-                          marginTop: "18px",
+                          gap: 8,
+                          flexWrap: "wrap",
                         }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={item.is_membership_only ?? false}
-                          disabled={isQueueUploading || isSuccess}
-                          onChange={(e) => updateQueueItem(index, "is_membership_only", e.target.checked)}
-                        />
-                        👑 멤버십 전용
-                      </label>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            background: statusColor + "1a",
+                            color: statusColor,
+                            border: `1px solid ${statusColor}`,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                          }}
+                        >
+                          {statusText}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "rgba(255,255,255,0.4)",
+                          }}
+                        >
+                          {item.file.name}
+                        </span>
+                      </div>
+                      {!isSrtUploading && !isSuccess && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSrtQueue((prev) =>
+                              prev.filter((_, idx) => idx !== i),
+                            )
+                          }
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#ff453a",
+                            fontSize: 12,
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          제거
+                        </button>
+                      )}
                     </div>
-                  </div>
 
-                  {isProcessing && (
-                    <div style={{ marginTop: 12 }}>
-                      <div className="progress-bar-container">
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "100px 80px",
+                        gap: 10,
+                      }}
+                    >
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label
+                          className="form-label"
+                          style={{ fontSize: 11, opacity: 0.6 }}
+                        >
+                          회차 번호
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ padding: "5px 8px", fontSize: 13 }}
+                          value={item.episodeId}
+                          disabled={isSrtUploading || isSuccess}
+                          onChange={(e) =>
+                            setSrtQueue((prev) =>
+                              prev.map((q, idx) =>
+                                idx === i
+                                  ? { ...q, episodeId: e.target.value }
+                                  : q,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label
+                          className="form-label"
+                          style={{ fontSize: 11, opacity: 0.6 }}
+                        >
+                          파트 번호
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          className="form-input"
+                          style={{ padding: "5px 8px", fontSize: 13 }}
+                          value={item.part}
+                          disabled={isSrtUploading || isSuccess}
+                          onChange={(e) =>
+                            setSrtQueue((prev) =>
+                              prev.map((q, idx) =>
+                                idx === i
+                                  ? { ...q, part: Number(e.target.value) }
+                                  : q,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {isProcessing && (
+                      <div
+                        className="progress-bar-container"
+                        style={{ marginTop: 8 }}
+                      >
                         <div
                           className="progress-bar-fill"
                           style={{
@@ -563,41 +1004,41 @@ export default function EpisodeUpload({
                           }}
                         />
                       </div>
-                    </div>
-                  )}
-
-                  {isError && item.errorMsg && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#ff453a",
-                        marginTop: 8,
-                        background: "rgba(255,69,58,0.08)",
-                        padding: "6px 10px",
-                        borderRadius: 6,
-                        border: "1px solid rgba(255,69,58,0.2)",
-                      }}
-                    >
-                      ⚠️ {item.errorMsg}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                    {isError && item.errorMsg && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#ff453a",
+                          marginTop: 6,
+                          background: "rgba(255,69,58,0.08)",
+                          padding: "5px 10px",
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,69,58,0.2)",
+                        }}
+                      >
+                        ⚠️ {item.errorMsg}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <button
-        type="submit"
-        className="btn-submit"
-        disabled={isQueueUploading || episodeQueue.length === 0}
-        style={{ marginTop: 24 }}
-      >
-        {isQueueUploading
-          ? "🚀 일괄 오디오 파일 순차 업로드 중..."
-          : `회차 일괄 등록 및 파일 전송 시작 (${episodeQueue.length}개 파일)`}
-      </button>
-    </form>
+        <button
+          type="button"
+          className="btn-submit"
+          disabled={isSrtUploading || srtQueue.length === 0}
+          onClick={handleSrtUpload}
+          style={{ marginTop: 20 }}
+        >
+          {isSrtUploading
+            ? "📤 SRT 자막 업로드 중..."
+            : `SRT 자막 업로드 시작 (${srtQueue.length}개 파일)`}
+        </button>
+      </div>
+    </>
   );
 }

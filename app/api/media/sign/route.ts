@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
     let foundKey = null;
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
-    const extensions = isCaption ? ["json"] : AUDIO_EXTENSIONS;
+    const extensions = isCaption ? ["json", "srt"] : AUDIO_EXTENSIONS;
 
     for (const ext of extensions) {
       const key = `${workId}/${folder}/${partPadded}.${ext}`;

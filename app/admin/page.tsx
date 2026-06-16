@@ -67,29 +67,8 @@ export default function AdminPage() {
     }
   }, [isAdmin]);
 
-  // 로딩 뷰
-  if (authLoading || loadingCheck) {
-    return (
-      <main
-        style={{
-          minHeight: "100dvh",
-          background: "#0b0b12",
-          color: "white",
-          padding: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 800 }}>
-          관리자 권한 조회 중...
-        </div>
-      </main>
-    );
-  }
-
-  // 비로그인 또는 권한 없을 때 화면
-  if (!isAdmin) {
+  // ✅ 비로그인 또는 권한 없을 때 화면 (로딩 완료 후에만 표시)
+  if (!authLoading && !loadingCheck && !isAdmin) {
     const handleLogout = async () => {
       await supabase.auth.signOut();
       router.refresh();
@@ -357,6 +336,28 @@ export default function AdminPage() {
       <div className="admin-container">
         <h1 className="admin-title">무림북 어드민 대시보드</h1>
 
+        {/* ✅ 권한 확인 중 인라인 배너 — 페이지를 교체하지 않아 업로드/자동화가 끊어지지 않음 */}
+        {(authLoading || loadingCheck) && (
+          <div
+            style={{
+              background: "rgba(255,215,0,0.08)",
+              border: "1px solid rgba(255,215,0,0.25)",
+              borderRadius: 10,
+              padding: "10px 16px",
+              marginBottom: 16,
+              fontSize: 13,
+              color: "rgba(255,255,255,0.7)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⏳</span>
+            관리자 권한 확인 중... (업로드/자동화는 계속 진행됩니다)
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
+
         <div className="admin-tabs">
           <button
             className={`admin-tab ${activeTab === "novels" ? "active" : ""}`}
@@ -374,7 +375,7 @@ export default function AdminPage() {
             className={`admin-tab ${activeTab === "episodes" ? "active" : ""}`}
             onClick={() => setActiveTab("episodes")}
           >
-            회차 & 오디오 업로드
+            회차 &amp; 오디오 업로드
           </button>
           <button
             className={`admin-tab ${activeTab === "push" ? "active" : ""}`}
@@ -386,27 +387,30 @@ export default function AdminPage() {
             className={`admin-tab ${activeTab === "automation" ? "active" : ""}`}
             onClick={() => setActiveTab("automation")}
           >
-            오디오 자동연성 & 자동화
+            오디오 자동연성 &amp; 자동화
           </button>
         </div>
 
-        {activeTab === "novels" && (
+        {/* ✅ display:none 방식으로 모든 패널을 마운트 유지 — 탭 전환 시 업로드/자동화 상태 보존 */}
+        <div style={{ display: activeTab === "novels" ? "block" : "none" }}>
           <NovelRegistration fetchWorks={fetchWorks} worksList={worksList} />
-        )}
+        </div>
 
-        {activeTab === "edit" && (
+        <div style={{ display: activeTab === "edit" ? "block" : "none" }}>
           <NovelEdit fetchWorks={fetchWorks} worksList={worksList} />
-        )}
+        </div>
 
-        {activeTab === "episodes" && (
+        <div style={{ display: activeTab === "episodes" ? "block" : "none" }}>
           <EpisodeUpload fetchWorks={fetchWorks} worksList={worksList} />
-        )}
+        </div>
 
-        {activeTab === "push" && <WebPushPanel />}
+        <div style={{ display: activeTab === "push" ? "block" : "none" }}>
+          <WebPushPanel />
+        </div>
 
-        {activeTab === "automation" && (
+        <div style={{ display: activeTab === "automation" ? "block" : "none" }}>
           <AutomationPanel fetchWorks={fetchWorks} worksList={worksList} />
-        )}
+        </div>
       </div>
     </main>
   );

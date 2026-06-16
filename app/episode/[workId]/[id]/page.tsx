@@ -134,6 +134,45 @@ function parseSegmentsFromSavedJson(saved: any): Segment[] {
   return [];
 }
 
+function parseSRT(srtText: string): Segment[] {
+  const segments: Segment[] = [];
+  const normalized = srtText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const blocks = normalized.split(/\n\s*\n/);
+
+  const parseTime = (timeStr: string): number => {
+    const parts = timeStr.trim().replace(",", ".").split(":");
+    if (parts.length < 3) return 0;
+    const hours = parseFloat(parts[0]) || 0;
+    const minutes = parseFloat(parts[1]) || 0;
+    const seconds = parseFloat(parts[2]) || 0;
+    return hours * 3600 + minutes * 60 + seconds;
+  };
+
+  for (const block of blocks) {
+    const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) continue;
+
+    let timeLineIndex = 0;
+    if (/^\d+$/.test(lines[0])) {
+      timeLineIndex = 1;
+    }
+
+    if (lines[timeLineIndex] && lines[timeLineIndex].includes("-->")) {
+      const timeParts = lines[timeLineIndex].split("-->");
+      if (timeParts.length === 2) {
+        const start = parseTime(timeParts[0]);
+        const end = parseTime(timeParts[1]);
+        const text = lines.slice(timeLineIndex + 1).join(" ");
+        if (text) {
+          segments.push({ start, end, text });
+        }
+      }
+    }
+  }
+
+  return segments;
+}
+
 export default function EpisodePage() {
   const { user, session } = useAuth();
   const params = useParams();
@@ -851,6 +890,8 @@ export default function EpisodePage() {
       const r2 = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
+      const isSrt = signedCaptionUrl && (signedCaptionUrl.toLowerCase().includes(".srt?") || signedCaptionUrl.toLowerCase().endsWith(".srt"));
+
       if (r2.ok) {
         const parsed = parseSegmentsFromSavedJson(r2.data);
         setSegments(parsed);
@@ -858,6 +899,15 @@ export default function EpisodePage() {
         updateCaptionByTime(current);
         setCaptionStatus(parsed.length ? "" : "자막 데이터가 비어있어요");
         return;
+      } else if (isSrt && r2.text) {
+        const parsed = parseSRT(r2.text);
+        if (parsed.length > 0) {
+          setSegments(parsed);
+          const current = audioRef.current?.currentTime ?? 0;
+          updateCaptionByTime(current);
+          setCaptionStatus("");
+          return;
+        }
       }
 
       setCaptionStatus("자막 생성 중(처음 1회)...");
@@ -873,18 +923,57 @@ export default function EpisodePage() {
         return;
       }
 
-      const r2b = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
-      if (!alive) return;
-
-      if (!r2b.ok) {
-        const preview = (r2b.text || "").slice(0, 80).replace(/\s+/g, " ");
-        setCaptionStatus(`자막 파일 파싱 실패(R2) ${r2b.status}: ${preview}`);
-        return;
+      // 1. workerRes의 JSON 응답에서 직접 자막 추출 시도
+      let parsedSegments: Segment[] = [];
+      try {
+        const workerData = await workerRes.json();
+        if (workerData?.success && workerData?.data) {
+          parsedSegments = parseSegmentsFromSavedJson(workerData.data);
+        }
+      } catch (err) {
+        console.error("Worker 응답 파싱 실패:", err);
       }
 
-      const parsed2 = parseSegmentsFromSavedJson(r2b.data);
-      if (parsed2.length) {
-        setSegments(parsed2);
+      // 2. 직접 추출에 실패한 경우 R2에 저장된 파일에서 다시 조회 시도 (재서명 포함)
+      if (!parsedSegments.length) {
+        let newSignedCaptionUrl = signedCaptionUrl;
+        if (!newSignedCaptionUrl) {
+          try {
+            const token = await getAccessToken();
+            const res = await fetch("/api/media/sign", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ workId, episodeId: episodeKey, part, type: "caption" })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              newSignedCaptionUrl = data.url;
+            }
+          } catch (err) {
+            console.error("자막 재서명 실패:", err);
+          }
+        }
+
+        if (newSignedCaptionUrl) {
+          const r2b = await fetchJsonSafe(newSignedCaptionUrl);
+          if (alive) {
+            const isNewSrt = newSignedCaptionUrl.toLowerCase().includes(".srt?") || newSignedCaptionUrl.toLowerCase().endsWith(".srt");
+            if (r2b.ok) {
+              parsedSegments = parseSegmentsFromSavedJson(r2b.data);
+            } else if (isNewSrt && r2b.text) {
+              parsedSegments = parseSRT(r2b.text);
+            }
+          }
+        }
+      }
+
+      if (!alive) return;
+
+      if (parsedSegments.length) {
+        setSegments(parsedSegments);
         const current = audioRef.current?.currentTime ?? 0;
         updateCaptionByTime(current);
         setCaptionStatus(""); // 성공 시 아무것도 안 보여줌
@@ -1056,6 +1145,17 @@ export default function EpisodePage() {
   };
 
   const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true) => {
+    // 이전 오디오가 잠깐 재생되면서 onEnded 무한루프나 자동재생이 씹히는 버그 방지
+    setSignedAudioSrc(null);
+    setCurrentTime(0); // 리액트 상태 초기화
+    setResumeTime(0);  // 다음 회차/파트 이동 시 이어서 재개할 시간초 초기화
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0; // 오디오 엘리먼트의 현재 재생시간을 명시적으로 초기화 (이전 파트의 재생시간 44초 등이 복원되는 버그 방지)
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
+    
     setEpisodeKey(nextEpKey);
     setPart(nextPart);
     if (shouldAutoplay) {
@@ -1339,15 +1439,14 @@ export default function EpisodePage() {
           }
         }
         
-        /* 백그라운드 블러 */
+        /* 백그라운드 블러 해제 - 선명하고 어두운 썸네일 이미지 배경 */
         .sf-blur-bg {
           position: absolute;
           inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          filter: blur(25px) brightness(0.28);
-          transform: scale(1.05);
+          filter: brightness(0.35);
           z-index: 1;
         }
         .sf-overlay {
@@ -1952,7 +2051,7 @@ export default function EpisodePage() {
       {/* 오디오 엘리먼트 (가로/세로 모드에 무관하게 마운트 유지) */}
       <audio
         ref={audioRef}
-        src={(!locked && audioSrc) ? audioSrc : ""}
+        src={(!locked && audioSrc) ? audioSrc : undefined}
         preload="auto"
         style={{ display: "none" }}
         onLoadedMetadata={() => {
