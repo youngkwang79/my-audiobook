@@ -32,7 +32,20 @@ export async function GET(req: Request) {
     const items = fs.readdirSync(cwd);
     const folders = items.filter((item) => {
       const fullPath = path.join(cwd, item);
-      return (item.startsWith("무림북_") || item.startsWith("무명 무협소설")) && fs.statSync(fullPath).isDirectory();
+      if (!fs.statSync(fullPath).isDirectory()) return false;
+      
+      // 허용된 접두사나 이름
+      if (item.startsWith("무림북_") || item.startsWith("무명 무협소설") || item.startsWith("무명지협")) {
+        return true;
+      }
+      
+      // 기획안 파일(json)이 들어있는 모든 폴더 허용
+      const planFile = path.join(fullPath, "00_🚨급전개방지_작품기획안🚨.json");
+      if (fs.existsSync(planFile)) {
+        return true;
+      }
+      
+      return false;
     }).map(folderName => {
       return {
         name: folderName,

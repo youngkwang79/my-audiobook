@@ -220,7 +220,7 @@ async def amain():
                     },
                     {
                         "role": "user",
-                        "content": content
+                        "content": f"Please read the following text aloud word-for-word, EXACTLY as written. NEVER alter, skip, or add any words, dialogues, or explanations. Do not output any chat response or commentary—ONLY read this text:\n\n{content}"
                     }
                 ]
             }

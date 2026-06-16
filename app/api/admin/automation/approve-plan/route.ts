@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     fs.renameSync(tempDirPath, finalDirPath);
 
-    return NextResponse.json({ success: true, finalDir });
+    return NextResponse.json({ success: true, finalDir, finalDirPath });
   } catch (error: any) {
     console.error("Approve Plan API Error:", error);
     return NextResponse.json({ error: "server_error", details: error.message }, { status: 500 });

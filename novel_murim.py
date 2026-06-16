@@ -25,8 +25,8 @@ MODEL_NAME = 'gemini-2.5-flash'
 
 def generate_moorim_classic(prompt, description="요청", temperature=0.8, use_free_key=False):
     # Determine which client to start with
-    current_client = free_client if (use_free_key and free_client) else client
-    used_free_key = (current_client == free_client)
+    current_client = client
+    used_free_key = False
     
     for attempt in range(1, 4):
         try:
@@ -221,7 +221,7 @@ else:
 
     concept_text = generate_moorim_classic(moorim_classic_prompt, "대서사 기획안 생성", temperature=1.0, use_free_key=True)
 
-    novel_title = "무명 정통 무협"
+    novel_title = os.path.basename(os.path.abspath(output_dir))
     novel_intro = "무림북 대작."
     overall_plot = ""
 

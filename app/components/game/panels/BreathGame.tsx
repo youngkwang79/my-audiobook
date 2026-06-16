@@ -101,7 +101,7 @@ export const BreathGame = React.memo(({
     };
   }, [stage, powerFactor, getCounterLaneCount]);
 
-  // Initial Enemy HP Sync
+  // Initial Enemy HP Sync (Run on mount only)
   useEffect(() => {
     counterEnemyHpRef.current = config.enemyHp;
     setCounterEnemyHp(config.enemyHp);
@@ -113,7 +113,18 @@ export const BreathGame = React.memo(({
     setBreathNotes([]);
     comboRef.current = 0;
     setCombo(0);
-  }, [config.enemyHp]);
+  }, []);
+
+  // Handle stage transitions without resetting player status or active notes
+  const prevStageRef = useRef(stage);
+  useEffect(() => {
+    if (stage > prevStageRef.current) {
+      counterEnemyHpRef.current = config.enemyHp;
+      setCounterEnemyHp(config.enemyHp);
+      addFloatText(`돌파! 새로운 적 출현`, "#ff8c5a", 50, 35);
+    }
+    prevStageRef.current = stage;
+  }, [stage, config.enemyHp, addFloatText]);
 
   const getAttackData = (type: "dart" | "slash" | "palm") => {
     if (type === "dart") return { icon: "🗡️", score: 45, damage: 1, speedMult: 1.25 };
@@ -215,7 +226,7 @@ export const BreathGame = React.memo(({
   const fireCounterSlash = (damage: number) => {
     setCounterSlashEffect(true);
     setLastCounterDamage(damage);
-    playHitEffect();
+    playHitEffect("clear");
     triggerShake();
 
     setTimeout(() => setCounterSlashEffect(false), 1200);
@@ -258,6 +269,7 @@ export const BreathGame = React.memo(({
       if (nextHp <= 0) {
         onFail(playerScoreRef.current, "방어가 흐트러져 무뢰배에게 패배했습니다.");
       }
+      playHitEffect("fail");
       return;
     }
 
@@ -280,6 +292,7 @@ export const BreathGame = React.memo(({
       setCombo(0);
       addFloatText("방어 실패", "#ff4d4d");
       triggerShake();
+      playHitEffect("fail");
       if (nextHp <= 0) {
         onFail(playerScoreRef.current, "방어가 무너져 무뢰배에게 패배했습니다.");
       }
@@ -305,7 +318,7 @@ export const BreathGame = React.memo(({
     setCounterGauge(nextGauge);
 
     addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade), 50, 58);
-    playHitEffect();
+    playHitEffect(grade === "PERFECT" ? "perfect" : "hit");
 
     if (nextCombo > 0 && (nextCombo % 10 === 0 || nextCombo === 100 || nextCombo === 200)) {
       let bonusPercent = 0;

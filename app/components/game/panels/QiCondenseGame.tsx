@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type ResultType = "perfect" | "great" | "good" | "fail" | null;
 
@@ -45,6 +45,14 @@ export default function QiCondenseGame({
   const perfectZone = { min: 173, max: 177 };
 
   const targetForRound = 4 + (stage - 1) * 2;
+
+  const prevStageRef = useRef(stage);
+  useEffect(() => {
+    if (stage > prevStageRef.current) {
+      addFloatText(`돌파! 응축 기운 가속`, "#00f2ff", 50, 35);
+    }
+    prevStageRef.current = stage;
+  }, [stage, addFloatText]);
 
   useEffect(() => {
     if (!isPlaying || locked) return;
@@ -97,6 +105,7 @@ export default function QiCondenseGame({
       setCombo(0);
       setResult("fail");
       triggerShake();
+      playHitEffect("fail");
       addFloatText("응축 실패 -1 HP", "#ff4d4d");
 
       if (nextLives <= 0) {
@@ -111,7 +120,7 @@ export default function QiCondenseGame({
       incrementCombo();
       setPlayerScore(playerScore + scoreGain);
       setResult(nextResult);
-      playHitEffect();
+      playHitEffect(nextResult === "perfect" ? "perfect" : "hit");
       addFloatText(`${grade} +${scoreGain}`, getGradeColor(grade));
 
       const nextProg = currentProgress + 1;

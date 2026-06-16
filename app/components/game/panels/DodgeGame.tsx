@@ -60,7 +60,18 @@ export function DodgeGame({
     setLives(3);
     setCombo(0);
     setTimeLeft(30.0);
-  }, [stage, numPoles]);
+  }, []);
+
+  // Handle stage transitions without resetting poles or stats
+  const prevStageRef = useRef(stage);
+  useEffect(() => {
+    if (stage > prevStageRef.current) {
+      // Stage up! Add time bonus and float text
+      setTimeLeft((prev) => Math.min(60.0, prev + 10.0));
+      addFloatText(`돌파! 시간 보너스 +10s`, "#fbbf24", 50, 35);
+    }
+    prevStageRef.current = stage;
+  }, [stage, addFloatText]);
 
   // Game timer loop
   useEffect(() => {
@@ -134,7 +145,7 @@ export function DodgeGame({
 
       const nextPoles = [...poles.slice(1), Math.floor(Math.random() * numPoles)];
       setPoles(nextPoles);
-      playHitEffect();
+      playHitEffect("step");
 
       // Clear condition met in real time
       if (finalScore >= targetScore) {
@@ -146,6 +157,7 @@ export function DodgeGame({
       setLives(nextHp);
       setCombo(0);
       triggerShake();
+      playHitEffect("fail");
       addFloatText("MISS!", "#ff4d4d");
 
       if (nextHp <= 0) {
@@ -165,20 +177,14 @@ export function DodgeGame({
   return (
     <div
       style={{
-        background: "#0a0a0a",
-        color: "white",
-        padding: "20px",
-        borderRadius: "30px",
-        textAlign: "center",
         width: "100%",
-        maxWidth: "360px",
-        margin: "0 auto",
-        border: "2px solid #b45309",
-        boxShadow: "0 0 30px rgba(180, 83, 9, 0.4)",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        gap: "15px",
+        gap: "10px",
         fontFamily: "inherit",
+        boxSizing: "border-box",
+        padding: "16px 12px 12px 12px"
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>

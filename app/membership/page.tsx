@@ -125,14 +125,77 @@ export default function MembershipPage() {
 
   const [exclusiveNovels, setExclusiveNovels] = useState<any[]>([]);
   const [comingSoonDramas, setComingSoonDramas] = useState<any[]>([]);
+  const [preparingDramas, setPreparingDramas] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchWorks() {
-      const { data } = await supabase.from('works').select('*').order('created_at', { ascending: false });
+      const { data } = await supabase
+        .from('works')
+        .select(`
+          *,
+          episodes (
+            id,
+            release_date
+          )
+        `)
+        .order('created_at', { ascending: false });
+
       if (data) {
-        setExclusiveNovels(data.filter(w => w.is_membership_only));
-        const now = new Date();
-        setComingSoonDramas(data.filter(w => w.status === "준비중" || (w.release_date && new Date(w.release_date) > now)));
+        const mapped = data.map((w: any) => {
+          const isOldNew = w.badge === "신작" && w.created_at && (new Date().getTime() - new Date(w.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+          
+          const publishedEpisodes = (w.episodes || [])
+            .filter((e: any) => new Date(e.release_date).getTime() <= Date.now())
+            .sort((a: any, b: any) => {
+              const aNum = parseFloat(a.id);
+              const bNum = parseFloat(b.id);
+              if (isNaN(aNum) || isNaN(bNum)) {
+                return String(a.id).localeCompare(String(b.id));
+              }
+              return aNum - bNum;
+            });
+          const firstEpisodeId = publishedEpisodes[0]?.id || null;
+
+          const isPublished = w.status !== "준비중" && w.status !== "공개예정" && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0);
+
+          let scheduledReleaseDate = null;
+          const futureEpisodes = (w.episodes || []).filter((e: any) => new Date(e.release_date).getTime() > Date.now());
+          if (futureEpisodes.length > 0) {
+            const dates = futureEpisodes.map((e: any) => new Date(e.release_date).getTime());
+            scheduledReleaseDate = new Date(Math.min(...dates));
+          } else if (w.release_date) {
+            scheduledReleaseDate = new Date(w.release_date);
+          } else if (w.created_at) {
+            scheduledReleaseDate = new Date(w.created_at);
+          } else {
+            scheduledReleaseDate = new Date();
+          }
+
+          return {
+            id: w.id,
+            title: w.title,
+            description: w.description,
+            thumbnail: w.thumbnail,
+            episodeCount: w.episode_count,
+            totalEpisodes: w.total_episodes,
+            freeEpisodes: w.free_episodes,
+            status: w.status,
+            subtitle: w.subtitle,
+            badge: isOldNew ? "" : w.badge,
+            views: String(w.views),
+            exclusive: w.exclusive,
+            featured: w.featured,
+            is_membership_only: w.is_membership_only,
+            firstEpisodeId,
+            created_at: w.created_at,
+            isPublished,
+            scheduledReleaseDate
+          };
+        });
+
+        setExclusiveNovels(mapped.filter(w => w.is_membership_only && w.isPublished));
+        setComingSoonDramas(mapped.filter(w => w.status === "공개예정"));
+        setPreparingDramas(mapped.filter(w => w.status === "준비중"));
       }
     }
     fetchWorks();
@@ -1128,6 +1191,140 @@ export default function MembershipPage() {
           font-weight: 800;
           z-index: 2;
         }
+
+        /* 집필중 그리드 스타일 */
+        .preparing-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px 10px;
+        }
+        @media (min-width: 600px) {
+          .preparing-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 16px !important;
+          }
+        }
+        @media (min-width: 1024px) {
+          .preparing-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            gap: 20px !important;
+          }
+        }
+
+        .preparing-card {
+          background: linear-gradient(135deg, rgba(20, 20, 30, 0.6) 0%, rgba(10, 10, 15, 0.8) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          transition: all 0.25s ease;
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .preparing-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(255, 255, 255, 0.15);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .preparing-thumb-container {
+          width: 100%;
+          aspect-ratio: 2 / 3;
+          border-radius: 8px;
+          overflow: hidden;
+          position: relative;
+          background: #0f0f15;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .preparing-thumb-blur {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: blur(12px) brightness(0.4);
+          opacity: 0.85;
+          transition: all 0.3s ease;
+        }
+
+        .preparing-card:hover .preparing-thumb-blur {
+          filter: blur(8px) brightness(0.5);
+          transform: scale(1.05);
+        }
+
+        .preparing-overlay {
+          position: absolute;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          color: rgba(255, 255, 255, 0.8);
+          text-align: center;
+        }
+
+        .preparing-icon {
+          font-size: 20px;
+          background: rgba(255, 255, 255, 0.1);
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          animation: pulse-ring-prep 2s infinite;
+        }
+
+        @keyframes pulse-ring-prep {
+          0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.15); }
+          70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        .preparing-badge-text {
+          font-size: 10px;
+          font-weight: 800;
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          padding: 2px 8px;
+          border-radius: 20px;
+          color: #ffffff;
+          letter-spacing: -0.3px;
+        }
+
+        .preparing-title {
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.35;
+          color: rgba(255, 255, 255, 0.9);
+          margin: 0;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          height: 35px;
+          word-break: keep-all;
+        }
+
+        .preparing-subtitle {
+          font-size: 11px;
+          font-weight: 500;
+          color: #636370;
+          margin: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
       `}</style>
 
       {/* 스크롤 가능한 본문 영역 */}
@@ -1254,51 +1451,135 @@ export default function MembershipPage() {
         <div className="coming-soon-section">
           <h2 className="coming-soon-section-title">공개 예정</h2>
 
-          {/* 타임라인 헤더 */}
-          <div className="coming-soon-timeline">
-            <div className="timeline-node">
-              <div className="timeline-bullet" />
-              <span className="timeline-date">06. 03.</span>
-            </div>
-          </div>
+          {comingSoonDramas.length > 0 ? (
+            (() => {
+              // scheduledReleaseDate 기준 날짜 그룹핑
+              const comingSoonGroups: { dateLabel: string; time: number; works: any[] }[] = [];
+              comingSoonDramas.forEach((work) => {
+                let dateLabel = "";
+                let time = 0;
+                if (work.scheduledReleaseDate) {
+                  const d = new Date(work.scheduledReleaseDate);
+                  const mm = String(d.getMonth() + 1).padStart(2, "0");
+                  const dd = String(d.getDate()).padStart(2, "0");
+                  dateLabel = `${mm}. ${dd}.`;
+                  time = d.getTime();
+                }
+                const existing = comingSoonGroups.find((g) => g.dateLabel === dateLabel);
+                if (existing) {
+                  existing.works.push(work);
+                } else {
+                  comingSoonGroups.push({ dateLabel, time, works: [work] });
+                }
+              });
+              comingSoonGroups.sort((a, b) => a.time - b.time);
 
-          {/* 가로 스크롤 영역 */}
-          <div className="coming-soon-scroll-row">
-            {comingSoonDramas.length > 0 ? (
-              comingSoonDramas.map((drama) => (
-                <div key={drama.id} className="coming-soon-card-container">
-                  <div className="coming-soon-thumb-wrap">
-                    <img src={drama.thumbnail} alt={drama.title} className="coming-soon-thumb" loading="lazy" />
-                    <div className="coming-soon-badge">
-                      <span className="coming-soon-badge-text">준비중</span>
+              return comingSoonGroups.map((group) => (
+                <div key={group.dateLabel} style={{ marginBottom: "24px" }}>
+                  {/* 타임라인 헤더 */}
+                  <div className="coming-soon-timeline">
+                    <div className="timeline-node">
+                      <div className="timeline-bullet" />
+                      <span className="timeline-date">{group.dateLabel}</span>
                     </div>
                   </div>
-                  <h3 className="coming-soon-title">{drama.title}</h3>
-                  <button
-                    className={`coming-soon-alarm-btn ${alarmSettings[drama.id] ? "active" : ""}`}
-                    onClick={() => handleRequestNotification(drama.id)}
-                  >
-                    {alarmSettings[drama.id] ? (
-                      <>
-                        <CheckIconSmall />
-                        <span>설정 완료</span>
-                      </>
-                    ) : (
-                      <>
-                        <ClockIcon />
-                        <span>알림 받기</span>
-                      </>
-                    )}
-                  </button>
+
+                  {/* 가로 스크롤 영역 */}
+                  <div className="coming-soon-scroll-row">
+                    {group.works.map((drama) => (
+                      <div key={drama.id} className="coming-soon-card-container">
+                        <div className="coming-soon-thumb-wrap">
+                          <img src={drama.thumbnail} alt={drama.title} className="coming-soon-thumb" loading="lazy" />
+                          {drama.badge && (
+                            <div
+                              className="exclusive-badge"
+                              style={{
+                                background: drama.badge === "인기" ? "#ff2a5f" : "#535cff",
+                                color: "#ffffff"
+                              }}
+                            >
+                              {drama.badge}
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="coming-soon-title">{drama.title}</h3>
+                        <button
+                          className={`coming-soon-alarm-btn ${alarmSettings[drama.id] ? "active" : ""}`}
+                          onClick={() => handleRequestNotification(drama.id)}
+                        >
+                          {alarmSettings[drama.id] ? (
+                            <>
+                              <CheckIconSmall />
+                              <span>설정 완료</span>
+                            </>
+                          ) : (
+                            <>
+                              <ClockIcon />
+                              <span>알림 받기</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))
-            ) : (
-              <div style={{ padding: "20px 10px", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
-                새로운 작품을 준비 중입니다.
-              </div>
-            )}
-          </div>
+              ));
+            })()
+          ) : (
+            <div style={{ padding: "20px 10px", color: "rgba(255, 255, 255, 0.4)", fontSize: "14px" }}>
+              공개 예정인 작품이 없습니다.
+            </div>
+          )}
         </div>
+
+        {/* 2.5 집필 및 공개 준비 중 섹션 */}
+        {preparingDramas.length > 0 && (
+          <div className="preparing-section" style={{ marginTop: "8px" }}>
+            <h2
+              className="exclusive-section-title"
+              style={{
+                fontSize: "18px",
+                fontWeight: 850,
+                color: "#ffffff",
+                marginBottom: "16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px"
+              }}
+            >
+              <span style={{ fontSize: "16px" }}>⚙️</span> 집필 및 공개 준비 중
+            </h2>
+
+            <div className="preparing-grid">
+              {preparingDramas.map((drama) => (
+                <div key={drama.id} className="preparing-card">
+                  <div className="preparing-thumb-container">
+                    {drama.thumbnail ? (
+                      <img
+                        src={drama.thumbnail}
+                        alt={drama.title}
+                        className="preparing-thumb-blur"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="preparing-thumb-blur" style={{ background: "#1c1c24" }} />
+                    )}
+
+                    <div className="preparing-overlay">
+                      <div className="preparing-icon">🔒</div>
+                      <span className="preparing-badge-text">집필중</span>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: "0 2px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <h3 className="preparing-title">{drama.title}</h3>
+                    <p className="preparing-subtitle">{drama.subtitle || "기획 단계"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 3. 충전 안내 섹션 */}
         <div className="info-section">

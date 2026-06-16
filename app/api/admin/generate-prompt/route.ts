@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "missing_google_paid_api_key" }, { status: 500 });
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     
     const instructions = `You are an expert AI art prompt engineer for Google Imagen 4.
 Given the Title and Synopsis of an East Asian martial arts / fantasy web novel, analyze the themes, characters, Robes/weapons, and mood to generate a highly detailed and visually descriptive English image prompt for Google Imagen 4.

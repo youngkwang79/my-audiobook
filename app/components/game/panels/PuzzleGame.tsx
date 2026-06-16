@@ -106,7 +106,20 @@ export function PuzzleGame({
     setPuzzleTimeLeft(45.0);
     puzzleTimeLeftRef.current = 45.0;
     lastScoreAtTickRef.current = playerScore;
-  }, [initPuzzleGrid, stage]);
+  }, [initPuzzleGrid]);
+
+  const prevStageRef = useRef(stage);
+  useEffect(() => {
+    if (stage > prevStageRef.current) {
+      setPuzzleTimeLeft((prev) => {
+        const next = Math.min(60.0, prev + 15.0);
+        puzzleTimeLeftRef.current = next;
+        return next;
+      });
+      addFloatText(`돌파! 제한시간 +15s`, "#ffd700", 50, 35);
+    }
+    prevStageRef.current = stage;
+  }, [stage, addFloatText]);
 
   const stageRef = useRef(stage);
   const combatStateRef = useRef(mission?.combatState);
@@ -417,6 +430,7 @@ export function PuzzleGame({
         setPuzzleEffects(prev => [...prev, ...newEffects]);
         const idsToRemove = newEffects.map(e => e.id);
         setTimeout(() => setPuzzleEffects(prev => prev.filter(e => !idsToRemove.includes(e.id))), 500);
+        playHitEffect("pop");
       }
 
       specialBlockToCreateArray.forEach(sb => {
@@ -472,6 +486,7 @@ export function PuzzleGame({
       resolveMatches();
     } else {
       addFloatText("기맥 불일치", "#aaa");
+      playHitEffect("fail");
       setPuzzleSelected(null);
     }
   };
@@ -521,21 +536,7 @@ export function PuzzleGame({
       gap: "0"
     }}>
       <style>{PUZZLE_ANIM_CSS}</style>
-      <div style={{
-        width: "100%",
-        height: "60px",
-        position: "relative",
-        overflow: "hidden",
-        background: "rgba(0,0,0,0.5)",
-        borderBottom: "1px solid rgba(255,215,0,0.1)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}>
-        <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18, textShadow: "0 0 10px rgba(255,215,0,0.3)" }}>
-          내공 정렬 수련
-        </div>
-      </div>
+      {/* Removed redundant inner header to prevent overlap with launcher HUD */}
 
       <div style={{
         flex: 1,

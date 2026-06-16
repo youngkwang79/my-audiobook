@@ -17,9 +17,10 @@ export default function NovelRegistration({
   const [novelId, setNovelId] = useState("");
   const [novelTitle, setNovelTitle] = useState("");
   const [novelDesc, setNovelDesc] = useState("");
-  const [novelStatus, setNovelStatus] = useState<"연재중" | "완결" | "준비중">(
+  const [novelStatus, setNovelStatus] = useState<"연재중" | "완결" | "준비중" | "공개예정">(
     "완결",
   );
+  const [novelScheduledAt, setNovelScheduledAt] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [novelBadge, setNovelBadge] = useState("신작");
   const [novelExclusive, setNovelExclusive] = useState(true);
@@ -222,6 +223,7 @@ export default function NovelRegistration({
           exclusive: novelExclusive,
           featured: novelFeatured,
           is_membership_only: novelIsMembershipOnly,
+          created_at: novelStatus === "공개예정" && novelScheduledAt ? new Date(novelScheduledAt).toISOString() : new Date().toISOString(),
         }),
       });
 
@@ -344,10 +346,27 @@ export default function NovelRegistration({
           >
             <option value="연재중">연재중</option>
             <option value="완결">완결</option>
+            <option value="공개예정">공개예정</option>
             <option value="준비중">준비중</option>
           </select>
         </div>
       </div>
+
+      {novelStatus === "공개예정" && (
+        <div className="form-group" style={{ marginBottom: 16 }}>
+          <label className="form-label">📅 공개 예정 일시</label>
+          <input
+            type="datetime-local"
+            className="form-input"
+            value={novelScheduledAt}
+            onChange={(e) => setNovelScheduledAt(e.target.value)}
+            required
+          />
+          <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)", marginTop: "4px" }}>
+            * 설정한 예약 일시 기준으로 홈 화면 '공개 예정' 목록에 정렬되어 노출됩니다.
+          </span>
+        </div>
+      )}
 
       <div
         style={{

@@ -352,10 +352,39 @@ export default function NovelEdit({
               >
                 <option value="연재중">연재중</option>
                 <option value="완결">완결</option>
+                <option value="공개예정">공개예정</option>
                 <option value="준비중">준비중</option>
               </select>
             </div>
           </div>
+
+          {editWork.status === "공개예정" && (
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">📅 공개 예정 일시</label>
+              <input
+                type="datetime-local"
+                className="form-input"
+                value={
+                  editWork.created_at
+                    ? new Date(new Date(editWork.created_at).getTime() - new Date().getTimezoneOffset() * 60000)
+                        .toISOString()
+                        .slice(0, 16)
+                    : ""
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEditWork((p: any) => ({
+                    ...p,
+                    created_at: val ? new Date(val).toISOString() : null,
+                  }));
+                }}
+                required
+              />
+              <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)", marginTop: "4px" }}>
+                * 설정한 예약 일시 기준으로 홈 화면 '공개 예정' 목록에 정렬되어 노출됩니다.
+              </span>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">줄거리 / 시놉시스</label>

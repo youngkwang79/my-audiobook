@@ -377,13 +377,31 @@ export async function POST(req: Request) {
             .eq("work_id", targetWorkId);
             
           if (currentEpList) {
+            const { data: workData } = await supabaseAdmin
+              .from("works")
+              .select("status")
+              .eq("id", targetWorkId)
+              .maybeSingle();
+
+            const currentStatus = workData?.status;
+            let statusToUpdate: any = {};
+
+            if (currentStatus === "준비중") {
+              const isFuture = new Date(releaseDateStr).getTime() > Date.now();
+              statusToUpdate = {
+                status: isFuture ? "공개예정" : "연재중",
+                created_at: releaseDateStr
+              };
+            }
+
             await supabaseAdmin
               .from("works")
               .update({ 
                 episode_count: currentEpList.length,
                 last_voice: voice,
                 last_pitch: pitch,
-                last_rate: rate
+                last_rate: rate,
+                ...statusToUpdate
               })
               .eq("id", targetWorkId);
           }
@@ -392,6 +410,7 @@ export async function POST(req: Request) {
           // --- 5단계: 썸네일 표지 생성 (오직 1화일 때만 자동 실행) ---
           if (genResult.chapter === 1 && autoThumbnail) {
             sendLog("info", "[5단계] 1화 감지: 소설 표지 일러스트 생성을 시작합니다.");
+            const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
             
             // Gemini로 프롬프트 빌드
             sendLog("info", "Google Gemini를 사용하여 Imagen 4.0 전용 프롬프트를 작성 중...");
@@ -411,7 +430,7 @@ export async function POST(req: Request) {
               }
             }
 
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const instructions = `You are an expert AI art prompt engineer for Google Imagen 4.
 Given the Title and Synopsis of an East Asian martial arts / fantasy web novel, analyze the themes, characters, Robes/weapons, and mood to generate a highly detailed and visually descriptive English image prompt for Google Imagen 4.
 The prompt must be in English and specify visual details (clothing, weapons, background, lighting, artistic style).
