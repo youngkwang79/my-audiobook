@@ -83,7 +83,7 @@ export default function GrandOpenPopup() {
   return (
     <div className="popup-overlay">
       {isOpen2 && (
-        <div className="popup-content popup2">
+        <div className={`popup-content popup2 ${isOpen1 ? "popup2-back" : "popup2-front"}`}>
           <h2 className="popup-title">
             <span className="title-sub">무림북 강호 출두</span>
             <br />창작 소설 공모!
@@ -138,7 +138,7 @@ export default function GrandOpenPopup() {
               <div className="b-num">2</div>
               <div className="b-desc">
                 <strong>멤버십 오픈 특가 파격 할인!</strong>
-                <p>연간 멤버십 70% 할인! (가입 후 7일 한정)<br/>주간 멤버십 첫 한 달간 주당 1000원!</p>
+                <p>월간 멤버십 첫 달 단 4,900원 프로모션!<br/>홈페이지 내 모든 오디오북 무제한 감상 가능</p>
                 <button className="go-btn" onClick={() => { setIsOpen1(false); setIsOpen2(false); window.location.href='/membership'; }}>멤버십 보러가기</button>
               </div>
             </div>
@@ -195,17 +195,15 @@ export default function GrandOpenPopup() {
           z-index: 2;
         }
         .popup2 {
-          z-index: 1;
+          transition: all 0.3s ease;
+        }
+        .popup2-back {
           transform: translateY(-20px) scale(0.95);
           opacity: 0.8;
           filter: brightness(0.7);
-          transition: all 0.3s ease;
+          z-index: 1;
         }
-        /* When popup1 is closed, bring popup2 forward */
-        .popup-overlay:has(.popup1) .popup2 {
-          transform: translateY(-20px) scale(0.95);
-        }
-        .popup-overlay:not(:has(.popup1)) .popup2 {
+        .popup2-front {
           transform: translateY(0) scale(1);
           opacity: 1;
           filter: brightness(1);

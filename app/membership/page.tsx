@@ -102,14 +102,16 @@ type DramaItem = {
 
 export default function MembershipPage() {
   const router = useRouter();
-  const [selectedPlan, setSelectedPlan] = useState<"weekly" | "annual">("weekly");
+  const [selectedPlan, setSelectedPlan] = useState<"weekly" | "annual" | "monthly">("monthly");
   const [alarmSettings, setAlarmSettings] = useState<Record<string, boolean>>({});
   const [subscribedPlan, setSubscribedPlan] = useState<string | null>(null);
   const [promoPrices, setPromoPrices] = useState({ 
     annualPrice: 29900, 
     weeklyPrice: 1000, 
+    monthlyPrice: 9900,
     eligibleForAnnualPromo: true, 
-    eligibleForWeeklyPromo: true 
+    eligibleForWeeklyPromo: true,
+    eligibleForMonthlyPromo: true 
   });
   const [showBuyerModal, setShowBuyerModal] = useState(false);
   const [buyerName, setBuyerName] = useState("");
@@ -191,8 +193,10 @@ export default function MembershipPage() {
           setPromoPrices({
             annualPrice: data.annualPrice,
             weeklyPrice: data.weeklyPrice,
+            monthlyPrice: data.monthlyPrice,
             eligibleForAnnualPromo: data.eligibleForAnnualPromo,
-            eligibleForWeeklyPromo: data.eligibleForWeeklyPromo
+            eligibleForWeeklyPromo: data.eligibleForWeeklyPromo,
+            eligibleForMonthlyPromo: data.eligibleForMonthlyPromo
           });
         }
       } catch(e) {}
@@ -309,8 +313,16 @@ export default function MembershipPage() {
       if (!session) return;
 
       // 선택된 플랜에 따른 가격 및 이름 설정
-      const price = selectedPlan === "weekly" ? promoPrices.weeklyPrice : promoPrices.annualPrice;
-      const planName = selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스";
+      const price = selectedPlan === "weekly"
+        ? promoPrices.weeklyPrice
+        : selectedPlan === "monthly"
+        ? promoPrices.monthlyPrice
+        : promoPrices.annualPrice;
+      const planName = selectedPlan === "weekly"
+        ? "주간 멤버십 서비스"
+        : selectedPlan === "monthly"
+        ? "월간 멤버십 서비스"
+        : "연간 멤버십 서비스";
       paymentId = `m-${crypto.randomUUID()}`;
 
       // 0. Supabase DB orders 테이블에 PENDING 상태로 주문 정보 등록
@@ -354,7 +366,7 @@ export default function MembershipPage() {
           phoneNumber: buyerPhone.trim(),
         },
         offerPeriod: {
-          interval: selectedPlan === "weekly" ? "1m" : "1y",
+          interval: selectedPlan === "weekly" ? "1w" : selectedPlan === "monthly" ? "1m" : "1y",
         },
       };
 
@@ -1138,61 +1150,32 @@ export default function MembershipPage() {
 
         {/* 플랜 카드 */}
         <div className="plans-list">
-          {/* 주간 멤버십 */}
+          {/* 월간 멤버십 */}
           <div
-            className={`plan-card ${selectedPlan === "weekly" ? "selected" : "unselected"}`}
-            onClick={() => setSelectedPlan("weekly")}
+            className={`plan-card ${selectedPlan === "monthly" ? "selected" : "unselected"}`}
+            onClick={() => setSelectedPlan("monthly")}
           >
-            {promoPrices.eligibleForWeeklyPromo && (
-              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>첫 한 달 주당 1000원!</div>
+            {promoPrices.eligibleForMonthlyPromo && (
+              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>첫 달 단 4,900원!</div>
             )}
-            {selectedPlan === "weekly" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
+            {selectedPlan === "monthly" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
             <div className="plan-info-right">
-              <h3 className="plan-title">주간 무제한 이용권</h3>
+              <h3 className="plan-title">월간 무제한 이용권</h3>
               <p className="plan-price">
-                {promoPrices.eligibleForWeeklyPromo ? (
+                {promoPrices.eligibleForMonthlyPromo ? (
                   <>
                     <span style={{ position: 'relative', display: 'inline-block', color: '#e0e0e0', fontSize: '24px', fontWeight: 800, marginRight: '10px' }}>
-                      ₩3,000
+                      ₩9,900
                       <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '3px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(-20deg)', borderRadius: '2px' }}></span>
                       <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '3px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(20deg)', borderRadius: '2px' }}></span>
                     </span>
-                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '18px' }}>₩1,000/주</span>
+                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '18px' }}>₩4,900/월</span>
                   </>
                 ) : (
-                  "₩3,000/주"
+                  "₩9,900/월"
                 )}
               </p>
-              <span className="plan-duration-tag">주간 멤버십 서비스</span>
-            </div>
-          </div>
-
-          {/* 연간 멤버십 */}
-          <div
-            className={`plan-card ${selectedPlan === "annual" ? "selected" : "unselected"}`}
-            onClick={() => setSelectedPlan("annual")}
-          >
-            {promoPrices.eligibleForAnnualPromo ? (
-              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>가입 7일 한정 70% 할인</div>
-            ) : null}
-            {selectedPlan === "annual" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
-            <div className="plan-info-right">
-              <h3 className="plan-title">연간 무제한 이용권</h3>
-              <p className="plan-price">
-                {promoPrices.eligibleForAnnualPromo ? (
-                  <>
-                    <span style={{ position: 'relative', display: 'inline-block', color: '#e0e0e0', fontSize: '30px', fontWeight: 900, marginRight: '12px' }}>
-                      ₩99,900
-                      <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '4px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(-15deg)', borderRadius: '2px' }}></span>
-                      <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '4px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(15deg)', borderRadius: '2px' }}></span>
-                    </span>
-                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '20px' }}>₩29,900/년</span>
-                  </>
-                ) : (
-                  "₩99,900/년"
-                )}
-              </p>
-              <span className="plan-duration-tag">연간 멤버십 서비스</span>
+              <span className="plan-duration-tag">월간 멤버십 서비스</span>
             </div>
           </div>
         </div>
@@ -1344,11 +1327,13 @@ export default function MembershipPage() {
           style={{ opacity: subscribedPlan ? 0.7 : 1 }}
           onClick={subscribedPlan ? undefined : handleSubscribe}
         >
-          {subscribedPlan === "weekly"
-            ? "주간 무제한 이용권 사용중💖"
-            : subscribedPlan === "annual" || subscribedPlan === "yearly"
-              ? "연간 무제한 이용권 사용중💖"
-              : "지금 가입하기"}
+          {subscribedPlan === "monthly"
+            ? "월간 무제한 이용권 사용중💖"
+            : subscribedPlan === "weekly"
+              ? "주간 무제한 이용권 사용중💖"
+              : subscribedPlan === "annual" || subscribedPlan === "yearly"
+                ? "연간 무제한 이용권 사용중💖"
+                : "지금 가입하기"}
         </button>
         <span className="subscribe-caption">
           {subscribedPlan ? "언제든지 설정에서 해지 가능" : "자동 갱신 · 언제든지 해지 가능"}
@@ -1495,9 +1480,9 @@ export default function MembershipPage() {
                     <>
                       <strong>구매 조건 확인 및 결제 동의 (필수)</strong>
                       <ul>
-                        <li><strong>구매 상품:</strong> {selectedPlan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스"}</li>
-                        <li><strong>결제 금액:</strong> {selectedPlan === "weekly" ? "₩3,000" : "₩99,900"} (부가세 포함)</li>
-                        <li><strong>이용 기간:</strong> {selectedPlan === "weekly" ? "결제일로부터 7일간" : "결제일로부터 365일간"}</li>
+                        <li><strong>구매 상품:</strong> {selectedPlan === "weekly" ? "주간 멤버십 서비스" : selectedPlan === "monthly" ? "월간 멤버십 서비스" : "연간 멤버십 서비스"}</li>
+                        <li><strong>결제 금액:</strong> {selectedPlan === "weekly" ? "₩3,000" : selectedPlan === "monthly" ? `₩${promoPrices.monthlyPrice.toLocaleString()}` : "₩99,900"} (부가세 포함)</li>
+                        <li><strong>이용 기간:</strong> {selectedPlan === "weekly" ? "결제일로부터 7일간" : selectedPlan === "monthly" ? "결제일로부터 30일간" : "결제일로부터 365일간"}</li>
                         <li><strong>청약 철회 안내:</strong> 본 상품은 전자상거래법 제17조 제2항에 따른 '디지털 콘텐츠' 상품으로, 결제 및 가입 즉시 효력이 개시되어 콘텐츠 제공이 시작되므로 단순 변심에 의한 청약철회(환불)가 불가능합니다. 단, 서비스 자체의 하자로 인해 이용이 불가능한 경우는 제외합니다.</li>
                         <li>※ 상품 가격, 사용 기간 및 환불 규정을 확인하였으며 결제 진행에 동의합니다.</li>
                       </ul>

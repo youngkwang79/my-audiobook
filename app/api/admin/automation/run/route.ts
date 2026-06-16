@@ -86,6 +86,7 @@ export async function POST(req: Request) {
       releaseDateMode = "immediate",
       releaseDateStart = "",
       releaseDateInterval = "1day",
+      runTts = true,
     } = payload;
 
     if (!workId || !outputDirPath) {
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
           sendLog("debug", `명령어 실행: python novel_murim.py ${genArgs.join(" ")}`);
           
           const pythonProcess = spawn("python", [scriptPath, ...genArgs], {
-            env: { ...process.env, PYTHONUNBUFFERED: "1" }
+            env: { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" }
           });
 
           let stdoutAcc = "";
@@ -191,80 +192,84 @@ export async function POST(req: Request) {
           sendLog("success", `✨ [집필 완료] 제${genResult.chapter}화. <${genResult.title}>`);
           sendLog("info", `저장 경로: ${genResult.file_path}`);
 
-          // --- 2단계: TTS 변환 ---
-          sendLog("info", `[2단계] 오디오 변환을 시작합니다. (Voice: ${voice}, Pitch: ${pitch}, Rate: ${rate})`);
-          const uniqueId = crypto.randomUUID();
-          tempMp3Path = path.join(os.tmpdir(), `tts_${uniqueId}.mp3`);
-          
-          const ttsScriptPath = path.join(process.cwd(), "scripts", "tts_generator.py");
-          const ttsArgs = [
-            `--text-file=${genResult.file_path}`,
-            `--voice=${voice}`,
-            `--pitch=${pitch}`,
-            `--rate=${rate}`,
-            `--effect=${effect}`,
-            `--output=${tempMp3Path}`
-          ];
-          if (voiceGuide) {
-            ttsArgs.push(`--voice-guide=${voiceGuide}`);
+          // --- 2단계: TTS 변환 & 3단계: R2 업로드 ---
+          if (runTts) {
+            sendLog("info", `[2단계] 오디오 변환을 시작합니다. (Voice: ${voice}, Pitch: ${pitch}, Rate: ${rate})`);
+            const uniqueId = crypto.randomUUID();
+            tempMp3Path = path.join(os.tmpdir(), `tts_${uniqueId}.mp3`);
+            
+            const ttsScriptPath = path.join(process.cwd(), "scripts", "tts_generator.py");
+            const ttsArgs = [
+              `--text-file=${genResult.file_path}`,
+              `--voice=${voice}`,
+              `--pitch=${pitch}`,
+              `--rate=${rate}`,
+              `--effect=${effect}`,
+              `--output=${tempMp3Path}`
+            ];
+            if (voiceGuide) {
+              ttsArgs.push(`--voice-guide=${voiceGuide}`);
+            }
+
+            sendLog("debug", `명령어 실행: python scripts/tts_generator.py ${ttsArgs.join(" ")}`);
+            const ttsProcess = spawn("python", [ttsScriptPath, ...ttsArgs], {
+              env: { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" }
+            });
+
+            let ttsLineBuffer = "";
+            const ttsPromise = new Promise<void>((resolve, reject) => {
+              ttsProcess.stdout.on("data", (chunk) => {
+                const text = chunk.toString("utf8");
+                ttsLineBuffer += text;
+                let lines = ttsLineBuffer.split("\n");
+                ttsLineBuffer = lines.pop() || "";
+                for (const line of lines) {
+                  if (line.trim()) sendLog("stdout", `[TTS] ${line.trim()}`);
+                }
+              });
+
+              ttsProcess.stderr.on("data", (chunk) => {
+                sendLog("stderr", `[TTS 에러] ${chunk.toString("utf8").trim()}`);
+              });
+
+              ttsProcess.on("close", (code) => {
+                if (ttsLineBuffer.trim()) {
+                  sendLog("stdout", `[TTS] ${ttsLineBuffer.trim()}`);
+                }
+                if (code === 0) {
+                  resolve();
+                } else {
+                  reject(new Error(`TTS 변환 프로세스가 종료 코드 ${code}로 실패했습니다.`));
+                }
+              });
+            });
+
+            await ttsPromise;
+            if (!fs.existsSync(tempMp3Path)) {
+              throw new Error("TTS MP3 파일이 생성되지 않았습니다.");
+            }
+            sendLog("success", "🔊 [TTS 변환 완료] 오디오가 성공적으로 렌더링되었습니다.");
+
+            // --- 3단계: R2 업로드 ---
+            sendLog("info", "[3단계] Cloudflare R2 스토리지에 업로드하는 중...");
+            const mp3Buffer = fs.readFileSync(tempMp3Path);
+            const epNum = Number(genResult.chapter);
+            const folder = isNaN(epNum) ? String(genResult.chapter) : String(epNum).padStart(3, "0");
+            const r2Key = `${targetWorkId}/${folder}/01.MP3`;
+            
+            const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
+            await s3.send(
+              new PutObjectCommand({
+                Bucket: bucketName,
+                Key: r2Key,
+                Body: mp3Buffer,
+                ContentType: "audio/mpeg"
+              })
+            );
+            sendLog("success", `☁️ [R2 업로드 완료] Key: ${r2Key}`);
+          } else {
+            sendLog("info", "⏭️ [설정] 사용자의 옵션 선택으로 오디오(TTS) 변환 및 업로드 단계가 생략되었습니다.");
           }
-
-          sendLog("debug", `명령어 실행: python scripts/tts_generator.py ${ttsArgs.join(" ")}`);
-          const ttsProcess = spawn("python", [ttsScriptPath, ...ttsArgs], {
-            env: { ...process.env, PYTHONUNBUFFERED: "1" }
-          });
-
-          let ttsLineBuffer = "";
-          const ttsPromise = new Promise<void>((resolve, reject) => {
-            ttsProcess.stdout.on("data", (chunk) => {
-              const text = chunk.toString("utf8");
-              ttsLineBuffer += text;
-              let lines = ttsLineBuffer.split("\n");
-              ttsLineBuffer = lines.pop() || "";
-              for (const line of lines) {
-                if (line.trim()) sendLog("stdout", `[TTS] ${line.trim()}`);
-              }
-            });
-
-            ttsProcess.stderr.on("data", (chunk) => {
-              sendLog("stderr", `[TTS 에러] ${chunk.toString("utf8").trim()}`);
-            });
-
-            ttsProcess.on("close", (code) => {
-              if (ttsLineBuffer.trim()) {
-                sendLog("stdout", `[TTS] ${ttsLineBuffer.trim()}`);
-              }
-              if (code === 0) {
-                resolve();
-              } else {
-                reject(new Error(`TTS 변환 프로세스가 종료 코드 ${code}로 실패했습니다.`));
-              }
-            });
-          });
-
-          await ttsPromise;
-          if (!fs.existsSync(tempMp3Path)) {
-            throw new Error("TTS MP3 파일이 생성되지 않았습니다.");
-          }
-          sendLog("success", "🔊 [TTS 변환 완료] 오디오가 성공적으로 렌더링되었습니다.");
-
-          // --- 3단계: R2 업로드 ---
-          sendLog("info", "[3단계] Cloudflare R2 스토리지에 업로드하는 중...");
-          const mp3Buffer = fs.readFileSync(tempMp3Path);
-          const epNum = Number(genResult.chapter);
-          const folder = isNaN(epNum) ? String(genResult.chapter) : String(epNum).padStart(3, "0");
-          const r2Key = `${targetWorkId}/${folder}/01.MP3`;
-          
-          const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
-          await s3.send(
-            new PutObjectCommand({
-              Bucket: bucketName,
-              Key: r2Key,
-              Body: mp3Buffer,
-              ContentType: "audio/mpeg"
-            })
-          );
-          sendLog("success", `☁️ [R2 업로드 완료] Key: ${r2Key}`);
 
           // --- 4단계 직전: 해당 작품(targetWorkId)이 DB에 존재하지 않으면 자동 생성 ---
           sendLog("info", `[4단계] 작품 정보를 데이터베이스에서 검사합니다. (ID: ${targetWorkId})`);
@@ -307,7 +312,7 @@ export async function POST(req: Request) {
                 id: targetWorkId,
                 title: novelTitleVal,
                 description: novelIntroVal.slice(0, 500),
-                genre: novelGenreVal,
+                subtitle: `[${novelGenreVal}]`,
                 status: "준비중",
                 total_episodes: totalEpsVal,
                 free_episodes: freeEpsVal,

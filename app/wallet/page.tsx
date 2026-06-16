@@ -65,8 +65,9 @@ export default function WalletPage() {
   const [coins, setCoins] = useState(0);
   const [rewardCoins, setRewardCoins] = useState(0);
   const [autoNextEpisode, setAutoNextEpisode] = useState(true);
-  const [openTab, setOpenTab] = useState<"charge" | "reward" | "use" | "payment" | null>(null);
+  const [openTab, setOpenTab] = useState<"charge" | "reward" | "use" | "payment" | "flow" | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [txLoading, setTxLoading] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -104,6 +105,44 @@ export default function WalletPage() {
     }
   };
 
+  const loadAllTransactions = async () => {
+    setTxLoading(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch("/api/me/wallet/transactions", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.transactions) {
+        // 과거순으로 정렬하여 잔액 누적합 계산
+        const sorted = [...data.transactions].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        let balance = 0;
+        const mapped = sorted.map((tx) => {
+          balance += tx.amount;
+          return {
+            ...tx,
+            runningBalance: balance,
+          };
+        });
+        // 사용자에게 노출할 때는 최신순으로 반전
+        mapped.reverse();
+        setAllTransactions(mapped);
+      } else {
+        setAllTransactions([]);
+      }
+    } catch (e) {
+      console.error("전체 거래 내역 로드 에러:", e);
+      setAllTransactions([]);
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
   const loadOrders = async () => {
     setOrdersLoading(true);
     try {
@@ -122,15 +161,18 @@ export default function WalletPage() {
     }
   };
 
-  const handleTabToggle = (tab: "charge" | "reward" | "use" | "payment") => {
+  const handleTabToggle = (tab: "charge" | "reward" | "use" | "payment" | "flow") => {
     if (openTab === tab) {
       setOpenTab(null);
       setTransactions([]);
+      setAllTransactions([]);
       setOrders([]);
     } else {
       setOpenTab(tab);
       if (tab === "payment") {
         loadOrders();
+      } else if (tab === "flow") {
+        loadAllTransactions();
       } else {
         loadTransactions(tab);
       }
@@ -625,6 +667,73 @@ export default function WalletPage() {
 
         {/* 메뉴 리스트 */}
         <div className="wallet-menu-list">
+          {/* 포인트 이용 흐름 및 잔액 현황 (KG이니시스 심사 필수 요건) */}
+          <div>
+            <button
+              className={`wallet-menu-item ${openTab === "flow" ? "active" : ""}`}
+              onClick={() => handleTabToggle("flow")}
+              style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}
+            >
+              <span className="wallet-menu-item-label" style={{ color: "#ffd700" }}>
+                ✨ 포인트 이용 흐름 및 잔액 현황
+              </span>
+              <div className={`wallet-menu-item-right ${openTab === "flow" ? "rotated" : ""}`}>
+                <ChevronRightIcon />
+              </div>
+            </button>
+            {openTab === "flow" && (
+              <div className="tx-list-container" style={{ maxHeight: "350px", padding: "12px 8px" }}>
+                {txLoading ? (
+                  <div className="tx-empty">불러오는 중...</div>
+                ) : allTransactions.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.2fr 1fr 2fr 1.2fr 1.2fr",
+                      fontSize: "11px",
+                      color: "#8c8c96",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      paddingBottom: "6px",
+                      fontWeight: "bold",
+                      textAlign: "center"
+                    }}>
+                      <div>일시</div>
+                      <div>구분</div>
+                      <div>상세 내용</div>
+                      <div>변동</div>
+                      <div>잔여</div>
+                    </div>
+                    {allTransactions.map((tx) => {
+                      const typeLabel = tx.transaction_type === "charge" ? "충전" : tx.transaction_type === "reward" ? "적립" : "사용";
+                      const amountColor = tx.amount > 0 ? (tx.transaction_type === "charge" ? "#10b981" : "#f59e0b") : "#ef4444";
+                      const amountSign = tx.amount >= 0 ? `+${tx.amount}` : `${tx.amount}`;
+                      
+                      return (
+                        <div key={tx.id} style={{
+                          display: "grid",
+                          gridTemplateColumns: "1.2fr 1fr 2fr 1.2fr 1.2fr",
+                          fontSize: "12.5px",
+                          padding: "8px 0",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          alignItems: "center",
+                          textAlign: "center"
+                        }}>
+                          <div style={{ fontSize: "10.5px", color: "#8c8c96" }}>{formatDate(tx.created_at).split(" ")[0]}</div>
+                          <div style={{ fontWeight: "700", color: tx.amount > 0 ? "#ffd700" : "#ffffff" }}>{typeLabel}</div>
+                          <div style={{ textAlign: "left", paddingLeft: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={tx.description}>{tx.description}</div>
+                          <div style={{ fontWeight: "700", color: amountColor }}>{amountSign}</div>
+                          <div style={{ fontWeight: "800", color: "#ffffff" }}>{tx.runningBalance}P</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="tx-empty">이용 내역이 없습니다.</div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* 충전 내역 */}
           <div>
             <button

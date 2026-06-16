@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProvider";
+import Link from "next/link";
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -36,7 +37,6 @@ function CommunityIcon({ active }: { active: boolean }) {
 }
 
 export default function BottomNav() {
-  const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
 
@@ -95,23 +95,23 @@ export default function BottomNav() {
         }
       `}</style>
       <div className="bottom-nav">
-        <div className={`nav-item ${pathname === "/" ? "active" : ""}`} onClick={() => router.push("/")}>
+        <Link href="/" className={`nav-item ${pathname === "/" ? "active" : ""}`}>
           <HomeIcon active={pathname === "/"} />
           <span>홈</span>
-        </div>
-        <div className={`nav-item ${pathname === "/community" ? "active" : ""}`} onClick={() => router.push("/community")}>
+        </Link>
+        <Link href="/community" className={`nav-item ${pathname === "/community" ? "active" : ""}`}>
           <CommunityIcon active={pathname === "/community"} />
           <span>강호게시판</span>
-        </div>
-        <div className={`nav-item ${pathname === "/works" ? "active" : ""}`} onClick={() => router.push("/works")}>
+        </Link>
+        <Link href="/works" className={`nav-item ${pathname === "/works" ? "active" : ""}`}>
           <LibraryIcon active={pathname === "/works"} />
           <span>보관함</span>
-        </div>
-        <div className={`nav-item nav-item-my ${(pathname === "/me" || pathname === "/wallet" || pathname === "/checkin") ? "active" : ""}`} onClick={() => router.push(user ? "/me" : "/login")}>
+        </Link>
+        <Link href={user ? "/me" : "/login"} className={`nav-item nav-item-my ${(pathname === "/me" || pathname === "/wallet" || pathname === "/checkin") ? "active" : ""}`}>
           <UserIcon active={pathname === "/me" || pathname === "/wallet" || pathname === "/checkin" || pathname === "/login"} />
           <span>내정보</span>
           <div className="my-red-dot"></div>
-        </div>
+        </Link>
       </div>
     </>
   );

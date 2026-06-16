@@ -155,8 +155,12 @@ export async function POST(req: Request) {
       // 10) Grant subscription/coins
       const isMembership = order.payment_id && order.payment_id.startsWith("m-");
       if (isMembership) {
-        const plan = order.product_name.includes("주간") ? "weekly" : "annual";
-        const daysToAdd = plan === "weekly" ? 7 : 365;
+        const plan = order.product_name.includes("주간")
+          ? "weekly"
+          : order.product_name.includes("월간")
+          ? "monthly"
+          : "annual";
+        const daysToAdd = plan === "weekly" ? 7 : plan === "monthly" ? 30 : 365;
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + daysToAdd);
 

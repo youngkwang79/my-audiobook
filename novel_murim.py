@@ -7,7 +7,7 @@ import sys
 import argparse
 from google import genai
 from google.genai import types
-from api_key_loader import GOOGLE_API_KEY
+from api_key_loader import GOOGLE_API_KEY, GOOGLE_FREE_API_KEY
 
 # 한글 터미널 인코딩 에러 방지 설정
 sys.stdout.reconfigure(encoding='utf-8')
@@ -15,16 +15,22 @@ sys.stdout.reconfigure(encoding='utf-8')
 # argparse setup
 parser = argparse.ArgumentParser(description="Moorim Novel Generator CLI")
 parser.add_argument("--write-next", action="store_true", help="Only write the next incomplete chapter and exit")
+parser.add_argument("--plan-only", action="store_true", help="Only generate the novel plan/synopsis and exit")
 parser.add_argument("--output-dir-path", help="Manually override output directory path")
 args, unknown = parser.parse_known_args()
 
 client = genai.Client(api_key=GOOGLE_API_KEY)
+free_client = genai.Client(api_key=GOOGLE_FREE_API_KEY) if GOOGLE_FREE_API_KEY else None
 MODEL_NAME = 'gemini-2.5-flash'
 
-def generate_moorim_classic(prompt, description="요청", temperature=0.8):
+def generate_moorim_classic(prompt, description="요청", temperature=0.8, use_free_key=False):
+    # Determine which client to start with
+    current_client = free_client if (use_free_key and free_client) else client
+    used_free_key = (current_client == free_client)
+    
     for attempt in range(1, 4):
         try:
-            response = client.models.generate_content(
+            response = current_client.models.generate_content(
                 model=MODEL_NAME, 
                 contents=prompt,
                 config=types.GenerateContentConfig(temperature=temperature)
@@ -38,8 +44,17 @@ def generate_moorim_classic(prompt, description="요청", temperature=0.8):
             print(f"\n⚠️ [가드레일 감지] 빈 내용 반환. {attempt}차 우회 재시도 중...")
             time.sleep(2)
         except Exception as e:
-            print(f"\n🔄 [무림북 서버 지연] {description} {attempt}차 재시도 중... (원인: {str(e)[:50]})")
+            err_msg = str(e)[:50]
+            print(f"\n🔄 [무림북 서버 지연] {description} {attempt}차 재시도 중... (원인: {err_msg})")
+            
+            # Fallback to paid key if free key exhausted/failed
+            if used_free_key and ("429" in err_msg or "quota" in err_msg.lower() or attempt == 2):
+                print(f"👉 [자동 전환] 무료 API 키 한도 도달 혹은 에러 발생. 유료 API 키로 스위칭하여 재시도합니다.")
+                current_client = client
+                used_free_key = False
+                
             time.sleep(3)
+            
     raise Exception(f"⚠️ [집필 실패] {description} 생성에 최종 실패했습니다. API 키 한도 초과 또는 일시적인 접속 차단 가능성이 있습니다.")
 
 print("==================================================================")
@@ -204,7 +219,7 @@ else:
     전체 줄거리: [여기에 작성]
     """
 
-    concept_text = generate_moorim_classic(moorim_classic_prompt, "대서사 기획안 생성", temperature=1.0)
+    concept_text = generate_moorim_classic(moorim_classic_prompt, "대서사 기획안 생성", temperature=1.0, use_free_key=True)
 
     novel_title = "무명 정통 무협"
     novel_intro = "무림북 대작."
@@ -219,16 +234,16 @@ else:
 
     # 4분할 시놉시스 빌드
     prompt_1_25 = f"""소설 <{novel_title}>의 1화부터 {p1}화 시놉시스를 작성해 주세요. '1화: 내용' 형식으로 적되, 주인공이 무공을 익히는 점진적인 고통과 내부 수련 과정만을 다루십시오. {p1}화 이전에는 거대 악역과의 대결이나 처단이 결코 일어나서는 안 됩니다. 순수 한글로만 작성하십시오."""
-    response_1_25_text = generate_moorim_classic(prompt_1_25, "1페이즈 시놉시스", temperature=0.9)
+    response_1_25_text = generate_moorim_classic(prompt_1_25, "1페이즈 시놉시스", temperature=0.9, use_free_key=True)
 
     prompt_26_50 = f"""소설 <{novel_title}>의 {p1+1}화부터 {p2}화 시놉시스를 작성해 주세요. 중간 거점 조사나 잠입 에피소드에 집중하여 서사의 긴장감을 웅장하게 키우십시오. 최종 빌런들이 1~2화 만에 맥없이 처단되는 전개는 절대 금지합니다. 순수 한글로만 작성하십시오."""
-    response_26_50_text = generate_moorim_classic(prompt_26_50, "2페이즈 시놉시스", temperature=0.9)
+    response_26_50_text = generate_moorim_classic(prompt_26_50, "2페이즈 시놉시스", temperature=0.9, use_free_key=True)
 
     prompt_51_75 = f"""소설 <{novel_title}>의 {p2+1}화부터 {p3}화 시놉시스를 작성해 주세요. 악역들이 정치적 음모와 수싸움으로 주인공 일행을 역경에 빠뜨리는 구간입니다. 초반 기연 인물의 과거 사연이나 그가 남긴 유산이 서사의 핵심 복선으로 재등장하게 하십시오. 순수 한글로만 작성하십시오."""
-    response_51_75_text = generate_moorim_classic(prompt_51_75, "3페이즈 시놉시스", temperature=0.9)
+    response_51_75_text = generate_moorim_classic(prompt_51_75, "3페이즈 시놉시스", temperature=0.9, use_free_key=True)
 
     prompt_76_100 = f"""소설 <{novel_title}>의 {p3+1}화부터 {p4}화 시놉시스를 작성해 주세요. 지략형 최종 보스와의 거대한 결전을 이끌어내십시오. 순수 한글로만 작성하십시오."""
-    response_76_100_text = generate_moorim_classic(prompt_76_100, "4페이즈 시놉시스", temperature=0.9)
+    response_76_100_text = generate_moorim_classic(prompt_76_100, "4페이즈 시놉시스", temperature=0.9, use_free_key=True)
 
     full_synopsis_text = response_1_25_text + "\n" + response_26_50_text + "\n" + response_51_75_text + "\n" + response_76_100_text
 
@@ -254,6 +269,11 @@ else:
     with open(plan_path, "w", encoding="utf-8") as plan_f:
         json.dump(cached_plan, plan_f, ensure_ascii=False, indent=2)
 
+if args.plan_only:
+    target_plan = cached_plan if not existing_plan else existing_plan
+    print(f"\n[PLAN_RESULT] {json.dumps(target_plan, ensure_ascii=False)}")
+    sys.exit(0)
+
 forbidden_str = ", ".join(selected_style["forbidden"])
 
 # =========================================================================
@@ -261,6 +281,7 @@ forbidden_str = ", ".join(selected_style["forbidden"])
 # =========================================================================
 # 다이나믹 사전 동적 주입 로직은 개별 화마다 실행됨.
 
+"""
 [🚨 급전개 방지 및 악역 입체화 지침 - 절대 준수]
 1. 악역들의 삼류 자폭 연출 절대 금지:
    - 정체가 드러난 악역들이 대사로 스스로의 음모를 나불거리는 유치한 연출은 절대 금지합니다.

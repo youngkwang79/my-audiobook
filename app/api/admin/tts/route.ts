@@ -23,7 +23,9 @@ function runTtsScript(args: string[]): Promise<string> {
     const scriptPath = path.join(process.cwd(), "scripts", "tts_generator.py");
     
     console.log(`Running python scripts/tts_generator.py with args:`, args);
-    const pythonProcess = spawn("python", [scriptPath, ...args]);
+    const pythonProcess = spawn("python", [scriptPath, ...args], {
+      env: { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" }
+    });
     
     let stdout = "";
     let stderr = "";

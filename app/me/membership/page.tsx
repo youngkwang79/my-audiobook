@@ -287,7 +287,11 @@ export default function MembershipManagePage() {
                 <h3 className="plan-info-title">{getPlanName(subscribedPlan)}</h3>
                 <p className="plan-info-desc" style={{ marginTop: 8 }}>
                   자동 결제 예정일: 다음 주기 결제일<br />
-                  매주/매년 정기 결제가 진행됩니다.
+                  {subscribedPlan === "weekly"
+                    ? "매주 정기 결제가 진행됩니다."
+                    : subscribedPlan === "monthly"
+                    ? "매월 정기 결제가 진행됩니다."
+                    : "매년 정기 결제가 진행됩니다."}
                 </p>
               </div>
               <button className="btn-manage-action cancel" onClick={handleCancelMembership}>

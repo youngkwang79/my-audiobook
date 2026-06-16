@@ -37,6 +37,17 @@ export async function GET(req: Request) {
     
     const eligibleForWeeklyPromo = !weeklyOrders || weeklyOrders.length === 0 || isAdmin;
 
+    // 2.5) Monthly eligibility (no previous successful monthly order)
+    const { data: monthlyOrders } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("product_name", "월간 멤버십 서비스")
+      .eq("status", "SUCCESS")
+      .limit(1);
+    
+    const eligibleForMonthlyPromo = !monthlyOrders || monthlyOrders.length === 0 || isAdmin;
+
     // 3. Welcome gift check (has received 3500 coins?)
     const { data: welcomeTx } = await supabaseAdmin
       .from("wallet_transactions")
@@ -50,9 +61,11 @@ export async function GET(req: Request) {
     return NextResponse.json({
       eligibleForAnnualPromo,
       eligibleForWeeklyPromo,
+      eligibleForMonthlyPromo,
       hasReceivedWelcome,
       annualPrice: eligibleForAnnualPromo ? 29900 : 99900,
       weeklyPrice: eligibleForWeeklyPromo ? 1000 : 3000,
+      monthlyPrice: eligibleForMonthlyPromo ? 4900 : 9900,
       daysSinceCreation
     });
   } catch (error: any) {

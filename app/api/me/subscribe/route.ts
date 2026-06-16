@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const { plan, paymentId, billingKey } = await req.json().catch(() => ({}));
-    if (!plan || (plan !== "weekly" && plan !== "annual" && plan !== "yearly")) {
+    if (!plan || (plan !== "weekly" && plan !== "annual" && plan !== "yearly" && plan !== "monthly")) {
       return NextResponse.json({ error: "invalid plan" }, { status: 400 });
     }
     if (!paymentId || !billingKey) {
@@ -53,7 +53,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "server configuration error" }, { status: 500 });
     }
 
-    const planName = plan === "weekly" ? "주간 멤버십 서비스" : "연간 멤버십 서비스";
+    const planName = plan === "weekly"
+      ? "주간 멤버십 서비스"
+      : plan === "monthly"
+      ? "월간 멤버십 서비스"
+      : "연간 멤버십 서비스";
 
     const chargeResponse = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`, {
       method: "POST",
@@ -138,7 +142,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const daysToAdd = plan === "weekly" ? 7 : 365;
+    const daysToAdd = plan === "weekly" ? 7 : plan === "monthly" ? 30 : 365;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + daysToAdd);
 

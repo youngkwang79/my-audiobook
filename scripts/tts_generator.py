@@ -25,7 +25,7 @@ def custom_mkssml(tc, escaped_text):
 # Apply monkeypatch
 edge_tts.communicate.mkssml = custom_mkssml
 
-def preprocess_content_to_ssml_body(content, boosted_pitch):
+def preprocess_content_to_ssml_body(content, boosted_pitch, default_pitch=None, default_rate=None, boost_questions=True, use_break=True):
     # Normalize quotes
     content = content.replace("“", '"').replace("”", '"')
     content = content.replace("‘", "'").replace("’", "'")
@@ -49,19 +49,30 @@ def preprocess_content_to_ssml_body(content, boosted_pitch):
 
     body_parts = []
     for s in sentences:
-        is_question = s.strip().endswith('?')
+        is_question = s.strip().endswith('?') and boost_questions
         escaped_s = xml_escape(s)
         
-        # Apply pauses on ellipses U+2026 or double+ dots
-        escaped_s = re.sub(r'\.{2,}|…', '<break time="500ms"/>', escaped_s)
-        
-        # Dialogue pause (700ms after dialogue quote ends)
-        escaped_s = re.sub(r'&quot;(.*?)&quot;', r'&quot;\1&quot;<break time="700ms"/>', escaped_s)
+        if use_break:
+            # Apply pauses on ellipses U+2026 or double+ dots
+            escaped_s = re.sub(r'\.{2,}|…', '<break time="500ms"/>', escaped_s)
+            # Dialogue pause (700ms after dialogue quote ends)
+            escaped_s = re.sub(r'&quot;(.*?)&quot;', r'&quot;\1&quot;<break time="700ms"/>', escaped_s)
         
         if is_question:
-            body_parts.append(f"<prosody pitch='{boosted_pitch}'>{escaped_s}</prosody>")
+            if default_rate:
+                body_parts.append(f"<prosody pitch='{boosted_pitch}' rate='{default_rate}'>{escaped_s}</prosody>")
+            else:
+                body_parts.append(f"<prosody pitch='{boosted_pitch}'>{escaped_s}</prosody>")
         else:
-            body_parts.append(escaped_s)
+            if (default_pitch or default_rate) and boost_questions:
+                attrs = []
+                if default_pitch:
+                    attrs.append(f"pitch='{default_pitch}'")
+                if default_rate:
+                    attrs.append(f"rate='{default_rate}'")
+                body_parts.append(f"<prosody {' '.join(attrs)}>{escaped_s}</prosody>")
+            else:
+                body_parts.append(escaped_s)
             
     return "".join(body_parts)
 
@@ -136,6 +147,10 @@ async def amain():
     parser.add_argument("--effect", default="none", help="Special effect filter (none, echo, radio, robot)")
     parser.add_argument("--voice-guide", help="Voice guide system instructions for audio modality")
     args = parser.parse_args()
+    
+    # Map old/incorrect voice name to the correct Microsoft Edge TTS name
+    if args.voice == "ko-KR-HyunsuNeural":
+        args.voice = "ko-KR-HyunsuMultilingualNeural"
 
     content = ""
     if args.text_file:
@@ -384,7 +399,7 @@ async def amain():
                 boosted_val = val + 22
                 boosted_pitch = f"{'+' if boosted_val >= 0 else ''}{boosted_val}%"
                 
-        body_content = preprocess_content_to_ssml_body(content, boosted_pitch)
+        body_content = preprocess_content_to_ssml_body(content, boosted_pitch=args.pitch, boost_questions=False, use_break=False)
         
         ssml = (
             "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>"
@@ -397,6 +412,7 @@ async def amain():
         )
         
         print("Generated Custom Edge TTS SSML...")
+        print("SSML:", ssml)
         communicate = edge_tts.Communicate(text="dummy", voice=args.voice, pitch=args.pitch, rate=args.rate)
         communicate.texts = [ssml]
         

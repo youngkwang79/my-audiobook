@@ -112,6 +112,15 @@ export default function AutomationPanel({
   const [logs, setLogs] = useState<LogLine[]>([]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
+  // --- PLAN CREATION MODAL STATE ---
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planFolderName, setPlanFolderName] = useState("");
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planResult, setPlanResult] = useState<any>(null);
+  const [planTempDir, setPlanTempDir] = useState("");
+  const [planError, setPlanError] = useState("");
+  const [runTts, setRunTts] = useState(true);
+
   // --- LEGACY STATE ---
   const [mergeFiles, setMergeFiles] = useState<File[]>([]);
   const [merging, setMerging] = useState(false);
@@ -259,6 +268,7 @@ export default function AutomationPanel({
         releaseDateMode,
         releaseDateStart,
         releaseDateInterval,
+        runTts,
       })
     });
 
@@ -420,6 +430,81 @@ export default function AutomationPanel({
     setLogs((prev) => [...prev, { time: timeStr, type: "debug", message: `🚨 [중지 요청 수신] 진행 중인 단계가 완료되는 즉시 연속 루프가 중지됩니다.` }]);
   };
 
+  const handleCreatePlan = async () => {
+    setPlanLoading(true);
+    setPlanError("");
+    setPlanResult(null);
+    setPlanTempDir("");
+    setPlanFolderName("");
+
+    try {
+      const token = await supabase.auth.getSession().then((s) => s.data.session?.access_token);
+      const res = await fetch("/api/admin/automation/create-plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({}) // temp directory is created by backend
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "시놉시스 생성 실패");
+      }
+      setPlanResult(data.plan);
+      setPlanTempDir(data.tempDir);
+      
+      // Auto-suggest a folder name based on the title
+      if (data.plan?.novel_title) {
+        const safeTitle = data.plan.novel_title.replace(/[^\w\s가-힣]/g, '').trim().replace(/\s+/g, '_');
+        setPlanFolderName(`무림북_${safeTitle}`);
+      }
+    } catch (e: any) {
+      setPlanError(e.message);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  const handleAcceptPlan = async () => {
+    if (!planFolderName.trim()) {
+      alert("최종 저장할 작품 폴더명을 입력해주세요.");
+      return;
+    }
+    
+    try {
+      const token = await supabase.auth.getSession().then((s) => s.data.session?.access_token);
+      const res = await fetch("/api/admin/automation/approve-plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          tempDir: planTempDir,
+          finalDir: planFolderName
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "폴더 확정 중 오류가 발생했습니다.");
+      }
+
+      fetchDiskFolders();
+      setSelectedFolder(planFolderName);
+      setOneTouchWorkId("CREATE_FROM_FOLDER");
+      setPlanModalOpen(false);
+      setPlanResult(null);
+      setPlanTempDir("");
+      setPlanFolderName("");
+      alert("시놉시스가 승인되었습니다. 이제 원터치 자동 집필을 누르면 1화부터 집필이 시작됩니다.");
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
   // --- LEGACY HANDLERS ---
   const applyPreset = (presetName: string) => {
     setPreset(presetName);
@@ -428,21 +513,25 @@ export default function AutomationPanel({
       setPitch("-6Hz");
       setRate("-6%");
     } else if (presetName === "oe-yu") {
-      setVoice("ko-KR-HyunsuNeural");
+      setVoice("ko-KR-HyunsuMultilingualNeural");
       setPitch("-3Hz");
       setRate("-3%");
+      setEffect("none");
     } else if (presetName === "cave") {
       setVoice("ko-KR-InJoonNeural");
       setPitch("-4Hz");
       setRate("-5%");
+      setEffect("none");
     } else if (presetName === "romance") {
-      setVoice("ko-KR-HyunsuNeural");
+      setVoice("ko-KR-HyunsuMultilingualNeural");
       setPitch("+1Hz");
       setRate("+0%");
+      setEffect("none");
     } else if (presetName === "modern-fantasy") {
-      setVoice("ko-KR-HyunsuNeural");
+      setVoice("ko-KR-HyunsuMultilingualNeural");
       setPitch("-1Hz");
       setRate("+8%");
+      setEffect("none");
     } else if (presetName === "furious") {
       setPitch("+4Hz");
       setRate("+12%");
@@ -644,7 +733,7 @@ export default function AutomationPanel({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "미리듣기 음성 생성 실패");
+        throw new Error(err.details || err.error || "미리듣기 음성 생성 실패");
       }
 
       const arrayBuf = await res.arrayBuffer();
@@ -692,7 +781,7 @@ export default function AutomationPanel({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "다시듣기 실패");
+        throw new Error(err.details || err.error || "다시듣기 실패");
       }
       const arrayBuf = await res.arrayBuffer();
       const ctx = new AudioContext();
@@ -1158,6 +1247,23 @@ export default function AutomationPanel({
                   </option>
                 ))}
               </select>
+              <button
+                onClick={() => setPlanModalOpen(true)}
+                style={{
+                  marginTop: 8,
+                  padding: "6px 12px",
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  color: "#fff",
+                  background: "linear-gradient(90deg, #bb9af7, #7aa2f7)",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  width: "100%",
+                }}
+              >
+                ✨ 신규 기획 (시놉시스 생성)
+              </button>
             </div>
             <div className="form-group">
               <label className="form-label">디스크 집필 소설 폴더 선택</label>
@@ -1184,7 +1290,7 @@ export default function AutomationPanel({
                 onChange={(e) => setOneTouchVoice(e.target.value)}
               >
                 <option value="ko-KR-InJoonNeural">Standard InJoon (인준 - 남성)</option>
-                <option value="ko-KR-HyunsuNeural">Standard Hyunsu (현수 - 남성)</option>
+                <option value="ko-KR-HyunsuMultilingualNeural">Standard Hyunsu (현수 - 남성)</option>
                 <option value="ko-KR-SunHiNeural">Standard SunHi (선희 - 여성)</option>
                 <option value="onyx">Premium Onyx (OpenAI Onyx - 남성)</option>
                 <option value="echo">Premium Echo (OpenAI Echo - 남성)</option>
@@ -1291,6 +1397,18 @@ export default function AutomationPanel({
             </div>
           )}
 
+          <div style={{ marginBottom: 4 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14, fontWeight: "bold", color: runTts ? "#9ece6a" : "rgba(255,255,255,0.6)" }}>
+              <input 
+                type="checkbox" 
+                checked={runTts} 
+                onChange={(e) => setRunTts(e.target.checked)} 
+                style={{ width: 18, height: 18, accentColor: "#ff2a5f" }} 
+              />
+              ✅ TTS 및 오디오 연성 함께 진행 (체크 해제 시 글 집필만 진행됨)
+            </label>
+          </div>
+
           <div style={{ display: "flex", gap: 12 }}>
             <button
               onClick={handleRunOneTouchAutomation}
@@ -1320,6 +1438,117 @@ export default function AutomationPanel({
                 {oneTouchStopRequested ? "🛑 중지 중..." : "🛑 긴급 중지 (Stop)"}
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 신규 기획(시놉시스 생성) 모달 */}
+      {planModalOpen && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.8)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: "#1a1b26",
+            padding: 30,
+            borderRadius: 16,
+            width: "600px",
+            maxWidth: "90%",
+            maxHeight: "85vh",
+            overflowY: "auto",
+            border: "1px solid rgba(187, 154, 247, 0.4)"
+          }}>
+            <h3 style={{ fontSize: 20, fontWeight: "bold", marginBottom: 20, color: "#bb9af7" }}>✨ 신규 작품 기획 (시놉시스 무작위 생성)</h3>
+            
+            {/* Show error if any */}
+            {planError && <div style={{ color: "#f7768e", marginBottom: 20, padding: 10, background: "rgba(247, 118, 142, 0.1)", borderRadius: 8 }}>{planError}</div>}
+
+            {!planResult && !planLoading && (
+              <div style={{ color: "rgba(255,255,255,0.7)", marginBottom: 24, lineHeight: 1.6 }}>
+                아직 무슨 작품이 쓰여질지 모릅니다.<br/>
+                AI가 무작위로 매칭된 분위기와 플롯에 맞춰 100화 분량의 거대한 기획안을 도출해냅니다.<br/>
+                마음에 드는 기획이 나올 때까지 부담 없이 돌려보며 구상해 보세요! (※ 텍스트 생성에 소량의 Gemini API 토큰은 소모되지만, 값비싼 TTS 음원 비용은 확정 전까지 발생하지 않습니다.)
+              </div>
+            )}
+
+            {planLoading && (
+              <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)" }}>
+                <div style={{ fontSize: 24, marginBottom: 16 }}>⏳</div>
+                <div>위대한 대서사시를 구상 중입니다... (1~2분 소요)</div>
+              </div>
+            )}
+
+            {planResult && !planLoading && (
+              <div style={{ background: "rgba(255,255,255,0.03)", padding: 20, borderRadius: 12, marginBottom: 24 }}>
+                <div style={{ marginBottom: 16 }}>
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>📌 장르/스타일:</span> {planResult.selected_style?.mood}
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>📚 제목:</span> <span style={{ fontSize: 18, fontWeight: "bold" }}>{planResult.novel_title}</span>
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>📖 소개글:</span>
+                  <div style={{ marginTop: 8, lineHeight: 1.6, color: "rgba(255,255,255,0.8)" }}>{planResult.novel_intro}</div>
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>전체 흐름 (4페이즈):</span>
+                  <div style={{ marginTop: 8, padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8, maxHeight: 200, overflowY: "auto", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,0.7)" }}>
+                    {Object.entries(planResult.synopses || {}).filter(([k]) => ['1', '26', '51', '76', '10', '20', '30', '40'].includes(k) || Number(k) % 25 === 1).map(([key, value]) => (
+                      <div key={key} style={{ marginBottom: 12 }}>
+                        <span style={{ color: "#bb9af7", fontWeight: "bold" }}>{key}화 즈음:</span> {String(value)}
+                      </div>
+                    ))}
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontStyle: "italic", marginTop: 8 }}>... 등 총 100화 분량의 세부 흐름이 준비되었습니다.</div>
+                  </div>
+                </div>
+
+                {/* Confirm Final Folder Name */}
+                <div className="form-group" style={{ marginBottom: 0, padding: 16, background: "rgba(187, 154, 247, 0.1)", borderRadius: 8, border: "1px solid rgba(187, 154, 247, 0.3)" }}>
+                  <label className="form-label" style={{ color: "#bb9af7", fontSize: 14 }}>✅ 승인 전, 저장할 작품의 폴더명(ID)을 확인/수정해주세요</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={planFolderName}
+                    onChange={(e) => setPlanFolderName(e.target.value)}
+                    style={{ background: "rgba(0,0,0,0.3)", borderColor: "rgba(255,255,255,0.1)" }}
+                  />
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 6, display: "block" }}>
+                    이름에 한글이 포함되어 있어도 백엔드에서 자동으로 영문 ID로 변환하여 R2 및 DB에 안전하게 저장됩니다.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setPlanModalOpen(false)}
+                style={{ padding: "10px 20px", background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, color: "#fff", cursor: "pointer" }}
+              >
+                닫기
+              </button>
+              
+              {!planResult ? (
+                <button
+                  onClick={handleCreatePlan}
+                  disabled={planLoading}
+                  style={{ padding: "10px 20px", background: "#bb9af7", border: "none", borderRadius: 8, color: "#000", fontWeight: "bold", cursor: "pointer" }}
+                >
+                  기획 생성 시작
+                </button>
+              ) : (
+                <button
+                  onClick={handleAcceptPlan}
+                  style={{ padding: "10px 20px", background: "#9ece6a", border: "none", borderRadius: 8, color: "#000", fontWeight: "bold", cursor: "pointer" }}
+                >
+                  ✅ 승인 및 이 작품으로 선택
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1479,7 +1708,7 @@ export default function AutomationPanel({
                 >
                   <optgroup label="무료 성우 (Microsoft Edge)">
                     <option value="ko-KR-InJoonNeural">Standard InJoon (인준)</option>
-                    <option value="ko-KR-HyunsuNeural">Standard Hyunsu (현수)</option>
+                    <option value="ko-KR-HyunsuMultilingualNeural">Standard Hyunsu (현수)</option>
                     <option value="ko-KR-SunHiNeural">Standard SunHi (선희)</option>
                   </optgroup>
                   <optgroup label="구글 클라우드 프리미엄 (Premium GC)">

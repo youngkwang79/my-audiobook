@@ -837,7 +837,7 @@ export default function PointsPage() {
           <button className="back-btn" onClick={() => router.back()}>
             <ArrowLeftIcon />
           </button>
-          <h1 className="store-title">무림북 상품 서비스</h1>
+          <h1 className="store-title">오늘의살롱 상품 서비스</h1>
           <button className="restore-btn" onClick={handleRestore}>
             복구
           </button>
@@ -890,19 +890,18 @@ export default function PointsPage() {
         {/* 3. 충전 안내 */}
         <div className="info-section">
           <h2 className="section-label">충전 안내</h2>
-          <span className="info-link" onClick={() => alert("서비스 이용약관으로 이동합니다.")}>
+          <span className="info-link" onClick={() => router.push("/terms")}>
             서비스 이용약관 및 개인정보 처리방침
           </span>
           <div className="info-paragraph">
-            <span>1. 무림북에는 무료 및 유료 콘텐츠가 포함되어 있습니다.</span>
-            <span>2. 유료 콘텐츠는 코인을 사용해 잠금 해제하거나, 멤버십 구독을 통해 시청할 수 있습니다. 단, 멤버십 전용 콘텐츠는 멤버십 구독으로만 시청가능합니다.</span>
-            <span>3. 회차 잠금 해제 시 충전된 포인트가 우선 사용되며, 부족할 경우 보너스 포인트가 자동으로 사용됩니다. (준비중)</span>
-            <span>4. 멤버십 서비스를 이용하시는 기간동안 홈페이지 내 모든 콘텐츠를 무제한으로 청취하실 수 있습니다.</span>
-            <span>5. 멤버십은 현재 구독 기간이 종료되기 24시간 전에 자동으로 갱신되며, 결제 계정을 통해 결제가 진행됩니다.</span>
-            <span>6. 자동 갱신을 원하지 않으실 경우, 구독 기간 종료 최소 24시간 전에 설정에서 해지해 주세요.</span>
-            <span>7. 충전 또는 결제 후에도 잔액이 변하지 않을 경우, [복구] 버튼을 클릭해 새로 고침해 주세요.</span>
-            <span>8. 기타 문의 사항은 [내정보] &gt; [고객문의(1:1 문의)]를 통해 문의해 주세요.</span>
-            <span>9. 무림북의 멤버십 가입은 정식 멤버십 상품 서비스이므로 교환 및 환불이 불가능합니다. 소설을 즐겁게 이용해 주시면 감사하겠습니다.</span>
+            <span>1. 오늘의살롱에는 무료 및 유료 콘텐츠가 포함되어 있습니다.</span>
+            <span>2. 유료 콘텐츠는 충전한 포인트를 사용하여 개별 잠금 해제하거나 월간 멤버십 구독을 통해 시청하실 수 있습니다.</span>
+            <span>3. 충전 포인트 소진 기한은 결제한 시점으로부터 1년 이내이며, 미사용 포인트는 1년이 지나면 소멸됩니다. (소진기간 1년 제한)</span>
+            <span>4. 포인트 충전 환불 처리는 카드 결제 취소 등 최초 진행한 결제수단으로만 환불이 가능하며, 현금으로의 환급은 절대 불가능합니다.</span>
+            <span>5. 정액형 멤버십 서비스는 가입 및 혜택 활성화 즉시 이용이 완전히 개시되므로 취소 및 중도 환불이 불가능합니다.</span>
+            <span>6. 충전 또는 결제 후에도 잔액이 즉시 반영되지 않을 경우 우측 상단의 [복구] 버튼을 눌러 새로 고침해 주세요.</span>
+            <span>7. 결제 대금 정산 관련 및 소비자 환불, 민원 책임 등은 모두 오늘의살롱에서 전적으로 책임지고 진행합니다.</span>
+            <span>8. 기타 문의 사항은 고객센터(02-6013-2299) 또는 이메일(sun_writer@murimbook.com)로 언제든지 문의 바랍니다.</span>
           </div>
         </div>
 

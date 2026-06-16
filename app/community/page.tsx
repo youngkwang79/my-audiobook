@@ -207,15 +207,21 @@ export default function CommunityPage() {
     } catch (e) {}
   }, []);
 
-  // 일일 문안인사 바로가기 파라미터 처리
+  // URL 파라미터 처리 (category, openWriteModal 등)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      const catParam = params.get("category");
+      if (catParam && CATEGORIES.includes(catParam)) {
+        setActiveCategory(catParam);
+      }
+      
       if (params.get("openWriteModal") === "1") {
-        setActiveCategory("자유 대담");
-        setNewCategory("자유 대담");
+        const targetCat = catParam && CATEGORIES.includes(catParam) ? catParam : "자유 대담";
+        setActiveCategory(targetCat);
+        setNewCategory(targetCat);
         setWriteModalOpen(true);
-        router.replace("/community?category=자유 대담");
+        router.replace(`/community?category=${targetCat}`);
       }
     }
   }, [router]);
