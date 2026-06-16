@@ -699,7 +699,7 @@ export default function Home() {
           align-items: start;
         }
 
-        @media (min-width: 600px) {
+        @media (min-width: 768px) {
           .works-poster-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
@@ -884,7 +884,7 @@ export default function Home() {
           gap: 12px 10px;
         }
 
-        @media (min-width: 600px) {
+        @media (min-width: 768px) {
           .coming-soon-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;

@@ -1198,7 +1198,7 @@ export default function MembershipPage() {
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 12px 10px;
         }
-        @media (min-width: 600px) {
+        @media (min-width: 768px) {
           .preparing-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             gap: 16px !important;
