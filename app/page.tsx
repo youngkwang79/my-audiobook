@@ -291,7 +291,7 @@ export default function Home() {
             const firstEpisodeId = publishedEpisodes[0]?.id || null;
 
             // Determine if the work itself is published/active dynamically
-            const isPublished = isAdmin || (w.status !== "준비중" && w.status !== "공개예정" && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0));
+            const isPublished = (w.status !== "준비중" && w.status !== "공개예정" && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0));
 
             // Determine scheduled release date for upcoming section
             let scheduledReleaseDate = null;
