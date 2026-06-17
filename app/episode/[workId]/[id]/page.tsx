@@ -492,21 +492,8 @@ export default function EpisodePage() {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
     try {
-      navigator.mediaSession.setActionHandler("play", () => {
-        const a = audioRef.current;
-        if (a && a.paused) {
-          a.play()
-            .then(() => setIsPlaying(true))
-            .catch(() => {});
-        }
-      });
-      navigator.mediaSession.setActionHandler("pause", () => {
-        const a = audioRef.current;
-        if (a && !a.paused) {
-          a.pause();
-          setIsPlaying(false);
-        }
-      });
+      // play와 pause는 커스텀 핸들러를 등록하지 않고 브라우저의 네이티브 오디오 제어(OS/블루투스 통합)에 맡깁니다.
+      // 이렇게 하면 백그라운드에서 JS가 중단(Suspend)되더라도 OS가 오디오를 직접 재생/정지할 수 있습니다.
       navigator.mediaSession.setActionHandler("previoustrack", () => {
         if (part > 1) {
           onSelectPart(part - 1);
