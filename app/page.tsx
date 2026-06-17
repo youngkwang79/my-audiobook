@@ -317,6 +317,7 @@ export default function Home() {
               subtitle: w.subtitle,
               badge: isOldNew ? "" : w.badge,
               views: String(w.views),
+              play_count: Number(w.play_count ?? 0),
               exclusive: w.exclusive,
               featured: w.featured,
               is_membership_only: w.is_membership_only,
@@ -338,31 +339,7 @@ export default function Home() {
   }, [isAdmin]);
 
   const [shouldPulse, setShouldPulse] = useState(false);
-  const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
-
-  // DB의 유니크 재생 횟수 불러오기
-  useEffect(() => {
-    const fetchPlayCounts = async () => {
-      try {
-        const res = await fetch("/api/media/play-counts");
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.counts) {
-            setPlayCounts(data.counts);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load play counts:", err);
-      }
-    };
-    fetchPlayCounts();
-
-    // 페이지 포커스 시점(뒤로가기 등)에 최신 카운트 갱신
-    window.addEventListener("focus", fetchPlayCounts);
-    return () => {
-      window.removeEventListener("focus", fetchPlayCounts);
-    };
-  }, []);
+  // play_count는 worksList에서 직접 로드 (works.play_count 컬럼)
 
   // highlightComingSoon 쿼리 파라미터 처리 (스크롤 및 하이라이트)
   useEffect(() => {
@@ -423,10 +400,10 @@ export default function Home() {
 
   // ✅ 검색 및 탭 필터링/정렬 로직
   const filteredWorks = useMemo(() => {
-    // 실시간 DB 재생 횟수를 정적 데이터와 병합
+    // play_count를 views로 병합 (works 테이블의 play_count 컬럼)
     let result = worksList.map((w) => ({
       ...w,
-      views: String(playCounts[w.id] ?? w.views ?? "0")
+      views: String(w.play_count ?? w.views ?? "0")
     }));
 
     // 1. 검색어 필터링
@@ -462,7 +439,7 @@ export default function Home() {
     }
 
     return result;
-  }, [searchQuery, activeTab, playCounts, worksList]);
+  }, [searchQuery, activeTab, worksList]);
 
   // 메인 그리드용 작품 (공개된 작품만)
   const mainGridWorks = useMemo(() => {
@@ -485,9 +462,9 @@ export default function Home() {
       .filter((w) => w.status === "공개예정")
       .map((w) => ({
         ...w,
-        views: String(playCounts[w.id] ?? w.views ?? "0")
+        views: String(w.play_count ?? w.views ?? "0")
       }));
-  }, [playCounts, worksList]);
+  }, [worksList]);
 
   // 준비중 섹션용 작품 (status === "준비중")
   const preparingWorks = useMemo(() => {
@@ -495,9 +472,9 @@ export default function Home() {
       .filter((w) => w.status === "준비중")
       .map((w) => ({
         ...w,
-        views: String(playCounts[w.id] ?? w.views ?? "0")
+        views: String(w.play_count ?? w.views ?? "0")
       }));
-  }, [playCounts, worksList]);
+  }, [worksList]);
 
   return (
     <main

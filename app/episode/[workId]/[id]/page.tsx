@@ -343,6 +343,7 @@ export default function EpisodePage() {
   const [showPlayerUi, setShowPlayerUi] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const nextSignedAudioSrcRef = useRef<string | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isNavigatingRef = useRef(false);
   const segIndexRef = useRef(0);
@@ -598,7 +599,40 @@ export default function EpisodePage() {
     fetchSignedUrl();
 
     return () => { isMounted = false; };
-  }, [locked, workId, episodeKey, part]);
+  }, [locked, getAccessToken, workId, episodeKey, part]);
+
+  // 다음 화 미리 가져오기 (모바일 백그라운드 자동재생 끊김 방지)
+  useEffect(() => {
+    if (!signedAudioSrc || locked) return;
+    
+    let nextEpKey = episodeKey;
+    let nextP = part + 1;
+    if (nextP > TOTAL_PARTS) {
+      const nextEp = episodes[currentEpisodeIndex + 1];
+      if (!nextEp || (nextEp.locked && !isSubscribed && !autoNextEpisode)) {
+        nextSignedAudioSrcRef.current = null;
+        return;
+      }
+      nextEpKey = String(nextEp.id);
+      nextP = 1;
+    }
+
+    const prefetch = async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await fetch("/api/media/sign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ workId, episodeId: nextEpKey, part: nextP })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          nextSignedAudioSrcRef.current = data.url || null;
+        }
+      } catch (e) {}
+    };
+    prefetch();
+  }, [signedAudioSrc, locked, episodeKey, part, TOTAL_PARTS, episodes, currentEpisodeIndex, workId, isSubscribed, autoNextEpisode, getAccessToken]);
 
 
 
@@ -910,6 +944,13 @@ export default function EpisodePage() {
         }
       }
 
+      // ✅ .srt 파일이 이미 존재하는 경우 AI 자막 생성(Worker) 호출 차단
+      // signed URL이 .srt를 가리키고 있으면 파싱 결과와 무관하게 Worker를 호출하지 않음
+      if (isSrt) {
+        setCaptionStatus(parseSRT(r2.text ?? "").length === 0 ? "SRT 자막 파일이 있으나 내용이 비어있어요" : "");
+        return;
+      }
+
       setCaptionStatus("자막 생성 중(처음 1회)...");
 
       const workerRes = await fetch(getWorkerUrl(episodeKey, part), {
@@ -1144,16 +1185,21 @@ export default function EpisodePage() {
     } catch { }
   };
 
-  const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true) => {
+  const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true, seamless = false) => {
     // 이전 오디오가 잠깐 재생되면서 onEnded 무한루프나 자동재생이 씹히는 버그 방지
-    setSignedAudioSrc(null);
-    setCurrentTime(0); // 리액트 상태 초기화
-    setResumeTime(0);  // 다음 회차/파트 이동 시 이어서 재개할 시간초 초기화
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0; // 오디오 엘리먼트의 현재 재생시간을 명시적으로 초기화 (이전 파트의 재생시간 44초 등이 복원되는 버그 방지)
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
+    if (!seamless) {
+      setSignedAudioSrc(null);
+      setCurrentTime(0); // 리액트 상태 초기화
+      setResumeTime(0);  // 다음 회차/파트 이동 시 이어서 재개할 시간초 초기화
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0; // 오디오 엘리먼트의 현재 재생시간을 명시적으로 초기화 (이전 파트의 재생시간 44초 등이 복원되는 버그 방지)
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+      }
+    } else {
+      setCurrentTime(0);
+      setResumeTime(0);
     }
     
     setEpisodeKey(nextEpKey);
@@ -1242,7 +1288,7 @@ export default function EpisodePage() {
     resetHideTimer();
   };
 
-  const goNextEpisode = async () => {
+  const goNextEpisode = async (seamless = false) => {
     if (isNavigatingRef.current) return;
 
     if (currentEpisodeIndex < 0) {
@@ -1262,7 +1308,7 @@ export default function EpisodePage() {
     try {
       // 다음 화가 무료이거나 멤버십이면 바로 이동
       if (!nextEpisode.locked || isSubscribed) {
-        navigateToEpisode(nextEpisodeKey, 1, true);
+        navigateToEpisode(nextEpisodeKey, 1, true, seamless);
         return;
       }
 
@@ -1291,7 +1337,7 @@ export default function EpisodePage() {
             setPointsState(nextCoinBalance);
             try { localStorage.setItem("points", String(nextCoinBalance)); } catch { }
             window.dispatchEvent(new Event("wallet-updated"));
-            navigateToEpisode(nextEpisodeKey, 1, true);
+            navigateToEpisode(nextEpisodeKey, 1, true, seamless);
             return;
           }
         }
@@ -1357,15 +1403,15 @@ export default function EpisodePage() {
     }
   };
 
-  const goNextPart = async () => {
+  const goNextPart = async (seamless = false) => {
     if (part >= TOTAL_PARTS) {
       setStatus("다음 화로 넘어가는 중...");
-      goNextEpisode();
+      goNextEpisode(seamless);
       return;
     }
     // 파트 단위 잠금 없음 — 모든 파트 자유롭게 이동
     const next = part + 1;
-    navigateToEpisode(episodeKey, next, true);
+    navigateToEpisode(episodeKey, next, true, seamless);
   };
 
   const onSelectPart = (p: number) => {
@@ -2095,7 +2141,16 @@ export default function EpisodePage() {
           setIsPlaying(false);
           setStatus("다음으로 넘어가는 중...");
           window.dispatchEvent(new Event("play-default-music"));
-          goNextPart();
+          
+          if (nextSignedAudioSrcRef.current && audioRef.current) {
+            audioRef.current.src = nextSignedAudioSrcRef.current;
+            audioRef.current.play().catch(() => {});
+            setSignedAudioSrc(nextSignedAudioSrcRef.current);
+            nextSignedAudioSrcRef.current = null;
+            goNextPart(true);
+          } else {
+            goNextPart(false);
+          }
         }}
         onError={() => {
           setIsPlaying(false);

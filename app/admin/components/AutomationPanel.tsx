@@ -149,6 +149,14 @@ export default function AutomationPanel({
   >("auto");
   const [textInput, setTextInput] = useState("");
   const [txtFiles, setTxtFiles] = useState<File[]>([]);
+  // 여러 파일 선택 시 개별 큐 아이템
+  const [txtFileQueue, setTxtFileQueue] = useState<Array<{
+    file: File;
+    episodeId: string;
+    episodeTitle: string;
+    status: "idle" | "running" | "success" | "error";
+    errorMsg?: string;
+  }>>([]);
   const [ttsIsMembershipOnly, setTtsIsMembershipOnly] = useState(false);
   const [voiceGuide, setVoiceGuide] = useState(DEFAULT_VOICE_GUIDE);
 
@@ -691,6 +699,41 @@ export default function AutomationPanel({
     }
   };
 
+
+  /** 파일 본문 첫 수백 자에서 "(숫자)화" 패턴을 찾아 회차번호·제목 추출 */
+  const parseTitleFromContent = (content: string): { id: string; title: string } | null => {
+    // 앞부분 500자만 검사 (제목은 보통 서두에 있음)
+    const head = content.slice(0, 500);
+
+    // 패턴 1: [제N화. <제목>]  또는  [제N화. 제목]
+    const p1 = head.match(/\[제?\s*(\d+)\s*화[.\s]*[<「『【]?([^>\]」』】\n]+)[>\]」』】]?/);
+    if (p1) return { id: String(Number(p1[1])), title: p1[2].trim().replace(/[<>「」『』【】\[\]]/g, "") };
+
+    // 패턴 2: 제N화 <제목>  (대괄호 없음)
+    const p2 = head.match(/제\s*(\d+)\s*화\s*[.\s]*[<「『【]([^>\n「」『』】]+)[>」』】]/);
+    if (p2) return { id: String(Number(p2[1])), title: p2[2].trim() };
+
+    // 패턴 3: 제N화 제목  (꺾쇠 없음)
+    const p3 = head.match(/제\s*(\d+)\s*화\s*[.\-\s]+([^\n\[<]{2,40})/);
+    if (p3) return { id: String(Number(p3[1])), title: p3[2].trim().replace(/[.,!?。]/g, "") };
+
+    // 패턴 4: N화  (숫자화만)
+    const p4 = head.match(/(\d+)\s*화/);
+    if (p4) return { id: String(Number(p4[1])), title: `${Number(p4[1])}화` };
+
+    return null;
+  };
+
+  /** 파일명에서 회차번호·제목 추출 (폴백) */
+  const parseTitleFromFilename = (filename: string): { id: string; title: string } => {
+    const base = filename.replace(/\.[^/.]+$/, "");
+    const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
+    if (match) return { id: String(Number(match[1])), title: match[2].trim() };
+    const onlyNum = base.trim().match(/^(\d+)(?:화)?$/);
+    if (onlyNum) return { id: String(Number(onlyNum[1])), title: `${Number(onlyNum[1])}화` };
+    return { id: "", title: base.trim() };
+  };
+
   const handleTxtFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -704,34 +747,41 @@ export default function AutomationPanel({
       });
       setTxtFiles(fileList);
 
-      const contentsArray = [];
-      for (const file of fileList) {
-        const text = await file.text();
-        contentsArray.push(text);
-      }
-      setTextInput(cleanHanja(contentsArray.join("\n\n")));
-
       if (fileList.length === 1) {
+        // 단일 파일: 내용 파싱 우선, 없으면 파일명 폴백
         const file = fileList[0];
-        const base = file.name.replace(/\.[^/.]+$/, "");
-        const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
-        if (match) {
-          setEpisodeId(String(Number(match[1])));
-          setEpisodeTitle(match[2].trim());
+        const rawText = await file.text();
+        setTextInput(cleanHanja(rawText));
+        setTxtFileQueue([]);
+
+        const fromContent = parseTitleFromContent(rawText);
+        if (fromContent) {
+          setEpisodeId(fromContent.id);
+          setEpisodeTitle(fromContent.title);
         } else {
-          const onlyNumMatch = base.trim().match(/^(\d+)(?:화)?$/);
-          if (onlyNumMatch) {
-            setEpisodeId(String(Number(onlyNumMatch[1])));
-            setEpisodeTitle(`${Number(onlyNumMatch[1])}화`);
-          } else {
-            setEpisodeTitle(base.trim());
-          }
+          const fromFile = parseTitleFromFilename(file.name);
+          setEpisodeId(fromFile.id);
+          setEpisodeTitle(fromFile.title);
         }
       } else {
-        setEpisodeTitle("");
+        // 여러 파일: 파일별 내용 파싱 → 큐 생성
+        setTextInput("");
         setEpisodeId("");
+        setEpisodeTitle("");
+
+        const queueItems: typeof txtFileQueue = [];
+        for (const file of fileList) {
+          const rawText = await file.text();
+          const fromContent = parseTitleFromContent(rawText);
+          const fallback = parseTitleFromFilename(file.name);
+          const parsedId = fromContent?.id || fallback.id;
+          const parsedTitle = fromContent?.title || fallback.title;
+          queueItems.push({ file, episodeId: parsedId, episodeTitle: parsedTitle, status: "idle" });
+        }
+        setTxtFileQueue(queueItems);
       }
     }
+    e.target.value = "";
   };
 
   const handleSplitFileChange = async (
@@ -948,8 +998,77 @@ export default function AutomationPanel({
 
   const handleTtsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedWorkId || !episodeId || !episodeTitle || !episodeReleaseDate) {
-      alert("모든 메타데이터 항목을 입력해 주세요.");
+    if (!selectedWorkId || !episodeReleaseDate) {
+      alert("작품과 공개 예정 일시를 입력해 주세요.");
+      return;
+    }
+
+    const token = await supabase.auth
+      .getSession()
+      .then((s) => s.data.session?.access_token);
+    if (!token) { alert("로그인 세션이 만료되었습니다."); return; }
+
+    // ── 여러 파일 큐 처리 ──
+    if (txtFileQueue.length > 0) {
+      setTtsStatus("tts");
+      setErrorMsg("");
+      let successCount = 0;
+      const failedItems: string[] = [];
+
+      for (let i = 0; i < txtFileQueue.length; i++) {
+        const item = txtFileQueue[i];
+        if (item.status === "success") { successCount++; continue; }
+        if (!item.episodeId || !item.episodeTitle) {
+          setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "error", errorMsg: "회차번호 또는 제목이 비어있습니다." } : q));
+          failedItems.push(item.file.name);
+          continue;
+        }
+
+        setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "running" } : q));
+
+        try {
+          const text = cleanHanja(await item.file.text());
+          const res = await fetch("/api/admin/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              text,
+              voice, pitch, rate, effect,
+              preview: false,
+              workId: selectedWorkId,
+              episodeId: item.episodeId,
+              title: item.episodeTitle,
+              locked: getEpisodeLockedStatus(item.episodeId),
+              releaseDate: new Date(episodeReleaseDate).toISOString(),
+              is_membership_only: ttsIsMembershipOnly,
+              voiceGuide,
+            }),
+          });
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.details || result.error || "오디오 생성 실패");
+          setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "success" } : q));
+          successCount++;
+        } catch (err: any) {
+          setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "error", errorMsg: err.message } : q));
+          failedItems.push(`${item.episodeId}화 (${item.episodeTitle})`);
+        }
+      }
+
+      setTtsStatus("success");
+      fetchWorks();
+      if (failedItems.length > 0) {
+        alert(`일괄 연성 완료. 성공: ${successCount}개, 실패: ${failedItems.length}개\n\n실패 목록:\n${failedItems.join("\n")}`);
+      } else {
+        alert(`🎉 총 ${successCount}개 회차 오디오 일괄 연성 및 홈페이지 반영 완료!`);
+        setTxtFileQueue([]);
+        setTxtFiles([]);
+      }
+      return;
+    }
+
+    // ── 단일 파일 또는 직접 입력 처리 ──
+    if (!episodeId || !episodeTitle) {
+      alert("회차 번호와 제목을 입력해 주세요.");
       return;
     }
     if (!textInput.trim()) {
@@ -961,22 +1080,12 @@ export default function AutomationPanel({
     setErrorMsg("");
 
     try {
-      const token = await supabase.auth
-        .getSession()
-        .then((s) => s.data.session?.access_token);
-
       const res = await fetch("/api/admin/tts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           text: textInput,
-          voice,
-          pitch,
-          rate,
-          preview: false,
+          voice, pitch, rate, preview: false,
           workId: selectedWorkId,
           episodeId,
           title: episodeTitle,
@@ -988,17 +1097,10 @@ export default function AutomationPanel({
       });
 
       const result = await res.json();
-      if (!res.ok) {
-        throw new Error(
-          result.details || result.error || "오디오 생성/등록 실패",
-        );
-      }
+      if (!res.ok) throw new Error(result.details || result.error || "오디오 생성/등록 실패");
 
       setTtsStatus("success");
-      alert(
-        `🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`,
-      );
-
+      alert(`🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`);
       setEpisodeId("");
       setEpisodeTitle("");
       setTextInput("");
@@ -2106,50 +2208,108 @@ export default function AutomationPanel({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: 16,
-            }}
-          >
-            <div className="form-group">
-              <label className="form-label">회차 번호 (숫자)</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="1"
-                value={episodeId}
-                onChange={(e) => setEpisodeId(e.target.value)}
-                required
-              />
+          {/* ✅ 단일 파일/직접입력일 때만 회차번호·제목 입력란 표시 */}
+          {txtFileQueue.length === 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 16,
+              }}
+            >
+              <div className="form-group">
+                <label className="form-label">회차 번호 (숫자)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="1"
+                  value={episodeId}
+                  onChange={(e) => setEpisodeId(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">회차 제목</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="1화: 강호에 피는 꽃"
+                  value={episodeTitle}
+                  onChange={(e) => setEpisodeTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">잠금 상태 설정</label>
+                <select
+                  className="form-select"
+                  value={episodeLocked}
+                  onChange={(e) => setEpisodeLocked(e.target.value as any)}
+                >
+                  <option value="auto">작품 설정에 따라 자동 무료/유료 분리</option>
+                  <option value="free">🔓 전체 무료회차로 지정</option>
+                  <option value="locked">🔒 전체 유료회차로 지정</option>
+                </select>
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">회차 제목</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="1화: 강호에 피는 꽃"
-                value={episodeTitle}
-                onChange={(e) => setEpisodeTitle(e.target.value)}
-                required
-              />
+          )}
+
+          {/* ✅ 여러 파일 큐 리스트 */}
+          {txtFileQueue.length > 0 && (
+            <div style={{ marginTop: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>📋 파일별 연성 대기열 ({txtFileQueue.length}개) — 파일명에서 자동 파싱됨</span>
+                {ttsStatus !== "tts" && (
+                  <button type="button" onClick={() => { setTxtFileQueue([]); setTxtFiles([]); }}
+                    style={{ background: "rgba(255,59,48,0.15)", border: "1px solid #ff3b30", color: "#ff453a", padding: "3px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+                    목록 비우기
+                  </button>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
+                {txtFileQueue.map((item, i) => {
+                  const isRunning = item.status === "running";
+                  const isSuccess = item.status === "success";
+                  const isError = item.status === "error";
+                  const sc = isRunning ? "#fca834" : isSuccess ? "#34c759" : isError ? "#ff453a" : "rgba(255,255,255,0.4)";
+                  const st = isRunning ? "연성 중..." : isSuccess ? "완료 ✅" : isError ? "실패" : "대기 중";
+                  return (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${isSuccess ? "rgba(52,199,89,0.3)" : isRunning ? "#fca834" : "rgba(255,255,255,0.08)"}`, borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, background: sc + "1a", color: sc, border: `1px solid ${sc}`, padding: "2px 8px", borderRadius: 6 }}>{st}</span>
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{item.file.name}</span>
+                        {isError && item.errorMsg && <span style={{ fontSize: 11, color: "#ff453a" }}>⚠️ {item.errorMsg}</span>}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 8 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>회차 번호</label>
+                          <input type="text" className="form-input" style={{ padding: "4px 8px", fontSize: 13 }}
+                            value={item.episodeId} disabled={isRunning || isSuccess}
+                            onChange={(e) => setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, episodeId: e.target.value } : q))} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>회차 제목</label>
+                          <input type="text" className="form-input" style={{ padding: "4px 8px", fontSize: 13 }}
+                            value={item.episodeTitle} disabled={isRunning || isSuccess}
+                            onChange={(e) => setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, episodeTitle: e.target.value } : q))} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 잠금 상태는 큐 전체 공유 */}
+              <div className="form-group" style={{ marginTop: 12, maxWidth: 320 }}>
+                <label className="form-label">잠금 상태 설정 (전체 파일 공통)</label>
+                <select className="form-select" value={episodeLocked} onChange={(e) => setEpisodeLocked(e.target.value as any)}>
+                  <option value="auto">작품 설정에 따라 자동 무료/유료 분리</option>
+                  <option value="free">🔓 전체 무료회차로 지정</option>
+                  <option value="locked">🔒 전체 유료회차로 지정</option>
+                </select>
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">잠금 상태 설정</label>
-              <select
-                className="form-select"
-                value={episodeLocked}
-                onChange={(e) => setEpisodeLocked(e.target.value as any)}
-              >
-                <option value="auto">
-                  작품 설정에 따라 자동 무료/유료 분리
-                </option>
-                <option value="free">🔓 전체 무료회차로 지정</option>
-                <option value="locked">🔒 전체 유료회차로 지정</option>
-              </select>
-            </div>
-          </div>
+          )}
 
           {/* 목소리 프리셋 조절 */}
           <div

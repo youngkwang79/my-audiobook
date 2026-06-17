@@ -49,9 +49,74 @@ function runTtsScript(args: string[]): Promise<string> {
   });
 }
 
+function splitTextIntoParts(text: string, maxLen: number = 3000): string[] {
+  const paragraphs = text.replace(/\r\n/g, "\n").split("\n");
+  const parts: string[] = [];
+  let currentPart: string[] = [];
+  let currentLength = 0;
+
+  for (let paragraph of paragraphs) {
+    paragraph = paragraph.trim();
+    if (paragraph.length === 0) continue;
+
+    if (currentLength + paragraph.length + (currentPart.length > 0 ? 1 : 0) > maxLen) {
+      if (currentPart.length > 0) {
+        parts.push(currentPart.join("\n"));
+        currentPart = [];
+        currentLength = 0;
+      }
+
+      if (paragraph.length > maxLen) {
+        // Safe sentence splitting without lookbehind
+        const sentences = paragraph.replace(/([.!?])\s+/g, "$1|").split("|");
+        for (let sentence of sentences) {
+          sentence = sentence.trim();
+          if (sentence.length === 0) continue;
+
+          if (currentLength + sentence.length + (currentPart.length > 0 ? 1 : 0) > maxLen) {
+            if (currentPart.length > 0) {
+              parts.push(currentPart.join(" "));
+              currentPart = [];
+              currentLength = 0;
+            }
+
+            if (sentence.length > maxLen) {
+              let offset = 0;
+              while (offset < sentence.length) {
+                const chunk = sentence.substring(offset, offset + maxLen);
+                parts.push(chunk);
+                offset += maxLen;
+              }
+            } else {
+              currentPart.push(sentence);
+              currentLength = sentence.length;
+            }
+          } else {
+            currentPart.push(sentence);
+            currentLength += sentence.length + (currentPart.length > 1 ? 1 : 0);
+          }
+        }
+      } else {
+        currentPart.push(paragraph);
+        currentLength = paragraph.length;
+      }
+    } else {
+      currentPart.push(paragraph);
+      currentLength += paragraph.length + (currentPart.length > 1 ? 1 : 0);
+    }
+  }
+
+  if (currentPart.length > 0) {
+    parts.push(currentPart.join("\n"));
+  }
+
+  return parts;
+}
+
 export async function POST(req: Request) {
   let tempTxtPath = "";
   let tempMp3Path = "";
+  const createdTempFiles: string[] = [];
   
   try {
     // 1. 관리자 권한 확인
@@ -151,46 +216,75 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "missing_required_metadata" }, { status: 400 });
     }
 
-    // 전체 본문 텍스트 파일 저장
-    fs.writeFileSync(tempTxtPath, text, "utf-8");
-    
-    const args = [
-      `--text-file=${tempTxtPath}`,
-      `--voice=${voice}`,
-      `--pitch=${pitch}`,
-      `--rate=${rate}`,
-      `--effect=${effect}`,
-      `--output=${tempMp3Path}`
-    ];
-    
-    if (voiceGuide) {
-      args.push(`--voice-guide=${voiceGuide}`);
-    }
-    
-    await runTtsScript(args);
-    
-    if (!fs.existsSync(tempMp3Path)) {
-      throw new Error("TTS MP3 file was not generated");
-    }
-    
-    const mp3Buffer = fs.readFileSync(tempMp3Path);
-    
-    // R2 키 설정 (예: cheonmujin/001/01.mp3)
+    // 텍스트 분할 (최대 3000글자 기준)
+    const maxCharsPerPart = 3000;
+    const textParts = splitTextIntoParts(text, maxCharsPerPart);
+    const totalParts = textParts.length;
+    console.log(`TTS target text length: ${text.length}. Splitting into ${totalParts} parts.`);
+
     const epNum = Number(episodeId);
     const folder = isNaN(epNum) ? String(episodeId) : String(epNum).padStart(3, "0");
-    const r2Key = `${workId}/${folder}/01.MP3`; // 항상 01 파트로 업로드
-    
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
-    
-    // Cloudflare R2에 업로드
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
-        Key: r2Key,
-        Body: mp3Buffer,
-        ContentType: "audio/mpeg"
-      })
-    );
+    let firstR2Key = "";
+
+    for (let i = 0; i < totalParts; i++) {
+      const partText = textParts[i];
+      const partNum = i + 1;
+      const partPadded = String(partNum).padStart(2, "0");
+      
+      const partTxtPath = path.join(os.tmpdir(), `tts_${uniqueId}_p${partPadded}.txt`);
+      const partMp3Path = path.join(os.tmpdir(), `tts_${uniqueId}_p${partPadded}.mp3`);
+      
+      createdTempFiles.push(partTxtPath, partMp3Path);
+      
+      fs.writeFileSync(partTxtPath, partText, "utf-8");
+      
+      const args = [
+        `--text-file=${partTxtPath}`,
+        `--voice=${voice}`,
+        `--pitch=${pitch}`,
+        `--rate=${rate}`,
+        `--effect=${effect}`,
+        `--output=${partMp3Path}`
+      ];
+      
+      if (voiceGuide) {
+        args.push(`--voice-guide=${voiceGuide}`);
+      }
+      
+      console.log(`Generating TTS part ${partNum}/${totalParts}...`);
+      await runTtsScript(args);
+      
+      if (!fs.existsSync(partMp3Path)) {
+        throw new Error(`TTS MP3 file was not generated for part ${partNum}`);
+      }
+      
+      const mp3Buffer = fs.readFileSync(partMp3Path);
+      const r2Key = `${workId}/${folder}/${partPadded}.MP3`;
+      
+      if (partNum === 1) {
+        firstR2Key = r2Key;
+      }
+      
+      console.log(`Uploading part ${partNum}/${totalParts} to R2: ${r2Key}...`);
+      // Cloudflare R2에 업로드
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: r2Key,
+          Body: mp3Buffer,
+          ContentType: "audio/mpeg"
+        })
+      );
+      
+      // 개별 파트 생성 즉시 임시 파일 정리
+      try {
+        if (fs.existsSync(partTxtPath)) fs.unlinkSync(partTxtPath);
+        if (fs.existsSync(partMp3Path)) fs.unlinkSync(partMp3Path);
+      } catch (e) {
+        console.error(`Error cleaning up part temp files:`, e);
+      }
+    }
     
     // Supabase에 에피소드 데이터 upsert
     const { data: epData, error: epError } = await supabaseAdmin
@@ -200,7 +294,7 @@ export async function POST(req: Request) {
         id: String(episodeId),
         title: title,
         locked: locked,
-        parts: 1,
+        parts: totalParts,
         release_date: new Date(releaseDate).toISOString(),
         is_membership_only: is_membership_only
       })
@@ -228,17 +322,9 @@ export async function POST(req: Request) {
         .eq("id", workId);
     }
     
-    // 임시 파일 정리
-    try {
-      if (fs.existsSync(tempTxtPath)) fs.unlinkSync(tempTxtPath);
-      if (fs.existsSync(tempMp3Path)) fs.unlinkSync(tempMp3Path);
-    } catch (e) {
-      console.error("Error cleaning up full temp files:", e);
-    }
-    
     return NextResponse.json({ 
       success: true, 
-      r2Key, 
+      r2Key: firstR2Key, 
       episode: epData?.[0] 
     });
 

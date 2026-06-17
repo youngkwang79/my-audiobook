@@ -414,11 +414,9 @@ async def amain():
             if pitch_match:
                 val = int(pitch_match.group(1))
                 unit = pitch_match.group(2)
-                if unit == 'Hz':
-                    pitch_factor = 1.0 + (val / 150.0)
-                else: # %
-                    pitch_factor = 1.0 + (val / 100.0)
-                pitch_factor = max(0.7, min(1.4, pitch_factor))
+                # Hz나 % 단위 모두 더 강하게 반영되도록 분모를 줄임 (기존 150, 100 -> 60)
+                pitch_factor = 1.0 + (val / 60.0)
+                pitch_factor = max(0.6, min(1.5, pitch_factor))
 
             # Parse rate factor
             rate_match = re.match(r'^([+-]?\d+)%$', args.rate)

@@ -28,7 +28,7 @@ const ATTENDANCE_REWARDS = [
   { day: "4일차", coin: 10 },
   { day: "5일차", coin: 10 },
   { day: "6일차", coin: 25 },
-  { day: "7일차", coin: 40 },
+  { day: "7일차", coin: 500 },
 ];
 
 const EARN_TASKS = [
