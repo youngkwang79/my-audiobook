@@ -62,6 +62,41 @@ export default function CommunityPage() {
   // 관리자 여부
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // 관리자 코인 지급 모달 상태
+  const [grantCoinTarget, setGrantCoinTarget] = useState<{ userId: string; username: string } | null>(null);
+  const [grantCoinAmount, setGrantCoinAmount] = useState("");
+  const [grantCoinBusy, setGrantCoinBusy] = useState(false);
+
+  const handleAdminGrantCoin = async () => {
+    if (!grantCoinTarget) return;
+    const amount = Number(grantCoinAmount);
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      alert("올바른 코인 수를 입력해주세요.");
+      return;
+    }
+    const confirmed = window.confirm(`정말로 「${grantCoinTarget.username}」님에게 ${amount.toLocaleString()} 코인을 지급하시겠습니까?`);
+    if (!confirmed) return;
+
+    setGrantCoinBusy(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch("/api/admin/grant-reward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: grantCoinTarget.userId, amount, reason: "관리자 상금 지급" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "지급 실패");
+      alert(`✅ 「${grantCoinTarget.username}」님에게 ${amount.toLocaleString()} 코인 지급 완료!`);
+      setGrantCoinTarget(null);
+      setGrantCoinAmount("");
+    } catch (e: any) {
+      alert(`코인 지급 실패: ${e?.message ?? "잠시 후 다시 시도해주세요."}`);
+    } finally {
+      setGrantCoinBusy(false);
+    }
+  };
+
   // 수정/삭제/숨김 관련 상태
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -1214,7 +1249,19 @@ export default function CommunityPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span className="modal-title" style={{ fontSize: "14px", fontWeight: 500, fontFamily: "inherit" }}>{detailPost.category}</span>
                 <span style={{ color: "rgba(255, 255, 255, 0.15)", fontSize: "12px" }}>|</span>
-                <span style={{ color: "#8c8c96", fontSize: "12px" }}>닉네임 | <strong style={{ color: "#ffd700", fontWeight: 700 }}>{detailPost.username}</strong></span>
+                <span style={{ color: "#8c8c96", fontSize: "12px" }}>닉네임 | 
+                  <strong
+                    style={{ color: "#ffd700", fontWeight: 700, cursor: isAdmin ? "pointer" : "default", textDecoration: isAdmin ? "underline dotted" : "none" }}
+                    onClick={() => {
+                      if (!isAdmin) return;
+                      setGrantCoinTarget({ userId: detailPost.user_id, username: detailPost.username });
+                      setGrantCoinAmount("");
+                    }}
+                    title={isAdmin ? "클릭하여 코인 지급" : undefined}
+                  >
+                    {detailPost.username}{isAdmin ? " 🪙" : ""}
+                  </strong>
+                </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontSize: "11.5px", color: "#8c8c96" }}>{formatCommunityDate(detailPost.created_at)}</span>
@@ -1450,6 +1497,41 @@ export default function CommunityPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 관리자 코인 지급 모달 */}
+      {grantCoinTarget && (
+        <div className="modal-overlay" onClick={() => { setGrantCoinTarget(null); setGrantCoinAmount(""); }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <div className="modal-header">
+              <span className="modal-title" style={{ fontSize: 16 }}>🪙 코인 지급</span>
+              <button className="modal-close" onClick={() => { setGrantCoinTarget(null); setGrantCoinAmount(""); }}>×</button>
+            </div>
+            <div style={{ padding: "8px 0 16px", textAlign: "left" }}>
+              <p style={{ color: "#ffd700", fontWeight: 800, fontSize: 15, margin: "0 0 12px" }}>
+                「{grantCoinTarget.username}」님에게 지급할 코인 수를 입력하세요.
+              </p>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="코인 수 (예: 3000)"
+                value={grantCoinAmount}
+                onChange={(e) => setGrantCoinAmount(e.target.value)}
+                min={1}
+                autoFocus
+                style={{ marginBottom: 16, fontSize: 18, fontWeight: 800, textAlign: "center" }}
+              />
+              <button
+                className="submit-btn"
+                disabled={grantCoinBusy || !grantCoinAmount}
+                onClick={handleAdminGrantCoin}
+                style={{ marginTop: 0 }}
+              >
+                {grantCoinBusy ? "지급 중..." : `✅ ${Number(grantCoinAmount) > 0 ? Number(grantCoinAmount).toLocaleString() + " 코인 지급" : "코인 지급"}`}
+              </button>
             </div>
           </div>
         </div>
