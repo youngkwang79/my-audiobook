@@ -200,6 +200,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading]);
 
+  // ✅ 로그인 시 DB에서 시청 기록 불러오기 및 localStorage 동기화
+  useEffect(() => {
+    if (loading || !user || !session?.access_token || typeof window === "undefined") return;
+
+    const syncWatchHistoryFromDB = async () => {
+      try {
+        const res = await fetch("/api/user/watch-history", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.history && data.history.length > 0) {
+          // 1. workProgress 구성
+          const progress: Record<string, string> = {};
+          let mostRecent: any = null;
+
+          for (const item of data.history) {
+            progress[item.work_id] = item.episode_id;
+            if (!mostRecent || new Date(item.updated_at) > new Date(mostRecent.updated_at)) {
+              mostRecent = item;
+            }
+          }
+
+          localStorage.setItem("workProgress", JSON.stringify(progress));
+
+          // 2. lastPlayed 구성 (가장 최근에 시청한 에피소드)
+          if (mostRecent) {
+            localStorage.setItem(
+              "lastPlayed",
+              JSON.stringify({
+                workId: mostRecent.work_id,
+                episodeId: mostRecent.episode_id,
+                part: mostRecent.part,
+                updatedAt: new Date(mostRecent.updated_at).getTime(),
+              })
+            );
+          }
+
+          // 스토리지 업데이트 이벤트 전달
+          window.dispatchEvent(new Event("storage"));
+        }
+      } catch (e) {
+        console.error("Failed to sync watch history from DB:", e);
+      }
+    };
+
+    syncWatchHistoryFromDB();
+  }, [user, session, loading]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,

@@ -16,8 +16,9 @@ export async function GET(req: Request) {
     if (token) {
       const { data: { user } } = await supabaseAdmin.auth.getUser(token);
       if (user) {
-        loggedInUserId = user.id;
-        isAdmin = user.user_metadata?.role === "admin";
+        const userRole = user.app_metadata?.role || user.user_metadata?.role;
+        const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "admin@murimbook.com";
+        isAdmin = userRole === "admin" || hasAdminEmail;
 
         const { data: likes } = await supabaseAdmin
           .from("community_post_likes")

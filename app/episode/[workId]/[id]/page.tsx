@@ -757,6 +757,20 @@ export default function EpisodePage() {
       progress[workId] = episodeKey;
       localStorage.setItem("workProgress", JSON.stringify(progress));
       setWatchedEpisode(String(episodeKey));
+
+      // DB에 시청 기록 동기화
+      getAccessToken().then((token) => {
+        if (token) {
+          fetch("/api/user/watch-history", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ workId, episodeId: episodeKey, part }),
+          }).catch((e) => console.error("Watch history DB sync error:", e));
+        }
+      });
     } catch { }
   }, [workId, episodeKey, part]);
 
