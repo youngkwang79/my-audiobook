@@ -107,8 +107,55 @@ export async function POST(req: Request) {
     const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
     if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    if (authErr || !user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    let user: any = null;
+    let displayName = "강호무명";
+    let faction = "협객";
+    let realm = "필부";
+
+    if (token === process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      // Python 소설 제너레이터 등 백그라운드 관리자 업로드 허용
+      // auth.users에서 실제 관리자 계정을 조회하여 유효한 UUID를 확보함으로써 외래키 제약조건 위배를 방지합니다.
+      const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+      const adminUser = usersData?.users?.find(
+        (u: any) => u.email === "youngkwang79@gmail.com" || u.email === "admin@murimbook.com"
+      );
+
+      if (adminUser) {
+        user = { id: adminUser.id };
+        displayName = adminUser.user_metadata?.nickname || adminUser.user_metadata?.full_name || "백발서생 (작가)";
+      } else if (usersData?.users && usersData.users.length > 0) {
+        // 관리자 계정이 없을 경우 첫 번째 사용자의 ID를 가져와 외래키 제약조건을 우회합니다.
+        user = { id: usersData.users[0].id };
+        displayName = "백발서생 (작가)";
+      } else {
+        return NextResponse.json({ error: "no_registered_users" }, { status: 500 });
+      }
+
+      faction = "무림맹";
+      realm = "화경";
+    } else {
+      const { data: { user: authUser }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+      if (authErr || !authUser) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      user = authUser;
+
+      // 작성자의 문파/경지 게임 세이브 데이터 로드
+      const { data: gameSave } = await supabaseAdmin
+        .from("game_saves")
+        .select("game_data")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const gameData = gameSave?.game_data ?? {};
+      faction = gameData.faction || "협객";
+      realm = gameData.realm || "필부";
+
+      displayName =
+        user.user_metadata?.nickname ||
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "강호무명";
+    }
 
     const body = await req.json().catch(() => null);
     const title = typeof body?.title === "string" ? body.title.trim() : "";
@@ -118,24 +165,6 @@ export async function POST(req: Request) {
     if (!title || !content) {
       return NextResponse.json({ error: "title_and_content_required" }, { status: 400 });
     }
-
-    // 작성자의 문파/경지 게임 세이브 데이터 로드
-    const { data: gameSave } = await supabaseAdmin
-      .from("game_saves")
-      .select("game_data")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    const gameData = gameSave?.game_data ?? {};
-    const faction = gameData.faction || "협객";
-    const realm = gameData.realm || "필부";
-
-    const displayName =
-      user.user_metadata?.nickname ||
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split("@")[0] ||
-      "강호무명";
 
     const { data: newPost, error: insertErr } = await supabaseAdmin
       .from("community_posts")

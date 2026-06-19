@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Comments from "@/app/components/Comments";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { useTTS } from "@/lib/useTTS";
 
 const COINS_PER_EPISODE = 30;
 
@@ -399,6 +400,76 @@ export default function EpisodePage() {
 
   const [signedAudioSrc, setSignedAudioSrc] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const [isTTSMode, setIsTTSMode] = useState(false);
+  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+
+  const tts = useTTS({
+    segments,
+    onSegmentEnd: (index) => {
+      // 문장 종료 시 추가 처리가 필요한 경우 작성
+    },
+    onPlaybackFinished: () => {
+      setIsPlaying(false);
+      setStatus("다음으로 넘어가는 중...");
+      window.dispatchEvent(new Event("play-default-music"));
+      goNextPart(false);
+    }
+  });
+
+  // TTS 현재 위치를 페이지 로컬 상태에 동기화
+  useEffect(() => {
+    if (isTTSMode) {
+      setCurrentTime(tts.currentTime);
+      updateCaptionByTime(tts.currentTime);
+    }
+  }, [tts.currentTime, isTTSMode]);
+
+  // TTS 전체 길이를 페이지 로컬 상태에 동기화
+  useEffect(() => {
+    if (isTTSMode) {
+      setDuration(tts.duration);
+    }
+  }, [tts.duration, isTTSMode]);
+
+  // 에피소드가 변경되거나 언마운트될 때 TTS 음성 합성 중단
+  useEffect(() => {
+    return () => {
+      tts.stop();
+    };
+  }, [episodeKey, part]);
+
+  // TTS 모드이며 자동재생 조건 충족 시 자막 로드 완료 후 자동 시작
+  useEffect(() => {
+    if (isTTSMode && segments.length > 0 && (autoplay || pendingAutoplayRef.current)) {
+      pendingAutoplayRef.current = false;
+      tts.play();
+      setIsPlaying(true);
+      setStatus("재생 중");
+    }
+  }, [isTTSMode, segments, autoplay]);
+
+  const toggleTTSMode = () => {
+    if (isTTSMode) {
+      tts.stop();
+      setIsTTSMode(false);
+      const a = audioRef.current;
+      if (a) {
+        a.currentTime = currentTime;
+        if (isPlaying) {
+          a.play().catch(() => {});
+        }
+      }
+    } else {
+      const a = audioRef.current;
+      if (a) {
+        a.pause();
+      }
+      setIsTTSMode(true);
+      if (isPlaying) {
+        tts.play();
+      }
+    }
+  };
 
   const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
@@ -571,10 +642,16 @@ export default function EpisodePage() {
           const data = await res.json();
           if (isMounted && data.url) {
             setSignedAudioSrc(data.url);
+            setIsTTSMode(false);
           }
         } else {
           const errData = await res.json().catch(() => ({}));
           console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
+          if (isMounted) {
+            setSignedAudioSrc(null);
+            setIsTTSMode(true);
+            setStatus("TTS 재생 모드");
+          }
         }
       } catch (err) {
         console.error("Signed URL 발급 실패:", err);
@@ -1227,6 +1304,28 @@ export default function EpisodePage() {
   };
 
   const togglePlayPause = async () => {
+    if (isTTSMode) {
+      try {
+        if (tts.isPlaying) {
+          tts.pause();
+          setIsPlaying(false);
+          setFlashType("pause");
+          window.dispatchEvent(new Event("play-default-music"));
+        } else {
+          tts.play();
+          setIsPlaying(true);
+          setFlashType("play");
+          window.dispatchEvent(new Event("fade-out-background-music"));
+        }
+        setIsFlashing(true);
+        setTimeout(() => {
+          setIsFlashing(false);
+        }, 800);
+      } catch {}
+      resetHideTimer();
+      return;
+    }
+
     const a = audioRef.current;
     if (!a) return;
 
@@ -1250,6 +1349,13 @@ export default function EpisodePage() {
   };
 
   const seekBy = (delta: number) => {
+    if (isTTSMode) {
+      const next = Math.max(0, Math.min(tts.duration || 0, tts.currentTime + delta));
+      tts.seekToTime(next);
+      resetHideTimer();
+      return;
+    }
+
     const a = audioRef.current;
     if (!a) return;
 
@@ -1261,6 +1367,12 @@ export default function EpisodePage() {
   };
 
   const handleSeek = (value: number) => {
+    if (isTTSMode) {
+      tts.seekToTime(value);
+      resetHideTimer();
+      return;
+    }
+
     const a = audioRef.current;
     if (!a) return;
 
@@ -1272,19 +1384,20 @@ export default function EpisodePage() {
 
   const changePlaybackRate = (rate: number) => {
     const a = audioRef.current;
-    if (!a) return;
-
-    a.playbackRate = rate;
+    if (a) {
+      a.playbackRate = rate;
+    }
     setPlaybackRate(rate);
+    tts.setPlaybackRate(rate);
     setShowSpeedMenu(false);
     resetHideTimer();
   };
 
   const handleVolumeChange = (value: number) => {
     const a = audioRef.current;
-    if (!a) return;
-
-    a.volume = value;
+    if (a) {
+      a.volume = value;
+    }
     setVolume(value);
     resetHideTimer();
   };
@@ -2225,6 +2338,34 @@ export default function EpisodePage() {
               >
                 +
               </button>
+              {signedAudioSrc && (
+                <button 
+                  onClick={toggleTTSMode}
+                  className="sf-speed-btn"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    background: isTTSMode ? "rgba(10, 132, 255, 0.25)" : "rgba(255, 255, 255, 0.12)",
+                    border: isTTSMode ? "1px solid rgb(10, 132, 255)" : "1px solid rgba(255, 255, 255, 0.15)",
+                  }}
+                >
+                  {isTTSMode ? "🎙️ TTS" : "🎵 음원"}
+                </button>
+              )}
+              {isTTSMode && tts.voices.length > 0 && (
+                <button 
+                  className="sf-speed-btn" 
+                  onClick={() => setShowVoiceMenu(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                >
+                  🗣️ {tts.selectedVoice ? tts.selectedVoice.name.split(" ")[0] : "목소리"}
+                </button>
+              )}
               <button className="sf-more-btn" onClick={toggleLandscapePlayer} title="시네마(가로) 모드" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3H5a2 2 0 0 0-2 2v3" />
@@ -2506,8 +2647,25 @@ export default function EpisodePage() {
                 </div>
               </div>
             ) : (
-              <div className="sf-caption-text">
-                {caption || " "}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                {isTTSMode && (
+                  <div style={{
+                    fontSize: "12px",
+                    color: "rgba(255, 255, 255, 0.4)",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    padding: "4px 10px",
+                    borderRadius: "100px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                  }}>
+                    <span>⚠️ TTS 모드: 화면 잠금 시 낭독이 중단될 수 있습니다.</span>
+                  </div>
+                )}
+                <div className="sf-caption-text">
+                  {caption || " "}
+                </div>
               </div>
             )}
           </div>
@@ -2799,6 +2957,39 @@ export default function EpisodePage() {
             </>
           )}
 
+          {/* TTS 목소리 조절 바텀 시트 */}
+          {showVoiceMenu && (
+            <>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} onClick={() => setShowVoiceMenu(false)} />
+              <div className="sf-bottom-sheet">
+                <div className="sf-sheet-title">
+                  <span>TTS 목소리 설정</span>
+                  <button className="sf-sheet-close" onClick={() => setShowVoiceMenu(false)}>닫기</button>
+                </div>
+                <div className="sf-speed-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  {tts.voices.filter(v => v.lang.startsWith("ko")).map((voice) => (
+                    <button
+                      key={voice.name}
+                      className={`sf-speed-item ${tts.selectedVoice?.name === voice.name ? "active" : ""}`}
+                      style={{ fontSize: "14px", padding: "12px 16px", textAlign: "left", width: "100%", display: "block" }}
+                      onClick={() => {
+                        tts.setSelectedVoice(voice);
+                        setShowVoiceMenu(false);
+                      }}
+                    >
+                      {voice.name} {voice.localService ? "[기기 내장]" : "[클라우드]"}
+                    </button>
+                  ))}
+                  {tts.voices.filter(v => v.lang.startsWith("ko")).length === 0 && (
+                    <div style={{ padding: "16px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "14px" }}>
+                      지원되는 한국어 목소리가 없습니다.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* 작품 설명 더보기 팝업 모달 */}
           {showDescriptionPopup && (
             <div className="sf-popup-overlay" onClick={() => setShowDescriptionPopup(false)}>
@@ -2953,15 +3144,32 @@ export default function EpisodePage() {
               style={{
                 position: "absolute",
                 left: "50%",
-                top: "38%",
+                top: "32%",
                 transform: "translateX(-50%)",
                 width: "82%",
                 display: "flex",
-                justifyContent: "center",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 16,
                 pointerEvents: "none",
                 zIndex: 3,
               }}
             >
+              {isTTSMode && (
+                <div style={{
+                  fontSize: "12px",
+                  color: "rgba(255, 255, 255, 0.4)",
+                  background: "rgba(0, 0, 0, 0.5)",
+                  padding: "4px 10px",
+                  borderRadius: "100px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                }}>
+                  <span>⚠️ TTS 모드: 화면 잠금 시 낭독이 중단될 수 있습니다.</span>
+                </div>
+              )}
               <div
                 style={{
                   maxWidth: 980,
@@ -3197,6 +3405,54 @@ export default function EpisodePage() {
                       +
                     </button>
 
+                    {signedAudioSrc && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTTSMode();
+                        }}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 14,
+                          border: isTTSMode ? "1px solid rgb(10, 132, 255)" : "1px solid rgba(255,255,255,0.14)",
+                          background: isTTSMode ? "rgba(10, 132, 255, 0.25)" : "rgba(10,10,10,0.40)",
+                          color: "white",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          backdropFilter: "blur(8px)",
+                          fontFamily: cinemaFont,
+                        }}
+                      >
+                        {isTTSMode ? "🎙️ TTS 모드" : "🎵 음원 모드"}
+                      </button>
+                    )}
+
+                    {isTTSMode && tts.voices.length > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowVoiceMenu((v) => !v);
+                          setShowPartMenuCinema(false);
+                          setShowCinemaComments(false);
+                          setShowSpeedMenu(false);
+                          resetHideTimer();
+                        }}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 14,
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          background: "rgba(10,10,10,0.40)",
+                          color: "white",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          backdropFilter: "blur(8px)",
+                          fontFamily: cinemaFont,
+                        }}
+                      >
+                        🗣️ {tts.selectedVoice ? tts.selectedVoice.name.split(" ")[0] : "목소리"}
+                      </button>
+                    )}
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -3264,6 +3520,57 @@ export default function EpisodePage() {
                     다음 편
                   </button>
                 </div>
+
+                {showVoiceMenu && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      bottom: 120,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                      padding: 12,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.95)",
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      zIndex: 299,
+                      minWidth: "250px",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", padding: "4px 8px" }}>목소리 선택</div>
+                    {tts.voices.filter(v => v.lang.startsWith("ko")).map((voice) => (
+                      <button
+                        key={voice.name}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          tts.setSelectedVoice(voice);
+                          setShowVoiceMenu(false);
+                        }}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          border: tts.selectedVoice?.name === voice.name ? "1px solid rgb(10, 132, 255)" : "none",
+                          background: tts.selectedVoice?.name === voice.name ? "rgba(10, 132, 255, 0.2)" : "transparent",
+                          color: "white",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                        }}
+                      >
+                        {voice.name} {voice.localService ? "[내장]" : "[클라우드]"}
+                      </button>
+                    ))}
+                    {tts.voices.filter(v => v.lang.startsWith("ko")).length === 0 && (
+                      <div style={{ padding: "8px 12px", color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
+                        한국어 목소리 없음
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {showSpeedMenu && (
                   <div

@@ -184,8 +184,8 @@ export default function PointsPage() {
         return;
       }
 
-      const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
-      let channelKey = "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID || "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
+      let channelKey = process.env.NEXT_PUBLIC_PORTONE_CARD_CHANNEL_KEY || "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
       let payMethod: any = "CARD";
 
       const paymentParams: any = {
@@ -210,11 +210,11 @@ export default function PointsPage() {
       };
 
       if (paymentMethod === "KAKAOPAY") {
-        paymentParams.channelKey = "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
+        paymentParams.channelKey = process.env.NEXT_PUBLIC_PORTONE_KAKAOPAY_CHANNEL_KEY || "channel-key-f96fa1b0-0b1b-49c3-9692-5700591ccc8b";
         paymentParams.payMethod = "EASY_PAY";
         paymentParams.easyPay = { easyPayProvider: "KAKAOPAY" };
       } else if (paymentMethod === "PHONE") {
-        paymentParams.channelKey = "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
+        paymentParams.channelKey = process.env.NEXT_PUBLIC_PORTONE_PHONE_CHANNEL_KEY || "channel-key-ab754414-21c1-46c7-bb4f-f6d9a8833415";
         paymentParams.payMethod = "MOBILE";
         paymentParams.productType = "DIGITAL";
       } else {

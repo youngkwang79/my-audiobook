@@ -408,8 +408,8 @@ export default function MembershipPage() {
         return;
       }
 
-      const storeId = "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
-      let channelKey = "channel-key-6d5c990f-c644-474a-8137-460681d7d4aa";
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID || "store-8054c58a-c4b5-41b0-bb69-3c1aaf372ea4";
+      let channelKey = process.env.NEXT_PUBLIC_PORTONE_BILLING_CARD_CHANNEL_KEY || "channel-key-6d5c990f-c644-474a-8137-460681d7d4aa";
       let billingKeyMethod: any = "CARD";
 
       const billingKeyParams: any = {
@@ -434,7 +434,7 @@ export default function MembershipPage() {
       };
 
       if (paymentMethod === "KAKAOPAY") {
-        billingKeyParams.channelKey = "channel-key-c63cece9-db7e-4971-bf31-216c32de0ed3";
+        billingKeyParams.channelKey = process.env.NEXT_PUBLIC_PORTONE_BILLING_KAKAOPAY_CHANNEL_KEY || "channel-key-c63cece9-db7e-4971-bf31-216c32de0ed3";
         billingKeyParams.billingKeyMethod = "EASY_PAY";
         billingKeyParams.easyPay = { easyPayProvider: "KAKAOPAY" };
       } else {

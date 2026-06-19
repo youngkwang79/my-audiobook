@@ -41,6 +41,70 @@ function romanizeHangeul(text: string): string {
   return result.replace(/[^a-z0-9]/g, "").slice(0, 30);
 }
 
+function splitTextIntoParts(text: string, maxLen: number = 3000): string[] {
+  const paragraphs = text.replace(/\r\n/g, "\n").split("\n");
+  const parts: string[] = [];
+  let currentPart: string[] = [];
+  let currentLength = 0;
+
+  for (let paragraph of paragraphs) {
+    paragraph = paragraph.trim();
+    if (paragraph.length === 0) continue;
+
+    if (currentLength + paragraph.length + (currentPart.length > 0 ? 1 : 0) > maxLen) {
+      if (currentPart.length > 0) {
+        parts.push(currentPart.join("\n"));
+        currentPart = [];
+        currentLength = 0;
+      }
+
+      if (paragraph.length > maxLen) {
+        // Safe sentence splitting without lookbehind
+        const sentences = paragraph.replace(/([.!?])\s+/g, "$1|").split("|");
+        for (let sentence of sentences) {
+          sentence = sentence.trim();
+          if (sentence.length === 0) continue;
+
+          if (currentLength + sentence.length + (currentPart.length > 0 ? 1 : 0) > maxLen) {
+            if (currentPart.length > 0) {
+              parts.push(currentPart.join(" "));
+              currentPart = [];
+              currentLength = 0;
+            }
+
+            if (sentence.length > maxLen) {
+              let offset = 0;
+              while (offset < sentence.length) {
+                const chunk = sentence.substring(offset, offset + maxLen);
+                parts.push(chunk);
+                offset += maxLen;
+              }
+            } else {
+              currentPart.push(sentence);
+              currentLength = sentence.length;
+            }
+          } else {
+            currentPart.push(sentence);
+            currentLength += sentence.length + (currentPart.length > 1 ? 1 : 0);
+          }
+        }
+      } else {
+        currentPart.push(paragraph);
+        currentLength = paragraph.length;
+      }
+    } else {
+      currentPart.push(paragraph);
+      currentLength += paragraph.length + (currentPart.length > 1 ? 1 : 0);
+    }
+  }
+
+  if (currentPart.length > 0) {
+    parts.push(currentPart.join("\n"));
+  }
+
+  return parts;
+}
+
 const s3 = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -193,80 +257,104 @@ export async function POST(req: Request) {
           sendLog("info", `저장 경로: ${genResult.file_path}`);
 
           // --- 2단계: TTS 변환 & 3단계: R2 업로드 ---
+          let totalParts = 1;
           if (runTts) {
-            sendLog("info", `[2단계] 오디오 변환을 시작합니다. (Voice: ${voice}, Pitch: ${pitch}, Rate: ${rate})`);
-            const uniqueId = crypto.randomUUID();
-            tempMp3Path = path.join(os.tmpdir(), `tts_${uniqueId}.mp3`);
+            const chapterText = fs.readFileSync(genResult.file_path, "utf-8");
+            const textParts = splitTextIntoParts(chapterText, 3000);
+            totalParts = textParts.length;
+            sendLog("info", `[2단계] 오디오 변환을 시작합니다. 총 ${totalParts}개의 파트로 분할되었습니다. (Voice: ${voice}, Pitch: ${pitch}, Rate: ${rate})`);
             
-            const ttsScriptPath = path.join(process.cwd(), "scripts", "tts_generator.py");
-            const ttsArgs = [
-              `--text-file=${genResult.file_path}`,
-              `--voice=${voice}`,
-              `--pitch=${pitch}`,
-              `--rate=${rate}`,
-              `--effect=${effect}`,
-              `--output=${tempMp3Path}`
-            ];
-            if (voiceGuide) {
-              ttsArgs.push(`--voice-guide=${voiceGuide}`);
-            }
-
-            sendLog("debug", `명령어 실행: python scripts/tts_generator.py ${ttsArgs.join(" ")}`);
-            const ttsProcess = spawn("python", [ttsScriptPath, ...ttsArgs], {
-              env: { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" }
-            });
-
-            let ttsLineBuffer = "";
-            const ttsPromise = new Promise<void>((resolve, reject) => {
-              ttsProcess.stdout.on("data", (chunk) => {
-                const text = chunk.toString("utf8");
-                ttsLineBuffer += text;
-                let lines = ttsLineBuffer.split("\n");
-                ttsLineBuffer = lines.pop() || "";
-                for (const line of lines) {
-                  if (line.trim()) sendLog("stdout", `[TTS] ${line.trim()}`);
-                }
-              });
-
-              ttsProcess.stderr.on("data", (chunk) => {
-                sendLog("stderr", `[TTS 에러] ${chunk.toString("utf8").trim()}`);
-              });
-
-              ttsProcess.on("close", (code) => {
-                if (ttsLineBuffer.trim()) {
-                  sendLog("stdout", `[TTS] ${ttsLineBuffer.trim()}`);
-                }
-                if (code === 0) {
-                  resolve();
-                } else {
-                  reject(new Error(`TTS 변환 프로세스가 종료 코드 ${code}로 실패했습니다.`));
-                }
-              });
-            });
-
-            await ttsPromise;
-            if (!fs.existsSync(tempMp3Path)) {
-              throw new Error("TTS MP3 파일이 생성되지 않았습니다.");
-            }
-            sendLog("success", "🔊 [TTS 변환 완료] 오디오가 성공적으로 렌더링되었습니다.");
-
-            // --- 3단계: R2 업로드 ---
-            sendLog("info", "[3단계] Cloudflare R2 스토리지에 업로드하는 중...");
-            const mp3Buffer = fs.readFileSync(tempMp3Path);
+            const uniqueId = crypto.randomUUID();
+            const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
             const epNum = Number(genResult.chapter);
             const folder = isNaN(epNum) ? String(genResult.chapter) : String(epNum).padStart(3, "0");
-            const r2Key = `${targetWorkId}/${folder}/01.MP3`;
-            
-            const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
-            await s3.send(
-              new PutObjectCommand({
-                Bucket: bucketName,
-                Key: r2Key,
-                Body: mp3Buffer,
-                ContentType: "audio/mpeg"
-              })
-            );
-            sendLog("success", `☁️ [R2 업로드 완료] Key: ${r2Key}`);
+
+            for (let i = 0; i < totalParts; i++) {
+              const partText = textParts[i];
+              const partNum = i + 1;
+              const partPadded = String(partNum).padStart(2, "0");
+              sendLog("info", `[2단계] 파트 ${partNum}/${totalParts} 오디오 변환 중...`);
+
+              const partTxtPath = path.join(os.tmpdir(), `tts_${uniqueId}_p${partPadded}.txt`);
+              const partMp3Path = path.join(os.tmpdir(), `tts_${uniqueId}_p${partPadded}.mp3`);
+              
+              fs.writeFileSync(partTxtPath, partText, "utf-8");
+
+              const ttsScriptPath = path.join(process.cwd(), "scripts", "tts_generator.py");
+              const ttsArgs = [
+                `--text-file=${partTxtPath}`,
+                `--voice=${voice}`,
+                `--pitch=${pitch}`,
+                `--rate=${rate}`,
+                `--effect=${effect}`,
+                `--output=${partMp3Path}`
+              ];
+              if (voiceGuide) {
+                ttsArgs.push(`--voice-guide=${voiceGuide}`);
+              }
+
+              sendLog("debug", `명령어 실행: python scripts/tts_generator.py ${ttsArgs.join(" ")}`);
+              const ttsProcess = spawn("python", [ttsScriptPath, ...ttsArgs], {
+                env: { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" }
+              });
+
+              let ttsLineBuffer = "";
+              const ttsPromise = new Promise<void>((resolve, reject) => {
+                ttsProcess.stdout.on("data", (chunk) => {
+                  const text = chunk.toString("utf8");
+                  ttsLineBuffer += text;
+                  let lines = ttsLineBuffer.split("\n");
+                  ttsLineBuffer = lines.pop() || "";
+                  for (const line of lines) {
+                    if (line.trim()) sendLog("stdout", `[TTS P${partNum}] ${line.trim()}`);
+                  }
+                });
+
+                ttsProcess.stderr.on("data", (chunk) => {
+                  sendLog("stderr", `[TTS 에러 P${partNum}] ${chunk.toString("utf8").trim()}`);
+                });
+
+                ttsProcess.on("close", (code) => {
+                  if (ttsLineBuffer.trim()) {
+                    sendLog("stdout", `[TTS P${partNum}] ${ttsLineBuffer.trim()}`);
+                  }
+                  if (code === 0) {
+                    resolve();
+                  } else {
+                    reject(new Error(`TTS 변환 프로세스(파트 ${partNum})가 종료 코드 ${code}로 실패했습니다.`));
+                  }
+                });
+              });
+
+              await ttsPromise;
+              if (!fs.existsSync(partMp3Path)) {
+                throw new Error(`TTS MP3 파일(파트 ${partNum})이 생성되지 않았습니다.`);
+              }
+              sendLog("success", `🔊 [TTS 변환 완료] 파트 ${partNum}/${totalParts} 오디오가 성공적으로 렌더링되었습니다.`);
+
+              // --- 3단계: R2 업로드 ---
+              const r2Key = `${targetWorkId}/${folder}/${partPadded}.MP3`;
+              sendLog("info", `[3단계] Cloudflare R2 스토리지에 업로드하는 중... (Key: ${r2Key})`);
+              const mp3Buffer = fs.readFileSync(partMp3Path);
+
+              await s3.send(
+                new PutObjectCommand({
+                  Bucket: bucketName,
+                  Key: r2Key,
+                  Body: mp3Buffer,
+                  ContentType: "audio/mpeg"
+                })
+              );
+              sendLog("success", `☁️ [R2 업로드 완료] Key: ${r2Key}`);
+
+              // 임시 파일 정리
+              try {
+                if (fs.existsSync(partTxtPath)) fs.unlinkSync(partTxtPath);
+                if (fs.existsSync(partMp3Path)) fs.unlinkSync(partMp3Path);
+              } catch (e) {
+                console.error("Cleanup error in automation api route loop:", e);
+              }
+            }
           } else {
             sendLog("info", "⏭️ [설정] 사용자의 옵션 선택으로 오디오(TTS) 변환 및 업로드 단계가 생략되었습니다.");
           }
@@ -360,7 +448,7 @@ export async function POST(req: Request) {
               id: String(genResult.chapter),
               title: genResult.title,
               locked: true,
-              parts: 1,
+              parts: totalParts,
               release_date: releaseDateStr,
               is_membership_only: is_membership_only
             })

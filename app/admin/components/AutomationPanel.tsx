@@ -134,7 +134,166 @@ export default function AutomationPanel({
   const [planTempDir, setPlanTempDir] = useState("");
   const [planError, setPlanError] = useState("");
   const [runTts, setRunTts] = useState(true);
+  // 🎲 [인과율 가차 시스템] 웹 어드민 연동용 변수 및 데이터 생성기
+  const [rolling, setRolling] = useState(false);
 
+  const rollMoorimDice = () => {
+    setRolling(true);
+    setPlanError("");
+    setPlanResult(null);
+
+    // =========================================================================
+    // 📚 무림북 유니버스 데이터 대확장 풀 (순수 정통 무협 어휘)
+    // =========================================================================
+    const names = ["백무혁", "남궁천", "독고진", "제갈풍", "화린", "연소하", "진강우", "묵운형", "단우진", "제갈휘", "소청운", "악태평", "맹현수", "임도묵"];
+    
+    const origins = [
+      "명문 남궁세가의 멸문 속에서 홀로 살아남은 직계 후계자", "소림사의 장경각에서 평생 불경을 닦으며 먼지를 쓸던 잡역승",
+      "무림맹 내부 권력 암투의 희생양이 되어 파문당한 무당파의 장문 제자", "화산파의 외당에서 독초와 약초를 감별하던 가난한 초부",
+      "개방의 말단 부문으로 하루하루 풀칠하며 강호의 기류를 살피던 거지", "사천당가에서 태어났으나 독문 무공을 익히지 못해 유배당한 서자",
+      "평생 도박장에서 타짜들의 손기술을 감시하며 시각 감각을 키운 고아 노비", "무림 최고의 보검을 제련하던 전설적 야장의 밑에서 망치질을 하던 꼽추 조수",
+      "강호의 소문을 기록하여 황실에 밀고하던 변방 역참의 하급 서리", "정파 고수들의 무덤을 파헤치며 유품을 수거하던 낙양의 은밀한 도굴꾼",
+      "동창의 비밀 감옥에서 고문 기술자의 조수로 일하다 도망친 탈옥수", "남해검파의 포구에서 소금을 나르며 하체와 악력을 다진 외딴섬의 어부",
+      "서하 사막의 대상들을 약탈하던 기마적단에게 납치되어 마마부로 일하던 소년", "명문 제갈세가의 서책을 필사하다가 가문의 심법을 눈으로 훔쳐본 절름발이 필사수",
+      "하오문에서 밤마다 취객들의 주머니를 털며 신법을 독학한 거리의 소매치기", "파문당한 전대 곤륜파 고수가 깊은 동굴에 버려두고 간 비밀 서원의 아이",
+      "의술을 수련하다가 정파의 독살 음모에 가담하길 거부하고 도망친 약방 도제", "황실 금위군의 하급 군관이었으나 조정의 부패에 환멸을 느끼고 낙향한 무인",
+      "귀신이 나온다고 소문난 몰락한 파계 문파의 터를 홀로 지키던 묘지기 소년", "변방의 하급 포교로 일하며 강호 범죄자들의 신상과 약점을 모두 외운 추적수"
+    ];
+
+    const traits = [
+      "기혈과 단전이 굳어 경맥이 막힌 삼음절맥이나, 심안과 혜안이 극도로 명석함", "골격이 강인하여 외공의 자질은 천하제일이나 진기 운용의 묘리가 둔함",
+      "만독을 다스리는 백독불침에 가까운 영명한 천생의 약체 체질", "대식가 체질로 영약이나 진기를 남들보다 빠르게 체화하여 단전으로 축적하는 흡선지체",
+      "신형의 반응이 벼락처럼 빠르며, 감정이 메마른 듯 차분하고 싸늘한 내면", "기감을 전혀 느끼지 못해 진기를 쓸 수 없으나 적의 기 탐지에도 걸리지 않는 공(空)의 상태",
+      "한 번 몰입하면 물아일체의 경지에 들어서 주변의 살기를 무섭게 집중시키는 심법 자질", "기억력이 비상하여 강호의 구전 비급이나 고대 문자를 한 번 보고 조립해내는 천재성",
+      "관절과 뼈마디가 기형적으로 유연하여 예측 불가능한 신법을 구사하는 연공 골격", "주변 인물의 미세한 호흡과 맥박의 변화를 통해 살의와 진위를 포착하는 예리한 기감",
+      "상처의 자가 치유와 기혈 순환이 비정상적으로 빠른 금강불괴의 싹을 지닌 육체", "마음의 정념을 비우고 혼원기세를 취할 때 지략이 솟구치는 기묘한 괴벽 자질",
+      "성정이 차갑고 고독해 보이나, 학문과 무리(武理)에 깊은 집착을 가진 학구적 자질", "단전이 세 개로 나뉘어 있어 서로 다른 세 종류의 기운을 다룰 수 있는 삼원단전",
+      "타인의 목소리와 걸음걸이를 완벽하게 흉내 낼 수 있는 위장의 천재성", "분노나 심마에 빠질 때 뇌 세포가 각성하여 진기를 폭발적으로 운용하는 광전사적 체질",
+      "심맥이 기형적으로 튼튼하여 내상(內傷)을 거의 입지 않는 태연한 심장", "밤에는 오감이 10배 강화되나 낮에는 지극히 평범해지는 야행성 체질",
+      "단전의 내공을 손끝의 아주 미세한 바늘구멍 같은 경혈로 압축하여 내뿜는 암경 자질", "주변 사물의 미세한 진동을 피부로 느껴 보이지 않는 사각지대의 공격을 피하는 감각"
+    ];
+
+    const kiyeons = ["선조가 묵화 속에 숨겨둔 무학 구결", "복용 시 막힌 혈도를 파해하는 만년빙삼", "과거 마교 교주의 원혼이 서린 현황구슬", "체내의 탁기를 쏟아내고 골격을 재배치해 주는 세수대환", "스스로 기를 순환시켜 내력을 쌓는 태극와신공", "적의 내력을 빼앗아 단전으로 환원시키는 흡기연검"];
+    const buildups = ["위기 속에서 우연히 무림 공적의 무덤에 빠져 벽면에 혈서로 적힌 비급을 해독함", "자신을 키워준 삼류 의원이 죽기 직전 목숨을 담보로 맥로의 빗장을 풀어헤침", "정파의 잔인한 추적을 피하다 은거 기인의 밀실에 갇혀 시신의 단전을 취함", "사파 연맹의 비밀 수송대 가방을 훔쳤는데 그 속에서 천 년간 봉인되어 온 영물을 발견함"];
+    
+    // 리스크 매트릭스 & 극복 서사 매칭 풀
+    const riskControlMatrix = [
+      {
+        risk: "내력을 격렬하게 운용할 때마다 오감이 한 시진 동안 완전히 마비됨",
+        override: "카타르시스 극복 서사: 전투 직전 지형지물과 적의 걸음걸이 수를 심안으로 완전히 외워버린 뒤 오감이 차단된 정적 속에서 적을 베어내는 극상의 지략으로 극복"
+      },
+      {
+        risk: "하루에 한 번 온몸의 뼈마디가 분쇄되는 듯한 주화입마의 극통을 견뎌야 함",
+        override: "카타르시스 극복 서사: 뼈가 부서지는 고통의 타이밍에 도리어 적의 강력한 공격을 신체로 유도하여 내력을 외부로 폭발시키며 적을 분쇄하는 배짱으로 극복"
+      },
+      {
+        risk: "수명이 급격히 갉아먹혀 3년 안에 최종 목표를 완수해야 하는 시한부 운명이 됨",
+        override: "카타르시스 극복 서사: 매 전투마다 '이번이 마지막 일격'이라는 비장한 참도의 정신을 검에 실어 기세만으로 적대 종사들의 정념을 무너뜨리는 절대 기세로 극복"
+      },
+      {
+        risk: "진기를 운용하면 등줄기의 경동맥이 강하게 요동쳐 비틀어지는 내상을 입음",
+        override: "카타르시스 극복 서사: 내상으로 피를 토하는 찰나 적들이 방심하고 다가오는 순간을 노려 소매 속에서 무음의 암경을 사출하여 적의 심장을 관통하는 반전으로 극복"
+      },
+      {
+        risk: "살기를 품으면 눈동자가 핏빛으로 변하여 정파인들에게 마교의 살귀로 오인받음",
+        override: "카타르시스 극복 서사: 겉모습만 보고 맹공하는 위선자들 앞에서 안대를 동여매고 맹인 검객을 자처하여 가짜 정의의 명분을 논리적 장부와 실력으로 징벌하며 극복"
+      }
+    ];
+
+    const goals = [
+      "가문의 피비린내 나는 원수를 갚고 강호의 거대한 어둠의 막후를 백일하에 드러내는 것", "위선과 부패로 얼룩진 무림맹 장로들의 파계와 비리를 징벌하는 것",
+      "절맥으로 인한 요절의 운명을 극복하고 하늘이 정한 한계를 돌파하여 살아남는 것", "사파의 폭정과 협잡으로부터 힘없는 백성들과 낙향한 은퇴 고수들을 명예롭게 수호하는 것",
+      "세상을 지배하려는 혈교의 혈인 군단 완성을 저지하고 음모의 심장부를 파괴하는 것"
+    ];
+    
+    const conflicts = [
+      "무림맹의 중추를 장악하고 명분 뒤에 숨어 강호의 이권을 독점하려는 위선 카르텔", "맹주마저 통제하지 못하는 막후에서 군림해 온 정체불명의 비밀 살수 결사 단체",
+      "사파의 패도적인 무력으로 무고한 문파들을 잔인하게 합병해 나가는 거대 흑도 연맹", "무공 비급의 천하 독점을 위해 정파의 맥로를 인위적으로 통제해 온 구파일방 상층 원로원",
+      "음산한 핏빛 기운을 모아 강호 전체를 거대한 겁란으로 밀어 넣으려는 혈교의 부활 분파", "황실 금위군과 결탁하여 정파 문파들을 역모로 몰아 숙청하려는 조정의 밀사 집단",
+      "정파의 명예로운 가문으로 알려졌으나 밤에는 사파보다 잔혹하게 암습과 약탈을 자행하는 독령가", "강호의 소문과 정보를 조작하여 문파 간의 유혈 진탕을 유도하는 하오문의 흑막 책사단",
+      "돈을 위해서라면 사제와 동료마저 가차 없이 팔아넘기는 강호 거대상단의 비밀 숙청대", "위선적인 정파의 법도에 환멸을 느끼고 무림 전체를 파멸시키려는 전대 화산파의 타락한 장로"
+    ];
+    
+    const titleTemplates = ["{name}, {traitShort}으로 천하를 종횡하다", "삼류 무사 {name}의 단전에 깃든 {kiyeon}", "절맥의 {name}, {traitShort}으로 독맥을 뚫다", "{name}의 철검에 새겨진 {traitShort}의 핏빛 궤적"];
+
+    setTimeout(() => {
+      const shuffleArray = (array: any[]) => {
+        const clone = [...array];
+        for (let i = clone.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [clone[i], clone[j]] = [clone[j], clone[i]];
+        }
+        return clone;
+      };
+
+      const shuffledOrigins = shuffleArray(origins);
+      const shuffledTraits = shuffleArray(traits);
+      const shuffledKiyeons = shuffleArray(kiyeons);
+      const shuffledBuildups = shuffleArray(buildups);
+      const shuffledRiskMatrix = shuffleArray(riskControlMatrix);
+      const shuffledGoals = shuffleArray(goals);
+      const shuffledConflicts = shuffleArray(conflicts);
+
+      const o1 = shuffledOrigins[0];
+      const o2 = shuffledOrigins[1]; 
+      const t1 = shuffledTraits[0];   
+      const chosenName = names[Math.floor(Math.random() * names.length)];
+      
+      const kCount = Math.floor(Math.random() * 2) + 2; 
+      const kList = Array.from({ length: kCount }, (_, i) => {
+        const matrixItem = shuffledRiskMatrix[i % shuffledRiskMatrix.length];
+        return {
+          phase: i === 0 ? "초반 기초 축적기" : i === 1 ? "중반 세력 암투기" : "후반 대단원 각성기",
+          core: shuffledKiyeons[i % shuffledKiyeons.length],
+          buildup: shuffledBuildups[i % shuffledBuildups.length],
+          risk: matrixItem.risk,
+          override: matrixItem.override 
+        };
+      });
+
+      const chosenGoal = shuffledGoals[0];
+      const chosenConflict = shuffledConflicts[0];
+
+      let traitShort = "천생의 자질";
+      if (t1) {
+        const parts = t1.replace(/나,|,|체질로|이나/g, "##").split("##");
+        if (parts[0] && parts[0].trim().length > 1) traitShort = parts[0].trim();
+      }
+      
+      const randomKiyeon = kList[0].core;
+      let rawTitle = titleTemplates[Math.floor(Math.random() * titleTemplates.length)]
+        .replace("{name}", chosenName).replace("{traitShort}", traitShort).replace("{kiyeon}", randomKiyeon);
+
+      const generatedTitle = rawTitle.replace(/[^\w\s가-힣-]/g, "").trim();
+      const safeFolderTitle = generatedTitle.replace(/\s+/g, "_");
+
+      let kiyeonPromptBlock = "";
+      kList.forEach((k) => {
+        kiyeonPromptBlock += `- [${k.phase}] 기연: ${k.core} (${k.buildup})\n  ➔ 패널티: ${k.risk}\n  ➔ 💡 극복 연출: ${k.override}\n`;
+      });
+
+      setPlanResult({
+        novel_title: generatedTitle,
+        novel_intro: `[강호 인과율 소스]\n- 주인공 명천: ${chosenName}\n- 복합 배경: ${o1} ➔ ${o2}\n- 타고난 무학 자질: ${t1}\n- 최종 대서사 목표: ${chosenGoal}\n- 적대 카르텔 세력: ${chosenConflict}\n\n[🔥 연속 성장 기연 트리 및 카타르시스 극복 매트릭스]\n${kiyeonPromptBlock}\n위 인과율에 따라 무고하게 무시당하던 주인공이 치명적인 패널티 리스크를 자신만의 독창적인 지략과 기세로 '극복'해내며 기득권을 부수는 성장형 사이다 대작입니다.`,
+        selected_style: {
+          mood: `[성장형 사이다 먼치킨] 매 화 무공의 맥로 변화와 영약의 기원이 동적으로 셔플되는 완전 변칙성 정통 무협`
+        },
+        synopses: kList.reduce((acc, k, idx) => {
+          acc[idx === 0 ? "1" : idx === 1 ? "35" : "70"] = `기연: ${k.core} (${k.buildup}) / 리스크: ${k.risk} / 극복: ${k.override}`;
+          return acc;
+        }, {} as any),
+        
+        chosen_name: chosenName,
+        chosen_origin: `${o1} ➔ ${o2}`,
+        chosen_trait: t1,
+        chosen_goal: chosenGoal,
+        chosen_conflict: chosenConflict
+      });
+
+      setPlanFolderName(`무림북_${safeFolderTitle}`);
+      setRolling(false);
+    }, 400);
+  };
   // --- LEGACY STATE ---
   const [mergeFiles, setMergeFiles] = useState<File[]>([]);
   const [merging, setMerging] = useState(false);
@@ -150,13 +309,15 @@ export default function AutomationPanel({
   const [textInput, setTextInput] = useState("");
   const [txtFiles, setTxtFiles] = useState<File[]>([]);
   // 여러 파일 선택 시 개별 큐 아이템
-  const [txtFileQueue, setTxtFileQueue] = useState<Array<{
-    file: File;
-    episodeId: string;
-    episodeTitle: string;
-    status: "idle" | "running" | "success" | "error";
-    errorMsg?: string;
-  }>>([]);
+  const [txtFileQueue, setTxtFileQueue] = useState<
+    Array<{
+      file: File;
+      episodeId: string;
+      episodeTitle: string;
+      status: "idle" | "running" | "success" | "error";
+      errorMsg?: string;
+    }>
+  >([]);
   const [ttsIsMembershipOnly, setTtsIsMembershipOnly] = useState(false);
   const [voiceGuide, setVoiceGuide] = useState(DEFAULT_VOICE_GUIDE);
 
@@ -444,7 +605,12 @@ export default function AutomationPanel({
             },
           ]);
 
-          const result = await runSingleChapterStep(token);
+          const freshToken = await supabase.auth
+            .getSession()
+            .then((s) => s.data.session?.access_token);
+          if (!freshToken) throw new Error("로그인 세션이 만료되었습니다.");
+
+          const result = await runSingleChapterStep(freshToken);
           successCount++;
           fetchWorks();
 
@@ -699,23 +865,36 @@ export default function AutomationPanel({
     }
   };
 
-
   /** 파일 본문 첫 수백 자에서 "(숫자)화" 패턴을 찾아 회차번호·제목 추출 */
-  const parseTitleFromContent = (content: string): { id: string; title: string } | null => {
+  const parseTitleFromContent = (
+    content: string,
+  ): { id: string; title: string } | null => {
     // 앞부분 500자만 검사 (제목은 보통 서두에 있음)
     const head = content.slice(0, 500);
 
     // 패턴 1: [제N화. <제목>]  또는  [제N화. 제목]
-    const p1 = head.match(/\[제?\s*(\d+)\s*화[.\s]*[<「『【]?([^>\]」』】\n]+)[>\]」』】]?/);
-    if (p1) return { id: String(Number(p1[1])), title: p1[2].trim().replace(/[<>「」『』【】\[\]]/g, "") };
+    const p1 = head.match(
+      /\[제?\s*(\d+)\s*화[.\s]*[<「『【]?([^>\]」』】\n]+)[>\]」』】]?/,
+    );
+    if (p1)
+      return {
+        id: String(Number(p1[1])),
+        title: p1[2].trim().replace(/[<>「」『』【】\[\]]/g, ""),
+      };
 
     // 패턴 2: 제N화 <제목>  (대괄호 없음)
-    const p2 = head.match(/제\s*(\d+)\s*화\s*[.\s]*[<「『【]([^>\n「」『』】]+)[>」』】]/);
+    const p2 = head.match(
+      /제\s*(\d+)\s*화\s*[.\s]*[<「『【]([^>\n「」『』】]+)[>」』】]/,
+    );
     if (p2) return { id: String(Number(p2[1])), title: p2[2].trim() };
 
     // 패턴 3: 제N화 제목  (꺾쇠 없음)
     const p3 = head.match(/제\s*(\d+)\s*화\s*[.\-\s]+([^\n\[<]{2,40})/);
-    if (p3) return { id: String(Number(p3[1])), title: p3[2].trim().replace(/[.,!?。]/g, "") };
+    if (p3)
+      return {
+        id: String(Number(p3[1])),
+        title: p3[2].trim().replace(/[.,!?。]/g, ""),
+      };
 
     // 패턴 4: N화  (숫자화만)
     const p4 = head.match(/(\d+)\s*화/);
@@ -725,12 +904,18 @@ export default function AutomationPanel({
   };
 
   /** 파일명에서 회차번호·제목 추출 (폴백) */
-  const parseTitleFromFilename = (filename: string): { id: string; title: string } => {
+  const parseTitleFromFilename = (
+    filename: string,
+  ): { id: string; title: string } => {
     const base = filename.replace(/\.[^/.]+$/, "");
     const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
     if (match) return { id: String(Number(match[1])), title: match[2].trim() };
     const onlyNum = base.trim().match(/^(\d+)(?:화)?$/);
-    if (onlyNum) return { id: String(Number(onlyNum[1])), title: `${Number(onlyNum[1])}화` };
+    if (onlyNum)
+      return {
+        id: String(Number(onlyNum[1])),
+        title: `${Number(onlyNum[1])}화`,
+      };
     return { id: "", title: base.trim() };
   };
 
@@ -776,7 +961,12 @@ export default function AutomationPanel({
           const fallback = parseTitleFromFilename(file.name);
           const parsedId = fromContent?.id || fallback.id;
           const parsedTitle = fromContent?.title || fallback.title;
-          queueItems.push({ file, episodeId: parsedId, episodeTitle: parsedTitle, status: "idle" });
+          queueItems.push({
+            file,
+            episodeId: parsedId,
+            episodeTitle: parsedTitle,
+            status: "idle",
+          });
         }
         setTxtFileQueue(queueItems);
       }
@@ -1006,7 +1196,10 @@ export default function AutomationPanel({
     const token = await supabase.auth
       .getSession()
       .then((s) => s.data.session?.access_token);
-    if (!token) { alert("로그인 세션이 만료되었습니다."); return; }
+    if (!token) {
+      alert("로그인 세션이 만료되었습니다.");
+      return;
+    }
 
     // ── 여러 파일 큐 처리 ──
     if (txtFileQueue.length > 0) {
@@ -1017,23 +1210,44 @@ export default function AutomationPanel({
 
       for (let i = 0; i < txtFileQueue.length; i++) {
         const item = txtFileQueue[i];
-        if (item.status === "success") { successCount++; continue; }
+        if (item.status === "success") {
+          successCount++;
+          continue;
+        }
         if (!item.episodeId || !item.episodeTitle) {
-          setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "error", errorMsg: "회차번호 또는 제목이 비어있습니다." } : q));
+          setTxtFileQueue((prev) =>
+            prev.map((q, idx) =>
+              idx === i
+                ? {
+                    ...q,
+                    status: "error",
+                    errorMsg: "회차번호 또는 제목이 비어있습니다.",
+                  }
+                : q,
+            ),
+          );
           failedItems.push(item.file.name);
           continue;
         }
 
-        setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "running" } : q));
+        setTxtFileQueue((prev) =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: "running" } : q)),
+        );
 
         try {
           const text = cleanHanja(await item.file.text());
           const res = await fetch("/api/admin/tts", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
               text,
-              voice, pitch, rate, effect,
+              voice,
+              pitch,
+              rate,
+              effect,
               preview: false,
               workId: selectedWorkId,
               episodeId: item.episodeId,
@@ -1045,11 +1259,20 @@ export default function AutomationPanel({
             }),
           });
           const result = await res.json();
-          if (!res.ok) throw new Error(result.details || result.error || "오디오 생성 실패");
-          setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "success" } : q));
+          if (!res.ok)
+            throw new Error(
+              result.details || result.error || "오디오 생성 실패",
+            );
+          setTxtFileQueue((prev) =>
+            prev.map((q, idx) => (idx === i ? { ...q, status: "success" } : q)),
+          );
           successCount++;
         } catch (err: any) {
-          setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "error", errorMsg: err.message } : q));
+          setTxtFileQueue((prev) =>
+            prev.map((q, idx) =>
+              idx === i ? { ...q, status: "error", errorMsg: err.message } : q,
+            ),
+          );
           failedItems.push(`${item.episodeId}화 (${item.episodeTitle})`);
         }
       }
@@ -1057,9 +1280,13 @@ export default function AutomationPanel({
       setTtsStatus("success");
       fetchWorks();
       if (failedItems.length > 0) {
-        alert(`일괄 연성 완료. 성공: ${successCount}개, 실패: ${failedItems.length}개\n\n실패 목록:\n${failedItems.join("\n")}`);
+        alert(
+          `일괄 연성 완료. 성공: ${successCount}개, 실패: ${failedItems.length}개\n\n실패 목록:\n${failedItems.join("\n")}`,
+        );
       } else {
-        alert(`🎉 총 ${successCount}개 회차 오디오 일괄 연성 및 홈페이지 반영 완료!`);
+        alert(
+          `🎉 총 ${successCount}개 회차 오디오 일괄 연성 및 홈페이지 반영 완료!`,
+        );
         setTxtFileQueue([]);
         setTxtFiles([]);
       }
@@ -1082,10 +1309,16 @@ export default function AutomationPanel({
     try {
       const res = await fetch("/api/admin/tts", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           text: textInput,
-          voice, pitch, rate, preview: false,
+          voice,
+          pitch,
+          rate,
+          preview: false,
           workId: selectedWorkId,
           episodeId,
           title: episodeTitle,
@@ -1097,10 +1330,15 @@ export default function AutomationPanel({
       });
 
       const result = await res.json();
-      if (!res.ok) throw new Error(result.details || result.error || "오디오 생성/등록 실패");
+      if (!res.ok)
+        throw new Error(
+          result.details || result.error || "오디오 생성/등록 실패",
+        );
 
       setTtsStatus("success");
-      alert(`🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`);
+      alert(
+        `🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`,
+      );
       setEpisodeId("");
       setEpisodeTitle("");
       setTextInput("");
@@ -1864,7 +2102,7 @@ export default function AutomationPanel({
         </div>
       )}
 
-      {/* 신규 기획(시놉시스 생성) 모달 */}
+     {/* 신규 기획(시놉시스 생성) 모달 */}
       {planModalOpen && (
         <div
           style={{
@@ -1918,143 +2156,155 @@ export default function AutomationPanel({
               </div>
             )}
 
-            {!planResult && !planLoading && (
+            {/* 🎲 무림북 인과율 주사위 가차 UI 대시보드 */}
+            {!planLoading && (
               <div
                 style={{
-                  color: "rgba(255,255,255,0.7)",
-                  marginBottom: 24,
-                  lineHeight: 1.6,
+                  background: "linear-gradient(135deg, #161233 0%, #260c33 100%)",
+                  borderRadius: 12,
+                  padding: 18,
+                  marginBottom: 20,
+                  border: "1px solid #4338ca",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
                 }}
               >
-                아직 무슨 작품이 쓰여질지 모릅니다.
-                <br />
-                AI가 무작위로 매칭된 분위기와 플롯에 맞춰 100화 분량의 거대한
-                기획안을 도출해냅니다.
-                <br />
-                마음에 드는 기획이 나올 때까지 부담 없이 돌려보며 구상해 보세요!
-                (※ 텍스트 생성에 소량의 Gemini API 토큰은 소모되지만, 값비싼 TTS
-                음원 비용은 확정 전까지 발생하지 않습니다.)
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 14,
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "#f43f5e" }}>
+                    🎰 인과율 주사위 제어판
+                  </span>
+                  <button
+                    type="button"
+                    onClick={rollMoorimDice}
+                    disabled={rolling}
+                    style={{
+                      background: rolling ? "#4b5563" : "#e11d48",
+                      color: "#fff",
+                      padding: "6px 14px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      border: "none",
+                      boxShadow: "0 0 10px rgba(225,29,72,0.3)",
+                    }}
+                  >
+                    {rolling ? "🔄 인과율 조율 중..." : "🎲 주사위 새로 굴리기 (가차)"}
+                  </button>
+                </div>
+
+                {!planResult ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px 0",
+                      opacity: 0.5,
+                      fontSize: 13,
+                      color: "#cbd5e1",
+                    }}
+                  >
+                    [주사위 새로 굴리기] 버튼을 눌러 무시당하던 주인공이 영약을 얻고 최강으로 거듭나는 독창적인 운명의 조합을 무한으로 뽑아보세요!
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                      fontSize: 13,
+                      color: "#e2e8f0",
+                    }}
+                  >
+                    <div>
+                      <span style={{ color: "#38bdf8", fontWeight: "bold" }}>👤 주인공 이름:</span>{" "}
+                      {planResult.novel_intro.match(/주인공 명천:\s*([^\n]+)/)?.[1]}
+                    </div>
+                    <div>
+                      <span style={{ color: "#a78bfa", fontWeight: "bold" }}>🌀 출신/복합배경:</span>{" "}
+                      {planResult.novel_intro.match(/복합 배경:\s*([^\n]+)/)?.[1]}
+                    </div>
+                    <div>
+                      <span style={{ color: "#fb7185", fontWeight: "bold" }}>⚡ 타고난 자질:</span>{" "}
+                      {planResult.novel_intro.match(/타고난 무학 자질:\s*([^\n]+)/)?.[1]}
+                    </div>
+
+                    <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}>
+                      <span style={{ color: "#fbbf24", fontWeight: "bold" }}>🔥 단계별 연속 기연 트리 & 리스크 리스트</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                        {Object.entries(planResult.synopses || {}).map(([key, value]: any) => (
+                          <div
+                            key={key}
+                            style={{
+                              background: "rgba(0,0,0,0.2)",
+                              padding: 8,
+                              borderRadius: 6,
+                              fontSize: 12,
+                              borderLeft: "3px solid #fbbf24",
+                            }}
+                          >
+                            <span style={{ color: "#fbbf24", fontWeight: "bold" }}>[제{key}화 시점]</span> {value.split(" / ")[0]}
+                            <div style={{ color: "#f43f5e", fontSize: 11, marginTop: 2 }}>➔ {value.split(" / ")[1]}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 12, opacity: 0.8 }}>
+                      <div>
+                        🎯 <span style={{ fontWeight: "bold" }}>최종 서원:</span> {planResult.novel_intro.match(/최종 대서사 목표:\s*([^\n]+)/)?.[1]}
+                      </div>
+                      <div style={{ marginTop: 2 }}>
+                        💀 <span style={{ fontWeight: "bold" }}>적대 카르텔:</span> {planResult.novel_intro.match(/적대 카르텔:\s*([^\n]+)/)?.[1]}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {planLoading && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: 40,
-                  color: "rgba(255,255,255,0.6)",
-                }}
-              >
+              <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)" }}>
                 <div style={{ fontSize: 24, marginBottom: 16 }}>⏳</div>
                 <div>위대한 대서사시를 구상 중입니다... (1~2분 소요)</div>
               </div>
             )}
 
             {planResult && !planLoading && (
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  padding: 20,
-                  borderRadius: 12,
-                  marginBottom: 24,
-                }}
-              >
+              <div style={{ background: "rgba(255,255,255,0.03)", padding: 20, borderRadius: 12, marginBottom: 24 }}>
                 <div style={{ marginBottom: 16 }}>
-                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>
-                    📌 장르/스타일:
-                  </span>{" "}
-                  {planResult.selected_style?.mood}
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>📌 장르/스타일:</span> {planResult.selected_style?.mood}
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>
-                    📚 제목:
-                  </span>{" "}
-                  <span style={{ fontSize: 18, fontWeight: "bold" }}>
-                    {planResult.novel_title}
-                  </span>
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>📚 제목:</span>{" "}
+                  <span style={{ fontSize: 18, fontWeight: "bold" }}>{planResult.novel_title}</span>
                 </div>
                 <div style={{ marginBottom: 24 }}>
-                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>
-                    📖 소개글:
-                  </span>
-                  <div
-                    style={{
-                      marginTop: 8,
-                      lineHeight: 1.6,
-                      color: "rgba(255,255,255,0.8)",
-                    }}
-                  >
-                    {planResult.novel_intro}
-                  </div>
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>📖 소개글:</span>
+                  <div style={{ marginTop: 8, lineHeight: 1.6, color: "rgba(255,255,255,0.8)" }}>{planResult.novel_intro}</div>
                 </div>
                 <div style={{ marginBottom: 24 }}>
-                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>
-                    전체 흐름 (4페이즈):
-                  </span>
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: 12,
-                      background: "rgba(0,0,0,0.3)",
-                      borderRadius: 8,
-                      maxHeight: 200,
-                      overflowY: "auto",
-                      fontSize: 13,
-                      lineHeight: 1.6,
-                      color: "rgba(255,255,255,0.7)",
-                    }}
-                  >
+                  <span style={{ fontWeight: "bold", color: "#7aa2f7" }}>전체 흐름 (4페이즈):</span>
+                  <div style={{ marginTop: 8, padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8, maxHeight: 200, overflowY: "auto", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,0.7)" }}>
                     {Object.entries(planResult.synopses || {})
-                      .filter(
-                        ([k]) =>
-                          [
-                            "1",
-                            "26",
-                            "51",
-                            "76",
-                            "10",
-                            "20",
-                            "30",
-                            "40",
-                          ].includes(k) || Number(k) % 25 === 1,
-                      )
+                      .filter(([k]) => ["1", "26", "51", "76", "10", "20", "30", "40"].includes(k) || Number(k) % 25 === 1)
                       .map(([key, value]) => (
                         <div key={key} style={{ marginBottom: 12 }}>
-                          <span
-                            style={{ color: "#bb9af7", fontWeight: "bold" }}
-                          >
-                            {key}화 즈음:
-                          </span>{" "}
-                          {String(value)}
+                          <span style={{ color: "#bb9af7", fontWeight: "bold" }}>{key}화 즈음:</span> {String(value)}
                         </div>
                       ))}
-                    <div
-                      style={{
-                        color: "rgba(255,255,255,0.4)",
-                        fontStyle: "italic",
-                        marginTop: 8,
-                      }}
-                    >
-                      ... 등 총 100화 분량의 세부 흐름이 준비되었습니다.
-                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontStyle: "italic", marginTop: 8 }}>... 등 총 100화 분량의 세부 흐름이 준비되었습니다.</div>
                   </div>
                 </div>
 
                 {/* Confirm Final Folder Name */}
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom: 0,
-                    padding: 16,
-                    background: "rgba(187, 154, 247, 0.1)",
-                    borderRadius: 8,
-                    border: "1px solid rgba(187, 154, 247, 0.3)",
-                  }}
-                >
-                  <label
-                    className="form-label"
-                    style={{ color: "#bb9af7", fontSize: 14 }}
-                  >
+                <div style={{ marginBottom: 0, padding: 16, background: "rgba(187, 154, 247, 0.1)", borderRadius: 8, border: "1px solid rgba(187, 154, 247, 0.3)" }}>
+                  <label className="form-label" style={{ color: "#bb9af7", fontSize: 14 }}>
                     ✅ 승인 전, 저장할 작품의 폴더명(ID)을 확인/수정해주세요
                   </label>
                   <input
@@ -2062,74 +2312,102 @@ export default function AutomationPanel({
                     className="form-input"
                     value={planFolderName}
                     onChange={(e) => setPlanFolderName(e.target.value)}
-                    style={{
-                      background: "rgba(0,0,0,0.3)",
-                      borderColor: "rgba(255,255,255,0.1)",
-                    }}
+                    style={{ background: "rgba(0,0,0,0.3)", borderColor: "rgba(255,255,255,0.1)" }}
                   />
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: 6,
-                      display: "block",
-                    }}
-                  >
-                    이름에 한글이 포함되어 있어도 백엔드에서 자동으로 영문 ID로
-                    변환하여 R2 및 DB에 안전하게 저장됩니다.
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 6, display: "block" }}>
+                    이름에 한글이 포함되어 있어도 백엔드에서 자동으로 영문 ID로 변환하여 R2 및 DB에 안전하게 저장됩니다.
                   </span>
                 </div>
               </div>
             )}
 
-            <div
-              style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}
-            >
-              <button
-                onClick={() => setPlanModalOpen(false)}
-                style={{
-                  padding: "10px 20px",
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: 8,
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                닫기
-              </button>
-
+            {/* 🎰 [정렬 수리 완료] 인과율 가차 및 연동 버튼 정렬 배치 구역 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px", width: "100%" }}>
               {!planResult ? (
                 <button
-                  onClick={handleCreatePlan}
-                  disabled={planLoading}
+                  type="button"
+                  onClick={rollMoorimDice}
+                  disabled={rolling}
                   style={{
-                    padding: "10px 20px",
+                    padding: "12px 20px",
                     background: "#bb9af7",
                     border: "none",
                     borderRadius: 8,
                     color: "#000",
                     fontWeight: "bold",
                     cursor: "pointer",
+                    fontSize: "14px",
+                    width: "100%",
                   }}
                 >
-                  기획 생성 시작
+                  {rolling ? "🔄 조율 중..." : "🎲 첫 인과율 뽑기"}
                 </button>
               ) : (
-                <button
-                  onClick={handleAcceptPlan}
-                  style={{
-                    padding: "10px 20px",
-                    background: "#9ece6a",
-                    border: "none",
-                    borderRadius: 8,
-                    color: "#000",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                  }}
-                >
-                  ✅ 승인 및 이 작품으로 선택
-                </button>
+                <>
+                  {/* 1층: 기존 승인 단추 */}
+                  <button
+                    type="button"
+                    onClick={handleAcceptPlan}
+                    style={{
+                      padding: "12px 20px",
+                      background: "#9ece6a",
+                      border: "none",
+                      borderRadius: 8,
+                      color: "#000",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      width: "100%",
+                    }}
+                  >
+                    ✅ 승인 및 이 작품으로 선택
+                  </button>
+
+                  {/* 🚀 2층: AI 제너레이터 원격 전송 버튼 배치 */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!planResult) return;
+                      const dataPayload = {
+                        novel_title: planResult.novel_title,
+                        novel_intro: planResult.novel_intro,
+                        chosen_name: planResult.chosen_name,
+                        key_items: Object.values(planResult.synopses || {}).map((v: any) => v.split(" / ")[0]).join(", "),
+                        time_constraint: Object.values(planResult.synopses || {}).map((v: any) => v.split(" / ")[1] || "").filter(Boolean).join(", "),
+                        scene_location: planResult.chosen_origin || ""
+                      };
+
+                      try {
+                        const response = await fetch("http://localhost:5890/set-novel-api", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(dataPayload),
+                        });
+                        if (response.ok) {
+                          alert("🚀 AI 제너레이터 대시보드로 설정이 사사삭 전송되었습니다! 파이썬 창을 확인하세요.");
+                        } else {
+                          alert("❌ 제너레이터가 꺼져있거나 통신에 실패했습니다.");
+                        }
+                      } catch (error) {
+                        alert("❌ 연결 실패: AI 소설 제너레이터 프로그램을 먼저 실행해 주세요.");
+                      }
+                    }}
+                    style={{
+                      padding: "12px 20px",
+                      background: "#ff2a5f",
+                      border: "none",
+                      borderRadius: 8,
+                      color: "#fff",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      width: "100%",
+                      boxShadow: "0 0 10px rgba(255, 42, 95, 0.3)",
+                    }}
+                  >
+                    🚀 AI 제너레이터로 세팅 전송
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -2246,7 +2524,9 @@ export default function AutomationPanel({
                   value={episodeLocked}
                   onChange={(e) => setEpisodeLocked(e.target.value as any)}
                 >
-                  <option value="auto">작품 설정에 따라 자동 무료/유료 분리</option>
+                  <option value="auto">
+                    작품 설정에 따라 자동 무료/유료 분리
+                  </option>
                   <option value="free">🔓 전체 무료회차로 지정</option>
                   <option value="locked">🔒 전체 유료회차로 지정</option>
                 </select>
@@ -2257,41 +2537,169 @@ export default function AutomationPanel({
           {/* ✅ 여러 파일 큐 리스트 */}
           {txtFileQueue.length > 0 && (
             <div style={{ marginTop: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>📋 파일별 연성 대기열 ({txtFileQueue.length}개) — 파일명에서 자동 파싱됨</span>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 800,
+                  marginBottom: 10,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>
+                  📋 파일별 연성 대기열 ({txtFileQueue.length}개) — 파일명에서
+                  자동 파싱됨
+                </span>
                 {ttsStatus !== "tts" && (
-                  <button type="button" onClick={() => { setTxtFileQueue([]); setTxtFiles([]); }}
-                    style={{ background: "rgba(255,59,48,0.15)", border: "1px solid #ff3b30", color: "#ff453a", padding: "3px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTxtFileQueue([]);
+                      setTxtFiles([]);
+                    }}
+                    style={{
+                      background: "rgba(255,59,48,0.15)",
+                      border: "1px solid #ff3b30",
+                      color: "#ff453a",
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      cursor: "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
                     목록 비우기
                   </button>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  maxHeight: 320,
+                  overflowY: "auto",
+                }}
+              >
                 {txtFileQueue.map((item, i) => {
                   const isRunning = item.status === "running";
                   const isSuccess = item.status === "success";
                   const isError = item.status === "error";
-                  const sc = isRunning ? "#fca834" : isSuccess ? "#34c759" : isError ? "#ff453a" : "rgba(255,255,255,0.4)";
-                  const st = isRunning ? "연성 중..." : isSuccess ? "완료 ✅" : isError ? "실패" : "대기 중";
+                  const sc = isRunning
+                    ? "#fca834"
+                    : isSuccess
+                      ? "#34c759"
+                      : isError
+                        ? "#ff453a"
+                        : "rgba(255,255,255,0.4)";
+                  const st = isRunning
+                    ? "연성 중..."
+                    : isSuccess
+                      ? "완료 ✅"
+                      : isError
+                        ? "실패"
+                        : "대기 중";
                   return (
-                    <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${isSuccess ? "rgba(52,199,89,0.3)" : isRunning ? "#fca834" : "rgba(255,255,255,0.08)"}`, borderRadius: 10, padding: "10px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, background: sc + "1a", color: sc, border: `1px solid ${sc}`, padding: "2px 8px", borderRadius: 6 }}>{st}</span>
-                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{item.file.name}</span>
-                        {isError && item.errorMsg && <span style={{ fontSize: 11, color: "#ff453a" }}>⚠️ {item.errorMsg}</span>}
+                    <div
+                      key={i}
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: `1px solid ${isSuccess ? "rgba(52,199,89,0.3)" : isRunning ? "#fca834" : "rgba(255,255,255,0.08)"}`,
+                        borderRadius: 10,
+                        padding: "10px 14px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 6,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            background: sc + "1a",
+                            color: sc,
+                            border: `1px solid ${sc}`,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                          }}
+                        >
+                          {st}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "rgba(255,255,255,0.4)",
+                          }}
+                        >
+                          {item.file.name}
+                        </span>
+                        {isError && item.errorMsg && (
+                          <span style={{ fontSize: 11, color: "#ff453a" }}>
+                            ⚠️ {item.errorMsg}
+                          </span>
+                        )}
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "80px 1fr",
+                          gap: 8,
+                        }}
+                      >
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>회차 번호</label>
-                          <input type="text" className="form-input" style={{ padding: "4px 8px", fontSize: 13 }}
-                            value={item.episodeId} disabled={isRunning || isSuccess}
-                            onChange={(e) => setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, episodeId: e.target.value } : q))} />
+                          <label
+                            className="form-label"
+                            style={{ fontSize: 11, opacity: 0.6 }}
+                          >
+                            회차 번호
+                          </label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ padding: "4px 8px", fontSize: 13 }}
+                            value={item.episodeId}
+                            disabled={isRunning || isSuccess}
+                            onChange={(e) =>
+                              setTxtFileQueue((prev) =>
+                                prev.map((q, idx) =>
+                                  idx === i
+                                    ? { ...q, episodeId: e.target.value }
+                                    : q,
+                                ),
+                              )
+                            }
+                          />
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: 11, opacity: 0.6 }}>회차 제목</label>
-                          <input type="text" className="form-input" style={{ padding: "4px 8px", fontSize: 13 }}
-                            value={item.episodeTitle} disabled={isRunning || isSuccess}
-                            onChange={(e) => setTxtFileQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, episodeTitle: e.target.value } : q))} />
+                          <label
+                            className="form-label"
+                            style={{ fontSize: 11, opacity: 0.6 }}
+                          >
+                            회차 제목
+                          </label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ padding: "4px 8px", fontSize: 13 }}
+                            value={item.episodeTitle}
+                            disabled={isRunning || isSuccess}
+                            onChange={(e) =>
+                              setTxtFileQueue((prev) =>
+                                prev.map((q, idx) =>
+                                  idx === i
+                                    ? { ...q, episodeTitle: e.target.value }
+                                    : q,
+                                ),
+                              )
+                            }
+                          />
                         </div>
                       </div>
                     </div>
@@ -2300,10 +2708,21 @@ export default function AutomationPanel({
               </div>
 
               {/* 잠금 상태는 큐 전체 공유 */}
-              <div className="form-group" style={{ marginTop: 12, maxWidth: 320 }}>
-                <label className="form-label">잠금 상태 설정 (전체 파일 공통)</label>
-                <select className="form-select" value={episodeLocked} onChange={(e) => setEpisodeLocked(e.target.value as any)}>
-                  <option value="auto">작품 설정에 따라 자동 무료/유료 분리</option>
+              <div
+                className="form-group"
+                style={{ marginTop: 12, maxWidth: 320 }}
+              >
+                <label className="form-label">
+                  잠금 상태 설정 (전체 파일 공통)
+                </label>
+                <select
+                  className="form-select"
+                  value={episodeLocked}
+                  onChange={(e) => setEpisodeLocked(e.target.value as any)}
+                >
+                  <option value="auto">
+                    작품 설정에 따라 자동 무료/유료 분리
+                  </option>
                   <option value="free">🔓 전체 무료회차로 지정</option>
                   <option value="locked">🔒 전체 유료회차로 지정</option>
                 </select>

@@ -35,6 +35,7 @@ export default function EpisodeUpload({
     "auto" | "free" | "locked"
   >("auto");
   const [episodeIsMembershipOnly, setEpisodeIsMembershipOnly] = useState(false);
+  const [isTtsOnly, setIsTtsOnly] = useState(false);
 
   // 다중 파일 벌크 업로드용 큐 상태
   const [episodeQueue, setEpisodeQueue] = useState<
@@ -167,7 +168,7 @@ export default function EpisodeUpload({
     }
   }, [worksList]);
 
-  // 오디오 다중 파일 선택 처리
+  // 오디오/자막 다중 파일 선택 처리
   const handleAudioFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -175,7 +176,17 @@ export default function EpisodeUpload({
     const newItems: any[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const { id, title } = parseFilename(file.name);
+      let id = "";
+      let title = "";
+      if (isTtsOnly) {
+        const parsed = parseSrtFilename(file.name);
+        id = parsed.episodeId;
+        title = file.name.replace(/\.srt$/i, "") + "화";
+      } else {
+        const parsed = parseFilename(file.name);
+        id = parsed.id;
+        title = parsed.title;
+      }
       newItems.push({
         id,
         title,
@@ -231,7 +242,7 @@ export default function EpisodeUpload({
     }
 
     if (episodeQueue.length === 0) {
-      alert("업로드할 오디오 파일을 선택해 주세요.");
+      alert(isTtsOnly ? "업로드할 자막/텍스트 파일을 선택해 주세요." : "업로드할 오디오 파일을 선택해 주세요.");
       return;
     }
 
@@ -266,8 +277,9 @@ export default function EpisodeUpload({
           const epFolder = isPureNumber
             ? String(Number(item.id)).padStart(3, "0")
             : item.id;
-          const ext = (item.file.name.split(".").pop() || "mp3").toUpperCase();
-          const r2Key = `${selectedWorkId}/${epFolder}/01.${ext}`;
+          const r2Key = isTtsOnly 
+            ? `${selectedWorkId}/${epFolder}/01.srt`
+            : `${selectedWorkId}/${epFolder}/01.${(item.file.name.split(".").pop() || "mp3").toUpperCase()}`;
 
           const formData = new FormData();
           formData.append("file", item.file);
@@ -403,7 +415,7 @@ export default function EpisodeUpload({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
             gap: 16,
             marginTop: 8,
           }}
@@ -448,12 +460,38 @@ export default function EpisodeUpload({
             </label>
           </div>
           <div className="form-group">
+            <label className="form-label">업로드 방식 설정</label>
+            <label
+              className="form-label"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                cursor: "pointer",
+                height: "42px",
+                color: "#1084ff",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isTtsOnly}
+                onChange={(e) => {
+                  setIsTtsOnly(e.target.checked);
+                  setEpisodeQueue([]);
+                }}
+              />
+              🎙️ 음원 없는 TTS 전용 회차로 추가
+            </label>
+          </div>
+          <div className="form-group">
             <label className="form-label">
-              오디오 음원 파일 선택 (여러 파일 선택 가능, .mp3, .m4a)
+              {isTtsOnly 
+                ? "자막 파일 선택 (여러 파일 선택 가능, .srt)" 
+                : "오디오 음원 파일 선택 (여러 파일 선택 가능, .mp3, .m4a)"}
             </label>
             <input
               type="file"
-              accept="audio/*"
+              accept={isTtsOnly ? ".srt" : "audio/*"}
               multiple
               disabled={isQueueUploading}
               onChange={handleAudioFilesChange}
@@ -743,7 +781,7 @@ export default function EpisodeUpload({
           style={{ marginTop: 24 }}
         >
           {isQueueUploading
-            ? "🚀 일괄 오디오 파일 순차 업로드 중..."
+            ? (isTtsOnly ? "🚀 일괄 자막 파일 순차 업로드 중..." : "🚀 일괄 오디오 파일 순차 업로드 중...")
             : `회차 일괄 등록 및 파일 전송 시작 (${episodeQueue.length}개 파일)`}
         </button>
       </form>
