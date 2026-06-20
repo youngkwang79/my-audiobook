@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     }
 
     const isCaption = type === "caption";
+
     const epNum = Number(episodeId);
 
     // 1. 멤버십 및 소장권(Entitlement) 확인
@@ -32,11 +33,6 @@ export async function POST(req: Request) {
     const isFree = !isNaN(epNum) && epNum <= FREE_EPISODES;
 
     let isAuthorized = isFree;
-
-    // 11화~20화 구간에서 자막(caption) 파일 요청인 경우 무료 낭독을 위해 서명 허용
-    if (isCaption && !isNaN(epNum) && epNum <= 20) {
-      isAuthorized = true;
-    }
 
     if (!isAuthorized) {
       // 무료가 아니면 인증 및 권한 확인 필요
@@ -86,7 +82,7 @@ export async function POST(req: Request) {
             .eq("episode_id", String(episodeId))
             .maybeSingle();
 
-          const unlockedUntil = ent?.unlocked_until_part || 8;
+          const unlockedUntil = ent?.unlocked_until_part || 0;
           if (part <= unlockedUntil) {
             isAuthorized = true;
           }
@@ -105,7 +101,7 @@ export async function POST(req: Request) {
 
     let foundKey = null;
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
-    const extensions = isCaption ? ["json", "srt"] : AUDIO_EXTENSIONS;
+    const extensions = isCaption ? ["json"] : AUDIO_EXTENSIONS;
 
     for (const ext of extensions) {
       const key = `${workId}/${folder}/${partPadded}.${ext}`;

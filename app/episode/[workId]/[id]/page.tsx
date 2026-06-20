@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Comments from "@/app/components/Comments";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { useTTS } from "@/lib/useTTS";
 
 const COINS_PER_EPISODE = 30;
 
@@ -133,45 +132,6 @@ function parseSegmentsFromSavedJson(saved: any): Segment[] {
   }
 
   return [];
-}
-
-function parseSRT(srtText: string): Segment[] {
-  const segments: Segment[] = [];
-  const normalized = srtText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const blocks = normalized.split(/\n\s*\n/);
-
-  const parseTime = (timeStr: string): number => {
-    const parts = timeStr.trim().replace(",", ".").split(":");
-    if (parts.length < 3) return 0;
-    const hours = parseFloat(parts[0]) || 0;
-    const minutes = parseFloat(parts[1]) || 0;
-    const seconds = parseFloat(parts[2]) || 0;
-    return hours * 3600 + minutes * 60 + seconds;
-  };
-
-  for (const block of blocks) {
-    const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) continue;
-
-    let timeLineIndex = 0;
-    if (/^\d+$/.test(lines[0])) {
-      timeLineIndex = 1;
-    }
-
-    if (lines[timeLineIndex] && lines[timeLineIndex].includes("-->")) {
-      const timeParts = lines[timeLineIndex].split("-->");
-      if (timeParts.length === 2) {
-        const start = parseTime(timeParts[0]);
-        const end = parseTime(timeParts[1]);
-        const text = lines.slice(timeLineIndex + 1).join(" ");
-        if (text) {
-          segments.push({ start, end, text });
-        }
-      }
-    }
-  }
-
-  return segments;
 }
 
 export default function EpisodePage() {
@@ -344,7 +304,6 @@ export default function EpisodePage() {
   const [showPlayerUi, setShowPlayerUi] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const nextSignedAudioSrcRef = useRef<string | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isNavigatingRef = useRef(false);
   const segIndexRef = useRef(0);
@@ -400,175 +359,6 @@ export default function EpisodePage() {
 
   const [signedAudioSrc, setSignedAudioSrc] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
-  const [isTTSMode, setIsTTSMode] = useState(false);
-  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
-  // sessionStorage로 네비게이션 후에도 무료낭독 상태 유지
-  const [isFreeTTSActive, setIsFreeTTSActiveRaw] = useState(() => {
-    try {
-      return sessionStorage.getItem(`freeTTS_${workId}_${episodeKey}`) === "1";
-    } catch { return false; }
-  });
-  const setIsFreeTTSActive = (val: boolean) => {
-    setIsFreeTTSActiveRaw(val);
-    try {
-      if (val) {
-        sessionStorage.setItem(`freeTTS_${workId}_${episodeKey}`, "1");
-      } else {
-        sessionStorage.removeItem(`freeTTS_${workId}_${episodeKey}`);
-      }
-    } catch {}
-  };
-  const isSeamlessRef = useRef(false);
-
-  const tts = useTTS({
-    segments,
-    onSegmentEnd: (index) => {
-      // 문장 종료 시 추가 처리가 필요한 경우 작성
-    },
-    onPlaybackFinished: () => {
-      setIsPlaying(false);
-      setStatus("다음으로 넘어가는 중...");
-      window.dispatchEvent(new Event("play-default-music"));
-      goNextPart(false);
-    }
-  });
-
-  // 무료 낭독 모드 복원: sessionStorage에서 isFreeTTSActive=true로 복원된 경우 isTTSMode 활성화
-  useEffect(() => {
-    if (isFreeTTSActive) {
-      setIsTTSMode(true);
-    }
-  }, [isFreeTTSActive]);
-
-  // TTS 현재 위치를 페이지 로컬 상태에 동기화
-  useEffect(() => {
-    if (isTTSMode) {
-      setCurrentTime(tts.currentTime);
-      updateCaptionByTime(tts.currentTime);
-    }
-  }, [tts.currentTime, isTTSMode]);
-
-  // TTS 전체 길이를 페이지 로컬 상태에 동기화
-  useEffect(() => {
-    if (isTTSMode) {
-      setDuration(tts.duration);
-    }
-  }, [tts.duration, isTTSMode]);
-
-  // 에피소드가 변경되거나 언마운트될 때 TTS 음성 합성 중단
-  useEffect(() => {
-    return () => {
-      tts.stop();
-    };
-  }, [episodeKey, part]);
-
-
-  // TTS 모드이며 자동재생 조건 충족 시 자막 로드 완료 후 자동 시작
-  useEffect(() => {
-    if (isTTSMode && segments.length > 0 && (autoplay || pendingAutoplayRef.current)) {
-      pendingAutoplayRef.current = false;
-      tts.play();
-      setIsPlaying(true);
-      setStatus("재생 중");
-    }
-  }, [isTTSMode, segments, autoplay]);
-
-  const toggleTTSMode = () => {
-    if (isTTSMode) {
-      tts.stop();
-      setIsTTSMode(false);
-      const a = audioRef.current;
-      if (a) {
-        a.currentTime = currentTime;
-        if (isPlaying) {
-          a.play().catch(() => {});
-        }
-      }
-    } else {
-      const a = audioRef.current;
-      if (a) {
-        a.pause();
-      }
-      setIsTTSMode(true);
-      if (isPlaying) {
-        tts.play();
-      }
-    }
-  };
-
-  const startFreeTTSPlayback = () => {
-    const a = audioRef.current;
-    if (a) a.pause();
-    setIsFreeTTSActive(true);
-    setIsTTSMode(true);
-    setIsPlaying(true);
-    
-    if (segments.length > 0) {
-      pendingAutoplayRef.current = false;
-      tts.play();
-    } else {
-      pendingAutoplayRef.current = true;
-    }
-  };
-
-  // 허용되는 음성만 필터링 (선희, 현수, 인준 우선 + iOS의 경우 유나/Siri 예외 처리)
-  const getFilteredVoices = () => {
-    const allowedNames = ["sunhi", "선희", "hyunsu", "현수", "injoon", "인준"];
-    let filtered = tts.voices.filter(v => 
-      v.lang.startsWith("ko") && 
-      allowedNames.some(name => v.name.toLowerCase().includes(name))
-    );
-    
-    // 만약 해당 목소리들이 없다면 (예: iOS Safari 등), Apple 고품질 내장 목소리 제공
-    if (filtered.length === 0) {
-      filtered = tts.voices.filter(v => 
-        v.lang.startsWith("ko") && 
-        (v.name.includes("Yuna") || v.name.includes("유나") || v.name.toLowerCase().includes("siri"))
-      );
-    }
-    
-    // 그것도 없다면 전체 한국어 목소리 노출
-    if (filtered.length === 0) {
-      filtered = tts.voices.filter(v => v.lang.startsWith("ko"));
-    }
-    
-    // 중복 이름(예: 현수, 현수) 제거 및 고품질 온라인 목소리 우선선택
-    const seen = new Set<string>();
-    const deduped: SpeechSynthesisVoice[] = [];
-    
-    const sorted = [...filtered].sort((a, b) => {
-      const aIsOnline = a.name.includes("Online") || a.name.includes("Natural");
-      const bIsOnline = b.name.includes("Online") || b.name.includes("Natural");
-      if (aIsOnline && !bIsOnline) return -1;
-      if (!aIsOnline && bIsOnline) return 1;
-      return 0;
-    });
-
-    for (const voice of sorted) {
-      const cleanName = getVoiceCleanName(voice.name);
-      if (!seen.has(cleanName)) {
-        seen.add(cleanName);
-        deduped.push(voice);
-      }
-    }
-    
-    return deduped;
-  };
-
-  // 난해한 브라우저 음성 명칭을 유저가 이해하기 쉬운 이름으로 변환
-  const getVoiceCleanName = (voiceName: string) => {
-    if (!voiceName) return "목소리 선택";
-    const lower = voiceName.toLowerCase();
-    if (lower.includes("sunhi") || lower.includes("선희")) return "선희";
-    if (lower.includes("injoon") || lower.includes("인준")) return "인준";
-    if (lower.includes("hyunsu") || lower.includes("현수")) return "현수";
-    if (lower.includes("yuna") || lower.includes("유나")) return "유나";
-    if (lower.includes("siri")) return "Siri";
-    if (lower.includes("google") && (lower.includes("ko") || lower.includes("kr") || lower.includes("korean"))) return "구글 한국어";
-    
-    const clean = voiceName.replace("Microsoft ", "").replace("Google ", "").split(" ")[0];
-    return clean || "목소리 선택";
-  };
 
   const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
@@ -662,8 +452,21 @@ export default function EpisodePage() {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
     try {
-      // play와 pause는 커스텀 핸들러를 등록하지 않고 브라우저의 네이티브 오디오 제어(OS/블루투스 통합)에 맡깁니다.
-      // 이렇게 하면 백그라운드에서 JS가 중단(Suspend)되더라도 OS가 오디오를 직접 재생/정지할 수 있습니다.
+      navigator.mediaSession.setActionHandler("play", () => {
+        const a = audioRef.current;
+        if (a && a.paused) {
+          a.play()
+            .then(() => setIsPlaying(true))
+            .catch(() => {});
+        }
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        const a = audioRef.current;
+        if (a && !a.paused) {
+          a.pause();
+          setIsPlaying(false);
+        }
+      });
       navigator.mediaSession.setActionHandler("previoustrack", () => {
         if (part > 1) {
           onSelectPart(part - 1);
@@ -704,36 +507,23 @@ export default function EpisodePage() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const currentEpNum = useMemo(() => {
-    return parseInt(String(episodeKey).split("-")[0], 10) || 0;
-  }, [episodeKey]);
-
-  const isFreeTTSAvailable = useMemo(() => {
-    return !isMembershipOnlyContent && currentEpNum > 10 && currentEpNum <= 20;
-  }, [isMembershipOnlyContent, currentEpNum]);
-
   // 에피소드 자체 잠금 여부: episodes.locked=true이고 멤버십/코인해제 모두 아닌 경우
   const locked = useMemo(() => {
     if (isAdmin) return false;                   // 관리자 무조건 열림
     if (entBusy) return false;                   // 로딩 중에는 잠금 판단 보류 (플래시 방지)
-    if (!user && currentEpNum > 10) return true; // 로그인 안 했는데 11화 이상이면 무조건 잠김!
     if (isSubscribed) return false;              // 멤버십 회원 → 항상 열림
     if (work?.is_membership_only) return true;   // 멤버십 전용 작품 → 멤버십 없으면 무조건 잠김
     if (currentEpisode?.is_membership_only) return true; // 멤버십 전용 에피소드 → 멤버십 없으면 무조건 잠김
-    if (!currentEpisode?.locked) return false;   // 무료 에피소드
+    if (!currentEpisode) return true;            // 에피소드 정보가 없으면 잠금
+    const epNum = parseFloat(String(currentEpisode.id));
+    const isFree = !isNaN(epNum) && epNum <= 10;
+    if (isFree) return false;                   // 10화 이하 무료
     if (episodeUnlocked) return false;           // 코인으로 이미 해제
     return true;
-  }, [isAdmin, entBusy, user, currentEpNum, isSubscribed, work, currentEpisode, episodeUnlocked]);
-
-
-
+  }, [isAdmin, entBusy, isSubscribed, work, currentEpisode, episodeUnlocked]);
 
   useEffect(() => {
-    if (isSeamlessRef.current) {
-      isSeamlessRef.current = false;
-      return;
-    }
-    if (locked) {
+    if (loadingData || !currentEpisode || locked || entBusy) {
       setSignedAudioSrc(null);
       return;
     }
@@ -757,16 +547,10 @@ export default function EpisodePage() {
           const data = await res.json();
           if (isMounted && data.url) {
             setSignedAudioSrc(data.url);
-            setIsTTSMode(false);
           }
         } else {
           const errData = await res.json().catch(() => ({}));
           console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
-          if (isMounted) {
-            setSignedAudioSrc(null);
-            setIsTTSMode(true);
-            setStatus("TTS 재생 모드");
-          }
         }
       } catch (err) {
         console.error("Signed URL 발급 실패:", err);
@@ -778,40 +562,7 @@ export default function EpisodePage() {
     fetchSignedUrl();
 
     return () => { isMounted = false; };
-  }, [locked, getAccessToken, workId, episodeKey, part]);
-
-  // 다음 화 미리 가져오기 (모바일 백그라운드 자동재생 끊김 방지)
-  useEffect(() => {
-    if (!signedAudioSrc || locked) return;
-    
-    let nextEpKey = episodeKey;
-    let nextP = part + 1;
-    if (nextP > TOTAL_PARTS) {
-      const nextEp = episodes[currentEpisodeIndex + 1];
-      if (!nextEp || (nextEp.locked && !isSubscribed && !autoNextEpisode)) {
-        nextSignedAudioSrcRef.current = null;
-        return;
-      }
-      nextEpKey = String(nextEp.id);
-      nextP = 1;
-    }
-
-    const prefetch = async () => {
-      try {
-        const token = await getAccessToken();
-        const res = await fetch("/api/media/sign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ workId, episodeId: nextEpKey, part: nextP })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          nextSignedAudioSrcRef.current = data.url || null;
-        }
-      } catch (e) {}
-    };
-    prefetch();
-  }, [signedAudioSrc, locked, episodeKey, part, TOTAL_PARTS, episodes, currentEpisodeIndex, workId, isSubscribed, autoNextEpisode, getAccessToken]);
+  }, [locked, entBusy, loadingData, currentEpisode, workId, episodeKey, part]);
 
 
 
@@ -936,20 +687,6 @@ export default function EpisodePage() {
       progress[workId] = episodeKey;
       localStorage.setItem("workProgress", JSON.stringify(progress));
       setWatchedEpisode(String(episodeKey));
-
-      // DB에 시청 기록 동기화
-      getAccessToken().then((token) => {
-        if (token) {
-          fetch("/api/user/watch-history", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ workId, episodeId: episodeKey, part }),
-          }).catch((e) => console.error("Watch history DB sync error:", e));
-        }
-      });
     } catch { }
   }, [workId, episodeKey, part]);
 
@@ -978,6 +715,18 @@ export default function EpisodePage() {
 
   useEffect(() => {
     let alive = true;
+
+    // Pause audio, clear source and states immediately to avoid leak on navigate
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute("src");
+      try {
+        audioRef.current.load();
+      } catch (e) {}
+    }
+    setIsPlaying(false);
+    setSignedAudioSrc(null);
+    setEpisodeUnlocked(false);
     setEntBusy(true);
 
     (async () => {
@@ -1014,7 +763,6 @@ export default function EpisodePage() {
     if (isAdmin) return; // 관리자는 검사 패스
     if (loadingData || entBusy || isSubscribed) return;
     if (episodes.length === 0) return;
-    if (allEntitlements.length === 0 && !loadingData && !entBusy) return; // 엔타이틀먼트 로드 전이면 패스
 
     // 현재 에피소드의 인덱스 찾기
     const currIdx = episodes.findIndex((ep) => String(ep.id) === String(episodeKey));
@@ -1023,30 +771,23 @@ export default function EpisodePage() {
     // 이전 화 중 잠겨있고(유료) 아직 해제되지 않은 첫 번째 화 찾기
     for (let i = 0; i < currIdx; i++) {
       const ep = episodes[i];
-      if (!ep.locked) continue; // 무료 에피소드는 패스
-
-      const epNum = parseInt(String(ep.id).split("-")[0], 10) || 0;
-      
-      // 11~20화 범위는 무료낭독으로 통과 가능하므로 순차 검사 제외
-      if (epNum > 10 && epNum <= 20) continue;
-
-      const isUnlocked = allEntitlements.some(
-        (ent) => String(ent.episode_id) === String(ep.id) && ent.episode_unlocked
-      );
-      if (!isUnlocked) {
-        // alert 없이 조용히 이동
-        navigateToEpisode(String(ep.id), 1, false);
-        return;
+      if (ep.locked) {
+        const isUnlocked = allEntitlements.some(
+          (ent) => String(ent.episode_id) === String(ep.id) && ent.episode_unlocked
+        );
+        if (!isUnlocked) {
+          alert(`이전 회차(제 ${ep.id}화)를 순서대로 감상해 주세요.\n먼저 잠금 해제되지 않은 이전 화로 이동합니다.`);
+          navigateToEpisode(String(ep.id), 1, false);
+          return;
+        }
       }
     }
   }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, workId, isAdmin]);
 
-
   // locked 상태 감지 및 자동해제 / 팝업 제어
   useEffect(() => {
-    if (locked && !isFreeTTSActive && !entBusy) {
-      // autoNextEpisode 스위치가 켜져 있고, 코인이 충분하고, 무료낭독 구간(11~20화)이 아닐 때만 자동 해제 실행
-      if (autoNextEpisode && points >= COINS_PER_EPISODE && !isMembershipOnlyContent && !isFreeTTSAvailable) {
+    if (locked && !entBusy) {
+      if (autoNextEpisode && points >= COINS_PER_EPISODE && !isMembershipOnlyContent) {
         if (hasAutoUnlockedRef.current !== episodeKey) {
           hasAutoUnlockedRef.current = episodeKey;
           (async () => {
@@ -1063,7 +804,7 @@ export default function EpisodePage() {
     } else {
       setShowUnlockModal(false);
     }
-  }, [locked, isFreeTTSActive, isFreeTTSAvailable, autoNextEpisode, points, entBusy, episodeKey, isMembershipOnlyContent]);
+  }, [locked, autoNextEpisode, points, entBusy, episodeKey, isMembershipOnlyContent]);
 
 
 
@@ -1091,7 +832,7 @@ export default function EpisodePage() {
       setCaption("");
       segIndexRef.current = 0;
 
-      if (locked && !isFreeTTSActive && !isFreeTTSAvailable) {
+      if (locked) {
         setCaptionStatus("");
         return;
       }
@@ -1125,30 +866,12 @@ export default function EpisodePage() {
       const r2 = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
-      const isSrt = signedCaptionUrl && (signedCaptionUrl.toLowerCase().includes(".srt?") || signedCaptionUrl.toLowerCase().endsWith(".srt"));
-
       if (r2.ok) {
         const parsed = parseSegmentsFromSavedJson(r2.data);
         setSegments(parsed);
         const current = audioRef.current?.currentTime ?? 0;
         updateCaptionByTime(current);
         setCaptionStatus(parsed.length ? "" : "자막 데이터가 비어있어요");
-        return;
-      } else if (isSrt && r2.text) {
-        const parsed = parseSRT(r2.text);
-        if (parsed.length > 0) {
-          setSegments(parsed);
-          const current = audioRef.current?.currentTime ?? 0;
-          updateCaptionByTime(current);
-          setCaptionStatus("");
-          return;
-        }
-      }
-
-      // ✅ .srt 파일이 이미 존재하는 경우 AI 자막 생성(Worker) 호출 차단
-      // signed URL이 .srt를 가리키고 있으면 파싱 결과와 무관하게 Worker를 호출하지 않음
-      if (isSrt) {
-        setCaptionStatus(parseSRT(r2.text ?? "").length === 0 ? "SRT 자막 파일이 있으나 내용이 비어있어요" : "");
         return;
       }
 
@@ -1165,57 +888,18 @@ export default function EpisodePage() {
         return;
       }
 
-      // 1. workerRes의 JSON 응답에서 직접 자막 추출 시도
-      let parsedSegments: Segment[] = [];
-      try {
-        const workerData = await workerRes.json();
-        if (workerData?.success && workerData?.data) {
-          parsedSegments = parseSegmentsFromSavedJson(workerData.data);
-        }
-      } catch (err) {
-        console.error("Worker 응답 파싱 실패:", err);
-      }
-
-      // 2. 직접 추출에 실패한 경우 R2에 저장된 파일에서 다시 조회 시도 (재서명 포함)
-      if (!parsedSegments.length) {
-        let newSignedCaptionUrl = signedCaptionUrl;
-        if (!newSignedCaptionUrl) {
-          try {
-            const token = await getAccessToken();
-            const res = await fetch("/api/media/sign", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify({ workId, episodeId: episodeKey, part, type: "caption" })
-            });
-            if (res.ok) {
-              const data = await res.json();
-              newSignedCaptionUrl = data.url;
-            }
-          } catch (err) {
-            console.error("자막 재서명 실패:", err);
-          }
-        }
-
-        if (newSignedCaptionUrl) {
-          const r2b = await fetchJsonSafe(newSignedCaptionUrl);
-          if (alive) {
-            const isNewSrt = newSignedCaptionUrl.toLowerCase().includes(".srt?") || newSignedCaptionUrl.toLowerCase().endsWith(".srt");
-            if (r2b.ok) {
-              parsedSegments = parseSegmentsFromSavedJson(r2b.data);
-            } else if (isNewSrt && r2b.text) {
-              parsedSegments = parseSRT(r2b.text);
-            }
-          }
-        }
-      }
-
+      const r2b = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
-      if (parsedSegments.length) {
-        setSegments(parsedSegments);
+      if (!r2b.ok) {
+        const preview = (r2b.text || "").slice(0, 80).replace(/\s+/g, " ");
+        setCaptionStatus(`자막 파일 파싱 실패(R2) ${r2b.status}: ${preview}`);
+        return;
+      }
+
+      const parsed2 = parseSegmentsFromSavedJson(r2b.data);
+      if (parsed2.length) {
+        setSegments(parsed2);
         const current = audioRef.current?.currentTime ?? 0;
         updateCaptionByTime(current);
         setCaptionStatus(""); // 성공 시 아무것도 안 보여줌
@@ -1234,7 +918,7 @@ export default function EpisodePage() {
     return () => {
       alive = false;
     };
-  }, [episodeKey, part, locked, workId, isFreeTTSActive]);
+  }, [episodeKey, part, locked, workId]);
 
   const updateCaptionByTime = (t: number) => {
     const segs = segments;
@@ -1334,7 +1018,6 @@ export default function EpisodePage() {
   useEffect(() => {
     if (!autoplay && !pendingAutoplayRef.current) return;
     if (locked) return;
-    if (isFreeTTSActive) return; // 무료낭독 모드가 활성화되어 있다면 음원 자동 재생 차단
 
     const t = setTimeout(() => {
       const a = audioRef.current;
@@ -1387,28 +1070,7 @@ export default function EpisodePage() {
     } catch { }
   };
 
-  const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true, seamless = false) => {
-    const nextEpNum = parseInt(String(nextEpKey).split("-")[0], 10) || 0;
-    if (nextEpNum <= 10 || nextEpNum > 20) {
-      setIsFreeTTSActive(false);
-      setIsTTSMode(false);
-    }
-    // 이전 오디오가 잠깐 재생되면서 onEnded 무한루프나 자동재생이 씹히는 버그 방지
-    if (!seamless) {
-      setSignedAudioSrc(null);
-      setCurrentTime(0); // 리액트 상태 초기화
-      setResumeTime(0);  // 다음 회차/파트 이동 시 이어서 재개할 시간초 초기화
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0; // 오디오 엘리먼트의 현재 재생시간을 명시적으로 초기화 (이전 파트의 재생시간 44초 등이 복원되는 버그 방지)
-        audioRef.current.removeAttribute('src');
-        audioRef.current.load();
-      }
-    } else {
-      setCurrentTime(0);
-      setResumeTime(0);
-    }
-    
+  const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true) => {
     setEpisodeKey(nextEpKey);
     setPart(nextPart);
     if (shouldAutoplay) {
@@ -1433,33 +1095,6 @@ export default function EpisodePage() {
   };
 
   const togglePlayPause = async () => {
-    if (locked && !isFreeTTSActive) {
-      setShowUnlockModal(true);
-      return;
-    }
-
-    if (isTTSMode) {
-      try {
-        if (tts.isPlaying) {
-          tts.pause();
-          setIsPlaying(false);
-          setFlashType("pause");
-          window.dispatchEvent(new Event("play-default-music"));
-        } else {
-          tts.play();
-          setIsPlaying(true);
-          setFlashType("play");
-          window.dispatchEvent(new Event("fade-out-background-music"));
-        }
-        setIsFlashing(true);
-        setTimeout(() => {
-          setIsFlashing(false);
-        }, 800);
-      } catch {}
-      resetHideTimer();
-      return;
-    }
-
     const a = audioRef.current;
     if (!a) return;
 
@@ -1483,13 +1118,6 @@ export default function EpisodePage() {
   };
 
   const seekBy = (delta: number) => {
-    if (isTTSMode) {
-      const next = Math.max(0, Math.min(tts.duration || 0, tts.currentTime + delta));
-      tts.seekToTime(next);
-      resetHideTimer();
-      return;
-    }
-
     const a = audioRef.current;
     if (!a) return;
 
@@ -1501,12 +1129,6 @@ export default function EpisodePage() {
   };
 
   const handleSeek = (value: number) => {
-    if (isTTSMode) {
-      tts.seekToTime(value);
-      resetHideTimer();
-      return;
-    }
-
     const a = audioRef.current;
     if (!a) return;
 
@@ -1518,25 +1140,24 @@ export default function EpisodePage() {
 
   const changePlaybackRate = (rate: number) => {
     const a = audioRef.current;
-    if (a) {
-      a.playbackRate = rate;
-    }
+    if (!a) return;
+
+    a.playbackRate = rate;
     setPlaybackRate(rate);
-    tts.setPlaybackRate(rate);
     setShowSpeedMenu(false);
     resetHideTimer();
   };
 
   const handleVolumeChange = (value: number) => {
     const a = audioRef.current;
-    if (a) {
-      a.volume = value;
-    }
+    if (!a) return;
+
+    a.volume = value;
     setVolume(value);
     resetHideTimer();
   };
 
-  const goNextEpisode = async (seamless = false) => {
+  const goNextEpisode = async () => {
     if (isNavigatingRef.current) return;
 
     if (currentEpisodeIndex < 0) {
@@ -1556,7 +1177,7 @@ export default function EpisodePage() {
     try {
       // 다음 화가 무료이거나 멤버십이면 바로 이동
       if (!nextEpisode.locked || isSubscribed) {
-        navigateToEpisode(nextEpisodeKey, 1, true, seamless);
+        navigateToEpisode(nextEpisodeKey, 1, true);
         return;
       }
 
@@ -1585,7 +1206,7 @@ export default function EpisodePage() {
             setPointsState(nextCoinBalance);
             try { localStorage.setItem("points", String(nextCoinBalance)); } catch { }
             window.dispatchEvent(new Event("wallet-updated"));
-            navigateToEpisode(nextEpisodeKey, 1, true, seamless);
+            navigateToEpisode(nextEpisodeKey, 1, true);
             return;
           }
         }
@@ -1601,12 +1222,6 @@ export default function EpisodePage() {
   const unlockEpisodeWithCoins = async () => {
     try {
       const token = await getAccessToken();
-
-      // 사용자 제스처 동기화: 비동기 결제 처리 대기시간 동안 자동재생 권한이 풀리는 것을 방지
-      const a = audioRef.current;
-      if (a) {
-        a.play().catch(() => {});
-      }
 
       if (!token) {
         alert("로그인이 필요합니다.");
@@ -1657,15 +1272,15 @@ export default function EpisodePage() {
     }
   };
 
-  const goNextPart = async (seamless = false) => {
+  const goNextPart = async () => {
     if (part >= TOTAL_PARTS) {
       setStatus("다음 화로 넘어가는 중...");
-      goNextEpisode(seamless);
+      goNextEpisode();
       return;
     }
     // 파트 단위 잠금 없음 — 모든 파트 자유롭게 이동
     const next = part + 1;
-    navigateToEpisode(episodeKey, next, true, seamless);
+    navigateToEpisode(episodeKey, next, true);
   };
 
   const onSelectPart = (p: number) => {
@@ -1739,7 +1354,6 @@ export default function EpisodePage() {
           }
         }
         
-        /* 백그라운드 블러 해제 - 선명하고 어두운 썸네일 이미지 배경 */
         .sf-blur-bg {
           position: absolute;
           inset: 0;
@@ -2366,8 +1980,6 @@ export default function EpisodePage() {
           }
         }}
         onCanPlayThrough={() => {
-          // 무료낭독 모드가 활성화되어 있다면 음원 자동 재생을 차단
-          if (isFreeTTSActive) return;
           // 모바일/데스크톱 통합: 재생 가능 상태가 되면 한 번만 play 시도
           const a = audioRef.current;
           if (!a || (!autoplay && !pendingAutoplayRef.current)) return;
@@ -2397,17 +2009,7 @@ export default function EpisodePage() {
           setIsPlaying(false);
           setStatus("다음으로 넘어가는 중...");
           window.dispatchEvent(new Event("play-default-music"));
-          
-          if (nextSignedAudioSrcRef.current && audioRef.current) {
-            isSeamlessRef.current = true;
-            audioRef.current.src = nextSignedAudioSrcRef.current;
-            audioRef.current.play().catch(() => {});
-            setSignedAudioSrc(nextSignedAudioSrcRef.current);
-            nextSignedAudioSrcRef.current = null;
-            goNextPart(true);
-          } else {
-            goNextPart(false);
-          }
+          goNextPart();
         }}
         onError={() => {
           setIsPlaying(false);
@@ -2481,95 +2083,6 @@ export default function EpisodePage() {
               >
                 +
               </button>
-              {/* 음원↔TTS 전환 버튼 또는 무료낭독 버튼 */}
-              {isFreeTTSAvailable ? (
-                isFreeTTSActive ? (
-                  <button
-                    className="sf-speed-btn"
-                    onClick={() => {
-                      tts.stop();
-                      if (!locked) {
-                        setIsFreeTTSActive(false);
-                        setIsTTSMode(false);
-                        const a = audioRef.current;
-                        if (a) {
-                          a.currentTime = currentTime;
-                          if (isPlaying) {
-                            a.play().catch(() => {});
-                          }
-                        }
-                      } else {
-                        setIsFreeTTSActive(false);
-                        setIsTTSMode(false);
-                        setIsPlaying(false);
-                        setShowUnlockModal(true);
-                      }
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      background: "rgba(16, 185, 129, 0.25)",
-                      border: "1px solid rgb(16, 185, 129)",
-                      color: "#10b981",
-                      cursor: "pointer",
-                    }}
-                    title={!locked ? "클릭하여 음원 재생으로 전환" : "클릭하여 유료 감상으로 전환"}
-                  >
-                    🎙️ 무료낭독 ✕
-                  </button>
-                ) : (
-                  <button
-                    className="sf-speed-btn"
-                    onClick={() => {
-                      startFreeTTSPlayback();
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      background: "rgba(255, 255, 255, 0.12)",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
-                      color: "#ffffff",
-                      cursor: "pointer",
-                    }}
-                    title="무료 낭독 재생"
-                  >
-                    🎙️ 무료낭독
-                  </button>
-                )
-              ) : (
-                /* 11~20화 범위가 아니면(무료낭독 불가 구간) 기존 음원↔TTS 버튼 */
-                signedAudioSrc && !isFreeTTSActive && (
-                  <button 
-                    onClick={toggleTTSMode}
-                    className="sf-speed-btn"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      background: isTTSMode ? "rgba(10, 132, 255, 0.25)" : "rgba(255, 255, 255, 0.12)",
-                      border: isTTSMode ? "1px solid rgb(10, 132, 255)" : "1px solid rgba(255, 255, 255, 0.15)",
-                    }}
-                  >
-                    {isTTSMode ? "🎙️ TTS" : "🎵 음원"}
-                  </button>
-                )
-              )}
-              {/* TTS 목소리 선택 버튼: TTS모드 또는 무료낭독 모드일 때 표시 */}
-              {(isTTSMode || isFreeTTSActive) && tts.voices.length > 0 && (
-                <button 
-                  className="sf-speed-btn" 
-                  onClick={() => setShowVoiceMenu(true)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px"
-                  }}
-                >
-                  🗣️ {tts.selectedVoice ? getVoiceCleanName(tts.selectedVoice.name) : "목소리 선택"}
-                </button>
-              )}
               <button className="sf-more-btn" onClick={toggleLandscapePlayer} title="시네마(가로) 모드" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3H5a2 2 0 0 0-2 2v3" />
@@ -2609,7 +2122,7 @@ export default function EpisodePage() {
 
           {/* 중앙 자막 영역 */}
           <div className="sf-caption-container" onClick={togglePlayPause}>
-            {locked && !isFreeTTSActive ? (
+            {locked ? (
               <div
                 className="lockCard"
                 style={{
@@ -2670,13 +2183,7 @@ export default function EpisodePage() {
                   {work.title} {episodeKey}화
                 </div>
                 <div style={{ marginTop: 5, fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
-                  {isMembershipOnlyContent ? "본 콘텐츠는 멤버십 전용 작품입니다." : (
-                    isFreeTTSAvailable ? (
-                      <span style={{ color: "#ffb020", lineHeight: 1.4, display: "block" }}>
-                        11화~20화는 무료 낭독 서비스로 청취하실 수 있습니다. (기기 내장 기본 목소리로 재생되며, 화면이 꺼지면 재생이 중단됩니다. 백그라운드 재생을 원하시면 멤버십 또는 코인 해제를 이용해 주세요.)
-                      </span>
-                    ) : "이 에피소드는 유료 콘텐츠입니다."
-                  )}
+                  {isMembershipOnlyContent ? "본 콘텐츠는 멤버십 전용 작품입니다." : "이 에피소드는 유료 콘텐츠입니다."}
                 </div>
 
                 {/* 보유 코인 표시 영역 */}
@@ -2707,34 +2214,6 @@ export default function EpisodePage() {
 
                 {/* 액션 버튼 */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 18 }}>
-                  {isFreeTTSAvailable && (
-                    <button
-                      onClick={() => {
-                        startFreeTTSPlayback();
-                      }}
-                      style={{
-                        height: 52,
-                        borderRadius: 16,
-                        border: "none",
-                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                        color: "#ffffff",
-                        fontWeight: 900,
-                        fontSize: 16,
-                        cursor: "pointer",
-                        boxShadow: "0 6px 20px rgba(16, 185, 129, 0.35)",
-                        transition: "transform 0.15s, opacity 0.15s",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
-                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                    >
-                      🎙️ 무료 낭독으로 듣기 (20화까지)
-                    </button>
-                  )}
                   {!isMembershipOnlyContent && (
                     points >= COINS_PER_EPISODE ? (
                       <button
@@ -2885,25 +2364,8 @@ export default function EpisodePage() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                {isTTSMode && (
-                  <div style={{
-                    fontSize: "12px",
-                    color: "rgba(255, 255, 255, 0.4)",
-                    background: "rgba(255, 255, 255, 0.06)",
-                    padding: "4px 10px",
-                    borderRadius: "100px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                  }}>
-                    <span>⚠️ TTS 모드: 화면 잠금 시 낭독이 중단될 수 있습니다.</span>
-                  </div>
-                )}
-                <div className="sf-caption-text">
-                  {caption || " "}
-                </div>
+              <div className="sf-caption-text">
+                {caption || " "}
               </div>
             )}
           </div>
@@ -3195,39 +2657,6 @@ export default function EpisodePage() {
             </>
           )}
 
-          {/* TTS 목소리 조절 바텀 시트 */}
-          {showVoiceMenu && (
-            <>
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} onClick={() => setShowVoiceMenu(false)} />
-              <div className="sf-bottom-sheet">
-                <div className="sf-sheet-title">
-                  <span>TTS 목소리 설정</span>
-                  <button className="sf-sheet-close" onClick={() => setShowVoiceMenu(false)}>닫기</button>
-                </div>
-                <div className="sf-speed-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                  {getFilteredVoices().map((voice) => (
-                    <button
-                      key={voice.name}
-                      className={`sf-speed-item ${tts.selectedVoice?.name === voice.name ? "active" : ""}`}
-                      style={{ fontSize: "14px", padding: "12px 16px", textAlign: "left", width: "100%", display: "block" }}
-                      onClick={() => {
-                        tts.setSelectedVoice(voice);
-                        setShowVoiceMenu(false);
-                      }}
-                    >
-                      {getVoiceCleanName(voice.name)}
-                    </button>
-                  ))}
-                  {getFilteredVoices().length === 0 && (
-                    <div style={{ padding: "16px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "14px" }}>
-                      지원되는 한국어 목소리가 없습니다.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
           {/* 작품 설명 더보기 팝업 모달 */}
           {showDescriptionPopup && (
             <div className="sf-popup-overlay" onClick={() => setShowDescriptionPopup(false)}>
@@ -3382,32 +2811,15 @@ export default function EpisodePage() {
               style={{
                 position: "absolute",
                 left: "50%",
-                top: "32%",
+                top: "38%",
                 transform: "translateX(-50%)",
                 width: "82%",
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 16,
+                justifyContent: "center",
                 pointerEvents: "none",
                 zIndex: 3,
               }}
             >
-              {isTTSMode && (
-                <div style={{
-                  fontSize: "12px",
-                  color: "rgba(255, 255, 255, 0.4)",
-                  background: "rgba(0, 0, 0, 0.5)",
-                  padding: "4px 10px",
-                  borderRadius: "100px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                }}>
-                  <span>⚠️ TTS 모드: 화면 잠금 시 낭독이 중단될 수 있습니다.</span>
-                </div>
-              )}
               <div
                 style={{
                   maxWidth: 980,
@@ -3643,54 +3055,6 @@ export default function EpisodePage() {
                       +
                     </button>
 
-                    {signedAudioSrc && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTTSMode();
-                        }}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 14,
-                          border: isTTSMode ? "1px solid rgb(10, 132, 255)" : "1px solid rgba(255,255,255,0.14)",
-                          background: isTTSMode ? "rgba(10, 132, 255, 0.25)" : "rgba(10,10,10,0.40)",
-                          color: "white",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          backdropFilter: "blur(8px)",
-                          fontFamily: cinemaFont,
-                        }}
-                      >
-                        {isTTSMode ? "🎙️ TTS 모드" : "🎵 음원 모드"}
-                      </button>
-                    )}
-
-                    {isTTSMode && tts.voices.length > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowVoiceMenu((v) => !v);
-                          setShowPartMenuCinema(false);
-                          setShowCinemaComments(false);
-                          setShowSpeedMenu(false);
-                          resetHideTimer();
-                        }}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 14,
-                          border: "1px solid rgba(255,255,255,0.14)",
-                          background: "rgba(10,10,10,0.40)",
-                          color: "white",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          backdropFilter: "blur(8px)",
-                          fontFamily: cinemaFont,
-                        }}
-                      >
-                        🗣️ {tts.selectedVoice ? getVoiceCleanName(tts.selectedVoice.name) : "목소리 선택"}
-                      </button>
-                    )}
-
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -3758,57 +3122,6 @@ export default function EpisodePage() {
                     다음 편
                   </button>
                 </div>
-
-                {showVoiceMenu && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      bottom: 120,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                      padding: 12,
-                      borderRadius: 16,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(0,0,0,0.95)",
-                      maxHeight: "200px",
-                      overflowY: "auto",
-                      zIndex: 299,
-                      minWidth: "250px",
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", padding: "4px 8px" }}>목소리 선택</div>
-                    {getFilteredVoices().map((voice) => (
-                      <button
-                        key={voice.name}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          tts.setSelectedVoice(voice);
-                          setShowVoiceMenu(false);
-                        }}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 8,
-                          border: tts.selectedVoice?.name === voice.name ? "1px solid rgb(10, 132, 255)" : "none",
-                          background: tts.selectedVoice?.name === voice.name ? "rgba(10, 132, 255, 0.2)" : "transparent",
-                          color: "white",
-                          textAlign: "left",
-                          cursor: "pointer",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {getVoiceCleanName(voice.name)}
-                      </button>
-                    ))}
-                    {getFilteredVoices().length === 0 && (
-                      <div style={{ padding: "8px 12px", color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
-                        한국어 목소리 없음
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {showSpeedMenu && (
                   <div
@@ -3971,9 +3284,7 @@ export default function EpisodePage() {
             justifyContent: "center",
             padding: 20,
           }}
-          onClick={() => {
-            setShowUnlockModal(false);
-          }}
+          onClick={() => setShowUnlockModal(false)}
         >
           <div
             style={{
@@ -3991,27 +3302,14 @@ export default function EpisodePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: 0, fontSize: 19, fontWeight: 900, color: "#ffffff", textAlign: "center" }}>
-              {!user && currentEpNum > 10
-                ? "회원 전용 에피소드"
-                : isMembershipOnlyContent
-                ? "👑 멤버십 전용 콘텐츠"
-                : "유료 에피소드 감상"}
+              {isMembershipOnlyContent ? "👑 멤버십 전용 콘텐츠" : "유료 에피소드 감상"}
             </h3>
             <p style={{ margin: 0, fontSize: 13.5, color: "rgba(255, 255, 255, 0.65)", textAlign: "center", lineHeight: 1.5 }}>
-              {!user && currentEpNum > 10 ? (
-                <>
-                  본 에피소드(11화 이상)는 회원 전용 콘텐츠입니다.<br />
-                  로그인 또는 회원가입 후 감상해 주시기 바랍니다.
-                </>
-              ) : isMembershipOnlyContent ? (
+              {isMembershipOnlyContent ? (
                 <>
                   본 콘텐츠는 멤버십 전용 작품입니다.<br />
                   멤버십 회원은 모든 회차를 제한 없이 감상할 수 있습니다.
                 </>
-              ) : isFreeTTSAvailable ? (
-                <span style={{ color: "#ffb020", lineHeight: 1.4, display: "block", textAlign: "left" }}>
-                  11화~20화는 무료 낭독 서비스로 청취하실 수 있습니다. (기기 내장 기본 목소리로 재생되며, 화면이 꺼지면 재생이 중단됩니다. 백그라운드 재생을 원하시면 멤버십 또는 코인 해제를 이용해 주세요.)
-                </span>
               ) : (
                 <>
                   본 회차는 유료 콘텐츠입니다.<br />
@@ -4021,7 +3319,7 @@ export default function EpisodePage() {
             </p>
 
             {/* 보유 코인 표시 */}
-            {user && !isMembershipOnlyContent && (
+            {!isMembershipOnlyContent && (
               <div style={{
                 padding: "10px 14px",
                 background: "rgba(255, 255, 255, 0.04)",
@@ -4041,157 +3339,92 @@ export default function EpisodePage() {
             )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 4 }}>
-              {!user && currentEpNum > 10 ? (
-                <button
-                  onClick={() => {
-                    setShowUnlockModal(false);
-                    router.push(`/login?redirect=/episode/${workId}/${episodeKey}`);
-                  }}
-                  style={{
-                    height: 52,
-                    borderRadius: 16,
-                    border: "none",
-                    background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
-                    color: "#ffffff",
-                    fontWeight: 900,
-                    fontSize: 16,
-                    cursor: "pointer",
-                    boxShadow: "0 6px 20px rgba(59, 130, 246, 0.35)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
-                  onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
-                  onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                >
-                  🔑 로그인 및 회원가입
-                </button>
-              ) : (
-                <>
-                  {isFreeTTSAvailable && (
-                    <button
-                      onClick={() => {
-                        startFreeTTSPlayback();
-                        setShowUnlockModal(false);
-                      }}
-                      style={{
-                        height: 52,
-                        borderRadius: 16,
-                        border: "none",
-                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                        color: "#ffffff",
-                        fontWeight: 900,
-                        fontSize: 16,
-                        cursor: "pointer",
-                        boxShadow: "0 6px 20px rgba(16, 185, 129, 0.35)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
-                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                    >
-                      🎙️ 무료 낭독으로 듣기 (20화까지)
-                    </button>
-                  )}
-
-                  {!isMembershipOnlyContent && (
-                    points >= COINS_PER_EPISODE ? (
-                      <button
-                        onClick={async () => {
-                          const success = await unlockEpisodeWithCoins();
-                          if (success) {
-                            setShowUnlockModal(false);
-                          }
-                        }}
-                        style={{
-                          height: 48,
-                          borderRadius: 14,
-                          border: "none",
-                          background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
-                          color: "#1a1000",
-                          fontWeight: 900,
-                          fontSize: 15,
-                          cursor: "pointer",
-                          boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)"
-                        }}
-                      >
-                        🔓 30코인 사용하고 감상하기
-                      </button>
-                    ) : (
-                      <div style={{
-                        padding: "12px",
-                        background: "rgba(255, 107, 107, 0.12)",
-                        border: "1px solid rgba(255, 107, 107, 0.25)",
-                        borderRadius: 14,
-                        fontSize: 13,
-                        color: "#ff8b8b",
-                        fontWeight: 700,
-                        textAlign: "center"
-                      }}>
-                        코인이 부족합니다 ({COINS_PER_EPISODE}코인 필요)
-                      </div>
-                    )
-                  )}
-
+              {!isMembershipOnlyContent && (
+                points >= COINS_PER_EPISODE ? (
                   <button
-                    onClick={() => {
-                      setShowUnlockModal(false);
-                      router.push("/membership");
+                    onClick={async () => {
+                      const success = await unlockEpisodeWithCoins();
+                      if (success) {
+                        setShowUnlockModal(false);
+                      }
                     }}
                     style={{
-                      height: 46,
+                      height: 48,
                       borderRadius: 14,
-                      border: "1px solid rgba(255, 215, 0, 0.45)",
-                      background: "rgba(255, 215, 0, 0.07)",
-                      color: "#ffd700",
+                      border: "none",
+                      background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
+                      color: "#1a1000",
                       fontWeight: 900,
-                      fontSize: 14.5,
-                      cursor: "pointer"
+                      fontSize: 15,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)"
                     }}
                   >
-                    👑 멤버십 가입 (전 에피소드 무제한)
+                    🔓 30코인 사용하고 감상하기
                   </button>
-
-                  {!isMembershipOnlyContent && (
-                    <button
-                      onClick={() => {
-                        setShowUnlockModal(false);
-                        router.push("/points");
-                      }}
-                      style={{
-                        height: 46,
-                        borderRadius: 14,
-                        border: "none",
-                        background: points < COINS_PER_EPISODE 
-                          ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" 
-                          : "rgba(255,255,255,0.06)",
-                        color: "#ffffff",
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: "pointer",
-                        boxShadow: points < COINS_PER_EPISODE ? "0 4px 15px rgba(255, 42, 95, 0.3)" : "none",
-                      }}
-                    >
-                      🪙 코인 충전하기
-                    </button>
-                  )}
-                </>
+                ) : (
+                  <div style={{
+                    padding: "12px",
+                    background: "rgba(255, 107, 107, 0.12)",
+                    border: "1px solid rgba(255, 107, 107, 0.25)",
+                    borderRadius: 14,
+                    fontSize: 13,
+                    color: "#ff8b8b",
+                    fontWeight: 700,
+                    textAlign: "center"
+                  }}>
+                    코인이 부족합니다 ({COINS_PER_EPISODE}코인 필요)
+                  </div>
+                )
               )}
 
               <button
                 onClick={() => {
-                  if (isFreeTTSAvailable) {
-                    startFreeTTSPlayback();
+                  setShowUnlockModal(false);
+                  router.push("/membership");
+                }}
+                style={{
+                  height: 46,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255, 215, 0, 0.45)",
+                  background: "rgba(255, 215, 0, 0.07)",
+                  color: "#ffd700",
+                  fontWeight: 900,
+                  fontSize: 14.5,
+                  cursor: "pointer"
+                }}
+              >
+                👑 멤버십 가입 (전 에피소드 무제한)
+              </button>
+
+              {!isMembershipOnlyContent && (
+                <button
+                  onClick={() => {
                     setShowUnlockModal(false);
-                  } else {
-                    setShowUnlockModal(false);
-                    router.push(`/work/${workId}`);
-                  }
+                    router.push("/points");
+                  }}
+                  style={{
+                    height: 46,
+                    borderRadius: 14,
+                    border: "none",
+                    background: points < COINS_PER_EPISODE 
+                      ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" 
+                      : "rgba(255,255,255,0.06)",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    boxShadow: points < COINS_PER_EPISODE ? "0 4px 15px rgba(255, 42, 95, 0.3)" : "none",
+                  }}
+                >
+                  🪙 코인 충전하기
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowUnlockModal(false);
+                  router.push(`/episode/${workId}/10?part=1`);
                 }}
                 style={{
                   height: 44,
@@ -4207,57 +3440,27 @@ export default function EpisodePage() {
               >
                 닫기
               </button>
-            </div>
 
-            {/* 다음 화 자동 해제 설정 스위치 */}
-            {user && !isMembershipOnlyContent && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "12px 4px 4px",
-                marginTop: 10,
-                borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-              }}>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>다음 화 자동 해제</span>
-                <label 
-                  style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 26,
-                    cursor: "pointer",
-                    userSelect: "none",
-                  }} 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const next = !autoNextEpisode;
-                    setAutoNextEpisode(next);
-                    try { localStorage.setItem("autoNextEpisode", String(next)); } catch {}
-                  }}
-                >
-                  <div style={{
-                    position: "absolute",
-                    inset: 0,
-                    borderRadius: 100,
-                    background: autoNextEpisode ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" : "rgba(255,255,255,0.15)",
-                    transition: "background 0.25s"
-                  }}>
-                    <div style={{
-                      position: "absolute",
-                      top: 2,
-                      left: autoNextEpisode ? 20 : 2,
-                      width: 22,
-                      height: 22,
-                      borderRadius: "50%",
-                      background: "#ffffff",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                      transition: "left 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
-                    }} />
-                  </div>
-                </label>
-              </div>
-            )}
+              <button
+                onClick={() => {
+                  setShowUnlockModal(false);
+                  router.push("/");
+                }}
+                style={{
+                  height: 44,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.5)",
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  cursor: "pointer",
+                  marginTop: 4
+                }}
+              >
+                🏠 홈으로 가기
+              </button>
+            </div>
           </div>
         </div>
       )}
