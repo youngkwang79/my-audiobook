@@ -12,6 +12,8 @@ import NovelEdit from "./components/NovelEdit";
 import EpisodeUpload from "./components/EpisodeUpload";
 import WebPushPanel from "./components/WebPushPanel";
 import AutomationPanel from "./components/AutomationPanel";
+import ContentFactoryPanel from "./components/ContentFactoryPanel";
+
 
 export default function AdminPage() {
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingCheck, setLoadingCheck] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "novels" | "episodes" | "edit" | "push" | "automation"
+    "novels" | "episodes" | "edit" | "push" | "automation" | "contentFactory"
   >("novels");
 
   const [worksList, setWorksList] = useState<any[]>([]);
@@ -389,7 +391,14 @@ export default function AdminPage() {
           >
             오디오 자동연성 &amp; 자동화
           </button>
+          <button
+            className={`admin-tab ${activeTab === "contentFactory" ? "active" : ""}`}
+            onClick={() => setActiveTab("contentFactory")}
+          >
+            콘텐츠 팩토리
+          </button>
         </div>
+
 
         {/* ✅ display:none 방식으로 모든 패널을 마운트 유지 — 탭 전환 시 업로드/자동화 상태 보존 */}
         <div style={{ display: activeTab === "novels" ? "block" : "none" }}>
@@ -411,7 +420,12 @@ export default function AdminPage() {
         <div style={{ display: activeTab === "automation" ? "block" : "none" }}>
           <AutomationPanel fetchWorks={fetchWorks} worksList={worksList} />
         </div>
+
+        <div style={{ display: activeTab === "contentFactory" ? "block" : "none" }}>
+          <ContentFactoryPanel />
+        </div>
       </div>
+
     </main>
   );
 }
