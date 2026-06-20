@@ -1,0 +1,878 @@
+﻿diff --git a/app/episode/[workId]/[id]/page.tsx b/app/episode/[workId]/[id]/page.tsx
+index 719a924..e7f9ca0 100644
+--- a/app/episode/[workId]/[id]/page.tsx
++++ b/app/episode/[workId]/[id]/page.tsx
+@@ -392,7 +392,7 @@ export default function EpisodePage() {
+ 
+   const [part, setPart] = useState(1);
+   const [status, setStatus] = useState("");
+-  const [entBusy, setEntBusy] = useState(false);
++  const [entBusy, setEntBusy] = useState(true);
+ 
+   const [segments, setSegments] = useState<Segment[]>([]);
+   const [caption, setCaption] = useState("");
+@@ -402,6 +402,23 @@ export default function EpisodePage() {
+   const [isSigning, setIsSigning] = useState(false);
+   const [isTTSMode, setIsTTSMode] = useState(false);
+   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
++  // sessionStorage濡??ㅻ퉬寃뚯씠???꾩뿉??臾대즺??룆 ?곹깭 ?좎?
++  const [isFreeTTSActive, setIsFreeTTSActiveRaw] = useState(() => {
++    try {
++      return sessionStorage.getItem(`freeTTS_${workId}_${episodeKey}`) === "1";
++    } catch { return false; }
++  });
++  const setIsFreeTTSActive = (val: boolean) => {
++    setIsFreeTTSActiveRaw(val);
++    try {
++      if (val) {
++        sessionStorage.setItem(`freeTTS_${workId}_${episodeKey}`, "1");
++      } else {
++        sessionStorage.removeItem(`freeTTS_${workId}_${episodeKey}`);
++      }
++    } catch {}
++  };
++  const isSeamlessRef = useRef(false);
+ 
+   const tts = useTTS({
+     segments,
+@@ -416,6 +433,13 @@ export default function EpisodePage() {
+     }
+   });
+ 
++  // 臾대즺 ??룆 紐⑤뱶 蹂듭썝: sessionStorage?먯꽌 isFreeTTSActive=true濡?蹂듭썝??寃쎌슦 isTTSMode ?쒖꽦??+  useEffect(() => {
++    if (isFreeTTSActive) {
++      setIsTTSMode(true);
++    }
++  }, [isFreeTTSActive]);
++
+   // TTS ?꾩옱 ?꾩튂瑜??섏씠吏 濡쒖뺄 ?곹깭???숆린??   useEffect(() => {
+     if (isTTSMode) {
+@@ -438,6 +462,7 @@ export default function EpisodePage() {
+     };
+   }, [episodeKey, part]);
+ 
++
+   // TTS 紐⑤뱶?대ŉ ?먮룞?ъ깮 議곌굔 異⑹” ???먮쭑 濡쒕뱶 ?꾨즺 ???먮룞 ?쒖옉
+   useEffect(() => {
+     if (isTTSMode && segments.length > 0 && (autoplay || pendingAutoplayRef.current)) {
+@@ -471,6 +496,65 @@ export default function EpisodePage() {
+     }
+   };
+ 
++  // ?덉슜?섎뒗 ?뚯꽦留??꾪꽣留?(?좏씗, ?꾩닔, ?몄? ?곗꽑 + iOS??寃쎌슦 ?좊굹/Siri ?덉쇅 泥섎━)
++  const getFilteredVoices = () => {
++    const allowedNames = ["sunhi", "?좏씗", "hyunsu", "?꾩닔", "injoon", "?몄?"];
++    let filtered = tts.voices.filter(v => 
++      v.lang.startsWith("ko") && 
++      allowedNames.some(name => v.name.toLowerCase().includes(name))
++    );
++    
++    // 留뚯빟 ?대떦 紐⑹냼由щ뱾???녿떎硫?(?? iOS Safari ??, Apple 怨좏뭹吏??댁옣 紐⑹냼由??쒓났
++    if (filtered.length === 0) {
++      filtered = tts.voices.filter(v => 
++        v.lang.startsWith("ko") && 
++        (v.name.includes("Yuna") || v.name.includes("?좊굹") || v.name.toLowerCase().includes("siri"))
++      );
++    }
++    
++    // 洹멸쾬???녿떎硫??꾩껜 ?쒓뎅??紐⑹냼由??몄텧
++    if (filtered.length === 0) {
++      filtered = tts.voices.filter(v => v.lang.startsWith("ko"));
++    }
++    
++    // 以묐났 ?대쫫(?? ?꾩닔, ?꾩닔) ?쒓굅 諛?怨좏뭹吏??⑤씪??紐⑹냼由??곗꽑?좏깮
++    const seen = new Set<string>();
++    const deduped: SpeechSynthesisVoice[] = [];
++    
++    const sorted = [...filtered].sort((a, b) => {
++      const aIsOnline = a.name.includes("Online") || a.name.includes("Natural");
++      const bIsOnline = b.name.includes("Online") || b.name.includes("Natural");
++      if (aIsOnline && !bIsOnline) return -1;
++      if (!aIsOnline && bIsOnline) return 1;
++      return 0;
++    });
++
++    for (const voice of sorted) {
++      const cleanName = getVoiceCleanName(voice.name);
++      if (!seen.has(cleanName)) {
++        seen.add(cleanName);
++        deduped.push(voice);
++      }
++    }
++    
++    return deduped;
++  };
++
++  // ?쒗빐??釉뚮씪?곗? ?뚯꽦 紐낆묶???좎?媛 ?댄빐?섍린 ?ъ슫 ?대쫫?쇰줈 蹂??+  const getVoiceCleanName = (voiceName: string) => {
++    if (!voiceName) return "紐⑹냼由??좏깮";
++    const lower = voiceName.toLowerCase();
++    if (lower.includes("sunhi") || lower.includes("?좏씗")) return "?좏씗";
++    if (lower.includes("injoon") || lower.includes("?몄?")) return "?몄?";
++    if (lower.includes("hyunsu") || lower.includes("?꾩닔")) return "?꾩닔";
++    if (lower.includes("yuna") || lower.includes("?좊굹")) return "?좊굹";
++    if (lower.includes("siri")) return "Siri";
++    if (lower.includes("google") && (lower.includes("ko") || lower.includes("kr") || lower.includes("korean"))) return "援ш? ?쒓뎅??;
++    
++    const clean = voiceName.replace("Microsoft ", "").replace("Google ", "").split(" ")[0];
++    return clean || "紐⑹냼由??좏깮";
++  };
++
+   const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
+   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
+ 
+@@ -605,19 +689,52 @@ export default function EpisodePage() {
+     return () => clearInterval(interval);
+   }, [isPlaying]);
+ 
++  const currentEpNum = useMemo(() => {
++    return parseInt(String(episodeKey).split("-")[0], 10) || 0;
++  }, [episodeKey]);
++
++  const isFreeTTSAvailable = useMemo(() => {
++    return !isMembershipOnlyContent && currentEpNum > 10 && currentEpNum <= 20;
++  }, [isMembershipOnlyContent, currentEpNum]);
++
+   // ?먰뵾?뚮뱶 ?먯껜 ?좉툑 ?щ?: episodes.locked=true?닿퀬 硫ㅻ쾭??肄붿씤?댁젣 紐⑤몢 ?꾨땶 寃쎌슦
+   const locked = useMemo(() => {
+     if (isAdmin) return false;                   // 愿由ъ옄 臾댁“嫄??대┝
+     if (entBusy) return false;                   // 濡쒕뵫 以묒뿉???좉툑 ?먮떒 蹂대쪟 (?뚮옒??諛⑹?)
++    if (!user && currentEpNum > 10) return true; // 濡쒓렇?????덈뒗??11???댁긽?대㈃ 臾댁“嫄??좉?!
+     if (isSubscribed) return false;              // 硫ㅻ쾭???뚯썝 ????긽 ?대┝
+     if (work?.is_membership_only) return true;   // 硫ㅻ쾭???꾩슜 ?묓뭹 ??硫ㅻ쾭???놁쑝硫?臾댁“嫄??좉?
+     if (currentEpisode?.is_membership_only) return true; // 硫ㅻ쾭???꾩슜 ?먰뵾?뚮뱶 ??硫ㅻ쾭???놁쑝硫?臾댁“嫄??좉?
+     if (!currentEpisode?.locked) return false;   // 臾대즺 ?먰뵾?뚮뱶
+     if (episodeUnlocked) return false;           // 肄붿씤?쇰줈 ?대? ?댁젣
+     return true;
+-  }, [isAdmin, entBusy, isSubscribed, work, currentEpisode, episodeUnlocked]);
++  }, [isAdmin, entBusy, user, currentEpNum, isSubscribed, work, currentEpisode, episodeUnlocked]);
+ 
++  // 吏꾨떒???곹깭 ?쒕쾭 ?꾩넚
+   useEffect(() => {
++    fetch("/api/debug-player", {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({
++        episodeKey,
++        entBusy,
++        locked,
++        isAdmin,
++        isSubscribed,
++        episodeUnlocked,
++        isFreeTTSActive,
++        showUnlockModal,
++        points,
++        userEmail: user?.email,
++      })
++    }).catch(() => {});
++  }, [episodeKey, entBusy, locked, isAdmin, isSubscribed, episodeUnlocked, isFreeTTSActive, showUnlockModal, points, user?.email]);
++
++  useEffect(() => {
++    if (isSeamlessRef.current) {
++      isSeamlessRef.current = false;
++      return;
++    }
+     if (locked) {
+       setSignedAudioSrc(null);
+       return;
+@@ -899,6 +1016,7 @@ export default function EpisodePage() {
+     if (isAdmin) return; // 愿由ъ옄??寃???⑥뒪
+     if (loadingData || entBusy || isSubscribed) return;
+     if (episodes.length === 0) return;
++    if (allEntitlements.length === 0 && !loadingData && !entBusy) return; // ?뷀??댄?癒쇳듃 濡쒕뱶 ?꾩씠硫??⑥뒪
+ 
+     // ?꾩옱 ?먰뵾?뚮뱶???몃뜳??李얘린
+     const currIdx = episodes.findIndex((ep) => String(ep.id) === String(episodeKey));
+@@ -907,23 +1025,30 @@ export default function EpisodePage() {
+     // ?댁쟾 ??以??좉꺼?덇퀬(?좊즺) ?꾩쭅 ?댁젣?섏? ?딆? 泥?踰덉㎏ ??李얘린
+     for (let i = 0; i < currIdx; i++) {
+       const ep = episodes[i];
+-      if (ep.locked) {
+-        const isUnlocked = allEntitlements.some(
+-          (ent) => String(ent.episode_id) === String(ep.id) && ent.episode_unlocked
+-        );
+-        if (!isUnlocked) {
+-          alert(`?댁쟾 ?뚯감(??${ep.id}??瑜??쒖꽌?濡?媛먯긽??二쇱꽭??\n癒쇱? ?좉툑 ?댁젣?섏? ?딆? ?댁쟾 ?붾줈 ?대룞?⑸땲??`);
+-          navigateToEpisode(String(ep.id), 1, false);
+-          return;
+-        }
++      if (!ep.locked) continue; // 臾대즺 ?먰뵾?뚮뱶???⑥뒪
++
++      const epNum = parseInt(String(ep.id).split("-")[0], 10) || 0;
++      
++      // 11~20??踰붿쐞??臾대즺??룆?쇰줈 ?듦낵 媛?ν븯誘濡??쒖감 寃???쒖쇅
++      if (epNum > 10 && epNum <= 20) continue;
++
++      const isUnlocked = allEntitlements.some(
++        (ent) => String(ent.episode_id) === String(ep.id) && ent.episode_unlocked
++      );
++      if (!isUnlocked) {
++        // alert ?놁씠 議곗슜???대룞
++        navigateToEpisode(String(ep.id), 1, false);
++        return;
+       }
+     }
+   }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, workId, isAdmin]);
+ 
++
+   // locked ?곹깭 媛먯? 諛??먮룞?댁젣 / ?앹뾽 ?쒖뼱
+   useEffect(() => {
+-    if (locked && !entBusy) {
+-      if (autoNextEpisode && points >= COINS_PER_EPISODE && !isMembershipOnlyContent) {
++    if (locked && !isFreeTTSActive && !entBusy) {
++      // autoNextEpisode ?ㅼ쐞移섍? 耳쒖졇 ?덇퀬, 肄붿씤??異⑸텇?섍퀬, 臾대즺??룆 援ш컙(11~20?????꾨땺 ?뚮쭔 ?먮룞 ?댁젣 ?ㅽ뻾
++      if (autoNextEpisode && points >= COINS_PER_EPISODE && !isMembershipOnlyContent && !isFreeTTSAvailable) {
+         if (hasAutoUnlockedRef.current !== episodeKey) {
+           hasAutoUnlockedRef.current = episodeKey;
+           (async () => {
+@@ -940,7 +1065,7 @@ export default function EpisodePage() {
+     } else {
+       setShowUnlockModal(false);
+     }
+-  }, [locked, autoNextEpisode, points, entBusy, episodeKey, isMembershipOnlyContent]);
++  }, [locked, isFreeTTSActive, isFreeTTSAvailable, autoNextEpisode, points, entBusy, episodeKey, isMembershipOnlyContent]);
+ 
+ 
+ 
+@@ -968,7 +1093,7 @@ export default function EpisodePage() {
+       setCaption("");
+       segIndexRef.current = 0;
+ 
+-      if (locked) {
++      if (locked && !isFreeTTSActive && !isFreeTTSAvailable) {
+         setCaptionStatus("");
+         return;
+       }
+@@ -1111,7 +1236,7 @@ export default function EpisodePage() {
+     return () => {
+       alive = false;
+     };
+-  }, [episodeKey, part, locked, workId]);
++  }, [episodeKey, part, locked, workId, isFreeTTSActive]);
+ 
+   const updateCaptionByTime = (t: number) => {
+     const segs = segments;
+@@ -1211,6 +1336,7 @@ export default function EpisodePage() {
+   useEffect(() => {
+     if (!autoplay && !pendingAutoplayRef.current) return;
+     if (locked) return;
++    if (isFreeTTSActive) return; // 臾대즺??룆 紐⑤뱶媛 ?쒖꽦?붾릺???덈떎硫??뚯썝 ?먮룞 ?ъ깮 李⑤떒
+ 
+     const t = setTimeout(() => {
+       const a = audioRef.current;
+@@ -1264,6 +1390,11 @@ export default function EpisodePage() {
+   };
+ 
+   const navigateToEpisode = (nextEpKey: string, nextPart: number, shouldAutoplay = true, seamless = false) => {
++    const nextEpNum = parseInt(String(nextEpKey).split("-")[0], 10) || 0;
++    if (nextEpNum <= 10 || nextEpNum > 20) {
++      setIsFreeTTSActive(false);
++      setIsTTSMode(false);
++    }
+     // ?댁쟾 ?ㅻ뵒?ㅺ? ?좉퉸 ?ъ깮?섎㈃??onEnded 臾댄븳猷⑦봽???먮룞?ъ깮???뱁엳??踰꾧렇 諛⑹?
+     if (!seamless) {
+       setSignedAudioSrc(null);
+@@ -1304,6 +1435,11 @@ export default function EpisodePage() {
+   };
+ 
+   const togglePlayPause = async () => {
++    if (locked && !isFreeTTSActive) {
++      setShowUnlockModal(true);
++      return;
++    }
++
+     if (isTTSMode) {
+       try {
+         if (tts.isPlaying) {
+@@ -2226,6 +2362,8 @@ export default function EpisodePage() {
+           }
+         }}
+         onCanPlayThrough={() => {
++          // 臾대즺??룆 紐⑤뱶媛 ?쒖꽦?붾릺???덈떎硫??뚯썝 ?먮룞 ?ъ깮??李⑤떒
++          if (isFreeTTSActive) return;
+           // 紐⑤컮???곗뒪?ы넲 ?듯빀: ?ъ깮 媛???곹깭媛 ?섎㈃ ??踰덈쭔 play ?쒕룄
+           const a = audioRef.current;
+           if (!a || (!autoplay && !pendingAutoplayRef.current)) return;
+@@ -2257,6 +2395,7 @@ export default function EpisodePage() {
+           window.dispatchEvent(new Event("play-default-music"));
+           
+           if (nextSignedAudioSrcRef.current && audioRef.current) {
++            isSeamlessRef.current = true;
+             audioRef.current.src = nextSignedAudioSrcRef.current;
+             audioRef.current.play().catch(() => {});
+             setSignedAudioSrc(nextSignedAudioSrcRef.current);
+@@ -2338,22 +2477,89 @@ export default function EpisodePage() {
+               >
+                 +
+               </button>
+-              {signedAudioSrc && (
+-                <button 
+-                  onClick={toggleTTSMode}
+-                  className="sf-speed-btn"
+-                  style={{
+-                    display: "flex",
+-                    alignItems: "center",
+-                    gap: "4px",
+-                    background: isTTSMode ? "rgba(10, 132, 255, 0.25)" : "rgba(255, 255, 255, 0.12)",
+-                    border: isTTSMode ? "1px solid rgb(10, 132, 255)" : "1px solid rgba(255, 255, 255, 0.15)",
+-                  }}
+-                >
+-                  {isTTSMode ? "?럺截?TTS" : "?렦 ?뚯썝"}
+-                </button>
++              {/* ?뚯썝?봗TS ?꾪솚 踰꾪듉 ?먮뒗 臾대즺??룆 踰꾪듉 */}
++              {isFreeTTSAvailable ? (
++                isFreeTTSActive ? (
++                  <button
++                    className="sf-speed-btn"
++                    onClick={() => {
++                      tts.stop();
++                      if (!locked) {
++                        setIsFreeTTSActive(false);
++                        setIsTTSMode(false);
++                        const a = audioRef.current;
++                        if (a) {
++                          a.currentTime = currentTime;
++                          if (isPlaying) {
++                            a.play().catch(() => {});
++                          }
++                        }
++                      } else {
++                        setIsFreeTTSActive(false);
++                        setIsTTSMode(false);
++                        setIsPlaying(false);
++                        setShowUnlockModal(true);
++                      }
++                    }}
++                    style={{
++                      display: "flex",
++                      alignItems: "center",
++                      gap: "4px",
++                      background: "rgba(16, 185, 129, 0.25)",
++                      border: "1px solid rgb(16, 185, 129)",
++                      color: "#10b981",
++                      cursor: "pointer",
++                    }}
++                    title={!locked ? "?대┃?섏뿬 ?뚯썝 ?ъ깮?쇰줈 ?꾪솚" : "?대┃?섏뿬 ?좊즺 媛먯긽?쇰줈 ?꾪솚"}
++                  >
++                    ?럺截?臾대즺??룆 ??+                  </button>
++                ) : (
++                  <button
++                    className="sf-speed-btn"
++                    onClick={() => {
++                      const a = audioRef.current;
++                      if (a) a.pause();
++                      // Switch to free TTS mode and play!
++                      setIsFreeTTSActive(true);
++                      setIsTTSMode(true);
++                      setIsPlaying(true);
++                      tts.play();
++                    }}
++                    style={{
++                      display: "flex",
++                      alignItems: "center",
++                      gap: "4px",
++                      background: "rgba(255, 255, 255, 0.12)",
++                      border: "1px solid rgba(255, 255, 255, 0.15)",
++                      color: "#ffffff",
++                      cursor: "pointer",
++                    }}
++                    title="臾대즺 ??룆 ?ъ깮"
++                  >
++                    ?럺截?臾대즺??룆
++                  </button>
++                )
++              ) : (
++                /* 11~20??踰붿쐞媛 ?꾨땲硫?臾대즺??룆 遺덇? 援ш컙) 湲곗〈 ?뚯썝?봗TS 踰꾪듉 */
++                signedAudioSrc && !isFreeTTSActive && (
++                  <button 
++                    onClick={toggleTTSMode}
++                    className="sf-speed-btn"
++                    style={{
++                      display: "flex",
++                      alignItems: "center",
++                      gap: "4px",
++                      background: isTTSMode ? "rgba(10, 132, 255, 0.25)" : "rgba(255, 255, 255, 0.12)",
++                      border: isTTSMode ? "1px solid rgb(10, 132, 255)" : "1px solid rgba(255, 255, 255, 0.15)",
++                    }}
++                  >
++                    {isTTSMode ? "?럺截?TTS" : "?렦 ?뚯썝"}
++                  </button>
++                )
+               )}
+-              {isTTSMode && tts.voices.length > 0 && (
++              {/* TTS 紐⑹냼由??좏깮 踰꾪듉: TTS紐⑤뱶 ?먮뒗 臾대즺??룆 紐⑤뱶?????쒖떆 */}
++              {(isTTSMode || isFreeTTSActive) && tts.voices.length > 0 && (
+                 <button 
+                   className="sf-speed-btn" 
+                   onClick={() => setShowVoiceMenu(true)}
+@@ -2363,7 +2569,7 @@ export default function EpisodePage() {
+                     gap: "4px"
+                   }}
+                 >
+-                  ?뿣截?{tts.selectedVoice ? tts.selectedVoice.name.split(" ")[0] : "紐⑹냼由?}
++                  ?뿣截?{tts.selectedVoice ? getVoiceCleanName(tts.selectedVoice.name) : "紐⑹냼由??좏깮"}
+                 </button>
+               )}
+               <button className="sf-more-btn" onClick={toggleLandscapePlayer} title="?쒕꽕留?媛濡? 紐⑤뱶" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+@@ -2405,7 +2611,7 @@ export default function EpisodePage() {
+ 
+           {/* 以묒븰 ?먮쭑 ?곸뿭 */}
+           <div className="sf-caption-container" onClick={togglePlayPause}>
+-            {locked ? (
++            {locked && !isFreeTTSActive ? (
+               <div
+                 className="lockCard"
+                 style={{
+@@ -2466,7 +2672,13 @@ export default function EpisodePage() {
+                   {work.title} {episodeKey}??                 </div>
+                 <div style={{ marginTop: 5, fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+-                  {isMembershipOnlyContent ? "蹂?肄섑뀗痢좊뒗 硫ㅻ쾭???꾩슜 ?묓뭹?낅땲??" : "???먰뵾?뚮뱶???좊즺 肄섑뀗痢좎엯?덈떎."}
++                  {isMembershipOnlyContent ? "蹂?肄섑뀗痢좊뒗 硫ㅻ쾭???꾩슜 ?묓뭹?낅땲??" : (
++                    isFreeTTSAvailable ? (
++                      <span style={{ color: "#ffb020", lineHeight: 1.4, display: "block" }}>
++                        11??20?붾뒗 臾대즺 ??룆 ?쒕퉬?ㅻ줈 泥?랬?섏떎 ???덉뒿?덈떎. (湲곌린 ?댁옣 湲곕낯 紐⑹냼由щ줈 ?ъ깮?섎ŉ, ?붾㈃??爰쇱?硫??ъ깮??以묐떒?⑸땲?? 諛깃렇?쇱슫???ъ깮???먰븯?쒕㈃ 硫ㅻ쾭???먮뒗 肄붿씤 ?댁젣瑜??댁슜??二쇱꽭??)
++                      </span>
++                    ) : "???먰뵾?뚮뱶???좊즺 肄섑뀗痢좎엯?덈떎."
++                  )}
+                 </div>
+ 
+                 {/* 蹂댁쑀 肄붿씤 ?쒖떆 ?곸뿭 */}
+@@ -2497,6 +2709,40 @@ export default function EpisodePage() {
+ 
+                 {/* ?≪뀡 踰꾪듉 */}
+                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 18 }}>
++                  {isFreeTTSAvailable && (
++                    <button
++                      onClick={() => {
++                        const a = audioRef.current;
++                        if (a) a.pause();
++                        setIsFreeTTSActive(true);
++                        setIsTTSMode(true);
++                        setIsPlaying(true);
++                        pendingAutoplayRef.current = true;
++                        tts.play();
++                      }}
++                      style={{
++                        height: 52,
++                        borderRadius: 16,
++                        border: "none",
++                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
++                        color: "#ffffff",
++                        fontWeight: 900,
++                        fontSize: 16,
++                        cursor: "pointer",
++                        boxShadow: "0 6px 20px rgba(16, 185, 129, 0.35)",
++                        transition: "transform 0.15s, opacity 0.15s",
++                        display: "flex",
++                        alignItems: "center",
++                        justifyContent: "center",
++                        gap: 8,
++                      }}
++                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
++                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
++                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
++                    >
++                      ?럺截?臾대즺 ??룆?쇰줈 ?ｊ린 (20?붽퉴吏)
++                    </button>
++                  )}
+                   {!isMembershipOnlyContent && (
+                     points >= COINS_PER_EPISODE ? (
+                       <button
+@@ -2967,7 +3213,7 @@ export default function EpisodePage() {
+                   <button className="sf-sheet-close" onClick={() => setShowVoiceMenu(false)}>?リ린</button>
+                 </div>
+                 <div className="sf-speed-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
+-                  {tts.voices.filter(v => v.lang.startsWith("ko")).map((voice) => (
++                  {getFilteredVoices().map((voice) => (
+                     <button
+                       key={voice.name}
+                       className={`sf-speed-item ${tts.selectedVoice?.name === voice.name ? "active" : ""}`}
+@@ -2977,10 +3223,10 @@ export default function EpisodePage() {
+                         setShowVoiceMenu(false);
+                       }}
+                     >
+-                      {voice.name} {voice.localService ? "[湲곌린 ?댁옣]" : "[?대씪?곕뱶]"}
++                      {getVoiceCleanName(voice.name)}
+                     </button>
+                   ))}
+-                  {tts.voices.filter(v => v.lang.startsWith("ko")).length === 0 && (
++                  {getFilteredVoices().length === 0 && (
+                     <div style={{ padding: "16px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "14px" }}>
+                       吏?먮릺???쒓뎅??紐⑹냼由ш? ?놁뒿?덈떎.
+                     </div>
+@@ -3449,7 +3695,7 @@ export default function EpisodePage() {
+                           fontFamily: cinemaFont,
+                         }}
+                       >
+-                        ?뿣截?{tts.selectedVoice ? tts.selectedVoice.name.split(" ")[0] : "紐⑹냼由?}
++                        ?뿣截?{tts.selectedVoice ? getVoiceCleanName(tts.selectedVoice.name) : "紐⑹냼由??좏깮"}
+                       </button>
+                     )}
+ 
+@@ -3542,7 +3788,7 @@ export default function EpisodePage() {
+                     onClick={(e) => e.stopPropagation()}
+                   >
+                     <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", padding: "4px 8px" }}>紐⑹냼由??좏깮</div>
+-                    {tts.voices.filter(v => v.lang.startsWith("ko")).map((voice) => (
++                    {getFilteredVoices().map((voice) => (
+                       <button
+                         key={voice.name}
+                         onClick={(e) => {
+@@ -3561,10 +3807,10 @@ export default function EpisodePage() {
+                           fontSize: "13px",
+                         }}
+                       >
+-                        {voice.name} {voice.localService ? "[?댁옣]" : "[?대씪?곕뱶]"}
++                        {getVoiceCleanName(voice.name)}
+                       </button>
+                     ))}
+-                    {tts.voices.filter(v => v.lang.startsWith("ko")).length === 0 && (
++                    {getFilteredVoices().length === 0 && (
+                       <div style={{ padding: "8px 12px", color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
+                         ?쒓뎅??紐⑹냼由??놁쓬
+                       </div>
+@@ -3733,7 +3979,9 @@ export default function EpisodePage() {
+             justifyContent: "center",
+             padding: 20,
+           }}
+-          onClick={() => setShowUnlockModal(false)}
++          onClick={() => {
++            setShowUnlockModal(false);
++          }}
+         >
+           <div
+             style={{
+@@ -3751,14 +3999,27 @@ export default function EpisodePage() {
+             onClick={(e) => e.stopPropagation()}
+           >
+             <h3 style={{ margin: 0, fontSize: 19, fontWeight: 900, color: "#ffffff", textAlign: "center" }}>
+-              {isMembershipOnlyContent ? "?몣 硫ㅻ쾭???꾩슜 肄섑뀗痢? : "?좊즺 ?먰뵾?뚮뱶 媛먯긽"}
++              {!user && currentEpNum > 10
++                ? "?뚯썝 ?꾩슜 ?먰뵾?뚮뱶"
++                : isMembershipOnlyContent
++                ? "?몣 硫ㅻ쾭???꾩슜 肄섑뀗痢?
++                : "?좊즺 ?먰뵾?뚮뱶 媛먯긽"}
+             </h3>
+             <p style={{ margin: 0, fontSize: 13.5, color: "rgba(255, 255, 255, 0.65)", textAlign: "center", lineHeight: 1.5 }}>
+-              {isMembershipOnlyContent ? (
++              {!user && currentEpNum > 10 ? (
++                <>
++                  蹂??먰뵾?뚮뱶(11???댁긽)???뚯썝 ?꾩슜 肄섑뀗痢좎엯?덈떎.<br />
++                  濡쒓렇???먮뒗 ?뚯썝媛????媛먯긽??二쇱떆湲?諛붾엻?덈떎.
++                </>
++              ) : isMembershipOnlyContent ? (
+                 <>
+                   蹂?肄섑뀗痢좊뒗 硫ㅻ쾭???꾩슜 ?묓뭹?낅땲??<br />
+                   硫ㅻ쾭???뚯썝? 紐⑤뱺 ?뚯감瑜??쒗븳 ?놁씠 媛먯긽?????덉뒿?덈떎.
+                 </>
++              ) : isFreeTTSAvailable ? (
++                <span style={{ color: "#ffb020", lineHeight: 1.4, display: "block", textAlign: "left" }}>
++                  11??20?붾뒗 臾대즺 ??룆 ?쒕퉬?ㅻ줈 泥?랬?섏떎 ???덉뒿?덈떎. (湲곌린 ?댁옣 湲곕낯 紐⑹냼由щ줈 ?ъ깮?섎ŉ, ?붾㈃??爰쇱?硫??ъ깮??以묐떒?⑸땲?? 諛깃렇?쇱슫???ъ깮???먰븯?쒕㈃ 硫ㅻ쾭???먮뒗 肄붿씤 ?댁젣瑜??댁슜??二쇱꽭??)
++                </span>
+               ) : (
+                 <>
+                   蹂??뚯감???좊즺 肄섑뀗痢좎엯?덈떎.<br />
+@@ -3768,7 +4029,7 @@ export default function EpisodePage() {
+             </p>
+ 
+             {/* 蹂댁쑀 肄붿씤 ?쒖떆 */}
+-            {!isMembershipOnlyContent && (
++            {user && !isMembershipOnlyContent && (
+               <div style={{
+                 padding: "10px 14px",
+                 background: "rgba(255, 255, 255, 0.04)",
+@@ -3788,90 +4049,169 @@ export default function EpisodePage() {
+             )}
+ 
+             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 4 }}>
+-              {!isMembershipOnlyContent && (
+-                points >= COINS_PER_EPISODE ? (
+-                  <button
+-                    onClick={async () => {
+-                      const success = await unlockEpisodeWithCoins();
+-                      if (success) {
+-                        setShowUnlockModal(false);
+-                      }
+-                    }}
+-                    style={{
+-                      height: 48,
+-                      borderRadius: 14,
+-                      border: "none",
+-                      background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
+-                      color: "#1a1000",
+-                      fontWeight: 900,
+-                      fontSize: 15,
+-                      cursor: "pointer",
+-                      boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)"
+-                    }}
+-                  >
+-                    ?뵑 30肄붿씤 ?ъ슜?섍퀬 媛먯긽?섍린
+-                  </button>
+-                ) : (
+-                  <div style={{
+-                    padding: "12px",
+-                    background: "rgba(255, 107, 107, 0.12)",
+-                    border: "1px solid rgba(255, 107, 107, 0.25)",
+-                    borderRadius: 14,
+-                    fontSize: 13,
+-                    color: "#ff8b8b",
+-                    fontWeight: 700,
+-                    textAlign: "center"
+-                  }}>
+-                    肄붿씤??遺議깊빀?덈떎 ({COINS_PER_EPISODE}肄붿씤 ?꾩슂)
+-                  </div>
+-                )
+-              )}
+-
+-              <button
+-                onClick={() => {
+-                  setShowUnlockModal(false);
+-                  router.push("/membership");
+-                }}
+-                style={{
+-                  height: 46,
+-                  borderRadius: 14,
+-                  border: "1px solid rgba(255, 215, 0, 0.45)",
+-                  background: "rgba(255, 215, 0, 0.07)",
+-                  color: "#ffd700",
+-                  fontWeight: 900,
+-                  fontSize: 14.5,
+-                  cursor: "pointer"
+-                }}
+-              >
+-                ?몣 硫ㅻ쾭??媛??(???먰뵾?뚮뱶 臾댁젣??
+-              </button>
+-
+-              {!isMembershipOnlyContent && (
++              {!user && currentEpNum > 10 ? (
+                 <button
+                   onClick={() => {
+                     setShowUnlockModal(false);
+-                    router.push("/points");
++                    router.push(`/login?redirect=/episode/${workId}/${episodeKey}`);
+                   }}
+                   style={{
+-                    height: 46,
+-                    borderRadius: 14,
++                    height: 52,
++                    borderRadius: 16,
+                     border: "none",
+-                    background: points < COINS_PER_EPISODE 
+-                      ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" 
+-                      : "rgba(255,255,255,0.06)",
++                    background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                     color: "#ffffff",
+-                    fontWeight: 800,
+-                    fontSize: 14,
++                    fontWeight: 900,
++                    fontSize: 16,
+                     cursor: "pointer",
+-                    boxShadow: points < COINS_PER_EPISODE ? "0 4px 15px rgba(255, 42, 95, 0.3)" : "none",
++                    boxShadow: "0 6px 20px rgba(59, 130, 246, 0.35)",
++                    display: "flex",
++                    alignItems: "center",
++                    justifyContent: "center",
++                    gap: 8,
+                   }}
++                  onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
++                  onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
++                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                 >
+-                  ?첌 肄붿씤 異⑹쟾?섍린
++                  ?뵎 濡쒓렇??諛??뚯썝媛??                 </button>
++              ) : (
++                <>
++                  {isFreeTTSAvailable && (
++                    <button
++                      onClick={() => {
++                        const a = audioRef.current;
++                        if (a) a.pause();
++                        setIsFreeTTSActive(true);
++                        setIsTTSMode(true);
++                        setIsPlaying(true);
++                        pendingAutoplayRef.current = true;
++                        tts.play();
++                        setShowUnlockModal(false);
++                      }}
++                      style={{
++                        height: 52,
++                        borderRadius: 16,
++                        border: "none",
++                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
++                        color: "#ffffff",
++                        fontWeight: 900,
++                        fontSize: 16,
++                        cursor: "pointer",
++                        boxShadow: "0 6px 20px rgba(16, 185, 129, 0.35)",
++                        display: "flex",
++                        alignItems: "center",
++                        justifyContent: "center",
++                        gap: 8,
++                      }}
++                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
++                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
++                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
++                    >
++                      ?럺截?臾대즺 ??룆?쇰줈 ?ｊ린 (20?붽퉴吏)
++                    </button>
++                  )}
++
++                  {!isMembershipOnlyContent && (
++                    points >= COINS_PER_EPISODE ? (
++                      <button
++                        onClick={async () => {
++                          const success = await unlockEpisodeWithCoins();
++                          if (success) {
++                            setShowUnlockModal(false);
++                          }
++                        }}
++                        style={{
++                          height: 48,
++                          borderRadius: 14,
++                          border: "none",
++                          background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
++                          color: "#1a1000",
++                          fontWeight: 900,
++                          fontSize: 15,
++                          cursor: "pointer",
++                          boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)"
++                        }}
++                      >
++                        ?뵑 30肄붿씤 ?ъ슜?섍퀬 媛먯긽?섍린
++                      </button>
++                    ) : (
++                      <div style={{
++                        padding: "12px",
++                        background: "rgba(255, 107, 107, 0.12)",
++                        border: "1px solid rgba(255, 107, 107, 0.25)",
++                        borderRadius: 14,
++                        fontSize: 13,
++                        color: "#ff8b8b",
++                        fontWeight: 700,
++                        textAlign: "center"
++                      }}>
++                        肄붿씤??遺議깊빀?덈떎 ({COINS_PER_EPISODE}肄붿씤 ?꾩슂)
++                      </div>
++                    )
++                  )}
++
++                  <button
++                    onClick={() => {
++                      setShowUnlockModal(false);
++                      router.push("/membership");
++                    }}
++                    style={{
++                      height: 46,
++                      borderRadius: 14,
++                      border: "1px solid rgba(255, 215, 0, 0.45)",
++                      background: "rgba(255, 215, 0, 0.07)",
++                      color: "#ffd700",
++                      fontWeight: 900,
++                      fontSize: 14.5,
++                      cursor: "pointer"
++                    }}
++                  >
++                    ?몣 硫ㅻ쾭??媛??(???먰뵾?뚮뱶 臾댁젣??
++                  </button>
++
++                  {!isMembershipOnlyContent && (
++                    <button
++                      onClick={() => {
++                        setShowUnlockModal(false);
++                        router.push("/points");
++                      }}
++                      style={{
++                        height: 46,
++                        borderRadius: 14,
++                        border: "none",
++                        background: points < COINS_PER_EPISODE 
++                          ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" 
++                          : "rgba(255,255,255,0.06)",
++                        color: "#ffffff",
++                        fontWeight: 800,
++                        fontSize: 14,
++                        cursor: "pointer",
++                        boxShadow: points < COINS_PER_EPISODE ? "0 4px 15px rgba(255, 42, 95, 0.3)" : "none",
++                      }}
++                    >
++                      ?첌 肄붿씤 異⑹쟾?섍린
++                    </button>
++                  )}
++                </>
+               )}
+ 
+               <button
+-                onClick={() => setShowUnlockModal(false)}
++                onClick={() => {
++                  if (isFreeTTSAvailable) {
++                    const a = audioRef.current;
++                    if (a) a.pause();
++                    setIsFreeTTSActive(true);
++                    setIsTTSMode(true);
++                    setIsPlaying(true);
++                    tts.play();
++                    setShowUnlockModal(false);
++                  } else {
++                    setShowUnlockModal(false);
++                    router.push(`/work/${workId}`);
++                  }
++                }}
+                 style={{
+                   height: 44,
+                   borderRadius: 14,
+@@ -3887,6 +4227,56 @@ export default function EpisodePage() {
+                 ?リ린
+               </button>
+             </div>
++
++            {/* ?ㅼ쓬 ???먮룞 ?댁젣 ?ㅼ젙 ?ㅼ쐞移?*/}
++            {user && !isMembershipOnlyContent && (
++              <div style={{
++                display: "flex",
++                alignItems: "center",
++                justifyContent: "space-between",
++                padding: "12px 4px 4px",
++                marginTop: 10,
++                borderTop: "1px solid rgba(255, 255, 255, 0.06)",
++              }}>
++                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>?ㅼ쓬 ???먮룞 ?댁젣</span>
++                <label 
++                  style={{
++                    position: "relative",
++                    display: "inline-block",
++                    width: 44,
++                    height: 26,
++                    cursor: "pointer",
++                    userSelect: "none",
++                  }} 
++                  onClick={(e) => {
++                    e.stopPropagation();
++                    const next = !autoNextEpisode;
++                    setAutoNextEpisode(next);
++                    try { localStorage.setItem("autoNextEpisode", String(next)); } catch {}
++                  }}
++                >
++                  <div style={{
++                    position: "absolute",
++                    inset: 0,
++                    borderRadius: 100,
++                    background: autoNextEpisode ? "linear-gradient(90deg, #ff2a5f 0%, #ff7a3c 100%)" : "rgba(255,255,255,0.15)",
++                    transition: "background 0.25s"
++                  }}>
++                    <div style={{
++                      position: "absolute",
++                      top: 2,
++                      left: autoNextEpisode ? 20 : 2,
++                      width: 22,
++                      height: 22,
++                      borderRadius: "50%",
++                      background: "#ffffff",
++                      boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
++                      transition: "left 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
++                    }} />
++                  </div>
++                </label>
++              </div>
++            )}
+           </div>
+         </div>
+       )}

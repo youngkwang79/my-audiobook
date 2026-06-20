@@ -34,6 +34,7 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const pauseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playStateRef = useRef({
     isPlaying: false,
     currentIndex: 0,
@@ -64,16 +65,56 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
     const allVoices = window.speechSynthesis.getVoices();
     setVoices(allVoices);
 
-    // Default voice selection strategy (Korean priorities: Yuna, Siri, Local Service, local default)
+    // Default voice selection strategy
     if (allVoices.length > 0) {
       const koVoices = allVoices.filter((v) => v.lang.startsWith("ko"));
-      const localKoVoices = koVoices.filter((v) => v.localService);
       
-      let defaultVoice = localKoVoices.find((v) => v.name.includes("Yuna") || v.name.includes("유나"));
-      if (!defaultVoice) defaultVoice = localKoVoices.find((v) => v.name.toLowerCase().includes("siri"));
-      if (!defaultVoice) defaultVoice = localKoVoices[0]; // Any local Korean voice
-      if (!defaultVoice) defaultVoice = koVoices.find((v) => v.name.includes("Google"));
-      if (!defaultVoice) defaultVoice = koVoices[0] || allVoices.find((v) => v.default);
+      // Sort koVoices to prefer Online/Natural high-quality voices
+      const sortedKoVoices = [...koVoices].sort((a, b) => {
+        const aIsOnline = a.name.includes("Online") || a.name.includes("Natural");
+        const bIsOnline = b.name.includes("Online") || b.name.includes("Natural");
+        if (aIsOnline && !bIsOnline) return -1;
+        if (!aIsOnline && bIsOnline) return 1;
+        return 0;
+      });
+
+      // 1. 선희 최우선 선택 (Edge 고품질 여성 음성)
+      let defaultVoice = sortedKoVoices.find(v => {
+        const lowerName = v.name.toLowerCase();
+        return lowerName.includes("sunhi") || lowerName.includes("선희");
+      });
+      
+      // 2. 없으면 Apple 유나, Siri 선택 (iOS용 고품질 여성 음성)
+      if (!defaultVoice) {
+        defaultVoice = sortedKoVoices.find((v) => {
+          const lowerName = v.name.toLowerCase();
+          return lowerName.includes("yuna") || lowerName.includes("유나") || lowerName.includes("siri");
+        });
+      }
+
+      // 3. 없으면 Google 한국어 선택 (크롬용 여성 음성)
+      if (!defaultVoice) {
+        defaultVoice = sortedKoVoices.find((v) => {
+          const lowerName = v.name.toLowerCase();
+          return lowerName.includes("google") && (lowerName.includes("ko") || lowerName.includes("kr") || lowerName.includes("korean"));
+        });
+      }
+      
+      // 4. 없으면 현수, 인준 선택 (Edge 고품질 남성 음성)
+      if (!defaultVoice) {
+        defaultVoice = sortedKoVoices.find(v => {
+          const lowerName = v.name.toLowerCase();
+          return lowerName.includes("hyunsu") || lowerName.includes("현수") || 
+                 lowerName.includes("injoon") || lowerName.includes("인준");
+        });
+      }
+      
+      // 5. 그것도 없으면 기타 한국어 로컬 음성
+      if (!defaultVoice) {
+        const localKoVoices = sortedKoVoices.filter((v) => v.localService);
+        defaultVoice = localKoVoices[0] || sortedKoVoices[0] || allVoices.find((v) => v.default);
+      }
+      
       setSelectedVoice(defaultVoice || null);
     }
   }, []);
@@ -88,6 +129,10 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
   // Stop speaking and clear all state
   const stop = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+      pauseTimeoutRef.current = null;
+    }
     window.speechSynthesis.cancel();
     setIsPlaying(false);
     setCurrentSegmentIndex(0);
@@ -95,9 +140,16 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
   }, []);
 
   // Speak a specific segment index
-  const speakSegment = useCallback((index: number) => {
+  const speakSegment = useCallback((index: number, clearQueue: boolean = true) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
+    
+    if (clearQueue) {
+      if (pauseTimeoutRef.current) {
+        clearTimeout(pauseTimeoutRef.current);
+        pauseTimeoutRef.current = null;
+      }
+      window.speechSynthesis.cancel();
+    }
 
     if (index < 0 || index >= segments.length) {
       setIsPlaying(false);
@@ -111,7 +163,7 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
     if (!textToSpeak) {
       // Empty text segment: skip to next
       setCurrentSegmentIndex(index + 1);
-      speakSegment(index + 1);
+      speakSegment(index + 1, false);
       return;
     }
 
@@ -160,7 +212,14 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
       if (playStateRef.current.isPlaying) {
         const nextIdx = index + 1;
         setCurrentSegmentIndex(nextIdx);
-        speakSegment(nextIdx);
+        
+        // 200ms의 자연스러운 숨쉬기 간격(호흡)을 두고 다음 문장 재생
+        if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
+        pauseTimeoutRef.current = setTimeout(() => {
+          if (playStateRef.current.isPlaying && playStateRef.current.currentIndex === nextIdx) {
+            speakSegment(nextIdx, false);
+          }
+        }, 200);
       }
     };
 
@@ -177,7 +236,7 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
           setSelectedVoice(localKoVoice);
           if (playStateRef.current.isPlaying) {
             setTimeout(() => {
-              speakSegment(index);
+              speakSegment(index, true); // 에러 발생 시 큐 초기화 후 재시도
             }, 100);
           }
           return;
@@ -188,7 +247,13 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
       if (e.error !== "interrupted" && e.error !== "canceled" && playStateRef.current.isPlaying) {
         const nextIdx = index + 1;
         setCurrentSegmentIndex(nextIdx);
-        speakSegment(nextIdx);
+        
+        if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
+        pauseTimeoutRef.current = setTimeout(() => {
+          if (playStateRef.current.isPlaying && playStateRef.current.currentIndex === nextIdx) {
+            speakSegment(nextIdx, false);
+          }
+        }, 200);
       }
     };
 
@@ -198,6 +263,10 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
   // Pause speech synthesis
   const pause = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+      pauseTimeoutRef.current = null;
+    }
     window.speechSynthesis.pause();
     setIsPlaying(false);
   }, []);
@@ -206,10 +275,11 @@ export function useTTS({ segments, onSegmentEnd, onPlaybackFinished }: UseTTSPro
   const play = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-    if (window.speechSynthesis.paused) {
+    if (window.speechSynthesis.paused && window.speechSynthesis.speaking) {
       window.speechSynthesis.resume();
       setIsPlaying(true);
     } else {
+      window.speechSynthesis.cancel();
       setIsPlaying(true);
       speakSegment(currentSegmentIndex);
     }

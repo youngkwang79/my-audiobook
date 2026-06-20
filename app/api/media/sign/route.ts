@@ -24,13 +24,19 @@ export async function POST(req: Request) {
     }
 
     const isCaption = type === "caption";
+    const epNum = Number(episodeId);
 
     // 1. 멤버십 및 소장권(Entitlement) 확인
-    // 먼저 무료 회차인지 확인 (하드코딩된 무료 회차 수)
-    const FREE_PARTS = 8; // 기본 무료 파트
-    const isFree = part <= FREE_PARTS;
+    // 먼저 무료 회차인지 확인 (10화까지 무료)
+    const FREE_EPISODES = 10;
+    const isFree = !isNaN(epNum) && epNum <= FREE_EPISODES;
 
     let isAuthorized = isFree;
+
+    // 11화~20화 구간에서 자막(caption) 파일 요청인 경우 무료 낭독을 위해 서명 허용
+    if (isCaption && !isNaN(epNum) && epNum <= 20) {
+      isAuthorized = true;
+    }
 
     if (!isAuthorized) {
       // 무료가 아니면 인증 및 권한 확인 필요
@@ -80,7 +86,7 @@ export async function POST(req: Request) {
             .eq("episode_id", String(episodeId))
             .maybeSingle();
 
-          const unlockedUntil = ent?.unlocked_until_part || FREE_PARTS;
+          const unlockedUntil = ent?.unlocked_until_part || 8;
           if (part <= unlockedUntil) {
             isAuthorized = true;
           }
@@ -94,7 +100,6 @@ export async function POST(req: Request) {
 
     // 2. 파일 확장자 순차적으로 확인 후 Signed URL 발급
     // 에피소드 폴더명 포맷팅 (예: "001")
-    const epNum = Number(episodeId);
     const folder = isNaN(epNum) ? String(episodeId) : String(epNum).padStart(3, "0");
     const partPadded = String(part).padStart(2, "0");
 
