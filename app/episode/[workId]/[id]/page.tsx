@@ -148,7 +148,7 @@ export default function EpisodePage() {
   const [loadingData, setLoadingData] = useState(true);
 
   const isAdmin = !!user && (
-    user.email === "youngkwang79@gmail.com" || 
+    user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || 
     user.email === "admin@murimbook.com" || 
     user.app_metadata?.role === "admin" || 
     user.user_metadata?.role === "admin"

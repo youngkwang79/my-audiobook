@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insertScoreErr.message }, { status: 500 });
     }
 
-    // 2. 일일 무공수련 태스크 완료 체크 및 코인 지급 (+10 코인)
+    // 2. 일일 무공수련 태스크 완료 체크 및 코인 지급 (+150 코인)
     const d = new Date();
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         .insert({ user_id: user.id, task_id: taskId });
 
       if (!insertTaskErr) {
-        // 코인 지급 (10 코인)
+        // 코인 지급 (150 코인)
         let wallet;
         try {
           wallet = await syncAndGetWallet(user.id, user.created_at);
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
               {
                 user_id: user.id,
                 points: wallet.points,
-                reward_points: current + 10,
+                reward_points: current + 150,
                 updated_at: new Date().toISOString(),
               },
               { onConflict: "user_id" }
@@ -92,13 +92,13 @@ export async function POST(req: Request) {
               .from("point_transactions")
               .insert({
                 user_id: user.id,
-                amount: 10,
+                amount: 150,
                 transaction_type: "reward",
                 description: "일일 무공수련 보상",
               });
 
             earnedMissionReward = true;
-            newRewardPoints = current + 10;
+            newRewardPoints = current + 150;
           }
         } catch (e) {
           console.error("Daily mission wallet update error:", e);

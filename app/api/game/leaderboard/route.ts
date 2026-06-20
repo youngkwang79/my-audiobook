@@ -41,11 +41,11 @@ export async function GET(req: Request) {
     }
 
     // 주간 데이터 유저별 최대값 가공
-    const weeklyUserMax: Record<string, { username: string; score: number }> = {};
+    const weeklyUserMax: Record<string, { user_id: string; username: string; score: number }> = {};
     (weeklyRaw ?? []).forEach((row: any) => {
       const key = row.user_id || row.username;
       if (!weeklyUserMax[key] || row.score > weeklyUserMax[key].score) {
-        weeklyUserMax[key] = { username: row.username, score: row.score };
+        weeklyUserMax[key] = { user_id: row.user_id, username: row.username, score: row.score };
       }
     });
 
@@ -68,11 +68,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: allTimeErr.message }, { status: 500 });
     }
 
-    const allTimeUserMax: Record<string, { username: string; score: number }> = {};
+    const allTimeUserMax: Record<string, { user_id: string; username: string; score: number }> = {};
     (allTimeRaw ?? []).forEach((row: any) => {
       const key = row.user_id || row.username;
       if (!allTimeUserMax[key] || row.score > allTimeUserMax[key].score) {
-        allTimeUserMax[key] = { username: row.username, score: row.score };
+        allTimeUserMax[key] = { user_id: row.user_id, username: row.username, score: row.score };
       }
     });
 

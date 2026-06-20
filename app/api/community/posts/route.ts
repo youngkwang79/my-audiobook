@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       const { data: { user } } = await supabaseAdmin.auth.getUser(token);
       if (user) {
         const userRole = user.app_metadata?.role || user.user_metadata?.role;
-        const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "admin@murimbook.com";
+        const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || user.email === "admin@murimbook.com";
         isAdmin = userRole === "admin" || hasAdminEmail;
 
         const { data: likes } = await supabaseAdmin
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
       // auth.users에서 실제 관리자 계정을 조회하여 유효한 UUID를 확보함으로써 외래키 제약조건 위배를 방지합니다.
       const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
       const adminUser = usersData?.users?.find(
-        (u: any) => u.email === "youngkwang79@gmail.com" || u.email === "admin@murimbook.com"
+        (u: any) => u.email === "youngkwang79@gmail.com" || u.email === "youngkwang7979@gmail.com" || u.email === "admin@murimbook.com"
       );
 
       if (adminUser) {

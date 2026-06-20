@@ -1948,7 +1948,7 @@ export default function MePage() {
             </div>
 
             {/* 관리자 특권 */}
-            {(user?.app_metadata?.role === "admin" || user?.user_metadata?.role === "admin" || user?.email === "youngkwang79@gmail.com" || user?.email === "admin@murimbook.com") && (
+            {(user?.app_metadata?.role === "admin" || user?.user_metadata?.role === "admin" || user?.email === "youngkwang79@gmail.com" || user?.email === "youngkwang7979@gmail.com" || user?.email === "admin@murimbook.com") && (
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <div className="settings-group-title" style={{ color: "#e8356d" }}>관리자 특권</div>
                 <div className="settings-group">

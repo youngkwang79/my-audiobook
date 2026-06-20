@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     // Validate admin
     const userRole = user.app_metadata?.role || user.user_metadata?.role;
-    const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "admin@murimbook.com";
+    const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || user.email === "admin@murimbook.com";
     const isAdmin = userRole === "admin" || hasAdminEmail;
 
     // 1. Annual eligibility (7 days from creation)

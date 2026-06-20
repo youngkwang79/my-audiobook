@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     // Validate admin
     const userRole = user.app_metadata?.role || user.user_metadata?.role;
-    const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "admin@murimbook.com";
+    const hasAdminEmail = user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || user.email === "admin@murimbook.com";
     if (userRole !== "admin" && !hasAdminEmail) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: userId,
           amount: reward,
-          type: "EARN",
+          transaction_type: "reward",
           description: reason || "관리자 보상 지급"
         });
     } catch(e) {} // ignore error if table doesn't exist

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/server/supabaseAdmin";
 
 const ADMIN_EMAILS = [
-  "youngkwang79@gmail.com",
+  "youngkwang79@gmail.com", "youngkwang7979@gmail.com",
 ];
 
 function getUserClient(accessToken: string) {

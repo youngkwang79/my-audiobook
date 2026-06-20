@@ -38,7 +38,7 @@ export default function AdminPage() {
     const checkAdminRole = () => {
       const userRole = user.app_metadata?.role || user.user_metadata?.role;
       const hasAdminEmail =
-        user.email === "youngkwang79@gmail.com" || user.email === "admin@murimbook.com";
+        user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || user.email === "admin@murimbook.com";
       if (userRole === "admin" || hasAdminEmail) {
         setIsAdmin(true);
       } else {

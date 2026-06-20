@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       console.error("auth getUser error:", authError);
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
-if (user.email !== "youngkwang79@gmailcom") {
+if (user.email !== "youngkwang7979@gmail.com") {
   return NextResponse.json({ error: "forbidden" }, { status: 403 });
 }
     const body = await req.json().catch(() => null);

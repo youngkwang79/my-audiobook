@@ -66,7 +66,7 @@ export default function Home() {
   const { user, session, loading } = useAuth();
 
   const isAdmin = !!user && (
-    user.email === "youngkwang79@gmail.com" || 
+    user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || 
     user.email === "admin@murimbook.com" || 
     user.app_metadata?.role === "admin" || 
     user.user_metadata?.role === "admin"
@@ -90,7 +90,11 @@ export default function Home() {
   const [weeklyRankings, setWeeklyRankings] = useState<any[]>([]);
   const [allTimeRankings, setAllTimeRankings] = useState<any[]>([]);
   const [participantsCount, setParticipantsCount] = useState(0);
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [selectedRewardUserId, setSelectedRewardUserId] = useState<string | null>(null);
+  const [selectedRewardUsername, setSelectedRewardUsername] = useState<string>("");
+  const [rewardAmount, setRewardAmount] = useState<string>("100");
+  const [rewardReason, setRewardReason] = useState<string>("무공수련 랭킹 보상");
+  const [isSendingReward, setIsSendingReward] = useState(false);
 
   // 리더보드 로드
   const loadLeaderboard = async (gameId: string) => {
@@ -1618,7 +1622,24 @@ export default function Home() {
                         <span className="rank-num">
                           {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
                         </span>
-                        <span className="rank-username">{rank.username}</span>
+                        <span 
+                          className="rank-username"
+                          style={{
+                            cursor: (isAdmin && rank.user_id) ? "pointer" : "inherit",
+                            textDecoration: (isAdmin && rank.user_id) ? "underline" : "none",
+                            color: (isAdmin && rank.user_id) ? "#ffd700" : "#ffffff",
+                          }}
+                          onClick={() => {
+                            if (isAdmin && rank.user_id) {
+                              setSelectedRewardUserId(rank.user_id);
+                              setSelectedRewardUsername(rank.username);
+                              setRewardAmount("100");
+                              setRewardReason("무공수련 랭킹 보상");
+                            }
+                          }}
+                        >
+                          {rank.username}
+                        </span>
                       </div>
                       <span className="rank-score">{rank.score.toLocaleString()} 점</span>
                     </div>
@@ -1722,6 +1743,167 @@ export default function Home() {
           onClose={() => setActiveLauncherGame(null)}
           onFinished={handleGameFinished}
         />
+      )}
+
+      {/* 관리자 보상 지급 모달 */}
+      {isAdmin && selectedRewardUserId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100000,
+            background: "rgba(0, 0, 0, 0.8)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+          onClick={() => setSelectedRewardUserId(null)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              background: "#1c1c24",
+              border: "1.5px solid rgba(255, 215, 0, 0.3)",
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.6)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#ffffff", textAlign: "center" }}>
+              🎁 관리자 보상 지급
+            </h3>
+            <p style={{ margin: 0, fontSize: 13.5, color: "rgba(255, 255, 255, 0.7)", textAlign: "center" }}>
+              대상 협객: <strong style={{ color: "#ffd700" }}>{selectedRewardUsername}</strong>
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", fontWeight: 700 }}>지급할 코인 수량</label>
+              <input
+                type="number"
+                value={rewardAmount}
+                onChange={(e) => setRewardAmount(e.target.value)}
+                style={{
+                  height: 40,
+                  borderRadius: 10,
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  background: "rgba(0, 0, 0, 0.2)",
+                  color: "#ffffff",
+                  padding: "0 12px",
+                  fontSize: 14,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", fontWeight: 700 }}>지급 사유</label>
+              <input
+                type="text"
+                value={rewardReason}
+                onChange={(e) => setRewardReason(e.target.value)}
+                style={{
+                  height: 40,
+                  borderRadius: 10,
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  background: "rgba(0, 0, 0, 0.2)",
+                  color: "#ffffff",
+                  padding: "0 12px",
+                  fontSize: 14,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button
+                onClick={() => setSelectedRewardUserId(null)}
+                style={{
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.6)",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                취소
+              </button>
+              <button
+                disabled={isSendingReward}
+                onClick={async () => {
+                  const token = session?.access_token;
+                  if (!token) {
+                    alert("로그인 토큰이 만료되었습니다. 다시 로그인해주세요.");
+                    return;
+                  }
+
+                  const amount = Number(rewardAmount);
+                  if (isNaN(amount) || amount <= 0) {
+                    alert("올바른 수량을 입력해주세요.");
+                    return;
+                  }
+
+                  setIsSendingReward(true);
+                  try {
+                    const res = await fetch("/api/admin/grant-reward", {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        userId: selectedRewardUserId,
+                        amount,
+                        reason: rewardReason,
+                      }),
+                    });
+
+                    const data = await res.json().catch(() => null);
+
+                    if (res.ok) {
+                      alert(`🎉 ${selectedRewardUsername} 협객에게 ${amount} 코인을 성공적으로 지급했습니다!`);
+                      setSelectedRewardUserId(null);
+                      if (selectedRewardUserId === user?.id) {
+                        window.dispatchEvent(new Event("wallet-updated"));
+                      }
+                    } else {
+                      alert(`❌ 지급 실패: ${data?.error || "알 수 없는 오류"}`);
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    alert("네트워크 오류가 발생했습니다.");
+                  } finally {
+                    setIsSendingReward(false);
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg, #ffd700 0%, #ff9500 100%)",
+                  color: "#1a1000",
+                  fontWeight: 900,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  opacity: isSendingReward ? 0.6 : 1,
+                }}
+              >
+                {isSendingReward ? "지급 중..." : "지급하기"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 이벤트 팝업 */}

@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     // 관리자 여부 검증
     const isAdmin = 
       user.email === "youngkwang79@naver.com" || 
-      user.email === "youngkwang79@gmail.com" || 
+      user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || 
       user.user_metadata?.role === "admin";
     if (!isAdmin) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     // 관리자 여부 검증
     const isAdmin = 
       user.email === "youngkwang79@naver.com" || 
-      user.email === "youngkwang79@gmail.com" || 
+      user.email === "youngkwang79@gmail.com" || user.email === "youngkwang7979@gmail.com" || 
       user.user_metadata?.role === "admin";
     if (!isAdmin) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
