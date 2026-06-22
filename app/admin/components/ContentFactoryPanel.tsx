@@ -948,15 +948,15 @@ export default function ContentFactoryPanel() {
                     };
 
                     return (
-                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "324px" }}>
+                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "320px" }}>
                         <div
                           id={`card-slide-${card.slide}`}
                           style={{
-                            width: "324px",
-                            height: "576px",
+                            width: "320px",
+                            height: "400px",
                             background: theme.bg,
                             color: theme.text,
-                            padding: "60px 25px 40px 25px",
+                            padding: "45px 20px 30px 20px",
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
