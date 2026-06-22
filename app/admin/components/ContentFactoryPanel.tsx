@@ -407,6 +407,23 @@ export default function ContentFactoryPanel() {
     }
   };
 
+  const downloadAllCards = async () => {
+    const cards = Array.isArray(refactorData?.cardNews)
+      ? refactorData.cardNews
+      : (refactorData?.cardNews?.cards || []);
+    
+    if (cards.length === 0) {
+      alert("다운로드할 카드 데이터가 없습니다.");
+      return;
+    }
+    
+    for (const card of cards) {
+      await downloadCard(card.slide);
+      // 브라우저 동시 다운로드 누락 방지 및 딜레이
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+  };
+
   const getThemeStyles = () => {
     switch(cardTheme) {
       case "beige": return { bg: "#fdf8f5", text: "#4a3b32", point: "#ff6b35" };
@@ -830,6 +847,26 @@ export default function ContentFactoryPanel() {
                     <button onClick={() => setCardTheme("navy")} style={{ padding: "4px 10px", borderRadius: "4px", background: "#0f172a", color: "#fbbf24", border: cardTheme === "navy" ? "2px solid #fbbf24" : "1px solid #333", fontSize: "12px", cursor: "pointer" }}>Navy (비즈니스)</button>
                     <button onClick={() => setCardTheme("beige")} style={{ padding: "4px 10px", borderRadius: "4px", background: "#fdf8f5", color: "#ff6b35", border: cardTheme === "beige" ? "2px solid #ff6b35" : "1px solid #ddd", fontSize: "12px", cursor: "pointer" }}>Beige (감성)</button>
                     <button onClick={() => setCardTheme("white")} style={{ padding: "4px 10px", borderRadius: "4px", background: "#ffffff", color: "#3498db", border: cardTheme === "white" ? "2px solid #3498db" : "1px solid #ddd", fontSize: "12px", cursor: "pointer" }}>White (심플/IT)</button>
+                    
+                    <button 
+                      onClick={downloadAllCards} 
+                      style={{ 
+                        marginLeft: "15px", 
+                        padding: "6px 14px", 
+                        borderRadius: "6px", 
+                        background: "#ff2a5f", 
+                        color: "white", 
+                        border: "none", 
+                        fontSize: "12px", 
+                        fontWeight: "800", 
+                        cursor: "pointer", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "4px" 
+                      }}
+                    >
+                      📥 전체 카드 이미지 다운로드 (일괄)
+                    </button>
                   </div>
                   <span style={{ cursor: "pointer", textDecoration: "underline", fontSize: "12px", opacity: 0.6 }} onClick={() => copyToClipboard(JSON.stringify(refactorData.cardNews, null, 2))}>
                     JSON 소스 보기
@@ -852,6 +889,7 @@ export default function ContentFactoryPanel() {
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "center",
+                            alignItems: card.slide === 1 ? "center" : "stretch",
                             boxSizing: "border-box",
                             position: "relative",
                             overflow: "hidden",
@@ -859,26 +897,36 @@ export default function ContentFactoryPanel() {
                           }}
                         >
                           <div style={{ position: "absolute", top: "20px", left: "20px", background: theme.point, color: theme.bg, padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "800" }}>
-                            {card.slide === 1 ? "💡 핵심 꿀팁" : `Slide 0${card.slide}`}
+                            {card.slide === 1 ? "💡 TITLE" : `Slide 0${card.slide}`}
                           </div>
-                          <h2 style={{ fontSize: "22px", fontWeight: "800", lineHeight: "1.4", wordBreak: "keep-all", marginBottom: "16px", marginTop: "20px" }}>
+                          <h2 style={{ 
+                            fontSize: card.slide === 1 ? "28px" : "20px", 
+                            fontWeight: "900", 
+                            lineHeight: "1.4", 
+                            wordBreak: "keep-all", 
+                            marginBottom: card.slide === 1 ? "0px" : "16px", 
+                            marginTop: card.slide === 1 ? "30px" : "20px",
+                            textAlign: card.slide === 1 ? "center" : "left",
+                            width: "100%"
+                          }}>
                             {card.title}
                           </h2>
-                          <p style={{ fontSize: "15px", lineHeight: "1.5", opacity: 0.9, wordBreak: "keep-all" }}>
-                            {card.body || card.content}
-                          </p>
+                          {(card.body || card.content) && (
+                            <p style={{ 
+                              fontSize: "14px", 
+                              lineHeight: "1.5", 
+                              opacity: 0.9, 
+                              wordBreak: "keep-all",
+                              textAlign: card.slide === 1 ? "center" : "left",
+                              marginTop: "10px"
+                            }}>
+                              {card.body || card.content}
+                            </p>
+                          )}
                           <div style={{ position: "absolute", bottom: "20px", right: "20px", fontSize: "11px", opacity: 0.4, fontWeight: "600" }}>
-                            @content_factory
+                            @murimbook
                           </div>
                         </div>
-                        <button
-                          onClick={() => downloadCard(card.slide)}
-                          style={{
-                            background: "rgba(255,255,255,0.1)", border: "none", color: "white", padding: "10px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "700", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px"
-                          }}
-                        >
-                          ⬇️ 이미지(PNG) 다운로드
-                        </button>
                       </div>
                     )
                   })}
