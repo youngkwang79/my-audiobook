@@ -28,7 +28,7 @@ function runScript(command: string, args: string[]): Promise<string> {
         resolve(stdout);
       } else {
         console.error(`Script failed with code ${code}. Stderr: ${stderr}\nStdout: ${stdout}`);
-        reject(new Error(stderr || stdout || `Exit code: ${code}`));
+        reject(new Error(`ExitCode: ${code} | Stdout: ${stdout.trim()} | Stderr: ${stderr.trim()}`));
       }
     });
   });
@@ -181,9 +181,9 @@ export async function POST(req: Request) {
       
       const sanitizedKeyword = sanitizeKeyword(keyword);
       const scriptPath = path.join(process.cwd(), "content-factory", "scripts", "4_publish_wp.js");
-      const args = ["--dir", sanitizedKeyword];
+      const args = [`--dir=${sanitizedKeyword}`];
       if (title) {
-        args.push("--title", title);
+        args.push(`--title=${title}`);
       }
       
       const outputLog = await runScript("node", [scriptPath, ...args]);
