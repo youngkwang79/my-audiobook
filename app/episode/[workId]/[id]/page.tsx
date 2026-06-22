@@ -59,19 +59,23 @@ function DownloadIcon() {
 async function getAccessToken() {
   if (!supabase) return null;
 
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
+  try {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
 
-  if (error) return null;
-  return session?.access_token ?? null;
+    if (error || !session?.access_token) return null;
+    return session.access_token;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchEntitlement(workId: string, episodeKey: string): Promise<EntitlementPayload> {
   const token = await getAccessToken();
 
-  if (!token) {
+  if (!token || token === "null") {
     return {
       points: 0,
       is_subscribed: false,
@@ -85,19 +89,34 @@ async function fetchEntitlement(workId: string, episodeKey: string): Promise<Ent
     episode_id: episodeKey,
   });
 
-  const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  });
+  try {
+    const res = await fetch(`/api/me/entitlements?${qs.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
 
-  if (!res.ok) {
-    throw new Error("entitlement fetch 실패");
+    if (!res.ok) {
+      return {
+        points: 0,
+        is_subscribed: false,
+        unlocked_until_part: null,
+        episode_unlocked: false,
+      };
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error("fetchEntitlement catch error:", err);
+    return {
+      points: 0,
+      is_subscribed: false,
+      unlocked_until_part: null,
+      episode_unlocked: false,
+    };
   }
-
-  return await res.json();
 }
 
 function formatTime(sec: number) {
@@ -535,8 +554,9 @@ export default function EpisodePage() {
     if (currentEpisode?.is_membership_only) return true; // 멤버십 전용 에피소드 → 멤버십 없으면 무조건 잠김
     if (!currentEpisode) return true;            // 에피소드 정보가 없으면 잠금
     const epNum = parseFloat(String(currentEpisode.id));
-    const isFree = !isNaN(epNum) && epNum <= 10;
-    if (isFree) return false;                   // 10화 이하 무료
+    const freeCount = work?.freeEpisodes ?? 1;
+    const isFree = !isNaN(epNum) && epNum <= freeCount;
+    if (isFree) return false;                   // 무료 설정 화수 이하 무료
     if (episodeUnlocked) return false;           // 코인으로 이미 해제
     return true;
   }, [isAdmin, entBusy, isSubscribed, work, currentEpisode, episodeUnlocked]);
@@ -553,6 +573,11 @@ export default function EpisodePage() {
       setSignedAudioSrc(null);
       try {
         const token = await getAccessToken();
+        if (!token || token === "null") {
+          setIsSigning(false);
+          return;
+        }
+
         const res = await fetch("/api/media/sign", {
           method: "POST",
           headers: {
@@ -568,8 +593,11 @@ export default function EpisodePage() {
             setSignedAudioSrc(data.url);
           }
         } else {
-          const errData = await res.json().catch(() => ({}));
-          console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
+          // 401 Unauthorized 등 에러 시 콘솔에 과도한 로깅 방지 및 상태 처리
+          if (res.status !== 401) {
+            const errData = await res.json().catch(() => ({}));
+            console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
+          }
         }
       } catch (err) {
         console.error("Signed URL 발급 실패:", err);
@@ -788,9 +816,12 @@ export default function EpisodePage() {
     if (currIdx <= 0) return; // 첫 화거나 못 찾았으면 패스
 
     // 이전 화 중 잠겨있고(유료) 아직 해제되지 않은 첫 번째 화 찾기
+    const freeCount = work?.freeEpisodes ?? 1;
     for (let i = 0; i < currIdx; i++) {
       const ep = episodes[i];
-      if (ep.locked) {
+      const epNum = parseFloat(String(ep.id));
+      const epLocked = ep.locked || (!isNaN(epNum) && epNum > freeCount);
+      if (epLocked) {
         const isUnlocked = allEntitlements.some(
           (ent) => String(ent.episode_id) === String(ep.id) && ent.episode_unlocked
         );
@@ -801,7 +832,7 @@ export default function EpisodePage() {
         }
       }
     }
-  }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, workId, isAdmin]);
+  }, [loadingData, entBusy, isSubscribed, episodes, allEntitlements, episodeKey, work, workId, isAdmin]);
 
   // locked 상태 감지 및 자동해제 / 팝업 제어
   useEffect(() => {

@@ -28,9 +28,15 @@ export async function POST(req: Request) {
     const epNum = Number(episodeId);
 
     // 1. 멤버십 및 소장권(Entitlement) 확인
-    // 먼저 무료 회차인지 확인 (10화까지 무료)
-    const FREE_EPISODES = 10;
-    const isFree = !isNaN(epNum) && epNum <= FREE_EPISODES;
+    // 작품 설정 데이터에서 무료 회차 수(free_episodes)를 동적으로 조회합니다.
+    const { data: dbWork } = await supabaseAdmin
+      .from("works")
+      .select("free_episodes")
+      .eq("id", workId)
+      .maybeSingle();
+
+    const freeEpisodesCount = dbWork?.free_episodes ?? 1;
+    const isFree = !isNaN(epNum) && epNum <= freeEpisodesCount;
 
     let isAuthorized = isFree;
 
@@ -73,17 +79,18 @@ export async function POST(req: Request) {
         if (isSubscribed) {
           isAuthorized = true;
         } else {
-          // 단건 소장권 확인
+          // 단건 소장권 확인 (에피소드 전체 해제 여부 포함)
           const { data: ent } = await supabaseAdmin
             .from("entitlements")
-            .select("unlocked_until_part")
+            .select("unlocked_until_part, episode_unlocked")
             .eq("user_id", user.id)
             .eq("work_id", workId)
             .eq("episode_id", String(episodeId))
             .maybeSingle();
 
+          const isUnlocked = ent?.episode_unlocked === true;
           const unlockedUntil = ent?.unlocked_until_part || 0;
-          if (part <= unlockedUntil) {
+          if (isUnlocked || part <= unlockedUntil) {
             isAuthorized = true;
           }
         }
