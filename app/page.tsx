@@ -1906,8 +1906,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* 이벤트 팝업 */}
-      <GrandOpenPopup />
+      {/* 이벤트 팝업 임시 비활성화 (포트원 심사 완료 후 주석 해제) */}
+      {/* <GrandOpenPopup /> */}
 
       {/* 모바일 하단 네비게이션 바 */}
       <BottomNav />

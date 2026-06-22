@@ -134,6 +134,25 @@ function parseSegmentsFromSavedJson(saved: any): Segment[] {
   return [];
 }
 
+function parseSrt(srtText: string): Segment[] {
+  const segments: Segment[] = [];
+  const blocks = srtText.replace(/\r/g, '').trim().split(/\n\n+/);
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    if (lines.length >= 3) {
+      const timeLine = lines[1];
+      const match = timeLine.match(/(\d{2,}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2,}):(\d{2}):(\d{2})[,.](\d{3})/);
+      if (match) {
+        const start = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]) + parseInt(match[4]) / 1000;
+        const end = parseInt(match[5]) * 3600 + parseInt(match[6]) * 60 + parseInt(match[7]) + parseInt(match[8]) / 1000;
+        const text = lines.slice(2).join('\n');
+        segments.push({ start, end, text });
+      }
+    }
+  }
+  return segments;
+}
+
 export default function EpisodePage() {
   const { user, session } = useAuth();
   const params = useParams();
@@ -811,7 +830,7 @@ export default function EpisodePage() {
   useEffect(() => {
     let alive = true;
 
-    async function fetchJsonSafe(url: string) {
+    async function fetchCaptionSafe(url: string) {
       const res = await fetch(url, { cache: "no-store" });
       const text = await res.text();
 
@@ -821,9 +840,9 @@ export default function EpisodePage() {
 
       try {
         const data = JSON.parse(text);
-        return { ok: true as const, status: res.status, data };
+        return { ok: true as const, isJson: true, status: res.status, data, text };
       } catch {
-        return { ok: false as const, status: res.status, text };
+        return { ok: true as const, isJson: false, status: res.status, data: null, text };
       }
     }
 
@@ -863,11 +882,11 @@ export default function EpisodePage() {
         // 실패 시 워커를 호출하도록 아래 로직으로 넘기기 위해 임시 빈 주소
       }
 
-      const r2 = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
+      const r2 = signedCaptionUrl ? await fetchCaptionSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
       if (r2.ok) {
-        const parsed = parseSegmentsFromSavedJson(r2.data);
+        const parsed = r2.isJson ? parseSegmentsFromSavedJson(r2.data) : parseSrt(r2.text);
         setSegments(parsed);
         const current = audioRef.current?.currentTime ?? 0;
         updateCaptionByTime(current);
@@ -888,16 +907,16 @@ export default function EpisodePage() {
         return;
       }
 
-      const r2b = signedCaptionUrl ? await fetchJsonSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
+      const r2b = signedCaptionUrl ? await fetchCaptionSafe(signedCaptionUrl) : { ok: false as const, status: 0, text: "" };
       if (!alive) return;
 
       if (!r2b.ok) {
         const preview = (r2b.text || "").slice(0, 80).replace(/\s+/g, " ");
-        setCaptionStatus(`자막 파일 파싱 실패(R2) ${r2b.status}: ${preview}`);
+        setCaptionStatus(`자막 파일 로드 실패(R2) ${r2b.status}: ${preview}`);
         return;
       }
 
-      const parsed2 = parseSegmentsFromSavedJson(r2b.data);
+      const parsed2 = r2b.isJson ? parseSegmentsFromSavedJson(r2b.data) : parseSrt(r2b.text);
       if (parsed2.length) {
         setSegments(parsed2);
         const current = audioRef.current?.currentTime ?? 0;
