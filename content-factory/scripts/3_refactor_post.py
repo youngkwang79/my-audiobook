@@ -164,13 +164,22 @@ def main():
         "- 2~4번 트윗: 원인 요약 및 핵심 해결책(텍스트나 심플 코드로 쉽게 카피 가능하게).\n"
         "- 마지막 트윗: 상세 내용과 전체 해결 코드는 내 블로그 링크(예: [블로그 링크])에서 확인하라는 아웃링크 CTA.\n"
         "- 각 트윗마다 글자 수 제한(한글 140자 내외)에 걸리지 않도록 핵심만 간결하게 분리할 것.\n"
-        "- 번호(1/, 2/...) 형식으로 표기하라."
+        "- 번호(1/, 2/...) 형식으로 표기하라.\n"
+        "- 중요: 인트로(예: '스레드를 작성해볼게요', '소개합니다' 등), 아웃트로, 구분선(---)을 비롯한 다른 잡설이나 설명은 절대로 적지 마라. 복사해서 바로 트위터에 올릴 수 있는 순수 스레드 내용(1/, 2/...)만 즉시 출력하라."
     )
     print("🐦 X(트위터) 스레드 작성 중...")
     x_thread = call_llm(x_prompt, claude_key, openai_key, gemini_key)
     if x_thread:
+        # 혹시 AI가 잡설을 붙였을 경우를 대비해 스레드 번호 시작 지점부터 잘라내는 후처리
+        clean_thread = x_thread.strip()
+        # "1/" 또는 "1/5" 같은 패턴으로 시작하는 곳 이전의 텍스트가 있다면 제거
+        import re
+        start_match = re.search(r'(1/\d+|1/\s)', clean_thread)
+        if start_match:
+            clean_thread = clean_thread[start_match.start():]
+        
         with open(os.path.join(target_dir, "x_thread.txt"), "w", encoding="utf-8") as f:
-            f.write(x_thread)
+            f.write(clean_thread)
             
     print(f"\n✅ '{args.dir}' 플랫폼 리팩토링 산출물이 모두 저장되었습니다!")
     print(f"📁 대상 폴더: {target_dir}")

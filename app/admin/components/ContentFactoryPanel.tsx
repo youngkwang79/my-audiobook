@@ -426,9 +426,34 @@ export default function ContentFactoryPanel() {
 
   const getThemeStyles = () => {
     switch(cardTheme) {
-      case "beige": return { bg: "#fdf8f5", text: "#4a3b32", point: "#ff6b35" };
-      case "white": return { bg: "#ffffff", text: "#2c3e50", point: "#3498db" };
-      case "navy": default: return { bg: "#0f172a", text: "#f8fafc", point: "#fbbf24" };
+      case "beige": 
+        return { 
+          bg: "linear-gradient(135deg, #fdf8f5 0%, #f7ebe1 100%)", 
+          text: "#4a3b32", 
+          point: "#ff6b35",
+          cardBg: "rgba(255, 255, 255, 0.55)",
+          cardBorder: "rgba(255, 107, 53, 0.15)",
+          sub: "rgba(74, 59, 50, 0.7)"
+        };
+      case "white": 
+        return { 
+          bg: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)", 
+          text: "#0f172a", 
+          point: "#3498db",
+          cardBg: "rgba(241, 245, 249, 0.8)",
+          cardBorder: "rgba(52, 152, 219, 0.15)",
+          sub: "rgba(15, 23, 42, 0.65)"
+        };
+      case "navy": 
+      default: 
+        return { 
+          bg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", 
+          text: "#f8fafc", 
+          point: "#fbbf24",
+          cardBg: "rgba(255, 255, 255, 0.04)",
+          cardBorder: "rgba(255, 255, 255, 0.08)",
+          sub: "rgba(248, 250, 252, 0.65)"
+        };
     }
   };
 
@@ -876,55 +901,158 @@ export default function ContentFactoryPanel() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
                   {(Array.isArray(refactorData.cardNews) ? refactorData.cardNews : (refactorData.cardNews?.cards || [])).map((card: any, idx: number) => {
                     const theme = getThemeStyles();
+                    
+                    // 테마별 고해상도 그래픽 요소 렌더링 함수
+                    const renderThemeDecorations = () => {
+                      if (cardTheme === "navy") {
+                        return (
+                          <>
+                            {/* 오로라 네온 발광 효과 */}
+                            <div style={{ position: "absolute", top: "-80px", right: "-80px", width: "250px", height: "250px", borderRadius: "50%", background: `radial-gradient(circle, ${theme.point}22 0%, ${theme.point}00 70%)`, filter: "blur(60px)", pointerEvents: "none" }} />
+                            <div style={{ position: "absolute", bottom: "-100px", left: "-100px", width: "300px", height: "300px", borderRadius: "50%", background: "radial-gradient(circle, #ff2a5f22 0%, #ff2a5f00 70%)", filter: "blur(70px)", pointerEvents: "none" }} />
+                            {/* 프리미엄 도트 패턴 */}
+                            <div style={{ position: "absolute", inset: 0, opacity: 0.06, backgroundImage: `radial-gradient(${theme.text} 1px, transparent 1px)`, backgroundSize: "20px 20px", pointerEvents: "none" }} />
+                            {/* 백그라운드 거대 따옴표 기호 */}
+                            {card.slide !== 1 && (
+                              <div style={{ position: "absolute", top: "50px", left: "20px", fontSize: "140px", fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.03)", lineHeight: 0, fontWeight: "900", pointerEvents: "none" }}>“</div>
+                            )}
+                          </>
+                        );
+                      } else if (cardTheme === "beige") {
+                        return (
+                          <>
+                            {/* 부드러운 오가닉 쉐이프 */}
+                            <div style={{ position: "absolute", bottom: "-50px", right: "-50px", width: "220px", height: "220px", borderRadius: "40% 60% 70% 30% / 40% 50% 60% 50%", background: `${theme.point}0c`, filter: "blur(30px)", pointerEvents: "none" }} />
+                            <div style={{ position: "absolute", top: "-60px", left: "-60px", width: "180px", height: "180px", borderRadius: "50%", background: `${theme.text}05`, filter: "blur(20px)", pointerEvents: "none" }} />
+                            {/* 슬림 프레임 테두리 */}
+                            <div style={{ position: "absolute", inset: "14px", border: `1px solid ${theme.point}18`, borderRadius: "12px", pointerEvents: "none" }} />
+                            {/* 백그라운드 거대 따옴표 기호 */}
+                            {card.slide !== 1 && (
+                              <div style={{ position: "absolute", top: "50px", left: "20px", fontSize: "140px", fontFamily: "Georgia, serif", color: `${theme.text}04`, lineHeight: 0, fontWeight: "900", pointerEvents: "none" }}>“</div>
+                            )}
+                          </>
+                        );
+                      } else { // white (clean IT)
+                        return (
+                          <>
+                            {/* 모던 인테리어 격자 그리드 */}
+                            <div style={{ position: "absolute", inset: 0, opacity: 0.1, backgroundImage: `linear-gradient(${theme.point}15 1px, transparent 1px), linear-gradient(90deg, ${theme.point}15 1px, transparent 1px)`, backgroundSize: "24px 24px", pointerEvents: "none" }} />
+                            <div style={{ position: "absolute", top: "-70px", right: "-70px", width: "200px", height: "200px", borderRadius: "50%", background: `radial-gradient(circle, ${theme.point}15 0%, ${theme.point}00 70%)`, filter: "blur(40px)", pointerEvents: "none" }} />
+                            {/* 좌측 사이드 포인트 라인 */}
+                            {card.slide !== 1 && (
+                              <div style={{ position: "absolute", left: "20px", top: "100px", bottom: "100px", width: "3px", background: `linear-gradient(to bottom, ${theme.point}, transparent)`, borderRadius: "2px", opacity: 0.4, pointerEvents: "none" }} />
+                            )}
+                          </>
+                        );
+                      }
+                    };
+
                     return (
-                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "320px" }}>
+                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "324px" }}>
                         <div
                           id={`card-slide-${card.slide}`}
                           style={{
-                            width: "320px",
-                            height: "320px",
+                            width: "324px",
+                            height: "576px",
                             background: theme.bg,
                             color: theme.text,
-                            padding: "30px",
+                            padding: "60px 25px 40px 25px",
                             display: "flex",
                             flexDirection: "column",
-                            justifyContent: "center",
-                            alignItems: card.slide === 1 ? "center" : "stretch",
+                            justifyContent: "space-between",
                             boxSizing: "border-box",
                             position: "relative",
                             overflow: "hidden",
                             fontFamily: "'Pretendard', 'Malgun Gothic', sans-serif"
                           }}
                         >
-                          <div style={{ position: "absolute", top: "20px", left: "20px", background: theme.point, color: theme.bg, padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "800" }}>
-                            {card.slide === 1 ? "💡 TITLE" : `Slide 0${card.slide}`}
+                          {/* 테마별 그래픽 요소 */}
+                          {renderThemeDecorations()}
+
+                          {/* Top decorative line */}
+                          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "6px", background: `linear-gradient(90deg, ${theme.point} 0%, #ff2a5f 100%)` }} />
+                          
+                          {/* Slide Indicator Badge */}
+                          <div style={{ position: "absolute", top: "25px", right: "25px", fontSize: "11px", fontWeight: "800", opacity: 0.6, letterSpacing: "1px" }}>
+                            {card.slide === 1 ? "INTRO" : `0${card.slide} / 05`}
                           </div>
-                          <h2 style={{ 
-                            fontSize: card.slide === 1 ? "28px" : "20px", 
-                            fontWeight: "900", 
-                            lineHeight: "1.4", 
-                            wordBreak: "keep-all", 
-                            marginBottom: card.slide === 1 ? "0px" : "16px", 
-                            marginTop: card.slide === 1 ? "30px" : "20px",
-                            textAlign: card.slide === 1 ? "center" : "left",
-                            width: "100%"
-                          }}>
-                            {card.title}
-                          </h2>
-                          {(card.body || card.content) && (
-                            <p style={{ 
-                              fontSize: "14px", 
-                              lineHeight: "1.5", 
-                              opacity: 0.9, 
-                              wordBreak: "keep-all",
-                              textAlign: card.slide === 1 ? "center" : "left",
-                              marginTop: "10px"
+
+                          {/* Top Section */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: card.slide === 1 ? "center" : "flex-start", gap: "10px", marginTop: "10px", zIndex: 2 }}>
+                            <span style={{ 
+                              color: theme.point, 
+                              fontSize: "11px", 
+                              fontWeight: "900", 
+                              textTransform: "uppercase", 
+                              letterSpacing: "2px",
+                              border: `1px solid ${theme.point}`,
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(255,255,255,0.03)"
                             }}>
-                              {card.body || card.content}
-                            </p>
-                          )}
-                          <div style={{ position: "absolute", bottom: "20px", right: "20px", fontSize: "11px", opacity: 0.4, fontWeight: "600" }}>
-                            @murimbook
+                              {card.slide === 1 ? "무림북 꿀팁 정보" : "CHECK POINT"}
+                            </span>
+                          </div>
+
+                          {/* Middle Section (Title & Content) */}
+                          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, gap: "20px", zIndex: 2 }}>
+                            <h2 style={{ 
+                              fontSize: card.slide === 1 ? "32px" : "22px", 
+                              fontWeight: "900", 
+                              lineHeight: "1.35", 
+                              wordBreak: "keep-all", 
+                              textAlign: card.slide === 1 ? "center" : "left",
+                              color: theme.text,
+                              letterSpacing: "-0.5px",
+                              margin: 0
+                            }}>
+                              {card.title}
+                            </h2>
+
+                            {(card.body || card.content) && (
+                              <div style={{
+                                background: theme.cardBg,
+                                border: `1px solid ${theme.cardBorder}`,
+                                borderRadius: "14px",
+                                padding: "20px 18px",
+                                backdropFilter: "blur(12px)",
+                                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.08)"
+                              }}>
+                                <p style={{ 
+                                  fontSize: "14px", 
+                                  lineHeight: "1.6", 
+                                  color: theme.sub, 
+                                  wordBreak: "keep-all",
+                                  margin: 0,
+                                  fontWeight: "500",
+                                  textAlign: "left"
+                                }}>
+                                  {card.body || card.content}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bottom Section */}
+                          <div style={{ 
+                            display: "flex", 
+                            justifyContent: "space-between", 
+                            alignItems: "center",
+                            borderTop: `1px solid ${theme.cardBorder}`,
+                            paddingTop: "15px",
+                            zIndex: 2
+                          }}>
+                            <span style={{ fontSize: "11px", fontWeight: "700", opacity: 0.5 }}>
+                              {card.slide === 1 ? "똑똑한 지출 가이드" : "murimbook.com"}
+                            </span>
+                            <span style={{ fontSize: "11px", fontWeight: "800", color: theme.point, letterSpacing: "0.5px" }}>
+                              @murimbook
+                            </span>
+                          </div>
+
+                          {/* 카드별 하단 게이지(프로그레스) 바 */}
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "4px", background: "rgba(0,0,0,0.06)", zIndex: 3 }}>
+                            <div style={{ width: `${(card.slide / 5) * 100}%`, height: "100%", background: `linear-gradient(90deg, ${theme.point} 0%, #ff2a5f 100%)`, transition: "width 0.3s" }} />
                           </div>
                         </div>
                       </div>
