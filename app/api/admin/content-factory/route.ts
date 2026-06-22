@@ -200,6 +200,81 @@ export async function POST(req: Request) {
       });
     }
 
+    // --- Action: Send to n8n Webhook ---
+    if (action === "n8n") {
+      if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
+      
+      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
+      
+      const postPath = path.join(folderPath, "blog_post.md");
+      const seoPath = path.join(folderPath, "seo_meta.json");
+      const shortsPath = path.join(folderPath, "shorts_script.txt");
+      const cardPath = path.join(folderPath, "card_news.json");
+      const xPath = path.join(folderPath, "x_thread.txt");
+      
+      if (!fs.existsSync(postPath)) {
+        return NextResponse.json({ error: "blog_post_not_generated" }, { status: 400 });
+      }
+      
+      const contentMarkdown = fs.readFileSync(postPath, "utf8");
+      
+      let seoMeta: any = {};
+      if (fs.existsSync(seoPath)) {
+        try {
+          seoMeta = JSON.parse(fs.readFileSync(seoPath, "utf8"));
+        } catch (e) {}
+      }
+      
+      const shorts = fs.existsSync(shortsPath) ? fs.readFileSync(shortsPath, "utf8") : "";
+      const xThread = fs.existsSync(xPath) ? fs.readFileSync(xPath, "utf8") : "";
+      
+      let cardNews = null;
+      if (fs.existsSync(cardPath)) {
+        try {
+          cardNews = JSON.parse(fs.readFileSync(cardPath, "utf8"));
+        } catch (e) {}
+      }
+      
+      const n8nUrl = process.env.N8N_WEBHOOK_URL || "http://localhost:5678/webhook-test/murimbook-blog";
+      
+      console.log(`Sending post data to n8n Webhook: ${n8nUrl}`);
+      
+      const n8nPayload = {
+        keyword: keyword.replace(/_/g, " "),
+        title: title || seoMeta.title || keyword.replace(/_/g, " "),
+        content_markdown: contentMarkdown,
+        meta_description: seoMeta.meta_description || "",
+        slug: seoMeta.slug || sanitizedKeyword.toLowerCase().replace(/_/g, "-"),
+        tags: seoMeta.tags || [],
+        wp_url: process.env.WP_URL || "",
+        wp_username: process.env.WP_ADMIN_USERNAME || "",
+        wp_app_password: process.env.WP_APPLICATION_PASSWORD || "",
+        shorts,
+        cardNews,
+        xThread
+      };
+      
+      try {
+        const n8nRes = await fetch(n8nUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(n8nPayload)
+        });
+        
+        const resText = await n8nRes.text();
+        if (n8nRes.ok) {
+          return NextResponse.json({ success: true, message: "n8n Webhook triggered successfully!", response: resText });
+        } else {
+          return NextResponse.json({ error: "n8n_failed", details: resText, status: n8nRes.status }, { status: 400 });
+        }
+      } catch (err: any) {
+        return NextResponse.json({ error: "n8n_network_error", details: err.message }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({ error: "invalid_action" }, { status: 400 });
   } catch (error: any) {
     console.error("Content Factory API Route Error:", error);

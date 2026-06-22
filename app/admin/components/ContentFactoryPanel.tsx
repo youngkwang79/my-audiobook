@@ -30,6 +30,7 @@ export default function ContentFactoryPanel() {
     postId: string | null;
     editLink: string | null;
   } | null>(null);
+  const [loadingN8n, setLoadingN8n] = useState(false);
 
   const [googleTrends, setGoogleTrends] = useState<any[]>([]);
   const [loadingGoogleTrends, setLoadingGoogleTrends] = useState(false);
@@ -65,7 +66,7 @@ export default function ContentFactoryPanel() {
       tip: "시즌성 공략 & 최신화: 매년 바뀌는 세법을 가장 먼저 업데이트하세요. '돌려받는 숨은 돈 찾기' 뉘앙스가 가장 잘 먹힙니다.",
       subcategories: [
         "연말정산 소득공제 꿀팁", "종합소득세 신고 방법", "월세 세액공제 조건", "개인사업자 부가세 신고", "청년 소득세 감면", 
-        "국세환급금 조회 방법", "부동산 취득세 계산", "양도소득세 면제 조건", "상속세/증여세 절세", "건강보험료 피부양자 자격"
+        "국세환급금 조회 방법", "부동산 취등록세 계산", "양도소득세 면제 조건", "상속세/증여세 절세", "건강보험료 피부양자 자격"
       ]
     },
     {
@@ -384,6 +385,32 @@ export default function ContentFactoryPanel() {
       alert(`에러 발생: ${e.message}`);
     } finally {
       setLoadingPublish(false);
+    }
+  };
+
+  // Action 5: Send to n8n Webhook
+  const handleSendToN8n = async () => {
+    if (!selectedKeyword) return;
+    setLoadingN8n(true);
+
+    try {
+      const token = getAuthToken();
+      const res = await fetch("/api/admin/content-factory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({ action: "n8n", keyword: selectedKeyword, title: suggestedTitle })
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        alert("n8n 자동화 워크플로우 전송 성공! n8n을 확인해 보세요.");
+      } else {
+        alert(`n8n 전송 실패: ${data?.details || data?.error || "unknown"}`);
+      }
+    } finally {
+      setLoadingN8n(false);
     }
   };
 
@@ -717,6 +744,14 @@ export default function ContentFactoryPanel() {
                 disabled={loadingPublish}
               >
                 {loadingPublish ? "워드프레스 배포 중..." : "워드프레스 발행"}
+              </button>
+              <button
+                className="btn-submit"
+                style={{ width: "120px", height: "34px", fontSize: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #5856d6 0%, #4338ca 100%)" }}
+                onClick={handleSendToN8n}
+                disabled={loadingN8n}
+              >
+                {loadingN8n ? "n8n 전송 중..." : "n8n 자동화 전송"}
               </button>
               <button
                 className="btn-submit"
