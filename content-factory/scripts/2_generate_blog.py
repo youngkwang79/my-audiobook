@@ -159,13 +159,19 @@ def main():
     
     print(f"✍️ 키워드 '{args.keyword}'로 고수익 블로그 포스트 생성을 시작합니다...")
     
+    raw_response = None
     if anthropic_key:
-        print("🤖 Anthropic Claude (claude-3.5-sonnet) 모델로 생성을 시도합니다...")
+        print("🤖 Anthropic Claude (claude-3-5-sonnet-20240620) 모델로 생성을 시도합니다...")
         raw_response = generate_with_claude(system_prompt, user_prompt, anthropic_key)
-    else:
-        print("🤖 Google Gemini SDK (gemini-2.5-flash) 모델로 생성을 시도합니다...")
-        raw_response = generate_with_gemini_sdk(system_prompt, user_prompt, google_key)
         
+    if not raw_response:
+        if google_key:
+            print("⚠️ Claude API 호출 실패 또는 키 없음. 🤖 Google Gemini SDK (gemini-2.5-flash) 우회 모델로 생성을 시도합니다...")
+            raw_response = generate_with_gemini_sdk(system_prompt, user_prompt, google_key)
+        else:
+            print("❌ 콘텐츠 생성에 최종 실패했습니다. Claude API 호출에 실패했으며 구글 API 키도 지정되지 않았습니다.")
+            sys.exit(1)
+            
     if not raw_response:
         print("❌ 콘텐츠 생성에 최종 실패했습니다. API 키나 크레딧 상태를 점검하세요.")
         sys.exit(1)
