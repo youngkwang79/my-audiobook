@@ -60,7 +60,7 @@ def generate_with_claude(system_prompt, user_prompt, api_key):
     }
     
     data = {
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-3-5-sonnet-20240620",
         "max_tokens": 8192,
         "system": system_prompt,
         "messages": [

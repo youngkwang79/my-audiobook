@@ -32,7 +32,7 @@ def call_llm(prompt, claude_key, openai_key, gemini_key):
             "content-type": "application/json"
         }
         payload = {
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-3-5-sonnet-20240620",
             "max_tokens": 3000,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.3
