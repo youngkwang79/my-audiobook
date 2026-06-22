@@ -837,7 +837,7 @@ export default function ContentFactoryPanel() {
                 </div>
                 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                  {refactorData.cardNews.map((card: any, idx: number) => {
+                  {(Array.isArray(refactorData.cardNews) ? refactorData.cardNews : (refactorData.cardNews?.cards || [])).map((card: any, idx: number) => {
                     const theme = getThemeStyles();
                     return (
                       <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "320px" }}>
@@ -865,7 +865,7 @@ export default function ContentFactoryPanel() {
                             {card.title}
                           </h2>
                           <p style={{ fontSize: "15px", lineHeight: "1.5", opacity: 0.9, wordBreak: "keep-all" }}>
-                            {card.body}
+                            {card.body || card.content}
                           </p>
                           <div style={{ position: "absolute", bottom: "20px", right: "20px", fontSize: "11px", opacity: 0.4, fontWeight: "600" }}>
                             @content_factory
