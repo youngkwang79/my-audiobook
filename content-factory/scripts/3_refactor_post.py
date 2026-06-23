@@ -24,6 +24,20 @@ def load_env():
             break
 
 def call_llm(prompt, claude_key, openai_key, gemini_key):
+    if gemini_key:
+        try:
+            client = genai.Client(api_key=gemini_key)
+            config = types.GenerateContentConfig(temperature=0.3)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config=config
+            )
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            print(f"Gemini API 호출 실패: {e}")
+
     if claude_key:
         url = "https://api.anthropic.com/v1/messages"
         headers = {
@@ -61,20 +75,6 @@ def call_llm(prompt, claude_key, openai_key, gemini_key):
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             print(f"OpenAI API 호출 실패: {e}")
-
-    if gemini_key:
-        try:
-            client = genai.Client(api_key=gemini_key)
-            config = types.GenerateContentConfig(temperature=0.3)
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-                config=config
-            )
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            print(f"Gemini API 호출 실패: {e}")
 
     return None
 
@@ -163,7 +163,7 @@ def main():
         "- 1번 트윗: 클릭을 누르게 만드는 고통 공감/흥미 유발 오프닝.\n"
         "- 2~4번 트윗: 원인 요약 및 핵심 해결책(텍스트나 심플 코드로 쉽게 카피 가능하게).\n"
         "- 마지막 트윗 형식: 본문 요약 내용 바로 아랫줄에 글 주제와 밀접하게 연관된 대표 해시태그 5개를 배치하고(예: #태그1 #태그2 #태그3 #태그4 #태그5), 그 바로 아랫줄에 블로그 주소인 blog.murimbook.com 을 아웃링크 CTA로 명확히 기재하라. (예: 해시태그 적고 한 줄 아래에 주소만 단독 표기)\n"
-        "- 각 트윗(포스트)마다 글자 수 제한(한글 500자 내외)을 절대 넘지 않도록 500자 이하로 확실히 맞추어 핵심을 조화롭게 분리할 것.\n"
+        "- 각 트윗(포스트)은 트위터의 기본 한글 글자 수 제한인 140자 이내로 매우 짧고 임팩트 있게 작성하며, 스레드 전체의 글자 수 총합이 400자 내외가 되도록 핵심만 초압축할 것.\n"
         "- 말투: 광고처럼 딱딱하게 쓰지 말고, 친한 친구나 지인에게 메신저로 꿀팁을 알려주듯이 아주 편안하고 친근한 말투(반말이나 해요체 혼용)를 사용하라. (예: '이거 모르면 진짜 손해임ㅋㅋ', '내가 꿀팁 하나 알려줄게!')\n"
         "- 스레드 구분: 딱딱한 '1/', '2/' 대신에 각 트윗을 빈 줄 2개(\\n\\n)로 확실히 구분하라. 이모지를 적절히 섞어 써도 좋다.\n"
         "- 중요: 인트로(예: '스레드를 작성해볼게요', '소개합니다' 등), 아웃트로, 구분선(---)을 비롯한 다른 잡설이나 설명은 절대로 적지 마라. 복사해서 바로 트위터에 올릴 수 있는 순수 스레드 내용만 즉시 출력하라."

@@ -169,6 +169,9 @@ export default function TopBar() {
           </button>
         ) : !user ? (
           <>
+            <button onClick={() => window.open("https://blog.murimbook.com", "_blank")} style={smallGoldStyle}>
+              블로그
+            </button>
             <button onClick={() => router.push("/points")} style={smallGoldStyle}>
               코인 상품
             </button>
@@ -184,6 +187,9 @@ export default function TopBar() {
           </>
         ) : (
           <>
+            <button onClick={() => window.open("https://blog.murimbook.com", "_blank")} style={smallGoldStyle}>
+              블로그
+            </button>
             <button onClick={() => router.push("/points")} style={smallGoldStyle}>
               코인 상품
             </button>

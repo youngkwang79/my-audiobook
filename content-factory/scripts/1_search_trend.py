@@ -77,6 +77,7 @@ def fetch_perplexity_trends(query):
         "temperature": 0.2
     }
     
+    response = None
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
@@ -89,12 +90,78 @@ def fetch_perplexity_trends(query):
         elif content.startswith("```"):
             content = content.split("```")[1].split("```")[0].strip()
             
-        return json.loads(content)
+        try:
+            return json.loads(content)
+        except Exception as je:
+            print(f"[⚠️] Perplexity 결과를 JSON으로 파싱하는데 실패했습니다. Gemini를 통해 자동 강제 복구를 진행합니다. 에러: {je}")
+            google_key = os.environ.get("GOOGLE_PAID_API_KEY") or os.environ.get("GOOGLE_OPENAI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            recovered = format_with_gemini(content, google_key)
+            if recovered:
+                return recovered
+            raise je
     except Exception as e:
         print(f"Perplexity API 호출 실패: {e}")
-        if 'response' in locals() and response:
+        if response:
             print("Response:", response.text)
         sys.exit(1)
+
+def format_with_gemini(raw_text, api_key):
+    if not api_key:
+        return None
+    try:
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=api_key)
+        
+        prompt = (
+            "다음 텍스트를 분석하여 아래 요구되는 JSON 포맷으로 반드시 파싱/변환하여 출력해줘. 다른 텍스트 설명 없이 순수 JSON만 반환해.\n\n"
+            f"[원본 텍스트]:\n{raw_text}\n\n"
+            "JSON 구조:\n"
+            "{\n"
+            "  \"trends\": [\n"
+            "    {\n"
+            "      \"keyword\": \"Adsense-optimized keyword combination (WordPress version)\",\n"
+            "      \"intent\": \"informational / transactional\",\n"
+            "      \"search_intent_description\": \"Detailed explanation of search intent\",\n"
+            "      \"content_gap_reason\": \"Why existing results need optimization\",\n"
+            "      \"suggested_title\": \"A highly clickable, emotionally hooky title in Korean\",\n"
+            "      \"combo_type\": \"wordpress\",\n"
+            "      \"top_rank_post_summary\": \"Detailed summary of the #1 ranking post's content, structure, key numeric facts, and logical flow that we will rewrite/spin.\"\n"
+            "    },\n"
+            "    {\n"
+            "      \"keyword\": \"A different Adsense-optimized keyword combination (Blogger version)\",\n"
+            "      \"intent\": \"informational / transactional\",\n"
+            "      \"search_intent_description\": \"Detailed explanation of search intent\",\n"
+            "      \"content_gap_reason\": \"Why existing results need optimization\",\n"
+            "      \"suggested_title\": \"A different highly clickable title in Korean\",\n"
+            "      \"combo_type\": \"blogger\",\n"
+            "      \"top_rank_post_summary\": \"Detailed summary of the #1 ranking post's content, structure, key numeric facts, and logical flow for this second keyword combination.\"\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
+        
+        config = types.GenerateContentConfig(
+            temperature=0.2,
+            response_mime_type="application/json"
+        )
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=config
+        )
+        
+        if response and response.text:
+            cleaned = response.text.strip()
+            if cleaned.startswith("```json"):
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
+            return json.loads(cleaned)
+    except Exception as ge:
+        print(f"Gemini를 통한 JSON 강제 복구 실패: {ge}")
+    return None
 
 def main():
     parser = argparse.ArgumentParser(description="Perplexity API 활용 롱테일 트렌드 분석")

@@ -36,6 +36,8 @@ export default function LayoutFooter() {
         |{" "}
         <a href="/terms" style={{ color: "inherit", textDecoration: "none" }}>이용약관</a>{" "}
         |{" "}
+        <a href="https://blog.murimbook.com" target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "none" }}>블로그</a>{" "}
+        |{" "}
         <a href="/contact" style={{ color: "inherit", textDecoration: "none" }}>문의</a>{" "}
         |{" "}
         <a href="/about" style={{ color: "inherit", textDecoration: "none" }}>사이트소개</a>{" "}

@@ -108,7 +108,7 @@ export async function POST(req: Request) {
 
     // 2. Payload 파싱
     const body = await req.json().catch(() => ({}));
-    const { action, query, keyword, title, extraFact, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown, bloggerPost, bloggerThumbnailBase64, bloggerContentImageBase64 } = body;
+    const { action, query, keyword, title, extraFact, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown, bloggerPost, bloggerThumbnailBase64, bloggerContentImageBase64, topRankPostSummary } = body;
 
     if (!action) {
       return NextResponse.json({ error: "missing_action" }, { status: 400 });
@@ -157,6 +157,9 @@ export async function POST(req: Request) {
       }
       if (extraFact) {
         args.push("--extra_fact", extraFact);
+      }
+      if (topRankPostSummary) {
+        args.push("--top_rank_post_summary", topRankPostSummary);
       }
       
       await runScript("python", [scriptPath, ...args]);
@@ -515,6 +518,62 @@ export async function POST(req: Request) {
         }
       }
 
+      // 릴스 동영상 파일 호스팅을 위해 워드프레스 미디어에 업로드
+      const videoUrlPath = path.join(folderPath, "reels_shorts_url.txt");
+      let hostedVideoUrl = "";
+
+      if (fs.existsSync(videoPath)) {
+        if (fs.existsSync(videoUrlPath)) {
+          hostedVideoUrl = fs.readFileSync(videoUrlPath, "utf8").trim();
+        } else {
+          try {
+            console.log("🎥 릴스 비디오 발견! 워드프레스 미디어에 호스팅용 업로드 진행...");
+            const videoBuffer = fs.readFileSync(videoPath);
+            const wpUrl = process.env.WP_URL;
+            const username = process.env.WP_ADMIN_USERNAME;
+            const appPassword = process.env.WP_APPLICATION_PASSWORD;
+            
+            if (wpUrl && username && appPassword) {
+              const uploadUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/media`;
+              const safeFileName = `${sanitizedKeyword}_reels.mp4`;
+              const authString = Buffer.from(`${username}:${appPassword}`).toString('base64');
+              
+              const res = await fetch(uploadUrl, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Basic ${authString}`,
+                  "Content-Disposition": `attachment; filename=${safeFileName}`,
+                  "Content-Type": "video/mp4"
+                },
+                body: videoBuffer
+              });
+
+              if (res.status === 201) {
+                const data = await res.json();
+                hostedVideoUrl = data.source_url;
+                fs.writeFileSync(videoUrlPath, hostedVideoUrl, "utf8");
+                console.log(`[✔] 릴스 비디오 업로드 성공: ${hostedVideoUrl}`);
+              } else {
+                console.error("WP video upload fail status:", res.status);
+              }
+            }
+          } catch (e: any) {
+            console.error("WP video upload error:", e.message);
+          }
+        }
+      }
+
+      // 4.2 호스팅 완료된 이미지 URL 파일 읽기
+      const bloggerThumbUrlPath = path.join(folderPath, "custom_blogger_thumbnail_url.txt");
+      const bloggerContentUrlPath = path.join(folderPath, "custom_blogger_content_image_url.txt");
+      const wpThumbUrlPath = path.join(folderPath, "custom_thumbnail_url.txt");
+      const wpContentUrlPath = path.join(folderPath, "custom_content_image_url.txt");
+
+      const bloggerThumbnailUrl = fs.existsSync(bloggerThumbUrlPath) ? fs.readFileSync(bloggerThumbUrlPath, "utf8").trim() : null;
+      const bloggerContentImageUrl = fs.existsSync(bloggerContentUrlPath) ? fs.readFileSync(bloggerContentUrlPath, "utf8").trim() : null;
+      const wpThumbnailUrl = fs.existsSync(wpThumbUrlPath) ? fs.readFileSync(wpThumbUrlPath, "utf8").trim() : null;
+      const wpContentImageUrl = fs.existsSync(wpContentUrlPath) ? fs.readFileSync(wpContentUrlPath, "utf8").trim() : null;
+
       const n8nPayload = {
         keyword: keyword.replace(/_/g, " "),
         title: title || seoMeta.title || keyword.replace(/_/g, " "),
@@ -531,7 +590,12 @@ export async function POST(req: Request) {
         bloggerPost: formattedBloggerPost,
         snsCaption,
         video_path: fs.existsSync(videoPath) ? videoPath : null,
-        card_image_paths: cardImagePaths
+        reels_video_url: hostedVideoUrl || null,
+        card_image_paths: cardImagePaths,
+        blogger_thumbnail_url: bloggerThumbnailUrl || wpThumbnailUrl,
+        blogger_content_image_url: bloggerContentImageUrl || wpContentImageUrl,
+        wp_thumbnail_url: wpThumbnailUrl,
+        wp_content_image_url: wpContentImageUrl
       };
       
       try {

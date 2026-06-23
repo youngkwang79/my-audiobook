@@ -127,6 +127,7 @@ def main():
     parser.add_argument("--keyword", type=str, required=True, help="작성하고자 하는 핵심 롱테일 키워드")
     parser.add_argument("--title", type=str, required=False, help="추천 제목 (옵션)")
     parser.add_argument("--extra_fact", type=str, required=False, help="작성 시 참고해야 할 구체적인 팩트 수치나 타겟 URL (옵션)")
+    parser.add_argument("--top_rank_post_summary", type=str, required=False, help="참고 및 가공할 최상단 노출 블로그 글의 본문/요약본 (옵션)")
     args = parser.parse_args()
     
     load_env()
@@ -150,9 +151,17 @@ def main():
     
     extra_fact_text = f"\n\n[🔥 CRITICAL FACT / TARGET URL TO INCLUDE]:\n{args.extra_fact}\nIMPORTANT: You must base your writing on the above fact or URL primarily." if args.extra_fact else ""
     
+    spin_reference = ""
+    if args.top_rank_post_summary:
+        spin_reference = (
+            f"\n\n[상위 노출 블로그 글 참고 자료 (구조 및 핵심 내용)]:\n{args.top_rank_post_summary}\n"
+            f"CRITICAL: 상기 노출 중인 최상단 글의 논리 구조, 소주제 흐름, 그리고 핵심 팩트 정보를 철저히 참고하여 작성하십시오. "
+            f"단, 검색 엔진의 유사 문서 판정을 피하기 위해 문장 구조와 단어 선택을 100% 새롭게 재작성(Spin/Rewrite)해야 하며, 똑같은 문장이 하나도 없어야 합니다."
+        )
+        
     user_prompt = (
         f"[Target Keyword]: {args.keyword}\n"
-        f"[Suggested Title]: {title}{extra_fact_text}\n\n"
+        f"[Suggested Title]: {title}{extra_fact_text}{spin_reference}\n\n"
         f"[Existing Posts for Internal Linking Reference]:\n{existing_posts_str}\n\n"
         f"Please write a highly relevant post in Korean. If you find keywords from the 'Existing Posts' list naturally in your content, wrap them with anchor links like: [Keyword](Existing Post URL)."
     )
@@ -160,16 +169,20 @@ def main():
     print(f"✍️ 키워드 '{args.keyword}'로 고수익 블로그 포스트 생성을 시작합니다...")
     
     raw_response = None
-    if anthropic_key:
-        print("🤖 Anthropic Claude (claude-3-5-sonnet-20240620) 모델로 생성을 시도합니다...")
-        raw_response = generate_with_claude(system_prompt, user_prompt, anthropic_key)
+    # 클로드 임시 비활성화 (제미나이 2.5 플래시 바로 사용)
+    # if anthropic_key:
+    #     print("🤖 Anthropic Claude (claude-3-5-sonnet-20240620) 모델로 생성을 시도합니다...")
+    #     raw_response = generate_with_claude(system_prompt, user_prompt, anthropic_key)
         
     if not raw_response:
         if google_key:
-            print("⚠️ Claude API 호출 실패 또는 키 없음. 🤖 Google Gemini SDK (gemini-2.5-flash) 우회 모델로 생성을 시도합니다...")
+            print("🤖 Google Gemini SDK (gemini-2.5-flash) 모델로 생성을 시작합니다...")
             raw_response = generate_with_gemini_sdk(system_prompt, user_prompt, google_key)
+        elif anthropic_key:
+            print("🤖 Anthropic Claude (claude-3-5-sonnet-20240620) 모델로 생성을 시도합니다...")
+            raw_response = generate_with_claude(system_prompt, user_prompt, anthropic_key)
         else:
-            print("❌ 콘텐츠 생성에 최종 실패했습니다. Claude API 호출에 실패했으며 구글 API 키도 지정되지 않았습니다.")
+            print("❌ 콘텐츠 생성에 최종 실패했습니다. API 키가 지정되지 않았습니다.")
             sys.exit(1)
             
     if not raw_response:

@@ -11,7 +11,9 @@ export default function ContentFactoryPanel() {
   const [suggestedTitle, setSuggestedTitle] = useState("");
   const [extraFact, setExtraFact] = useState("");
   const [loadingGenerate, setLoadingGenerate] = useState(false);
-  const [generatedMarkdown, setGeneratedMarkdown] = useState("");
+  const [wpMarkdown, setWpMarkdown] = useState("");
+  const [bloggerMarkdown, setBloggerMarkdown] = useState("");
+  const [activePreviewTab, setActivePreviewTab] = useState<"wp" | "blogger">("wp");
   const [selectedMainTheme, setSelectedMainTheme] = useState(0);
 
   // SNS Refactoring states
@@ -151,9 +153,7 @@ export default function ContentFactoryPanel() {
         "트래블로그 카드 환전", "비짓재팬웹 등록", "여권 발급 준비물", "제주도 렌트카 비교", "공항 라운지 무료 카드"
       ]
     }
-  ];
-
-  // 🔄 세션 데이터 복원 이펙트 (최초 1회 실행)
+  ];  // 🔄 세션 데이터 복원 이펙트 (최초 1회 실행)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedQuery = localStorage.getItem("cf_query") || "";
@@ -161,7 +161,9 @@ export default function ContentFactoryPanel() {
       const savedSelectedKeyword = localStorage.getItem("cf_selectedKeyword");
       const savedSuggestedTitle = localStorage.getItem("cf_suggestedTitle") || "";
       const savedExtraFact = localStorage.getItem("cf_extraFact") || "";
-      const savedGeneratedMarkdown = localStorage.getItem("cf_generatedMarkdown") || "";
+      const savedWpMarkdown = localStorage.getItem("cf_wpMarkdown") || "";
+      const savedBloggerMarkdown = localStorage.getItem("cf_bloggerMarkdown") || "";
+      const savedPreviewTab = localStorage.getItem("cf_activePreviewTab") as "wp" | "blogger" || "wp";
       const savedRefactorData = localStorage.getItem("cf_refactorData");
       const savedWpThumb = localStorage.getItem("cf_wpThumbnailBase64");
       const savedWpContent = localStorage.getItem("cf_wpContentImageBase64");
@@ -173,7 +175,9 @@ export default function ContentFactoryPanel() {
       if (savedSelectedKeyword) setSelectedKeyword(savedSelectedKeyword);
       if (savedSuggestedTitle) setSuggestedTitle(savedSuggestedTitle);
       if (savedExtraFact) setExtraFact(savedExtraFact);
-      if (savedGeneratedMarkdown) setGeneratedMarkdown(savedGeneratedMarkdown);
+      if (savedWpMarkdown) setWpMarkdown(savedWpMarkdown);
+      if (savedBloggerMarkdown) setBloggerMarkdown(savedBloggerMarkdown);
+      if (savedPreviewTab) setActivePreviewTab(savedPreviewTab);
       if (savedRefactorData) setRefactorData(JSON.parse(savedRefactorData));
       if (savedWpThumb) setWpThumbnailBase64(savedWpThumb);
       if (savedWpContent) setWpContentImageBase64(savedWpContent);
@@ -204,16 +208,20 @@ export default function ContentFactoryPanel() {
       setTrends([]);
       setSelectedKeyword(null);
       setSuggestedTitle("");
-      setGeneratedMarkdown("");
+      setWpMarkdown("");
+      setBloggerMarkdown("");
+      setActivePreviewTab("wp");
       setExtraFact("");
       setRefactorData(null);
       setPublishResult(null);
       setCustomCardCoverBase64(null);
 
-      const keys = ["cf_query", "cf_trends", "cf_selectedKeyword", "cf_suggestedTitle", "cf_extraFact", "cf_generatedMarkdown", "cf_refactorData", "cf_customCardCoverBase64"];
+      const keys = ["cf_query", "cf_trends", "cf_selectedKeyword", "cf_suggestedTitle", "cf_extraFact", "cf_wpMarkdown", "cf_bloggerMarkdown", "cf_activePreviewTab", "cf_refactorData", "cf_customCardCoverBase64"];
       keys.forEach(k => localStorage.removeItem(k));
     }
   };
+
+
 
   // Helper: Get Auth Token
   const getAuthToken = () => {
@@ -264,7 +272,8 @@ export default function ContentFactoryPanel() {
     if (!searchQuery.trim()) return;
     setLoadingSearch(true);
     setTrends([]);
-    setGeneratedMarkdown("");
+    setWpMarkdown("");
+    setBloggerMarkdown("");
     setSelectedKeyword(null);
     setSuggestedTitle("");
     setRefactorData(null);
@@ -275,7 +284,8 @@ export default function ContentFactoryPanel() {
     saveStateToLocalStorage("cf_trends", null);
     saveStateToLocalStorage("cf_selectedKeyword", null);
     saveStateToLocalStorage("cf_suggestedTitle", null);
-    saveStateToLocalStorage("cf_generatedMarkdown", null);
+    saveStateToLocalStorage("cf_wpMarkdown", null);
+    saveStateToLocalStorage("cf_bloggerMarkdown", null);
     saveStateToLocalStorage("cf_refactorData", null);
 
     try {
@@ -311,17 +321,22 @@ export default function ContentFactoryPanel() {
   };
 
   // Action 2: Generate Blog
-  const handleGenerate = async (keyword: string, titleSuggestion: string) => {
+  const handleGenerate = async (keyword: string, titleSuggestion: string, topRankPostSummary?: string, comboType: "wordpress" | "blogger" = "wordpress") => {
     setSelectedKeyword(keyword);
     setSuggestedTitle(titleSuggestion);
     setLoadingGenerate(true);
-    setGeneratedMarkdown("");
+    if (comboType === "wordpress") {
+      setWpMarkdown("");
+      saveStateToLocalStorage("cf_wpMarkdown", null);
+    } else {
+      setBloggerMarkdown("");
+      saveStateToLocalStorage("cf_bloggerMarkdown", null);
+    }
     setRefactorData(null);
     setPublishResult(null);
 
     saveStateToLocalStorage("cf_selectedKeyword", keyword);
     saveStateToLocalStorage("cf_suggestedTitle", titleSuggestion);
-    saveStateToLocalStorage("cf_generatedMarkdown", null);
     saveStateToLocalStorage("cf_refactorData", null);
 
     try {
@@ -332,7 +347,7 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "generate", keyword, title: titleSuggestion, extraFact })
+        body: JSON.stringify({ action: "generate", keyword, title: titleSuggestion, extraFact, topRankPostSummary })
       });
       
       const text = await res.text();
@@ -344,8 +359,17 @@ export default function ContentFactoryPanel() {
       }
 
       if (res.ok && data?.markdown) {
-        setGeneratedMarkdown(data.markdown);
-        saveStateToLocalStorage("cf_generatedMarkdown", data.markdown);
+        if (comboType === "wordpress") {
+          setWpMarkdown(data.markdown);
+          saveStateToLocalStorage("cf_wpMarkdown", data.markdown);
+          setActivePreviewTab("wp");
+          saveStateToLocalStorage("cf_activePreviewTab", "wp");
+        } else {
+          setBloggerMarkdown(data.markdown);
+          saveStateToLocalStorage("cf_bloggerMarkdown", data.markdown);
+          setActivePreviewTab("blogger");
+          saveStateToLocalStorage("cf_activePreviewTab", "blogger");
+        }
       } else {
         alert(`블로그 작성 실패: ${data?.error || "unknown"}\n상세: ${data?.details || ""}`);
       }
@@ -408,7 +432,7 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "publish", keyword: selectedKeyword, title: suggestedTitle, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown })
+        body: JSON.stringify({ action: "publish", keyword: selectedKeyword, title: suggestedTitle, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown: wpMarkdown })
       });
       const data = await res.json();
       if (res.ok && data?.success) {
@@ -720,34 +744,66 @@ export default function ContentFactoryPanel() {
           </div>
           
           {googleTrends.length > 0 ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {googleTrends.map((t, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => {
-                    setQuery(t.keyword);
-                    saveStateToLocalStorage("cf_query", t.keyword);
-                    handleSearch(t.keyword); // 클릭 즉시 실시간 분석 검색 실행
-                  }}
-                  style={{
-                    background: "rgba(255, 215, 0, 0.05)",
-                    border: "1px solid rgba(255, 215, 0, 0.15)",
-                    borderRadius: "20px",
-                    padding: "6px 12px",
-                    fontSize: "12px",
-                    color: "#ffd700",
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                  onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255, 215, 0, 0.15)")}
-                  onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255, 215, 0, 0.05)")}
-                >
-                  #{t.keyword} <span style={{ opacity: 0.5, fontSize: "10px" }}>({t.traffic})</span>
-                </div>
-              ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px", marginTop: "10px" }}>
+              {googleTrends.map((t, idx) => {
+                const isHigh = t.profit_rating === "High";
+                const isMed = t.profit_rating === "Medium";
+                const badgeBg = isHigh ? "rgba(255, 69, 58, 0.15)" : isMed ? "rgba(255, 159, 10, 0.15)" : "rgba(142, 142, 147, 0.15)";
+                const badgeBorder = isHigh ? "#ff453a" : isMed ? "#ff9f0a" : "#8e8e93";
+                const badgeText = isHigh ? "🔥 고수익 추천" : isMed ? "⚡ 일반 트래픽" : "❄️ 낮은 수익성";
+                const badgeColor = isHigh ? "#ff453a" : isMed ? "#ff9f0a" : "#8e8e93";
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setQuery(t.keyword);
+                      saveStateToLocalStorage("cf_query", t.keyword);
+                      handleSearch(t.keyword);
+                    }}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.02)",
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                      borderRadius: "10px",
+                      padding: "12px",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px"
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                      e.currentTarget.style.borderColor = "rgba(255, 215, 0, 0.3)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "14px", fontWeight: "800", color: "#ffd700" }}>#{t.keyword}</span>
+                      <span style={{ fontSize: "10px", background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor, padding: "2px 6px", borderRadius: "20px", fontWeight: "bold" }}>
+                        {badgeText}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "11px", opacity: 0.5 }}>검색 트래픽: {t.traffic}</div>
+                    {t.profit_reason && (
+                      <div style={{ fontSize: "11px", color: "#eaeaea" }}>
+                        <strong>이유:</strong> {t.profit_reason}
+                      </div>
+                    )}
+                    {t.monetization_angle && (
+                      <div style={{ fontSize: "11px", color: "#a1a1a6", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "6px" }}>
+                        <strong>추천 기획:</strong> {t.monetization_angle}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <p style={{ fontSize: "12px", opacity: 0.5 }}>우측 갱신 버튼을 눌러 실시간 화두를 확인해 보세요!</p>
+            <p style={{ fontSize: "12px", opacity: 0.5, marginTop: "10px" }}>우측 갱신 버튼을 눌러 실시간 화두를 확인해 보세요!</p>
           )}
         </div>
       </div>
@@ -779,8 +835,8 @@ export default function ContentFactoryPanel() {
               <div
                 key={idx}
                 style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  background: item.combo_type === "wordpress" ? "rgba(48, 209, 88, 0.03)" : "rgba(88, 86, 214, 0.03)",
+                  border: `1px solid ${item.combo_type === "wordpress" ? "rgba(48, 209, 88, 0.15)" : "rgba(88, 86, 214, 0.15)"}`,
                   borderRadius: "12px",
                   padding: "16px",
                   display: "flex",
@@ -790,18 +846,37 @@ export default function ContentFactoryPanel() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
                   <div>
-                    <span style={{ fontSize: "15px", fontWeight: "800", color: "#ffd700" }}>{item.keyword}</span>
+                    <span style={{
+                      fontSize: "10px",
+                      background: item.combo_type === "wordpress" ? "#30d158" : "#5856d6",
+                      color: "white",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      marginRight: "8px",
+                      fontWeight: "bold",
+                      textTransform: "uppercase",
+                      verticalAlign: "middle"
+                    }}>
+                      {item.combo_type === "wordpress" ? "WP용 조합" : "Blogger용 조합"}
+                    </span>
+                    <span style={{ fontSize: "15px", fontWeight: "800", color: "#ffd700", verticalAlign: "middle" }}>{item.keyword}</span>
                     <span style={{ fontSize: "11px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", padding: "2px 6px", marginLeft: "8px", verticalAlign: "middle" }}>
                       {item.intent}
                     </span>
                   </div>
                   <button
                     className="btn-submit"
-                    style={{ width: "130px", height: "32px", fontSize: "12px", borderRadius: "8px" }}
-                    onClick={() => handleGenerate(item.keyword, item.suggested_title)}
+                    style={{
+                      width: "130px",
+                      height: "32px",
+                      fontSize: "12px",
+                      borderRadius: "8px",
+                      background: item.combo_type === "wordpress" ? "linear-gradient(135deg, #30d158 0%, #10b981 100%)" : "linear-gradient(135deg, #5856d6 0%, #4338ca 100%)"
+                    }}
+                    onClick={() => handleGenerate(item.keyword, item.suggested_title, item.top_rank_post_summary, item.combo_type)}
                     disabled={loadingGenerate}
                   >
-                    이 글 작성하기
+                    {item.combo_type === "wordpress" ? "WP 초안 작성" : "Blogger 초안 작성"}
                   </button>
                 </div>
                 <div style={{ fontSize: "13px", color: "#d1d1d6", lineHeight: "1.4" }}>
@@ -813,6 +888,22 @@ export default function ContentFactoryPanel() {
                 <div style={{ fontSize: "13px", color: "#30d158", lineHeight: "1.4" }}>
                   <strong>권장 제목:</strong> {item.suggested_title}
                 </div>
+                {item.top_rank_post_summary && (
+                  <div style={{
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.6)",
+                    background: "rgba(0,0,0,0.2)",
+                    padding: "10px",
+                    borderRadius: "6px",
+                    marginTop: "4px",
+                    border: "1px solid rgba(255,255,255,0.05)"
+                  }}>
+                    <strong style={{ color: "#ffd700", display: "block", marginBottom: "4px" }}>🔍 최상단 노출 원본 블로그 참고/가공 요약:</strong>
+                    <div style={{ maxHeight: "80px", overflowY: "auto", whiteSpace: "pre-wrap", fontStyle: "italic", fontSize: "11px", lineHeight: "1.5" }}>
+                      {item.top_rank_post_summary}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -831,12 +922,56 @@ export default function ContentFactoryPanel() {
       )}
 
       {/* 4. Generated Post Preview */}
-      {generatedMarkdown && (
+      {(wpMarkdown || bloggerMarkdown) && (
         <div className="card-panel">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: "800", color: "#ffd700" }}>
-              📝 생성 완료: 블로그 포스트 초안
-            </h3>
+            <div>
+              <h3 style={{ fontSize: "17px", fontWeight: "800", color: "#ffd700", marginBottom: "8px" }}>
+                📝 생성 완료: 블로그 포스트 초안
+              </h3>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {wpMarkdown && (
+                  <button
+                    onClick={() => {
+                      setActivePreviewTab("wp");
+                      saveStateToLocalStorage("cf_activePreviewTab", "wp");
+                    }}
+                    style={{
+                      background: activePreviewTab === "wp" ? "rgba(48, 209, 88, 0.15)" : "transparent",
+                      border: `1px solid ${activePreviewTab === "wp" ? "#30d158" : "rgba(255,255,255,0.1)"}`,
+                      color: activePreviewTab === "wp" ? "#30d158" : "#a1a1a6",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    🟢 WP 초안
+                  </button>
+                )}
+                {bloggerMarkdown && (
+                  <button
+                    onClick={() => {
+                      setActivePreviewTab("blogger");
+                      saveStateToLocalStorage("cf_activePreviewTab", "blogger");
+                    }}
+                    style={{
+                      background: activePreviewTab === "blogger" ? "rgba(88, 86, 214, 0.15)" : "transparent",
+                      border: `1px solid ${activePreviewTab === "blogger" ? "#5856d6" : "rgba(255,255,255,0.1)"}`,
+                      color: activePreviewTab === "blogger" ? "#5856d6" : "#a1a1a6",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    🔵 Blogger 초안
+                  </button>
+                )}
+              </div>
+            </div>
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 className="btn-submit"
@@ -952,18 +1087,24 @@ export default function ContentFactoryPanel() {
           {/* Markdown Output Area */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
-              <span>마크다운 형식 (blog_post.md)</span>
-              <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(generatedMarkdown)}>
+              <span>마크다운 형식 ({activePreviewTab === "wp" ? "WP 초안: blog_post.md" : "Blogger 초안"})</span>
+              <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(activePreviewTab === "wp" ? wpMarkdown : bloggerMarkdown)}>
                 전체 복사
               </span>
             </div>
             <textarea
               className="form-textarea"
               style={{ height: "300px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
-              value={generatedMarkdown}
+              value={activePreviewTab === "wp" ? wpMarkdown : bloggerMarkdown}
               onChange={(e) => {
-                setGeneratedMarkdown(e.target.value);
-                saveStateToLocalStorage("cf_generatedMarkdown", e.target.value);
+                const val = e.target.value;
+                if (activePreviewTab === "wp") {
+                  setWpMarkdown(val);
+                  saveStateToLocalStorage("cf_wpMarkdown", val);
+                } else {
+                  setBloggerMarkdown(val);
+                  saveStateToLocalStorage("cf_bloggerMarkdown", val);
+                }
               }}
               placeholder="수정할 본문 내용 (마크다운)을 작성하거나 [IMAGE] 태그를 삽입하세요."
             />
