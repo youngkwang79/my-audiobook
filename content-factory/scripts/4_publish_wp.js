@@ -50,7 +50,19 @@ async function sendTelegramAlert(title, editLink) {
 }
 
 // Google Imagen 3 혹은 OpenAI DALL-E 활용 썸네일 이미지 자동 생성
-async function generateAndUploadThumbnail(title) {
+async function generateAndUploadThumbnail(title, targetDir) {
+  // 0. 커스텀 썸네일 확인
+  const customThumbPath = path.join(targetDir, 'custom_thumbnail.png');
+  if (fs.existsSync(customThumbPath)) {
+    console.log("🎨 커스텀 썸네일(custom_thumbnail.png) 발견! AI 생성을 생략하고 직접 업로드합니다...");
+    const base64ImageBytes = fs.readFileSync(customThumbPath, 'base64');
+    const resObj = await uploadBase64MediaToWordPress(base64ImageBytes, `${title.replace(/\s+/g, "_")}.png`);
+    if (resObj && resObj.url) {
+      fs.writeFileSync(path.join(targetDir, 'custom_thumbnail_url.txt'), resObj.url, 'utf8');
+    }
+    return resObj ? resObj.id : null;
+  }
+
   const googleKey = process.env.GOOGLE_OPENAI_API_KEY || process.env.GOOGLE_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
   
@@ -83,7 +95,8 @@ async function generateAndUploadThumbnail(title) {
         const data = await res.json();
         const base64ImageBytes = data.generatedImages[0].image.imageBytes;
         console.log("[✔] Google Imagen 이미지 생성 완료! 워드프레스 업로드 진행...");
-        return await uploadBase64MediaToWordPress(base64ImageBytes, `${title.replace(/\s+/g, "_")}.png`);
+        const resObj = await uploadBase64MediaToWordPress(base64ImageBytes, `${title.replace(/\s+/g, "_")}.png`);
+        return resObj ? resObj.id : null;
       } else {
         console.warn("[⚠️] Google Imagen 생성 실패 (일부 규제 걸림), OpenAI 차선책 시도...", await res.text());
       }
@@ -138,11 +151,12 @@ async function uploadBase64MediaToWordPress(base64Data, fileName) {
     const buffer = Buffer.from(base64Data, 'base64');
     const uploadUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/media`;
     
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const res = await fetch(uploadUrl, {
       method: "POST",
       headers: {
         "Authorization": `Basic ${authString}`,
-        "Content-Disposition": `attachment; filename=${encodeURIComponent(fileName)}`,
+        "Content-Disposition": `attachment; filename=${safeFileName}`,
         "Content-Type": "image/png"
       },
       body: buffer
@@ -150,8 +164,8 @@ async function uploadBase64MediaToWordPress(base64Data, fileName) {
 
     if (res.status === 201) {
       const data = await res.json();
-      console.log(`[✔] 대표 이미지 업로드 성공! 미디어 ID: ${data.id}`);
-      return data.id;
+      console.log(`[✔] 이미지 업로드 성공! 미디어 ID: ${data.id}`);
+      return { id: data.id, url: data.source_url };
     } else {
       console.error("[❌] 워드프레스 미디어 업로드 실패:", await res.text());
       return null;
@@ -175,11 +189,12 @@ async function uploadMediaToWordPress(imgUrl, fileName) {
     const buffer = Buffer.from(arrayBuffer);
 
     const uploadUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/media`;
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const res = await fetch(uploadUrl, {
       method: "POST",
       headers: {
         "Authorization": `Basic ${authString}`,
-        "Content-Disposition": `attachment; filename=${encodeURIComponent(fileName)}`,
+        "Content-Disposition": `attachment; filename=${safeFileName}`,
         "Content-Type": "image/png"
       },
       body: buffer
@@ -200,8 +215,19 @@ async function uploadMediaToWordPress(imgUrl, fileName) {
 }
 
 // 간단한 자체 마크다운 -> HTML 변환기
-function markdownToHtml(md) {
+function markdownToHtml(md, targetDir, postTitle) {
   let html = md;
+  
+  // 보안 방화벽(NinjaFirewall 등)의 XSS 차단 방지를 위해 script 태그 전체 제거
+  html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  
+  // 1. 본문 이미지 [IMAGE] 우선 처리 (마크다운 파싱 전에 가공해야 안전함)
+  const customContentImgPath = path.join(targetDir, 'custom_content_image.png');
+  if (fs.existsSync(customContentImgPath)) {
+    const base64ImageBytes = fs.readFileSync(customContentImgPath, 'base64');
+    // 동기식 업로드를 지원하기 위해 uploadBase64MediaToWordPress를 비동기로 실행하지 않고, 
+    // 본래 함수가 비동기이므로 startPublishing 단계에서 처리하는 것이 맞습니다.
+  }
   
   // 코드 블록 변환
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
@@ -217,8 +243,8 @@ function markdownToHtml(md) {
   // 볼드체 변환
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   
-  // 링크 변환
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  // 링크 변환 (유튜브 태그가 이 정규식에 매칭되는 것을 피하기 위해 유튜브 태그를 임시 플레이스홀더로 보호하거나 유튜브 링크 파싱을 먼저 수행할 필요가 있습니다.)
+  // 유튜브 태그를 링크 변환 전에 처리하기 위해 아래 문단 분리 전으로 변경
   
   // 문단 분리
   const blocks = html.split(/\n\s*\n/);
@@ -228,17 +254,20 @@ function markdownToHtml(md) {
     if (trimmed.startsWith('<h') || trimmed.startsWith('<pre')) {
       return trimmed;
     }
-    return `<p>${trimmed.replace(/\n/g, '<br/>')}</p>`;
+    
+    // 단순 링크 변환
+    let blockHtml = trimmed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    return `<p>${blockHtml.replace(/\n/g, '<br/>')}</p>`;
   });
   
   let finalHtml = parsedBlocks.join('\n');
-
+ 
   const adCode1 = `<div class="adsense-slot ads-top" style="margin:20px 0; text-align:center; min-height:90px; background:rgba(255,255,255,0.01); border:1px dashed rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.4); font-size:12px;">[광고 슬롯 - 본문 상단 배치]</div>`;
   const adCode2 = `<div class="adsense-slot ads-bottom" style="margin:20px 0; text-align:center; min-height:90px; background:rgba(255,255,255,0.01); border:1px dashed rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.4); font-size:12px;">[광고 슬롯 - 본문 하단 배치]</div>`;
-
+ 
   finalHtml = finalHtml.replace('[AD_INSERT_1]', adCode1);
   finalHtml = finalHtml.replace('[AD_INSERT_2]', adCode2);
-
+ 
   return finalHtml;
 }
 
@@ -270,7 +299,6 @@ if (!fs.existsSync(mdPath)) {
 }
 
 const blogMdContent = fs.readFileSync(mdPath, 'utf8');
-const blogHtmlContent = markdownToHtml(blogMdContent);
 
 let seoMeta = {};
 if (fs.existsSync(seoPath)) {
@@ -294,11 +322,100 @@ const originalKeyword = dirName.replace(/_/g, ' ');
 const postTitle = customTitle || seoMeta.title || originalKeyword;
 
 async function startPublishing() {
-  const featuredMediaId = await generateAndUploadThumbnail(postTitle);
+  const featuredMediaId = await generateAndUploadThumbnail(postTitle, targetDir);
+
+  // 동적으로 최신 파일 내용을 항상 새로 읽어들여 캐싱 타이밍 문제 해결
+  const latestMdContent = fs.readFileSync(mdPath, 'utf8');
+  let finalBlogHtmlContent = latestMdContent;
+  
+  // 1. 본문 중간 이미지 [IMAGE] 치환 (마크다운 파싱 직전 본문에서 수행)
+  const customContentImgPath = path.join(targetDir, 'custom_content_image.png');
+  if (fs.existsSync(customContentImgPath)) {
+    console.log("📊 본문 이미지(custom_content_image.png) 발견! 워드프레스에 업로드합니다...");
+    const base64ImageBytes = fs.readFileSync(customContentImgPath, 'base64');
+    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_content.png`);
+    
+    if (uploadResult && uploadResult.url) {
+      fs.writeFileSync(path.join(targetDir, 'custom_content_image_url.txt'), uploadResult.url, 'utf8');
+      const imgTag = `<img src="${uploadResult.url}" alt="content_image" style="max-width:100%; height:auto; border-radius:10px; margin:20px auto; display:block;" />`;
+      
+      const imagePattern = /\s*\[IMAGE\]\s*/gi;
+      if (imagePattern.test(finalBlogHtmlContent)) {
+        finalBlogHtmlContent = finalBlogHtmlContent.replace(imagePattern, `\n\n${imgTag}\n\n`);
+      } else {
+        finalBlogHtmlContent += `\n\n${imgTag}\n\n`;
+      }
+    }
+  }
+
+  // 1.2 구글 블로그(Blogger)용 커스텀 이미지 호스팅 업로드 처리
+  const customBloggerThumbPath = path.join(targetDir, 'custom_blogger_thumbnail.png');
+  if (fs.existsSync(customBloggerThumbPath)) {
+    console.log("🎨 구글 블로그용 커스텀 썸네일 발견! 워드프레스 미디어에 업로드합니다...");
+    const base64ImageBytes = fs.readFileSync(customBloggerThumbPath, 'base64');
+    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_blogger_thumb.png`);
+    if (uploadResult && uploadResult.url) {
+      fs.writeFileSync(path.join(targetDir, 'custom_blogger_thumbnail_url.txt'), uploadResult.url, 'utf8');
+      console.log(`[✔] 구글 블로그용 썸네일 업로드 성공: ${uploadResult.url}`);
+    }
+  }
+
+  const customBloggerContentImgPath = path.join(targetDir, 'custom_blogger_content_image.png');
+  if (fs.existsSync(customBloggerContentImgPath)) {
+    console.log("📊 구글 블로그용 본문 이미지 발견! 워드프레스 미디어에 업로드합니다...");
+    const base64ImageBytes = fs.readFileSync(customBloggerContentImgPath, 'base64');
+    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_blogger_content.png`);
+    if (uploadResult && uploadResult.url) {
+      fs.writeFileSync(path.join(targetDir, 'custom_blogger_content_image_url.txt'), uploadResult.url, 'utf8');
+      console.log(`[✔] 구글 블로그용 본문 이미지 업로드 성공: ${uploadResult.url}`);
+    }
+  }
+
+  // 2. 유튜브 임베드 처리 [YOUTUBE:...] (마크다운 파싱 직전 본문에서 수행)
+  const youtubePattern = /\[YOUTUBE:\s*([\s\S]*?)\s*\]/gi;
+  finalBlogHtmlContent = finalBlogHtmlContent.replace(youtubePattern, (match, url) => {
+    let videoId = "";
+    let cleanUrl = url.trim();
+    try {
+      cleanUrl = cleanUrl.replace(/[\n\r]/g, "").trim();
+      const urlObj = new URL(cleanUrl);
+      if (urlObj.hostname.includes("youtu.be")) {
+        videoId = urlObj.pathname.slice(1);
+      } else if (urlObj.hostname.includes("youtube.com")) {
+        if (urlObj.pathname.includes("/embed/")) {
+          videoId = urlObj.pathname.split("/embed/")[1]?.split(/[?#]/)[0];
+        } else {
+          videoId = urlObj.searchParams.get("v") || "";
+        }
+      }
+      if (videoId) {
+        videoId = videoId.split(/[?&]/)[0];
+      }
+    } catch (e) {
+      console.error("Failed to parse YouTube URL in WP publish:", url, e);
+    }
+
+    if (videoId) {
+      const embedHtml = `
+<div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; max-width:100%; margin:20px 0; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.15);">
+  <iframe src="https://www.youtube.com/embed/${videoId}" style="position:absolute; top:0; left:0; width:100%; height:100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+<p style="font-size: 14px; color: #666; text-align: center; margin-top: 5px; margin-bottom: 25px;">
+  출처: 유튜브 참고 영상 - <a href="${cleanUrl}" target="_blank" style="color:#0070f3; text-decoration:underline;">영상 확인하기</a><br>
+  <em>"해당 내용에 대해 더 상세히 설명해 주는 유튜브 참고 영상입니다. 시각적으로 참고해 보시면 이해에 훨씬 도움이 됩니다."</em>
+</p>
+      `.trim();
+      return `\n\n${embedHtml}\n\n`;
+    }
+    return `<p style="color:red;">[유튜브 링크 오류: ${url}]</p>`;
+  });
+
+  // 3. 최종적으로 HTML로 파싱 실행
+  finalBlogHtmlContent = markdownToHtml(finalBlogHtmlContent, targetDir, postTitle);
 
   const payloadData = {
     title: postTitle,
-    content: blogHtmlContent,
+    content: finalBlogHtmlContent,
     slug: seoMeta.slug || dirName.toLowerCase().replace(/_/g, '-'),
     status: 'draft'
   };

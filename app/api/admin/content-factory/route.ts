@@ -34,6 +34,43 @@ function runScript(command: string, args: string[]): Promise<string> {
   });
 }
 
+async function uploadBase64ToWordPress(base64Data: string, fileName: string): Promise<string | null> {
+  const wpUrl = process.env.WP_URL;
+  const username = process.env.WP_ADMIN_USERNAME;
+  const appPassword = process.env.WP_APPLICATION_PASSWORD;
+  
+  if (!wpUrl || !username || !appPassword) {
+    return null;
+  }
+  
+  try {
+    const buffer = Buffer.from(base64Data, 'base64');
+    const uploadUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/media`;
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const authString = Buffer.from(`${username}:${appPassword}`).toString('base64');
+    
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${authString}`,
+        "Content-Disposition": `attachment; filename=${safeFileName}`,
+        "Content-Type": "image/png"
+      },
+      body: buffer
+    });
+
+    if (res.status === 201) {
+      const data = await res.json();
+      return data.source_url;
+    } else {
+      console.error("WP media upload response status:", res.status, await res.text());
+    }
+  } catch (err: any) {
+    console.error("WordPress media upload helper error:", err.message);
+  }
+  return null;
+}
+
 function sanitizeKeyword(keyword: string): string {
   return keyword.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ \-_]/g, "").trim().replace(/\s+/g, "_");
 }
@@ -71,7 +108,7 @@ export async function POST(req: Request) {
 
     // 2. Payload 파싱
     const body = await req.json().catch(() => ({}));
-    const { action, query, keyword, title, extraFact } = body;
+    const { action, query, keyword, title, extraFact, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown, bloggerPost, bloggerThumbnailBase64, bloggerContentImageBase64 } = body;
 
     if (!action) {
       return NextResponse.json({ error: "missing_action" }, { status: 400 });
@@ -151,9 +188,13 @@ export async function POST(req: Request) {
       const cardPath = path.join(folderPath, "card_news.json");
       const cardRawPath = path.join(folderPath, "card_news_raw.txt");
       const xPath = path.join(folderPath, "x_thread.txt");
+      const bloggerPath = path.join(folderPath, "blogger_post.txt");
+      const snsCaptionPath = path.join(folderPath, "sns_caption.txt");
       
       const shorts = fs.existsSync(shortsPath) ? fs.readFileSync(shortsPath, "utf8") : "";
       const xThread = fs.existsSync(xPath) ? fs.readFileSync(xPath, "utf8") : "";
+      const bloggerPost = fs.existsSync(bloggerPath) ? fs.readFileSync(bloggerPath, "utf8") : "";
+      const snsCaption = fs.existsSync(snsCaptionPath) ? fs.readFileSync(snsCaptionPath, "utf8") : "";
       
       let cardNews = null;
       if (fs.existsSync(cardPath)) {
@@ -171,7 +212,9 @@ export async function POST(req: Request) {
         success: true,
         shorts,
         cardNews,
-        xThread
+        xThread,
+        bloggerPost,
+        snsCaption
       });
     }
 
@@ -180,6 +223,26 @@ export async function POST(req: Request) {
       if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
       
       const sanitizedKeyword = sanitizeKeyword(keyword);
+      const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
+      
+      if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+      }
+
+      if (generatedMarkdown) {
+        fs.writeFileSync(path.join(folderPath, "blog_post.md"), generatedMarkdown, "utf8");
+      }
+      
+      if (wpThumbnailBase64) {
+        const buffer = Buffer.from(wpThumbnailBase64, "base64");
+        fs.writeFileSync(path.join(folderPath, "custom_thumbnail.png"), buffer);
+      }
+
+      if (wpContentImageBase64) {
+        const buffer = Buffer.from(wpContentImageBase64, "base64");
+        fs.writeFileSync(path.join(folderPath, "custom_content_image.png"), buffer);
+      }
+      
       const scriptPath = path.join(process.cwd(), "content-factory", "scripts", "4_publish_wp.js");
       const args = [`--dir=${sanitizedKeyword}`];
       if (title) {
@@ -200,6 +263,46 @@ export async function POST(req: Request) {
       });
     }
 
+    // --- Action: Create Video (Render Card News Slides to Shorts Video via FFmpeg) ---
+    if (action === "create-video") {
+      if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
+      const { slides } = body;
+      if (!slides || !Array.isArray(slides) || slides.length === 0) {
+        return NextResponse.json({ error: "missing_slides" }, { status: 400 });
+      }
+
+      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
+      
+      if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+      }
+
+      // 1. 받은 모든 슬라이드 Base64 이미지를 로컬에 디스크 파일로 쓰기
+      slides.forEach((base64Data: string, idx: number) => {
+        const buffer = Buffer.from(base64Data, "base64");
+        fs.writeFileSync(path.join(folderPath, `slide_${idx + 1}.png`), buffer);
+      });
+
+      // 2. 동영상 생성 스크립트 실행
+      const scriptPath = path.join(process.cwd(), "content-factory", "scripts", "5_create_shorts.js");
+      const outputLog = await runScript("node", [scriptPath, `--dir=${sanitizedKeyword}`]);
+
+      const outputVideoPath = path.join(folderPath, "reels_shorts.mp4");
+      if (fs.existsSync(outputVideoPath)) {
+        return NextResponse.json({
+          success: true,
+          message: "Shorts video created successfully via FFmpeg!",
+          log: outputLog
+        });
+      } else {
+        return NextResponse.json({
+          error: "ffmpeg_render_failed",
+          details: outputLog
+        }, { status: 500 });
+      }
+    }
+
     // --- Action: Send to n8n Webhook ---
     if (action === "n8n") {
       if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
@@ -212,11 +315,45 @@ export async function POST(req: Request) {
       const shortsPath = path.join(folderPath, "shorts_script.txt");
       const cardPath = path.join(folderPath, "card_news.json");
       const xPath = path.join(folderPath, "x_thread.txt");
+      const bloggerPath = path.join(folderPath, "blogger_post.txt");
+      const snsCaptionPath = path.join(folderPath, "sns_caption.txt");
       
       if (!fs.existsSync(postPath)) {
         return NextResponse.json({ error: "blog_post_not_generated" }, { status: 400 });
       }
       
+      if (bloggerPost) {
+        fs.writeFileSync(bloggerPath, bloggerPost, "utf8");
+      }
+
+      if (bloggerThumbnailBase64) {
+        const buffer = Buffer.from(bloggerThumbnailBase64, "base64");
+        fs.writeFileSync(path.join(folderPath, "custom_blogger_thumbnail.png"), buffer);
+        try {
+          const url = await uploadBase64ToWordPress(bloggerThumbnailBase64, `${sanitizedKeyword}_blogger_thumb.png`);
+          if (url) {
+            fs.writeFileSync(path.join(folderPath, "custom_blogger_thumbnail_url.txt"), url, "utf8");
+            console.log(`[✔] Blogger Thumbnail auto-uploaded to WP for hosting: ${url}`);
+          }
+        } catch (e: any) {
+          console.error("Blogger Thumbnail auto-upload error:", e.message);
+        }
+      }
+
+      if (bloggerContentImageBase64) {
+        const buffer = Buffer.from(bloggerContentImageBase64, "base64");
+        fs.writeFileSync(path.join(folderPath, "custom_blogger_content_image.png"), buffer);
+        try {
+          const url = await uploadBase64ToWordPress(bloggerContentImageBase64, `${sanitizedKeyword}_blogger_content.png`);
+          if (url) {
+            fs.writeFileSync(path.join(folderPath, "custom_blogger_content_image_url.txt"), url, "utf8");
+            console.log(`[✔] Blogger Content Image auto-uploaded to WP for hosting: ${url}`);
+          }
+        } catch (e: any) {
+          console.error("Blogger Content Image auto-upload error:", e.message);
+        }
+      }
+
       const contentMarkdown = fs.readFileSync(postPath, "utf8");
       
       let seoMeta: any = {};
@@ -228,7 +365,7 @@ export async function POST(req: Request) {
       
       const shorts = fs.existsSync(shortsPath) ? fs.readFileSync(shortsPath, "utf8") : "";
       const xThread = fs.existsSync(xPath) ? fs.readFileSync(xPath, "utf8") : "";
-      
+      const snsCaption = fs.existsSync(snsCaptionPath) ? fs.readFileSync(snsCaptionPath, "utf8") : "";
       let cardNews = null;
       if (fs.existsSync(cardPath)) {
         try {
@@ -240,6 +377,144 @@ export async function POST(req: Request) {
       
       console.log(`Sending post data to n8n Webhook: ${n8nUrl}`);
       
+      let finalBloggerPost = bloggerPost || (fs.existsSync(bloggerPath) ? fs.readFileSync(bloggerPath, "utf8") : "");
+      
+      // 1. 본문 중간에 들어가는 이미지 (표 대체 등)
+      let contentImgTag = "";
+      const bloggerImgPath = path.join(folderPath, "custom_blogger_content_image_url.txt");
+      const wpImgPath = path.join(folderPath, "custom_content_image_url.txt");
+      
+      if (bloggerContentImageBase64) {
+        let activeImgUrl = "";
+        if (fs.existsSync(bloggerImgPath)) {
+          activeImgUrl = fs.readFileSync(bloggerImgPath, "utf8").trim();
+        }
+        if (activeImgUrl) {
+          contentImgTag = `<img src="${activeImgUrl}" style="max-width:100%; height:auto; border-radius:10px; margin:20px auto; display:block;" alt="content_image" />`;
+        } else {
+          contentImgTag = `<img src="data:image/png;base64,${bloggerContentImageBase64}" style="max-width:100%; height:auto; border-radius:10px; margin:20px auto; display:block;" alt="content_image" />`;
+        }
+      } else if (fs.existsSync(wpImgPath)) {
+        const wpImgUrl = fs.readFileSync(wpImgPath, "utf8").trim();
+        if (wpImgUrl) {
+          contentImgTag = `<img src="${wpImgUrl}" style="max-width:100%; height:auto; border-radius:10px; margin:20px auto; display:block;" alt="content_image" />`;
+        }
+      } else if (wpContentImageBase64) {
+        contentImgTag = `<img src="data:image/png;base64,${wpContentImageBase64}" style="max-width:100%; height:auto; border-radius:10px; margin:20px auto; display:block;" alt="content_image" />`;
+      }
+      
+      if (contentImgTag) {
+        if (finalBloggerPost.includes("[IMAGE]")) {
+          finalBloggerPost = finalBloggerPost.replace("[IMAGE]", contentImgTag);
+        } else {
+          finalBloggerPost = finalBloggerPost + "<br>" + contentImgTag;
+        }
+      }
+
+      // 2. 맨 위에 들어가는 메인 썸네일
+      let thumbImgTag = "";
+      const bloggerThumbPath = path.join(folderPath, "custom_blogger_thumbnail_url.txt");
+      const wpThumbPath = path.join(folderPath, "custom_thumbnail_url.txt");
+      
+      if (bloggerThumbnailBase64) {
+        let activeThumbUrl = "";
+        if (fs.existsSync(bloggerThumbPath)) {
+          activeThumbUrl = fs.readFileSync(bloggerThumbPath, "utf8").trim();
+        }
+        if (activeThumbUrl) {
+          thumbImgTag = `<img src="${activeThumbUrl}" style="max-width:100%; height:auto; border-radius:10px; margin-bottom:20px; display:block;" alt="thumbnail" />`;
+        } else {
+          thumbImgTag = `<img src="data:image/png;base64,${bloggerThumbnailBase64}" style="max-width:100%; height:auto; border-radius:10px; margin-bottom:20px; display:block;" alt="thumbnail" />`;
+        }
+      } else if (fs.existsSync(wpThumbPath)) {
+        const wpThumbUrl = fs.readFileSync(wpThumbPath, "utf8").trim();
+        if (wpThumbUrl) {
+          thumbImgTag = `<img src="${wpThumbUrl}" style="max-width:100%; height:auto; border-radius:10px; margin-bottom:20px; display:block;" alt="thumbnail" />`;
+        }
+      } else if (wpThumbnailBase64) {
+        thumbImgTag = `<img src="data:image/png;base64,${wpThumbnailBase64}" style="max-width:100%; height:auto; border-radius:10px; margin-bottom:20px; display:block;" alt="thumbnail" />`;
+      }
+
+      if (thumbImgTag) {
+        if (finalBloggerPost.includes("[THUMBNAIL]")) {
+          finalBloggerPost = finalBloggerPost.replace("[THUMBNAIL]", thumbImgTag);
+        } else {
+          finalBloggerPost = thumbImgTag + "<br>" + finalBloggerPost; // 없으면 맨 위에 추가
+        }
+      }
+
+      // 3. 유튜브 임베드 처리 [YOUTUBE:https://...]
+      // 줄바꿈이 섞여 있는 경우를 대비해 [\s\S]*? 패턴 사용
+      const youtubePattern = /\[YOUTUBE:\s*([\s\S]*?)\s*\]/gi;
+      finalBloggerPost = finalBloggerPost.replace(youtubePattern, (match, url) => {
+        let videoId = "";
+        try {
+          const cleanUrl = url.replace(/[\n\r]/g, "").trim();
+          const urlObj = new URL(cleanUrl);
+          if (urlObj.hostname.includes("youtu.be")) {
+            videoId = urlObj.pathname.slice(1);
+          } else if (urlObj.hostname.includes("youtube.com")) {
+            if (urlObj.pathname.includes("/embed/")) {
+              videoId = urlObj.pathname.split("/embed/")[1]?.split(/[?#]/)[0];
+            } else {
+              videoId = urlObj.searchParams.get("v") || "";
+            }
+          }
+          if (videoId) {
+            videoId = videoId.split(/[?&]/)[0];
+          }
+        } catch (e) {
+          console.error("Failed to parse YouTube URL:", url, e);
+        }
+
+        if (videoId) {
+          return `
+<div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; max-width:100%; margin:20px 0; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.15);">
+  <iframe src="https://www.youtube.com/embed/${videoId}" style="position:absolute; top:0; left:0; width:100%; height:100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+<p style="font-size: 14px; color: #666; text-align: center; margin-top: 5px; margin-bottom: 25px;">
+  출처: 유튜브 참고 영상 - <a href="${url.replace(/[\n\r]/g, "").trim()}" target="_blank" style="color:#0070f3; text-decoration:underline;">영상 확인하기</a><br>
+  <em>"해당 내용에 대해 더 상세히 설명해 주는 유튜브 참고 영상입니다. 시각적으로 참고해 보시면 이해에 훨씬 도움이 됩니다."</em>
+</p>
+          `.trim();
+        }
+        return `<p style="color:red;">[유튜브 링크 오류: ${url}]</p>`;
+      });
+
+      // 4. 구글 블로그의 가독성 좋은 띄어쓰기(문단 여백) 개선
+      let formattedBloggerPost = finalBloggerPost;
+      
+      // 유튜브/이미지 컴포넌트(div, iframe)를 제외한 일반 줄바꿈 문단들을 <p> 태그 구조로 안전하게 매핑
+      // \n\n 으로 문단이 구분되어 있다면 각각의 문단을 <p style="...">으로 감싸기
+      const paragraphs = formattedBloggerPost.split(/\n\s*\n/);
+      formattedBloggerPost = paragraphs.map(pBlock => {
+        const trimmed = pBlock.trim();
+        if (!trimmed) return "";
+        // 이미 완전히 조립된 HTML 컴포넌트 구조(div, iframe 등)라면 문단 처리를 건너뛰고 그대로 출력
+        if (trimmed.startsWith("<div") || trimmed.startsWith("<p") || trimmed.startsWith("<iframe")) {
+          return trimmed;
+        }
+        // 일반 텍스트 문단인 경우 문단 여백 스타일을 주입하고 내부의 단순 줄바꿈은 <br />로 교체
+        const cleanContent = trimmed.replace(/\n/g, "<br />");
+        return `<p style="line-height:1.8; margin-bottom:24px; word-break:keep-all;">${cleanContent}</p>`;
+      }).join("\n");
+      
+      // 4.1 JSON-LD 스크립트 블럭 추가 (Blogger 노출용)
+      if (seoMeta.json_ld && Object.keys(seoMeta.json_ld).length > 0) {
+        const jsonLdScript = `\n\n<script type="application/ld+json">\n${JSON.stringify(seoMeta.json_ld, null, 2)}\n</script>\n`;
+        formattedBloggerPost += jsonLdScript;
+      }
+      
+      // 릴스 및 카드뉴스 파일 절대 경로 추가
+      const videoPath = path.join(folderPath, "reels_shorts.mp4");
+      const cardImagePaths: string[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const p = path.join(folderPath, `slide_${i}.png`);
+        if (fs.existsSync(p)) {
+          cardImagePaths.push(p);
+        }
+      }
+
       const n8nPayload = {
         keyword: keyword.replace(/_/g, " "),
         title: title || seoMeta.title || keyword.replace(/_/g, " "),
@@ -252,7 +527,11 @@ export async function POST(req: Request) {
         wp_app_password: process.env.WP_APPLICATION_PASSWORD || "",
         shorts,
         cardNews,
-        xThread
+        xThread,
+        bloggerPost: formattedBloggerPost,
+        snsCaption,
+        video_path: fs.existsSync(videoPath) ? videoPath : null,
+        card_image_paths: cardImagePaths
       };
       
       try {

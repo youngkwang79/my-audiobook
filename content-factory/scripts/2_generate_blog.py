@@ -198,16 +198,20 @@ def main():
     output_dir = os.path.join(os.path.dirname(__file__), f"../output/{sanitized_keyword}")
     os.makedirs(output_dir, exist_ok=True)
     
+    content_md = parsed_data.get("content_markdown", "")
+    json_ld_data = parsed_data.get("json_ld", None)
+
     post_path = os.path.join(output_dir, "blog_post.md")
     with open(post_path, "w", encoding="utf-8") as f:
-        f.write(parsed_data.get("content_markdown", ""))
+        f.write(content_md)
         
     seo_path = os.path.join(output_dir, "seo_meta.json")
     seo_meta = {
         "title": parsed_data.get("title", title),
         "meta_description": parsed_data.get("meta_description", ""),
         "slug": parsed_data.get("slug", sanitized_keyword.lower().replace("_", "-")),
-        "tags": parsed_data.get("tags", [])
+        "tags": parsed_data.get("tags", []),
+        "json_ld": json_ld_data or {}
     }
     with open(seo_path, "w", encoding="utf-8") as f:
         json.dump(seo_meta, f, ensure_ascii=False, indent=2)

@@ -20,8 +20,10 @@ export default function ContentFactoryPanel() {
     shorts: string;
     cardNews: any;
     xThread: string;
+    bloggerPost?: string;
+    snsCaption?: string;
   } | null>(null);
-  const [activeSnsTab, setActiveSnsTab] = useState<"shorts" | "cards" | "x">("shorts");
+  const [activeSnsTab, setActiveSnsTab] = useState<"shorts" | "cards" | "x" | "blogger" | "facebook_insta">("shorts");
   const [cardTheme, setCardTheme] = useState<"navy" | "beige" | "white">("navy");
 
   // Publishing states
@@ -31,6 +33,30 @@ export default function ContentFactoryPanel() {
     editLink: string | null;
   } | null>(null);
   const [loadingN8n, setLoadingN8n] = useState(false);
+  const [wpThumbnailBase64, setWpThumbnailBase64] = useState<string | null>(null);
+  const [wpContentImageBase64, setWpContentImageBase64] = useState<string | null>(null);
+  const [bloggerThumbnailBase64, setBloggerThumbnailBase64] = useState<string | null>(null);
+  const [bloggerContentImageBase64, setBloggerContentImageBase64] = useState<string | null>(null);
+  const [loadingReels, setLoadingReels] = useState(false);
+  const [customCardCoverBase64, setCustomCardCoverBase64] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setBase64: (val: string | null) => void, storageKey: string) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setBase64(null);
+      saveStateToLocalStorage(storageKey, null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        const base64Data = reader.result.split(',')[1];
+        setBase64(base64Data);
+        saveStateToLocalStorage(storageKey, base64Data);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [googleTrends, setGoogleTrends] = useState<any[]>([]);
   const [loadingGoogleTrends, setLoadingGoogleTrends] = useState(false);
@@ -137,6 +163,10 @@ export default function ContentFactoryPanel() {
       const savedExtraFact = localStorage.getItem("cf_extraFact") || "";
       const savedGeneratedMarkdown = localStorage.getItem("cf_generatedMarkdown") || "";
       const savedRefactorData = localStorage.getItem("cf_refactorData");
+      const savedWpThumb = localStorage.getItem("cf_wpThumbnailBase64");
+      const savedWpContent = localStorage.getItem("cf_wpContentImageBase64");
+      const savedBloggerThumb = localStorage.getItem("cf_bloggerThumbnailBase64");
+      const savedBloggerContent = localStorage.getItem("cf_bloggerContentImageBase64");
 
       if (savedQuery) setQuery(savedQuery);
       if (savedTrends) setTrends(JSON.parse(savedTrends));
@@ -145,6 +175,12 @@ export default function ContentFactoryPanel() {
       if (savedExtraFact) setExtraFact(savedExtraFact);
       if (savedGeneratedMarkdown) setGeneratedMarkdown(savedGeneratedMarkdown);
       if (savedRefactorData) setRefactorData(JSON.parse(savedRefactorData));
+      if (savedWpThumb) setWpThumbnailBase64(savedWpThumb);
+      if (savedWpContent) setWpContentImageBase64(savedWpContent);
+      if (savedBloggerThumb) setBloggerThumbnailBase64(savedBloggerThumb);
+      if (savedBloggerContent) setBloggerContentImageBase64(savedBloggerContent);
+      const savedCardCover = localStorage.getItem("cf_customCardCoverBase64");
+      if (savedCardCover) setCustomCardCoverBase64(savedCardCover);
     }
   }, []);
 
@@ -172,8 +208,9 @@ export default function ContentFactoryPanel() {
       setExtraFact("");
       setRefactorData(null);
       setPublishResult(null);
+      setCustomCardCoverBase64(null);
 
-      const keys = ["cf_query", "cf_trends", "cf_selectedKeyword", "cf_suggestedTitle", "cf_extraFact", "cf_generatedMarkdown", "cf_refactorData"];
+      const keys = ["cf_query", "cf_trends", "cf_selectedKeyword", "cf_suggestedTitle", "cf_extraFact", "cf_generatedMarkdown", "cf_refactorData", "cf_customCardCoverBase64"];
       keys.forEach(k => localStorage.removeItem(k));
     }
   };
@@ -341,7 +378,9 @@ export default function ContentFactoryPanel() {
         const refObj = {
           shorts: data.shorts,
           cardNews: data.cardNews,
-          xThread: data.xThread
+          xThread: data.xThread,
+          bloggerPost: data.bloggerPost,
+          snsCaption: data.snsCaption
         };
         setRefactorData(refObj);
         saveStateToLocalStorage("cf_refactorData", refObj);
@@ -369,7 +408,7 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "publish", keyword: selectedKeyword, title: suggestedTitle })
+        body: JSON.stringify({ action: "publish", keyword: selectedKeyword, title: suggestedTitle, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown })
       });
       const data = await res.json();
       if (res.ok && data?.success) {
@@ -401,7 +440,15 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "n8n", keyword: selectedKeyword, title: suggestedTitle })
+        body: JSON.stringify({ 
+          action: "n8n", 
+          keyword: selectedKeyword, 
+          title: suggestedTitle,
+          bloggerPost: refactorData?.bloggerPost,
+          bloggerThumbnailBase64,
+          bloggerContentImageBase64,
+          snsCaption: refactorData?.snsCaption
+        })
       });
       const data = await res.json();
       if (res.ok && data?.success) {
@@ -411,6 +458,60 @@ export default function ContentFactoryPanel() {
       }
     } finally {
       setLoadingN8n(false);
+    }
+  };
+
+  const handleCreateReels = async () => {
+    const cards = Array.isArray(refactorData?.cardNews)
+      ? refactorData.cardNews
+      : (refactorData?.cardNews?.cards || []);
+
+    if (cards.length === 0 || !selectedKeyword) {
+      alert("영상으로 만들 카드 데이터가 없습니다.");
+      return;
+    }
+
+    setLoadingReels(true);
+
+    try {
+      const slidesBase64: string[] = [];
+
+      // 1. 모든 카드 슬라이드를 html2canvas로 캡처하여 Base64 획득
+      for (const card of cards) {
+        const element = document.getElementById(`card-slide-${card.slide}`);
+        if (!element) {
+          throw new Error(`슬라이드 ${card.slide} 요소를 찾을 수 없습니다.`);
+        }
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+        const base64Data = canvas.toDataURL("image/png").split(",")[1];
+        slidesBase64.push(base64Data);
+      }
+
+      // 2. 백엔드 동영상 제작 API 호출
+      const token = getAuthToken();
+      const res = await fetch("/api/admin/content-factory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({
+          action: "create-video",
+          keyword: selectedKeyword,
+          slides: slidesBase64
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        alert("🎉 FFmpeg 릴스 동영상 생성 성공! 로컬 output 폴더에 'reels_shorts.mp4' 파일이 생성되었습니다.");
+      } else {
+        alert(`동영상 제작 실패: ${data?.details || data?.error || "unknown"}`);
+      }
+    } catch (e: any) {
+      alert(`에러 발생: ${e.message}`);
+    } finally {
+      setLoadingReels(false);
     }
   };
 
@@ -774,6 +875,52 @@ export default function ContentFactoryPanel() {
             />
           </div>
 
+          <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+            <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
+              <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
+                🖼️ 워드프레스 메인 썸네일 (선택)
+              </label>
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
+                이미지를 첨부하면 글의 대표 썸네일(특성 이미지)로 지정됩니다.
+              </p>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => handleFileChange(e, setWpThumbnailBase64, "cf_wpThumbnailBase64")}
+                style={{ fontSize: "12px", color: "white" }}
+              />
+              {wpThumbnailBase64 && (
+                <img 
+                  src={`data:image/png;base64,${wpThumbnailBase64}`} 
+                  alt="wp_thumb_preview" 
+                  style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
+                />
+              )}
+            </div>
+            
+            <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
+              <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
+                📊 본문 중간 이미지 (선택)
+              </label>
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
+                아래 마크다운 에디터 안에 [IMAGE] 라고 적힌 곳에 사진이 삽입됩니다.
+              </p>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => handleFileChange(e, setWpContentImageBase64, "cf_wpContentImageBase64")}
+                style={{ fontSize: "12px", color: "white" }}
+              />
+              {wpContentImageBase64 && (
+                <img 
+                  src={`data:image/png;base64,${wpContentImageBase64}`} 
+                  alt="wp_content_preview" 
+                  style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
+                />
+              )}
+            </div>
+          </div>
+
           {/* Wordpress Result Alert */}
           {publishResult && (
             <div
@@ -813,8 +960,12 @@ export default function ContentFactoryPanel() {
             <textarea
               className="form-textarea"
               style={{ height: "300px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
-              readOnly
               value={generatedMarkdown}
+              onChange={(e) => {
+                setGeneratedMarkdown(e.target.value);
+                saveStateToLocalStorage("cf_generatedMarkdown", e.target.value);
+              }}
+              placeholder="수정할 본문 내용 (마크다운)을 작성하거나 [IMAGE] 태그를 삽입하세요."
             />
           </div>
         </div>
@@ -879,6 +1030,34 @@ export default function ContentFactoryPanel() {
             >
               X 스레드 타래
             </button>
+            <button
+              onClick={() => setActiveSnsTab("blogger")}
+              style={{
+                padding: "8px 16px",
+                background: "none",
+                border: "none",
+                color: activeSnsTab === "blogger" ? "white" : "rgba(255,255,255,0.5)",
+                borderBottom: activeSnsTab === "blogger" ? "2px solid #ff2a5f" : "none",
+                fontWeight: "700",
+                cursor: "pointer"
+              }}
+            >
+              구글 블로그 스핀
+            </button>
+            <button
+              onClick={() => setActiveSnsTab("facebook_insta")}
+              style={{
+                padding: "8px 16px",
+                background: "none",
+                border: "none",
+                color: activeSnsTab === "facebook_insta" ? "white" : "rgba(255,255,255,0.5)",
+                borderBottom: activeSnsTab === "facebook_insta" ? "2px solid #ff2a5f" : "none",
+                fontWeight: "700",
+                cursor: "pointer"
+              }}
+            >
+              페이스북/인스타 캡션
+            </button>
           </div>
 
           <div>
@@ -901,6 +1080,31 @@ export default function ContentFactoryPanel() {
 
             {activeSnsTab === "cards" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
+                  <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
+                    🖼️ 1번 장 (인트로) 커스텀 디자인 이미지 첨부 (선택)
+                  </label>
+                  <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
+                    사용자가 직접 제미나이 등으로 만든 고퀄리티 이미지로 1번 카드 디자인 및 릴스 시작 화면을 완전히 대체합니다.
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleFileChange(e, setCustomCardCoverBase64, "cf_customCardCoverBase64")}
+                      style={{ fontSize: "12px", color: "white" }}
+                    />
+                    {customCardCoverBase64 && (
+                      <button 
+                        onClick={() => { setCustomCardCoverBase64(null); saveStateToLocalStorage("cf_customCardCoverBase64", null); }}
+                        style={{ padding: "2px 8px", background: "#ff2a5f", color: "white", border: "none", borderRadius: "4px", fontSize: "11px", cursor: "pointer" }}
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                     <span style={{ fontSize: "13px", fontWeight: "700" }}>🎨 카드 테마 선택:</span>
@@ -927,12 +1131,30 @@ export default function ContentFactoryPanel() {
                     >
                       📥 전체 카드 이미지 다운로드 (일괄)
                     </button>
+
+                    <button 
+                      onClick={handleCreateReels} 
+                      disabled={loadingReels}
+                      style={{ 
+                        marginLeft: "10px", 
+                        padding: "6px 14px", 
+                        borderRadius: "6px", 
+                        background: "#0070f3", 
+                        color: "white", 
+                        border: "none", 
+                        fontSize: "12px", 
+                        fontWeight: "800", 
+                        cursor: "pointer", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "4px",
+                        opacity: loadingReels ? 0.6 : 1
+                      }}
+                    >
+                      {loadingReels ? "⚙️ 릴스 영상 제작 중..." : "🎬 릴스 영상 만들기"}
+                    </button>
                   </div>
-                  <span style={{ cursor: "pointer", textDecoration: "underline", fontSize: "12px", opacity: 0.6 }} onClick={() => copyToClipboard(JSON.stringify(refactorData.cardNews, null, 2))}>
-                    JSON 소스 보기
-                  </span>
                 </div>
-                
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
                   {(Array.isArray(refactorData.cardNews) ? refactorData.cardNews : (refactorData.cardNews?.cards || [])).map((card: any, idx: number) => {
                     const theme = getThemeStyles();
@@ -983,15 +1205,15 @@ export default function ContentFactoryPanel() {
                     };
 
                     return (
-                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "320px" }}>
+                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "10px", width: "324px" }}>
                         <div
                           id={`card-slide-${card.slide}`}
                           style={{
-                            width: "320px",
-                            height: "400px",
-                            background: theme.bg,
+                            width: "324px",
+                            height: "576px",
+                            background: (card.slide === 1 && customCardCoverBase64) ? `url(data:image/png;base64,${customCardCoverBase64}) center/cover no-repeat` : theme.bg,
                             color: theme.text,
-                            padding: "45px 20px 30px 20px",
+                            padding: "55px 24px 40px 24px",
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
@@ -1002,93 +1224,105 @@ export default function ContentFactoryPanel() {
                           }}
                         >
                           {/* 테마별 그래픽 요소 */}
-                          {renderThemeDecorations()}
+                          {!(card.slide === 1 && customCardCoverBase64) && renderThemeDecorations()}
 
                           {/* Top decorative line */}
-                          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "6px", background: `linear-gradient(90deg, ${theme.point} 0%, #ff2a5f 100%)` }} />
+                          {!(card.slide === 1 && customCardCoverBase64) && (
+                            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "6px", background: `linear-gradient(90deg, ${theme.point} 0%, #ff2a5f 100%)` }} />
+                          )}
                           
                           {/* Slide Indicator Badge */}
-                          <div style={{ position: "absolute", top: "25px", right: "25px", fontSize: "11px", fontWeight: "800", opacity: 0.6, letterSpacing: "1px" }}>
-                            {card.slide === 1 ? "INTRO" : `0${card.slide} / 05`}
-                          </div>
+                          {!(card.slide === 1 && customCardCoverBase64) && (
+                            <div style={{ position: "absolute", top: "25px", right: "25px", fontSize: "11px", fontWeight: "800", opacity: 0.6, letterSpacing: "1px" }}>
+                              {card.slide === 1 ? "INTRO" : `0${card.slide} / 05`}
+                            </div>
+                          )}
 
                           {/* Top Section */}
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: card.slide === 1 ? "center" : "flex-start", gap: "10px", marginTop: "10px", zIndex: 2 }}>
-                            <span style={{ 
-                              color: theme.point, 
-                              fontSize: "11px", 
-                              fontWeight: "900", 
-                              textTransform: "uppercase", 
-                              letterSpacing: "2px",
-                              border: `1px solid ${theme.point}`,
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                              background: "rgba(255,255,255,0.03)"
-                            }}>
-                              {card.slide === 1 ? "무림북 꿀팁 정보" : "CHECK POINT"}
-                            </span>
-                          </div>
+                          {!(card.slide === 1 && customCardCoverBase64) && (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: card.slide === 1 ? "center" : "flex-start", gap: "10px", marginTop: "10px", zIndex: 2 }}>
+                              <span style={{ 
+                                color: theme.point, 
+                                fontSize: "11px", 
+                                fontWeight: "900", 
+                                textTransform: "uppercase", 
+                                letterSpacing: "2px",
+                                border: `1px solid ${theme.point}`,
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                background: "rgba(255,255,255,0.03)"
+                              }}>
+                                {card.slide === 1 ? "무림북 꿀팁 정보" : "CHECK POINT"}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Middle Section (Title & Content) */}
-                          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, gap: "20px", zIndex: 2 }}>
-                            <h2 style={{ 
-                              fontSize: card.slide === 1 ? "32px" : "22px", 
-                              fontWeight: "900", 
-                              lineHeight: "1.35", 
-                              wordBreak: "keep-all", 
-                              textAlign: card.slide === 1 ? "center" : "left",
-                              color: theme.text,
-                              letterSpacing: "-0.5px",
-                              margin: 0
-                            }}>
-                              {card.title}
-                            </h2>
-
-                            {(card.body || card.content) && (
-                              <div style={{
-                                background: theme.cardBg,
-                                border: `1px solid ${theme.cardBorder}`,
-                                borderRadius: "14px",
-                                padding: "20px 18px",
-                                backdropFilter: "blur(12px)",
-                                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.08)"
+                          {!(card.slide === 1 && customCardCoverBase64) && (
+                            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, gap: "20px", zIndex: 2 }}>
+                              <h2 style={{ 
+                                fontSize: card.slide === 1 ? "32px" : "22px", 
+                                fontWeight: "900", 
+                                lineHeight: "1.35", 
+                                wordBreak: "keep-all", 
+                                textAlign: card.slide === 1 ? "center" : "left",
+                                color: theme.text,
+                                letterSpacing: "-0.5px",
+                                margin: 0
                               }}>
-                                <p style={{ 
-                                  fontSize: "14px", 
-                                  lineHeight: "1.6", 
-                                  color: theme.sub, 
-                                  wordBreak: "keep-all",
-                                  margin: 0,
-                                  fontWeight: "500",
-                                  textAlign: "left"
+                                {card.title}
+                              </h2>
+
+                              {(card.body || card.content) && (
+                                <div style={{
+                                  background: theme.cardBg,
+                                  border: `1px solid ${theme.cardBorder}`,
+                                  borderRadius: "14px",
+                                  padding: "20px 18px",
+                                  backdropFilter: "blur(12px)",
+                                  boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.08)"
                                 }}>
-                                  {card.body || card.content}
-                                </p>
-                              </div>
-                            )}
-                          </div>
+                                  <p style={{ 
+                                    fontSize: "14px", 
+                                    lineHeight: "1.6", 
+                                    color: theme.sub, 
+                                    wordBreak: "keep-all",
+                                    margin: 0,
+                                    fontWeight: "500",
+                                    textAlign: "left"
+                                  }}>
+                                    {card.body || card.content}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Bottom Section */}
-                          <div style={{ 
-                            display: "flex", 
-                            justifyContent: "space-between", 
-                            alignItems: "center",
-                            borderTop: `1px solid ${theme.cardBorder}`,
-                            paddingTop: "15px",
-                            zIndex: 2
-                          }}>
-                            <span style={{ fontSize: "11px", fontWeight: "700", opacity: 0.5 }}>
-                              {card.slide === 1 ? "똑똑한 지출 가이드" : "murimbook.com"}
-                            </span>
-                            <span style={{ fontSize: "11px", fontWeight: "800", color: theme.point, letterSpacing: "0.5px" }}>
-                              @murimbook
-                            </span>
-                          </div>
+                          {!(card.slide === 1 && customCardCoverBase64) && (
+                            <div style={{ 
+                              display: "flex", 
+                              justifyContent: "space-between", 
+                              alignItems: "center",
+                              borderTop: `1px solid ${theme.cardBorder}`,
+                              paddingTop: "15px",
+                              zIndex: 2
+                            }}>
+                              <span style={{ fontSize: "11px", fontWeight: "700", opacity: 0.5 }}>
+                                {card.slide === 1 ? "똑똑한 지출 가이드" : "murimbook.com"}
+                              </span>
+                              <span style={{ fontSize: "11px", fontWeight: "800", color: theme.point, letterSpacing: "0.5px" }}>
+                                @murimbook
+                              </span>
+                            </div>
+                          )}
 
                           {/* 카드별 하단 게이지(프로그레스) 바 */}
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "4px", background: "rgba(0,0,0,0.06)", zIndex: 3 }}>
-                            <div style={{ width: `${(card.slide / 5) * 100}%`, height: "100%", background: `linear-gradient(90deg, ${theme.point} 0%, #ff2a5f 100%)`, transition: "width 0.3s" }} />
-                          </div>
+                          {!(card.slide === 1 && customCardCoverBase64) && (
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "4px", background: "rgba(0,0,0,0.06)", zIndex: 3 }}>
+                              <div style={{ width: `${(card.slide / 5) * 100}%`, height: "100%", background: `linear-gradient(90deg, ${theme.point} 0%, #ff2a5f 100%)`, transition: "width 0.3s" }} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )
@@ -1110,6 +1344,96 @@ export default function ContentFactoryPanel() {
                   style={{ height: "250px", fontSize: "13px", lineHeight: "1.6" }}
                   readOnly
                   value={refactorData.xThread}
+                />
+              </div>
+            )}
+
+            {activeSnsTab === "blogger" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
+                  <span>구글 블로그 업로드용 1000자 스핀 원고 (HTML)</span>
+                  <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(refactorData.bloggerPost || "")}>
+                    원고 복사
+                  </span>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  style={{ height: "250px", fontSize: "13px", lineHeight: "1.6" }}
+                  value={refactorData.bloggerPost || ""}
+                  onChange={(e) => {
+                    const updated = { ...refactorData, bloggerPost: e.target.value };
+                    setRefactorData(updated);
+                    saveStateToLocalStorage("cf_refactorData", updated);
+                  }}
+                  placeholder="제미나이 등에서 수동 가공한 최종 원고를 이곳에 붙여넣고 수정할 수 있습니다."
+                />
+                
+                <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                  <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
+                    <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
+                      🖼️ 블로그 썸네일 (맨 위 상단)
+                    </label>
+                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
+                      목록에 노출될 메인 이미지입니다. [THUMBNAIL] 위치나 맨 위에 삽입됩니다.
+                    </p>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleFileChange(e, setBloggerThumbnailBase64, "cf_bloggerThumbnailBase64")}
+                      style={{ fontSize: "12px", color: "white" }}
+                    />
+                    {bloggerThumbnailBase64 && (
+                      <img 
+                        src={`data:image/png;base64,${bloggerThumbnailBase64}`} 
+                        alt="blogger_thumb_preview" 
+                        style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
+                      />
+                    )}
+                  </div>
+                  
+                  <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
+                    <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
+                      📊 본문 이미지 (표 대체 등)
+                    </label>
+                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
+                      본문 내용 중간에 삽입됩니다. 본문 내 [IMAGE] 라고 적힌 곳에 들어갑니다.
+                    </p>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleFileChange(e, setBloggerContentImageBase64, "cf_bloggerContentImageBase64")}
+                      style={{ fontSize: "12px", color: "white" }}
+                    />
+                    {bloggerContentImageBase64 && (
+                      <img 
+                        src={`data:image/png;base64,${bloggerContentImageBase64}`} 
+                        alt="blogger_content_preview" 
+                        style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSnsTab === "facebook_insta" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
+                  <span>페이스북 & 인스타그램 업로드용 본문 캡션 및 해시태그</span>
+                  <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(refactorData.snsCaption || "")}>
+                    캡션 복사
+                  </span>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  style={{ height: "250px", fontSize: "13px", lineHeight: "1.6" }}
+                  value={refactorData.snsCaption || ""}
+                  onChange={(e) => {
+                    const updated = { ...refactorData, snsCaption: e.target.value };
+                    setRefactorData(updated);
+                    saveStateToLocalStorage("cf_refactorData", updated);
+                  }}
+                  placeholder="페이스북/인스타 포스팅에 함께 올라갈 본문 내용입니다. 자유롭게 수정하고 복사해서 사용할 수 있습니다."
                 />
               </div>
             )}

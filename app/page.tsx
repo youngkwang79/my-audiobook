@@ -95,6 +95,7 @@ export default function Home() {
   const [rewardAmount, setRewardAmount] = useState<string>("100");
   const [rewardReason, setRewardReason] = useState<string>("무공수련 랭킹 보상");
   const [isSendingReward, setIsSendingReward] = useState(false);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   // 리더보드 로드
   const loadLeaderboard = async (gameId: string) => {
