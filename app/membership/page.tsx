@@ -428,9 +428,6 @@ export default function MembershipPage() {
           fullName: buyerName.trim(),
           phoneNumber: buyerPhone.trim(),
         },
-        offerPeriod: {
-          interval: selectedPlan === "weekly" ? "1w" : selectedPlan === "monthly" ? "1m" : "1y",
-        },
       };
 
       if (paymentMethod === "KAKAOPAY") {
@@ -1628,6 +1625,14 @@ export default function MembershipPage() {
             <h3>구매자 정보 입력</h3>
             <p>안전한 결제 진행을 위해 구매 정보를 입력해 주세요.</p>
             
+            {selectedPlan === "monthly" && (
+              <div style={{ background: "rgba(255, 42, 95, 0.1)", padding: "12px", borderRadius: "8px", border: "1px solid rgba(255, 42, 95, 0.3)", marginBottom: "16px" }}>
+                <p style={{ margin: 0, fontSize: "14px", color: "#ff2a5f", fontWeight: 700, lineHeight: 1.5 }}>
+                  [안내] 가입 후 3개월간 월 1,900원이 청구되며,<br/>4개월 차부터 정상가 4,900원이 매월 자동 결제됩니다.
+                </p>
+              </div>
+            )}
+
             <div className="buyer-input-group">
               <label>구매자 성함</label>
               <input 
