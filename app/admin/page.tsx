@@ -13,6 +13,7 @@ import EpisodeUpload from "./components/EpisodeUpload";
 import WebPushPanel from "./components/WebPushPanel";
 import AutomationPanel from "./components/AutomationPanel";
 import ContentFactoryPanel from "./components/ContentFactoryPanel";
+import R2DownloadPanel from "./components/R2DownloadPanel";
 
 
 export default function AdminPage() {
@@ -22,7 +23,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingCheck, setLoadingCheck] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "novels" | "episodes" | "edit" | "push" | "automation" | "contentFactory"
+    "novels" | "episodes" | "edit" | "push" | "automation" | "contentFactory" | "r2Download"
   >("novels");
 
   const [worksList, setWorksList] = useState<any[]>([]);
@@ -397,6 +398,12 @@ export default function AdminPage() {
           >
             콘텐츠 팩토리
           </button>
+          <button
+            className={`admin-tab ${activeTab === "r2Download" ? "active" : ""}`}
+            onClick={() => setActiveTab("r2Download")}
+          >
+            R2 다운로드
+          </button>
         </div>
 
 
@@ -423,6 +430,10 @@ export default function AdminPage() {
 
         <div style={{ display: activeTab === "contentFactory" ? "block" : "none" }}>
           <ContentFactoryPanel />
+        </div>
+
+        <div style={{ display: activeTab === "r2Download" ? "block" : "none" }}>
+          <R2DownloadPanel worksList={worksList} />
         </div>
       </div>
 

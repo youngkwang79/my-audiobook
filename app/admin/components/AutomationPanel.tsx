@@ -974,6 +974,45 @@ export default function AutomationPanel({
     e.target.value = "";
   };
 
+  /** 합본 파일의 헤더 텍스트에서 회차번호·제목 추출 (제N화, N화, N_제목 등 지원) */
+  const parseHeaderText = (headerText: string): { id: string; title: string } => {
+    const h = headerText.trim();
+
+    // 패턴 1: 제N화_제목 / 제N화 제목 / 제N화. 제목 (「」<> 등 꺾쇠 포함)
+    const p1 = h.match(/^제\s*(\d+)\s*화[_\s.\-「"<『【]*(.*?)[">」』】]*$/);
+    if (p1) {
+      const num = Number(p1[1]);
+      const t = p1[2].trim().replace(/[_\-「」『』【】<>"]/g, " ").trim();
+      return { id: String(num), title: t || `${num}화` };
+    }
+
+    // 패턴 2: N화_제목 / N화 제목
+    const p2 = h.match(/^(\d+)\s*화[_\s.\-"「<『【]*(.*?)[">」』】]*$/);
+    if (p2) {
+      const num = Number(p2[1]);
+      const t = p2[2].trim().replace(/[_\-「」『』【】<>"]/g, " ").trim();
+      return { id: String(num), title: t || `${num}화` };
+    }
+
+    // 패턴 3: N_제목 / N-제목 / N. 제목 / N 제목
+    const p3 = h.match(/^(\d+)[_\s.\-]+(.+)$/);
+    if (p3) {
+      const num = Number(p3[1]);
+      const t = p3[2].trim().replace(/[_\-]/g, " ").trim();
+      return { id: String(num), title: t };
+    }
+
+    // 패턴 4: 숫자만
+    const p4 = h.match(/^(\d+)$/);
+    if (p4) {
+      const num = Number(p4[1]);
+      return { id: String(num), title: `${num}화` };
+    }
+
+    // 폴백: parseFilename 사용
+    return parseFilename(h + ".txt");
+  };
+
   const handleSplitFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -993,7 +1032,7 @@ export default function AutomationPanel({
         if (match) {
           if (currentHeader || currentLines.join("").trim().length > 0) {
             const titleText = currentHeader || "프롤로그";
-            const { id, title } = parseFilename(titleText + ".txt");
+            const { id, title } = parseHeaderText(titleText);
             chapters.push({
               id,
               title,
@@ -1009,7 +1048,7 @@ export default function AutomationPanel({
 
       if (currentHeader || currentLines.join("").trim().length > 0) {
         const titleText = currentHeader || "마지막 화";
-        const { id, title } = parseFilename(titleText + ".txt");
+        const { id, title } = parseHeaderText(titleText);
         chapters.push({
           id,
           title,

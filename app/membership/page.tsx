@@ -108,7 +108,7 @@ export default function MembershipPage() {
   const [promoPrices, setPromoPrices] = useState({ 
     annualPrice: 29900, 
     weeklyPrice: 1000, 
-    monthlyPrice: 9900,
+    monthlyPrice: 4900,
     eligibleForAnnualPromo: true, 
     eligibleForWeeklyPromo: true,
     eligibleForMonthlyPromo: true 
@@ -1353,7 +1353,7 @@ export default function MembershipPage() {
             onClick={() => setSelectedPlan("monthly")}
           >
             {promoPrices.eligibleForMonthlyPromo && (
-              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>첫 달 단 4,900원!</div>
+              <div className="plan-badge" style={{ background: "linear-gradient(90deg, #ff2a5f, #ff7b00)", boxShadow: "0 2px 8px rgba(255,42,95,0.4)" }}>3개월간 단 1,900원!</div>
             )}
             {selectedPlan === "monthly" ? <CheckCircleFilled /> : <CheckCircleEmpty />}
             <div className="plan-info-right">
@@ -1362,14 +1362,14 @@ export default function MembershipPage() {
                 {promoPrices.eligibleForMonthlyPromo ? (
                   <>
                     <span style={{ position: 'relative', display: 'inline-block', color: '#e0e0e0', fontSize: '24px', fontWeight: 800, marginRight: '10px' }}>
-                      ₩9,900
+                      ₩4,900
                       <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '3px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(-20deg)', borderRadius: '2px' }}></span>
                       <span style={{ position: 'absolute', left: '-5%', top: '45%', width: '110%', height: '3px', background: 'rgba(255, 42, 95, 0.7)', transform: 'rotate(20deg)', borderRadius: '2px' }}></span>
                     </span>
-                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '18px' }}>₩4,900/월</span>
+                    <span style={{ color: '#ffd700', fontWeight: 900, fontSize: '18px' }}>₩1,900/월</span>
                   </>
                 ) : (
-                  "₩9,900/월"
+                  "₩4,900/월"
                 )}
               </p>
               <span className="plan-duration-tag">월간 멤버십 서비스</span>

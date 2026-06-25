@@ -6,6 +6,9 @@ import requests
 from google import genai
 from google.genai import types
 
+# 콘솔 출력 인코딩 깨짐 방지
+sys.stdout.reconfigure(encoding='utf-8')
+
 def load_env():
     possible_paths = [
         os.path.join(os.path.dirname(__file__), '../../.env.local'),
@@ -105,25 +108,10 @@ def main():
         
     print(f"🔄 '{args.dir}' 블로그 마크다운 포스트 리팩토링을 가동합니다...")
     
-    # 1. 쇼츠 대본 가공
-    shorts_prompt = (
-        "너는 인스타그램 릴스, 유튜브 쇼츠, 틱톡의 조회수를 떡상시키는 숏폼 콘텐츠 크리에이터다.\n"
-        "다음 [블로그 본문]을 요약 및 가공하여 45초 내외의 흥미진진한 유튜브 쇼츠 대본을 작성하라.\n\n"
-        f"[블로그 본문]:\n{blog_content}\n\n"
-        "작성 공식:\n"
-        "- [화면 가이드]와 [나레이션]을 분리해서 작성하라.\n"
-        "- 0~3초: 호기심을 유발하는 Hook 문장.\n"
-        "- 3~15초: 공감하는 문제 상황 제시.\n"
-        "- 15~40초: 누구나 바로 따라 할 수 있는 초간단 핵심 해결 방법 1가지.\n"
-        "- 40~45초: 상세 코드는 고정 댓글 링크의 블로그로 오라는 CTA.\n"
-        "- 대본은 한국어로 작성하되 신나고 에너지 넘치는 톤을 유지하라."
-    )
-    print("🎥 쇼츠 대본 생성 중...")
-    shorts_script = call_llm(shorts_prompt, claude_key, openai_key, gemini_key)
-    if shorts_script:
-        with open(os.path.join(target_dir, "shorts_script.txt"), "w", encoding="utf-8") as f:
-            f.write(shorts_script)
-            
+    # 1. 쇼츠 대본 가공 (비활성화됨 - 유튜브 쇼츠 대본 생성 제외)
+    # shorts_prompt = (...)
+    # shorts_script = call_llm(...)
+    
     # 2. 카드뉴스 가공
     card_prompt = (
         "너는 인스타그램 카드뉴스를 제작하는 비주얼 콘텐츠 디자이너다.\n"
@@ -216,6 +204,26 @@ def main():
         clean_caption = sns_caption.strip()
         with open(os.path.join(target_dir, "sns_caption.txt"), "w", encoding="utf-8") as f:
             f.write(clean_caption)
+            
+    # 6. 쓰레드(Threads) 전용 단독 캡션 가공 (500자 제한 맞춤)
+    threads_caption_prompt = (
+        "너는 쓰레드(Threads)의 특성과 알고리즘을 잘 알고 있는 바이럴 마케터다.\n"
+        "다음 [블로그 본문]을 바탕으로, 쓰레드 업로드 시 본문에 함께 작성할 '쓰레드 전용의 짧고 강렬한 캡션(글밥)'을 작성하라.\n\n"
+        f"[블로그 본문]:\n{blog_content}\n\n"
+        "작성 지침:\n"
+        "- 중요: 공백 포함 전체 글자 수가 반드시 **400자 이내**여야 한다. 절대 450자를 초과해서는 안 된다.\n"
+        "- 첫 줄: 후킹력이 강한 한 줄 요약 카피 (이모지 포함).\n"
+        "- 본문: 가독성 좋게 2~3개 핵심 요약 포인트를 줄바꿈을 포함해 매우 직관적이고 임팩트 있게 작성하라.\n"
+        "- 끝맺음: '전체 꿀팁은 프로필 링크나 blog.murimbook.com 에서 확인해보세요!' 문구를 포함하라.\n"
+        "- 해시태그: 해시태그는 스레드 알고리즘 특성상 1~2개 정도만 본문 끝에 핵심적으로 남겨라.\n"
+        "- 불필요한 인사말이나 서론, 부가 설명은 완전히 제외하고 오직 쓰레드에 바로 복사 붙여넣기할 순수 캡션 내용만 즉시 출력하라."
+    )
+    print("🧵 쓰레드용 캡션(글밥) 작성 중...")
+    threads_caption = call_llm(threads_caption_prompt, claude_key, openai_key, gemini_key)
+    if threads_caption:
+        clean_threads = threads_caption.strip()
+        with open(os.path.join(target_dir, "threads_caption.txt"), "w", encoding="utf-8") as f:
+            f.write(clean_threads)
             
     print(f"\n✅ '{args.dir}' 플랫폼 리팩토링 산출물이 모두 저장되었습니다!")
     print(f"📁 대상 폴더: {target_dir}")

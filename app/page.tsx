@@ -981,7 +981,7 @@ export default function Home() {
 
       {/* 카테고리 탭 */}
       <div className="category-tabs">
-        {["추천", "신작", "인기 순위", "멤버십전용", "무공 수련"].map((tab) => (
+        {["추천", "신작", "인기 순위", "무공 수련"].map((tab) => (
           <div
             key={tab}
             className={`category-tab ${activeTab === tab ? "active" : ""}`}
@@ -990,6 +990,13 @@ export default function Home() {
             {tab}
           </div>
         ))}
+        <div
+          className="category-tab"
+          onClick={() => window.open("https://blog.murimbook.com", "_blank")}
+          style={{ cursor: "pointer" }}
+        >
+          블로그
+        </div>
       </div>
 
       {activeTab !== "무공 수련" ? (

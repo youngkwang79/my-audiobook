@@ -56,7 +56,11 @@ async function generateAndUploadThumbnail(title, targetDir) {
   if (fs.existsSync(customThumbPath)) {
     console.log("🎨 커스텀 썸네일(custom_thumbnail.png) 발견! AI 생성을 생략하고 직접 업로드합니다...");
     const base64ImageBytes = fs.readFileSync(customThumbPath, 'base64');
-    const resObj = await uploadBase64MediaToWordPress(base64ImageBytes, `${title.replace(/\s+/g, "_")}.png`);
+    const altText = seoMeta.title || title;
+    const titleText = title;
+    const captionText = title;
+    const descriptionText = `${title} - 대표 썸네일 이미지 (MoorimBook)`;
+    const resObj = await uploadBase64MediaToWordPress(base64ImageBytes, `${title.replace(/\s+/g, "_")}.png`, altText, titleText, captionText, descriptionText);
     if (resObj && resObj.url) {
       fs.writeFileSync(path.join(targetDir, 'custom_thumbnail_url.txt'), resObj.url, 'utf8');
     }
@@ -141,7 +145,7 @@ async function generateAndUploadThumbnail(title, targetDir) {
 }
 
 // Google Imagen에서 출력된 Base64 데이터를 워드프레스 미디어 API에 업로드
-async function uploadBase64MediaToWordPress(base64Data, fileName) {
+async function uploadBase64MediaToWordPress(base64Data, fileName, altText = '', titleText = '', captionText = '', descriptionText = '') {
   const wpUrl = process.env.WP_URL;
   const username = process.env.WP_ADMIN_USERNAME;
   const appPassword = process.env.WP_APPLICATION_PASSWORD;
@@ -165,6 +169,31 @@ async function uploadBase64MediaToWordPress(base64Data, fileName) {
     if (res.status === 201) {
       const data = await res.json();
       console.log(`[✔] 이미지 업로드 성공! 미디어 ID: ${data.id}`);
+      
+      // Update media metadata fields (alt, title, caption, description)
+      if (altText || titleText || captionText || descriptionText) {
+        try {
+          const updateUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/media/${data.id}`;
+          const updatePayload = {};
+          if (altText) updatePayload.alt_text = altText;
+          if (titleText) updatePayload.title = titleText;
+          if (captionText) updatePayload.caption = captionText;
+          if (descriptionText) updatePayload.description = descriptionText;
+
+          await fetch(updateUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Basic ${authString}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(updatePayload)
+          });
+          console.log(`[✔] 미디어 상세 속성 설정 완료 (대체 텍스트: "${altText}", 제목: "${titleText}", 설명: "${descriptionText}")`);
+        } catch (metaErr) {
+          console.error("Failed to update media metadata fields:", metaErr.message);
+        }
+      }
+      
       return { id: data.id, url: data.source_url };
     } else {
       console.error("[❌] 워드프레스 미디어 업로드 실패:", await res.text());
@@ -174,6 +203,80 @@ async function uploadBase64MediaToWordPress(base64Data, fileName) {
     console.error("[❌] 미디어 업로드 처리 중 오류:", err.message);
     return null;
   }
+}
+
+// 워드프레스 태그 문자열 배열을 기반으로 태그 ID 목록을 조회하거나 신규 생성
+async function getOrCreateTagIds(tagNames) {
+  if (!tagNames || !Array.isArray(tagNames) || tagNames.length === 0) {
+    return [];
+  }
+  
+  const wpUrl = process.env.WP_URL;
+  const username = process.env.WP_ADMIN_USERNAME;
+  const appPassword = process.env.WP_APPLICATION_PASSWORD;
+  const authString = Buffer.from(`${username}:${appPassword}`).toString('base64');
+  
+  const tagIds = [];
+  for (const tagName of tagNames) {
+    const trimmed = tagName.trim();
+    if (!trimmed) continue;
+    
+    try {
+      // 1. 기존 태그 검색 (검색 API 활용)
+      const searchUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/tags?search=${encodeURIComponent(trimmed)}`;
+      const searchRes = await fetch(searchUrl, {
+        headers: { "Authorization": `Basic ${authString}` }
+      });
+      
+      if (searchRes.ok) {
+        const tags = await searchRes.json();
+        const exactTag = tags.find(t => t.name.toLowerCase() === trimmed.toLowerCase());
+        if (exactTag) {
+          tagIds.push(exactTag.id);
+          console.log(`[✔] 기존 태그 매핑 완료: "${trimmed}" (ID: ${exactTag.id})`);
+          continue;
+        }
+      }
+      
+      // 2. 일치하는 태그가 없는 경우 신규 생성
+      const createUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/tags`;
+      const createRes = await fetch(createUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${authString}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name: trimmed })
+      });
+      
+      if (createRes.ok) {
+        const newTag = await createRes.json();
+        tagIds.push(newTag.id);
+        console.log(`[✔] 새 태그 생성 및 매핑 완료: "${trimmed}" (ID: ${newTag.id})`);
+      } else {
+        const errText = await createRes.text();
+        // 이미 존재하는 태그일 경우 에러 핸들링
+        if (errText.includes("term_exists")) {
+          // 다시 한번 단독 검색해서 가져오기 시도
+          const getUrl = `${wpUrl.replace(/\/$/, '')}/wp-json/wp/v2/tags?search=${encodeURIComponent(trimmed)}`;
+          const getRes = await fetch(getUrl, { headers: { "Authorization": `Basic ${authString}` } });
+          if (getRes.ok) {
+            const tags = await getRes.json();
+            const exactTag = tags.find(t => t.name.toLowerCase() === trimmed.toLowerCase());
+            if (exactTag) {
+              tagIds.push(exactTag.id);
+              console.log(`[✔] 기존 태그 중복 감지 후 재연동 완료: "${trimmed}" (ID: ${exactTag.id})`);
+              continue;
+            }
+          }
+        }
+        console.warn(`[⚠️] 태그 생성 스킵: "${trimmed}" - ${errText}`);
+      }
+    } catch (err) {
+      console.error(`[❌] 태그 처리 중 네트워크 오류: ${trimmed}`, err.message);
+    }
+  }
+  return tagIds;
 }
 
 // 외부 이미지 URL을 워드프레스 미디어 API에 업로드 (DALL-E 용)
@@ -333,7 +436,11 @@ async function startPublishing() {
   if (fs.existsSync(customContentImgPath)) {
     console.log("📊 본문 이미지(custom_content_image.png) 발견! 워드프레스에 업로드합니다...");
     const base64ImageBytes = fs.readFileSync(customContentImgPath, 'base64');
-    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_content.png`);
+    const altText = seoMeta.title || postTitle;
+    const titleText = `${postTitle} 본문 이미지`;
+    const captionText = `${postTitle} - 본문 삽입 이미지`;
+    const descriptionText = `${postTitle} 본문 설명 이미지`;
+    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_content.png`, altText, titleText, captionText, descriptionText);
     
     if (uploadResult && uploadResult.url) {
       fs.writeFileSync(path.join(targetDir, 'custom_content_image_url.txt'), uploadResult.url, 'utf8');
@@ -353,7 +460,11 @@ async function startPublishing() {
   if (fs.existsSync(customBloggerThumbPath)) {
     console.log("🎨 구글 블로그용 커스텀 썸네일 발견! 워드프레스 미디어에 업로드합니다...");
     const base64ImageBytes = fs.readFileSync(customBloggerThumbPath, 'base64');
-    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_blogger_thumb.png`);
+    const altText = seoMeta.title || postTitle;
+    const titleText = `${postTitle} 구글블로그 썸네일`;
+    const captionText = `${postTitle} - Blogger Thumbnail`;
+    const descriptionText = `${postTitle} 구글블로그 대표 이미지`;
+    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_blogger_thumb.png`, altText, titleText, captionText, descriptionText);
     if (uploadResult && uploadResult.url) {
       fs.writeFileSync(path.join(targetDir, 'custom_blogger_thumbnail_url.txt'), uploadResult.url, 'utf8');
       console.log(`[✔] 구글 블로그용 썸네일 업로드 성공: ${uploadResult.url}`);
@@ -364,7 +475,11 @@ async function startPublishing() {
   if (fs.existsSync(customBloggerContentImgPath)) {
     console.log("📊 구글 블로그용 본문 이미지 발견! 워드프레스 미디어에 업로드합니다...");
     const base64ImageBytes = fs.readFileSync(customBloggerContentImgPath, 'base64');
-    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_blogger_content.png`);
+    const altText = seoMeta.title || postTitle;
+    const titleText = `${postTitle} 구글블로그 본문 이미지`;
+    const captionText = `${postTitle} - Blogger Content Image`;
+    const descriptionText = `${postTitle} 구글블로그 본문 설명 이미지`;
+    const uploadResult = await uploadBase64MediaToWordPress(base64ImageBytes, `${postTitle.replace(/\s+/g, "_")}_blogger_content.png`, altText, titleText, captionText, descriptionText);
     if (uploadResult && uploadResult.url) {
       fs.writeFileSync(path.join(targetDir, 'custom_blogger_content_image_url.txt'), uploadResult.url, 'utf8');
       console.log(`[✔] 구글 블로그용 본문 이미지 업로드 성공: ${uploadResult.url}`);
@@ -413,12 +528,27 @@ async function startPublishing() {
   // 3. 최종적으로 HTML로 파싱 실행
   finalBlogHtmlContent = markdownToHtml(finalBlogHtmlContent, targetDir, postTitle);
 
+  if (seoMeta.json_ld && Object.keys(seoMeta.json_ld).length > 0) {
+    const jsonLdScript = `\n\n<script type="application/ld+json">\n${JSON.stringify(seoMeta.json_ld, null, 2)}\n</script>\n`;
+    finalBlogHtmlContent += jsonLdScript;
+  }
+
+  let tagIds = [];
+  if (seoMeta.tags && seoMeta.tags.length > 0) {
+    console.log(`🏷️ 워드프레스 태그 연동 처리 중: ${seoMeta.tags.join(', ')}`);
+    tagIds = await getOrCreateTagIds(seoMeta.tags);
+  }
+
   const payloadData = {
     title: postTitle,
     content: finalBlogHtmlContent,
     slug: seoMeta.slug || dirName.toLowerCase().replace(/_/g, '-'),
     status: 'draft'
   };
+
+  if (tagIds.length > 0) {
+    payloadData.tags = tagIds;
+  }
 
   if (featuredMediaId) {
     payloadData.featured_media = featuredMediaId;

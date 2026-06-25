@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       hasReceivedWelcome,
       annualPrice: eligibleForAnnualPromo ? 29900 : 99900,
       weeklyPrice: eligibleForWeeklyPromo ? 1000 : 3000,
-      monthlyPrice: eligibleForMonthlyPromo ? 4900 : 9900,
+      monthlyPrice: eligibleForMonthlyPromo ? 1900 : 4900,
       daysSinceCreation
     });
   } catch (error: any) {

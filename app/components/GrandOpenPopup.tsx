@@ -138,7 +138,7 @@ export default function GrandOpenPopup() {
               <div className="b-num">2</div>
               <div className="b-desc">
                 <strong>멤버십 오픈 특가 파격 할인!</strong>
-                <p>월간 멤버십 첫 달 단 4,900원 프로모션!<br/>홈페이지 내 모든 오디오북 무제한 감상 가능</p>
+                <p>월간 멤버십 3개월간 단 1,900원 프로모션!<br/>홈페이지 내 모든 오디오북 무제한 감상 가능</p>
                 <button className="go-btn" onClick={() => { setIsOpen1(false); setIsOpen2(false); window.location.href='/membership'; }}>멤버십 보러가기</button>
               </div>
             </div>

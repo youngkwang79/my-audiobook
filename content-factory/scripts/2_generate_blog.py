@@ -122,6 +122,117 @@ def generate_with_gemini_sdk(system_prompt, user_prompt, api_key):
                 return None
     return None
 
+def fallback_regex_parse(raw_text):
+    import re
+    data = {}
+    
+    # Extract title
+    title_match = re.search(r'"title"\s*:\s*"(.*?)"', raw_text, re.DOTALL)
+    if title_match:
+        data["title"] = title_match.group(1).replace('\\"', '"').replace('\\n', '\n').strip()
+        
+    # Extract meta_description
+    meta_match = re.search(r'"meta_description"\s*:\s*"(.*?)"', raw_text, re.DOTALL)
+    if meta_match:
+        data["meta_description"] = meta_match.group(1).replace('\\"', '"').replace('\\n', '\n').strip()
+        
+    # Extract slug
+    slug_match = re.search(r'"slug"\s*:\s*"(.*?)"', raw_text, re.DOTALL)
+    if slug_match:
+        data["slug"] = slug_match.group(1).strip()
+        
+    # Extract tags
+    tags_match = re.search(r'"tags"\s*:\s*\[(.*?)\]', raw_text, re.DOTALL)
+    if tags_match:
+        tags_str = tags_match.group(1)
+        data["tags"] = [t.strip().strip('"\'') for t in tags_str.split(",") if t.strip()]
+        
+    # Extract json_ld
+    json_ld_match = re.search(r'"json_ld"\s*:\s*(\{.*?\})', raw_text, re.DOTALL)
+    if json_ld_match:
+        try:
+            data["json_ld"] = json.loads(json_ld_match.group(1), strict=False)
+        except:
+            pass
+            
+    # Extract content_markdown safely (try bounded match first, then greedy fallback)
+    # 1st attempt: try properly bounded JSON extraction (e.g., ends with "}  or }\n```)
+    bounded_match = re.search(r'"content_markdown"\s*:\s*"(.*?)(?<!\\)"\s*[\},]', raw_text, re.DOTALL)
+    if bounded_match:
+        content_str = bounded_match.group(1).strip()
+    else:
+        # 2nd attempt: greedy match to end-of-string (for truncated responses)
+        greedy_match = re.search(r'"content_markdown"\s*:\s*"(.*)', raw_text, re.DOTALL)
+        if greedy_match:
+            content_str = greedy_match.group(1).strip()
+            # Remove trailing markdown fences
+            if content_str.endswith("```"):
+                content_str = content_str[:-3].strip()
+            # Remove trailing closing JSON artifacts like "} or "}
+            content_str = re.sub(r'"\s*\}\s*$', '', content_str)
+            content_str = re.sub(r'"\s*,\s*"json_ld".*$', '', content_str, flags=re.DOTALL)
+            if content_str.endswith('"') and not content_str.endswith('\\"'):
+                content_str = content_str[:-1]
+        else:
+            content_str = None
+
+    if content_str is not None:
+        # Remove any duplicate content: if the model accidentally appended the raw markdown
+        # again after the JSON closes, truncate at the second occurrence of a markdown H1 heading.
+        # Heuristic: look for a second `# ` heading that starts from a newline after the first 500 chars.
+        raw_content_decoded = content_str.replace('\\"', '"').replace('\\n', '\n').replace('\\t', '\t')
+        dup_match = re.search(r'\n# .+\n', raw_content_decoded[500:])
+        if dup_match:
+            raw_content_decoded = raw_content_decoded[:500 + dup_match.start()]
+        data["content_markdown"] = raw_content_decoded
+        
+    return data
+
+def repair_json_string(raw_text):
+    import re
+    cleaned = raw_text.strip()
+    
+    # 1. Clean markdown fences
+    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', cleaned, re.DOTALL)
+    if json_match:
+        cleaned = json_match.group(1).strip()
+    else:
+        brace_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+        if brace_match:
+            cleaned = brace_match.group(0).strip()
+            
+    # 2. Fix missing commas between double-quoted values (e.g., in array: "val1" "val2")
+    cleaned = re.sub(r'"\s+"', '", "', cleaned)
+            
+    # 2. Temporarily extract content_markdown to avoid messing it up
+    content_pattern = r'"content_markdown"\s*:\s*"(.*)"\s*\}\s*$'
+    content_match = re.search(content_pattern, cleaned, re.DOTALL)
+    if not content_match:
+        content_pattern = r'"content_markdown"\s*:\s*"(.*)"'
+        content_match = re.search(content_pattern, cleaned, re.DOTALL)
+        
+    content_str = None
+    if content_match:
+        content_str = content_match.group(1)
+        cleaned = cleaned.replace(content_str, "__CONTENT_MARKDOWN_PLACEHOLDER__")
+        
+    # 3. Escape double quotes in other string fields
+    keys = ["title", "meta_description", "slug"]
+    for key in keys:
+        pattern = r'"' + key + r'"\s*:\s*"(.*?)"\s*(,\s*"|\}\s*$)'
+        match = re.search(pattern, cleaned, re.DOTALL)
+        if match:
+            val = match.group(1)
+            escaped_val = re.sub(r'(?<!\\)"', r'\"', val)
+            cleaned = cleaned.replace(f'"{val}"', f'"{escaped_val}"')
+            
+    # 4. Put content_markdown back with escaped internal quotes
+    if content_str is not None:
+        escaped_content = re.sub(r'(?<!\\)"', r'\"', content_str)
+        cleaned = cleaned.replace("__CONTENT_MARKDOWN_PLACEHOLDER__", escaped_content)
+        
+    return cleaned
+
 def main():
     parser = argparse.ArgumentParser(description="AI 기반 SEO 블로그 글 자동 생성")
     parser.add_argument("--keyword", type=str, required=True, help="작성하고자 하는 핵심 롱테일 키워드")
@@ -201,7 +312,15 @@ def main():
             if brace_match:
                 cleaned_response = brace_match.group(0).strip()
                 
-        parsed_data = json.loads(cleaned_response, strict=False)
+        # Apply automatic JSON string repair before parsing
+        repaired_json = repair_json_string(cleaned_response)
+        try:
+            parsed_data = json.loads(repaired_json, strict=False)
+        except Exception as json_err:
+            print(f"[*] json.loads 실패, 정규식을 통한 Fallback 파싱을 진행합니다: {json_err}")
+            parsed_data = fallback_regex_parse(raw_response)
+            if not parsed_data.get("content_markdown"):
+                raise json_err
     except Exception as e:
         print(f"❌ 생성된 결과의 JSON 파싱 실패: {e}")
         print("Raw Response:", raw_response)

@@ -16,6 +16,27 @@ export default function ContentFactoryPanel() {
   const [activePreviewTab, setActivePreviewTab] = useState<"wp" | "blogger">("wp");
   const [selectedMainTheme, setSelectedMainTheme] = useState(0);
 
+  // Unified Multi-Draft States
+  const [wpKeyword, setWpKeyword] = useState<string | null>(null);
+  const [wpTitle, setWpTitle] = useState("");
+  const [wpMetaDescription, setWpMetaDescription] = useState("");
+  const [bloggerKeyword, setBloggerKeyword] = useState<string | null>(null);
+  const [bloggerTitle, setBloggerTitle] = useState("");
+  const [bloggerMetaDescription, setBloggerMetaDescription] = useState("");
+  const [bloggerHtml, setBloggerHtml] = useState("");
+
+  // 관련 링크 (유튜브/블로그) 첨부
+  const [wpRelatedLinks, setWpRelatedLinks] = useState<{ url: string; title: string; type: "youtube" | "blog" }[]>([
+    { url: "", title: "", type: "youtube" },
+    { url: "", title: "", type: "blog" },
+    { url: "", title: "", type: "blog" },
+  ]);
+  const [bloggerRelatedLinks, setBloggerRelatedLinks] = useState<{ url: string; title: string; type: "youtube" | "blog" }[]>([
+    { url: "", title: "", type: "youtube" },
+    { url: "", title: "", type: "blog" },
+    { url: "", title: "", type: "blog" },
+  ]);
+
   // SNS Refactoring states
   const [loadingRefactor, setLoadingRefactor] = useState(false);
   const [refactorData, setRefactorData] = useState<{
@@ -34,6 +55,11 @@ export default function ContentFactoryPanel() {
     postId: string | null;
     editLink: string | null;
   } | null>(null);
+  const [loadingBloggerPublish, setLoadingBloggerPublish] = useState(false);
+  const [bloggerPublishResult, setBloggerPublishResult] = useState<{
+    postId: string | null;
+    editLink: string | null;
+  } | null>(null);
   const [loadingN8n, setLoadingN8n] = useState(false);
   const [wpThumbnailBase64, setWpThumbnailBase64] = useState<string | null>(null);
   const [wpContentImageBase64, setWpContentImageBase64] = useState<string | null>(null);
@@ -41,6 +67,58 @@ export default function ContentFactoryPanel() {
   const [bloggerContentImageBase64, setBloggerContentImageBase64] = useState<string | null>(null);
   const [loadingReels, setLoadingReels] = useState(false);
   const [customCardCoverBase64, setCustomCardCoverBase64] = useState<string | null>(null);
+
+  // AI Illustration-Style Thumbnail Generator States & Config
+  const [selectedThumbBg, setSelectedThumbBg] = useState<string>("clay");
+  const [generatingThumb, setGeneratingThumb] = useState<boolean>(false);
+  const thumbnailBackgrounds = [
+    { id: "clay", name: "🎨 클레이 일러스트", url: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800&auto=format&fit=crop" },
+    { id: "organic", name: "🌿 감성 드로잉", url: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=800&auto=format&fit=crop" },
+    { id: "wave", name: "🌊 모던 추상화", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop" },
+    { id: "vintage", name: "🖼️ 빈티지 페인팅", url: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=800&auto=format&fit=crop" },
+    { id: "cyber", name: "⚡ 디지털 테크", url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800&auto=format&fit=crop" },
+  ];
+
+  const handleAutoGenerateThumbnail = async () => {
+    setGeneratingThumb(true);
+    try {
+      const elementWp = document.getElementById("auto-thumbnail-canvas-wp");
+      const elementBlogger = document.getElementById("auto-thumbnail-canvas-blogger");
+      
+      if (!elementWp || !elementBlogger) {
+        alert("썸네일 생성용 템플릿 요소를 찾을 수 없습니다.");
+        return;
+      }
+      
+      // Capture WordPress Thumbnail
+      const canvasWp = await html2canvas(elementWp, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false
+      });
+      const base64Wp = canvasWp.toDataURL("image/png").split(",")[1];
+      setWpThumbnailBase64(base64Wp);
+      saveStateToLocalStorage("cf_wpThumbnailBase64", base64Wp);
+      
+      // Capture Blogger Thumbnail
+      const canvasBlogger = await html2canvas(elementBlogger, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false
+      });
+      const base64Blogger = canvasBlogger.toDataURL("image/png").split(",")[1];
+      setBloggerThumbnailBase64(base64Blogger);
+      saveStateToLocalStorage("cf_bloggerThumbnailBase64", base64Blogger);
+      
+      alert("🎨 워드프레스용과 구글 블로거용 일러스트 썸네일(각각의 제목 반영)이 성공적으로 자동 생성 및 개별 적용되었습니다!");
+    } catch (e: any) {
+      alert(`썸네일 생성 실패: ${e.message}`);
+    } finally {
+      setGeneratingThumb(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setBase64: (val: string | null) => void, storageKey: string) => {
     const file = e.target.files?.[0];
@@ -154,6 +232,10 @@ export default function ContentFactoryPanel() {
       ]
     }
   ];  // 🔄 세션 데이터 복원 이펙트 (최초 1회 실행)
+
+
+
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedQuery = localStorage.getItem("cf_query") || "";
@@ -165,11 +247,32 @@ export default function ContentFactoryPanel() {
       const savedBloggerMarkdown = localStorage.getItem("cf_bloggerMarkdown") || "";
       const savedPreviewTab = localStorage.getItem("cf_activePreviewTab") as "wp" | "blogger" || "wp";
       const savedRefactorData = localStorage.getItem("cf_refactorData");
-      const savedWpThumb = localStorage.getItem("cf_wpThumbnailBase64");
-      const savedWpContent = localStorage.getItem("cf_wpContentImageBase64");
-      const savedBloggerThumb = localStorage.getItem("cf_bloggerThumbnailBase64");
-      const savedBloggerContent = localStorage.getItem("cf_bloggerContentImageBase64");
 
+      const savedWpKeyword = localStorage.getItem("cf_wpKeyword") || "";
+      const savedWpTitle = localStorage.getItem("cf_wpTitle") || "";
+      const savedWpMetaDescription = localStorage.getItem("cf_wpMetaDescription") || "";
+      const savedBloggerKeyword = localStorage.getItem("cf_bloggerKeyword") || "";
+      const savedBloggerTitle = localStorage.getItem("cf_bloggerTitle") || "";
+      const savedBloggerMetaDescription = localStorage.getItem("cf_bloggerMetaDescription") || "";
+      const savedBloggerHtml = localStorage.getItem("cf_bloggerHtml") || "";
+      const savedWpRelatedLinks = localStorage.getItem("cf_wpRelatedLinks");
+      const savedBloggerRelatedLinks = localStorage.getItem("cf_bloggerRelatedLinks");
+
+      // Clear image cache from localStorage on reload to prevent old remnants
+      localStorage.removeItem("cf_wpThumbnailBase64");
+      localStorage.removeItem("cf_wpContentImageBase64");
+      localStorage.removeItem("cf_bloggerThumbnailBase64");
+      localStorage.removeItem("cf_bloggerContentImageBase64");
+      localStorage.removeItem("cf_customCardCoverBase64");
+
+      // Clear image React states
+      setWpThumbnailBase64(null);
+      setWpContentImageBase64(null);
+      setBloggerThumbnailBase64(null);
+      setBloggerContentImageBase64(null);
+      setCustomCardCoverBase64(null);
+
+      // Restore all text and structured draft inputs
       if (savedQuery) setQuery(savedQuery);
       if (savedTrends) setTrends(JSON.parse(savedTrends));
       if (savedSelectedKeyword) setSelectedKeyword(savedSelectedKeyword);
@@ -179,12 +282,20 @@ export default function ContentFactoryPanel() {
       if (savedBloggerMarkdown) setBloggerMarkdown(savedBloggerMarkdown);
       if (savedPreviewTab) setActivePreviewTab(savedPreviewTab);
       if (savedRefactorData) setRefactorData(JSON.parse(savedRefactorData));
-      if (savedWpThumb) setWpThumbnailBase64(savedWpThumb);
-      if (savedWpContent) setWpContentImageBase64(savedWpContent);
-      if (savedBloggerThumb) setBloggerThumbnailBase64(savedBloggerThumb);
-      if (savedBloggerContent) setBloggerContentImageBase64(savedBloggerContent);
-      const savedCardCover = localStorage.getItem("cf_customCardCoverBase64");
-      if (savedCardCover) setCustomCardCoverBase64(savedCardCover);
+
+      setWpKeyword(savedWpKeyword || null);
+      setWpTitle(savedWpTitle);
+      if (savedWpMetaDescription) setWpMetaDescription(savedWpMetaDescription);
+      setBloggerKeyword(savedBloggerKeyword || null);
+      setBloggerTitle(savedBloggerTitle);
+      if (savedBloggerMetaDescription) setBloggerMetaDescription(savedBloggerMetaDescription);
+      setBloggerHtml(savedBloggerHtml);
+      if (savedWpRelatedLinks) {
+        try { setWpRelatedLinks(JSON.parse(savedWpRelatedLinks)); } catch(e) {}
+      }
+      if (savedBloggerRelatedLinks) {
+        try { setBloggerRelatedLinks(JSON.parse(savedBloggerRelatedLinks)); } catch(e) {}
+      }
     }
   }, []);
 
@@ -214,14 +325,39 @@ export default function ContentFactoryPanel() {
       setExtraFact("");
       setRefactorData(null);
       setPublishResult(null);
+      setBloggerPublishResult(null);
       setCustomCardCoverBase64(null);
+      
+      setWpKeyword(null);
+      setWpTitle("");
+      setWpMetaDescription("");
+      setBloggerKeyword(null);
+      setBloggerTitle("");
+      setBloggerMetaDescription("");
+      setBloggerHtml("");
+      const defaultLinks = [{ url: "", title: "", type: "youtube" as const }, { url: "", title: "", type: "blog" as const }, { url: "", title: "", type: "blog" as const }];
+      setWpRelatedLinks([...defaultLinks]);
+      setBloggerRelatedLinks([...defaultLinks]);
 
-      const keys = ["cf_query", "cf_trends", "cf_selectedKeyword", "cf_suggestedTitle", "cf_extraFact", "cf_wpMarkdown", "cf_bloggerMarkdown", "cf_activePreviewTab", "cf_refactorData", "cf_customCardCoverBase64"];
+      setWpThumbnailBase64(null);
+      setWpContentImageBase64(null);
+      setBloggerThumbnailBase64(null);
+      setBloggerContentImageBase64(null);
+      saveStateToLocalStorage("cf_wpThumbnailBase64", null);
+      saveStateToLocalStorage("cf_wpContentImageBase64", null);
+      saveStateToLocalStorage("cf_bloggerThumbnailBase64", null);
+      saveStateToLocalStorage("cf_bloggerContentImageBase64", null);
+
+      const keys = [
+        "cf_query", "cf_trends", "cf_selectedKeyword", "cf_suggestedTitle", "cf_extraFact", 
+        "cf_wpMarkdown", "cf_bloggerMarkdown", "cf_activePreviewTab", "cf_refactorData", "cf_customCardCoverBase64",
+        "cf_wpKeyword", "cf_wpTitle", "cf_wpMetaDescription", "cf_bloggerKeyword", "cf_bloggerTitle", "cf_bloggerMetaDescription", "cf_bloggerHtml",
+        "cf_wpThumbnailBase64", "cf_wpContentImageBase64", "cf_bloggerThumbnailBase64", "cf_bloggerContentImageBase64",
+        "cf_wpRelatedLinks", "cf_bloggerRelatedLinks"
+      ];
       keys.forEach(k => localStorage.removeItem(k));
     }
   };
-
-
 
   // Helper: Get Auth Token
   const getAuthToken = () => {
@@ -325,18 +461,34 @@ export default function ContentFactoryPanel() {
     setSelectedKeyword(keyword);
     setSuggestedTitle(titleSuggestion);
     setLoadingGenerate(true);
+    
     if (comboType === "wordpress") {
+      setWpKeyword(keyword);
+      setWpTitle(titleSuggestion);
       setWpMarkdown("");
+      setWpThumbnailBase64(null);
+      setWpContentImageBase64(null);
+      saveStateToLocalStorage("cf_wpKeyword", keyword);
+      saveStateToLocalStorage("cf_wpTitle", titleSuggestion);
       saveStateToLocalStorage("cf_wpMarkdown", null);
+      saveStateToLocalStorage("cf_wpThumbnailBase64", null);
+      saveStateToLocalStorage("cf_wpContentImageBase64", null);
+      setPublishResult(null);
     } else {
+      setBloggerKeyword(keyword);
+      setBloggerTitle(titleSuggestion);
       setBloggerMarkdown("");
+      setBloggerThumbnailBase64(null);
+      setBloggerContentImageBase64(null);
+      saveStateToLocalStorage("cf_bloggerKeyword", keyword);
+      saveStateToLocalStorage("cf_bloggerTitle", titleSuggestion);
       saveStateToLocalStorage("cf_bloggerMarkdown", null);
+      saveStateToLocalStorage("cf_bloggerThumbnailBase64", null);
+      saveStateToLocalStorage("cf_bloggerContentImageBase64", null);
+      setBloggerPublishResult(null);
     }
+    
     setRefactorData(null);
-    setPublishResult(null);
-
-    saveStateToLocalStorage("cf_selectedKeyword", keyword);
-    saveStateToLocalStorage("cf_suggestedTitle", titleSuggestion);
     saveStateToLocalStorage("cf_refactorData", null);
 
     try {
@@ -364,11 +516,22 @@ export default function ContentFactoryPanel() {
           saveStateToLocalStorage("cf_wpMarkdown", data.markdown);
           setActivePreviewTab("wp");
           saveStateToLocalStorage("cf_activePreviewTab", "wp");
+          // 메타설명 자동 채우기 (seo_meta에서 반환된 경우)
+          if (data.metaDescription) {
+            setWpMetaDescription(data.metaDescription);
+            saveStateToLocalStorage("cf_wpMetaDescription", data.metaDescription);
+          }
         } else {
           setBloggerMarkdown(data.markdown);
+          setBloggerHtml(data.markdown); // fallback initial HTML to markdown
           saveStateToLocalStorage("cf_bloggerMarkdown", data.markdown);
+          saveStateToLocalStorage("cf_bloggerHtml", data.markdown);
           setActivePreviewTab("blogger");
           saveStateToLocalStorage("cf_activePreviewTab", "blogger");
+          if (data.metaDescription) {
+            setBloggerMetaDescription(data.metaDescription);
+            saveStateToLocalStorage("cf_bloggerMetaDescription", data.metaDescription);
+          }
         }
       } else {
         alert(`블로그 작성 실패: ${data?.error || "unknown"}\n상세: ${data?.details || ""}`);
@@ -382,7 +545,12 @@ export default function ContentFactoryPanel() {
 
   // Action 3: Refactor for Platforms
   const handleRefactor = async () => {
-    if (!selectedKeyword) return;
+    // We prioritize using the WordPress keyword for refactoring since the spin post is generated based on the WP post
+    const refactorKeyword = wpKeyword || selectedKeyword;
+    if (!refactorKeyword) {
+      alert("재가공을 실행할 대상 키워드(초안)가 존재하지 않습니다.");
+      return;
+    }
     setLoadingRefactor(true);
     setRefactorData(null);
     saveStateToLocalStorage("cf_refactorData", null);
@@ -395,7 +563,7 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "refactor", keyword: selectedKeyword })
+        body: JSON.stringify({ action: "refactor", keyword: refactorKeyword })
       });
       const data = await res.json();
       if (res.ok) {
@@ -408,6 +576,9 @@ export default function ContentFactoryPanel() {
         };
         setRefactorData(refObj);
         saveStateToLocalStorage("cf_refactorData", refObj);
+        
+        // Do not overwrite bloggerHtml with the short spun post summary
+
       } else {
         alert(`재가공 실패: ${data?.error || "unknown"}`);
       }
@@ -420,9 +591,29 @@ export default function ContentFactoryPanel() {
 
   // Action 4: Publish to WordPress
   const handlePublish = async () => {
-    if (!selectedKeyword) return;
+    const targetKeyword = wpKeyword || selectedKeyword;
+    const targetTitle = wpTitle || suggestedTitle;
+    if (!targetKeyword) {
+      alert("발행할 대상 키워드(초안)가 존재하지 않습니다.");
+      return;
+    }
     setLoadingPublish(true);
     setPublishResult(null);
+
+    // 메타설명 길이 검증
+    if (wpMetaDescription.length < 60 || wpMetaDescription.length > 110) {
+      alert(`⚠️ 워드프레스 메타 설명은 60~110자 사이여야 합니다.\n현재: ${wpMetaDescription.length}자`);
+      setLoadingPublish(false);
+      return;
+    }
+
+    // 관련 링크를 마크다운 끝에 삽입
+    const validWpLinks = wpRelatedLinks.filter(l => l.url.trim());
+    let finalWpMarkdown = wpMarkdown;
+    if (validWpLinks.length > 0) {
+      const linksSection = buildRelatedLinksSection(validWpLinks);
+      finalWpMarkdown = finalWpMarkdown.trimEnd() + "\n\n" + linksSection;
+    }
 
     try {
       const token = getAuthToken();
@@ -432,7 +623,15 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "publish", keyword: selectedKeyword, title: suggestedTitle, wpThumbnailBase64, wpContentImageBase64, generatedMarkdown: wpMarkdown })
+        body: JSON.stringify({ 
+          action: "publish", 
+          keyword: targetKeyword, 
+          title: targetTitle,
+          metaDescription: wpMetaDescription,
+          wpThumbnailBase64, 
+          wpContentImageBase64, 
+          generatedMarkdown: finalWpMarkdown
+        })
       });
       const data = await res.json();
       if (res.ok && data?.success) {
@@ -451,9 +650,75 @@ export default function ContentFactoryPanel() {
     }
   };
 
+  // Action 4.5: Publish to Google Blogger
+  const handleBloggerPublish = async () => {
+    const targetKeyword = bloggerKeyword || selectedKeyword;
+    const targetTitle = bloggerTitle || suggestedTitle;
+    if (!targetKeyword) {
+      alert("구글 블로그에 발행할 대상 키워드(초안)가 존재하지 않습니다.");
+      return;
+    }
+    setLoadingBloggerPublish(true);
+    setBloggerPublishResult(null);
+
+    // 메타설명 길이 검증
+    if (bloggerMetaDescription.length < 60 || bloggerMetaDescription.length > 110) {
+      alert(`⚠️ 구글 블로거 메타 설명은 60~110자 사이여야 합니다.\n현재: ${bloggerMetaDescription.length}자`);
+      setLoadingBloggerPublish(false);
+      return;
+    }
+
+    // 관련 링크를 HTML 끝에 삽입
+    const validBloggerLinks = bloggerRelatedLinks.filter(l => l.url.trim());
+    let finalBloggerHtml = bloggerHtml;
+    if (validBloggerLinks.length > 0) {
+      const linksHtml = buildRelatedLinksHtml(validBloggerLinks);
+      finalBloggerHtml = finalBloggerHtml.trimEnd() + "\n" + linksHtml;
+    }
+
+    try {
+      const token = getAuthToken();
+      const res = await fetch("/api/admin/content-factory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({ 
+          action: "publish-blogger", 
+          keyword: targetKeyword, 
+          title: targetTitle,
+          metaDescription: bloggerMetaDescription,
+          bloggerThumbnailBase64, 
+          bloggerContentImageBase64, 
+          bloggerPost: finalBloggerHtml
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setBloggerPublishResult({
+          postId: data.postId,
+          editLink: data.editLink
+        });
+        alert("구글 블로그 임시저장 발행이 완료되었습니다!");
+      } else {
+        alert(`구글 블로그 발행 실패: ${data?.error || "unknown"}`);
+      }
+    } catch (e: any) {
+      alert(`에러 발생: ${e.message}`);
+    } finally {
+      setLoadingBloggerPublish(false);
+    }
+  };
+
   // Action 5: Send to n8n Webhook
   const handleSendToN8n = async () => {
-    if (!selectedKeyword) return;
+    const targetWpKeyword = wpKeyword || selectedKeyword;
+    const targetBloggerKeyword = bloggerKeyword || selectedKeyword;
+    if (!targetWpKeyword) {
+      alert("전송할 대상 키워드(초안)가 존재하지 않습니다.");
+      return;
+    }
     setLoadingN8n(true);
 
     try {
@@ -466,12 +731,20 @@ export default function ContentFactoryPanel() {
         },
         body: JSON.stringify({ 
           action: "n8n", 
-          keyword: selectedKeyword, 
-          title: suggestedTitle,
-          bloggerPost: refactorData?.bloggerPost,
+          
+          wpKeyword: targetWpKeyword,
+          wpTitle: wpTitle || suggestedTitle,
+          wpContent: wpMarkdown,
+          
+          bloggerKeyword: targetBloggerKeyword,
+          bloggerTitle: bloggerTitle || suggestedTitle,
+          bloggerPost: bloggerHtml,
+          
           bloggerThumbnailBase64,
           bloggerContentImageBase64,
-          snsCaption: refactorData?.snsCaption
+          
+          snsCaption: refactorData?.snsCaption,
+          reelsVideoUrl: null
         })
       });
       const data = await res.json();
@@ -480,6 +753,8 @@ export default function ContentFactoryPanel() {
       } else {
         alert(`n8n 전송 실패: ${data?.details || data?.error || "unknown"}`);
       }
+    } catch (e: any) {
+      alert(`er: ${e.message}`);
     } finally {
       setLoadingN8n(false);
     }
@@ -542,6 +817,41 @@ export default function ContentFactoryPanel() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert("클립보드에 복사되었습니다!");
+  };
+
+  // 관련 링크 헬퍼 함수
+  const buildRelatedLinksSection = (links: { url: string; title: string; type: string }[]) => {
+    const items = links
+      .filter(l => l.url.trim())
+      .map(l => {
+        const label = l.title.trim() || l.url;
+        const icon = l.type === "youtube" ? "📺" : "📝";
+        return `- ${icon} [${label}](${l.url.trim()})`;
+      })
+      .join("\n");
+    return `---\n\n## 🔗 관련 참고 링크\n\n${items}`;
+  };
+
+  const buildRelatedLinksHtml = (links: { url: string; title: string; type: string }[]) => {
+    const items = links
+      .filter(l => l.url.trim())
+      .map(l => {
+        const label = l.title.trim() || l.url;
+        const icon = l.type === "youtube" ? "📺" : "📝";
+        const isYoutube = l.type === "youtube";
+        const linkColor = isYoutube ? "#ff0000" : "#0070f3";
+        return `<li style="margin-bottom:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:8px; border-left:3px solid ${linkColor};"><a href="${l.url.trim()}" target="_blank" rel="noopener noreferrer" style="color:${linkColor}; text-decoration:none; font-weight:700; font-size:14px;">${icon} ${label}</a><br><span style="font-size:12px; color:#888;">${l.url.trim()}</span></li>`;
+      })
+      .join("\n");
+    return `<hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:32px 0;">\n<div style="margin:24px 0; padding:20px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid rgba(255,255,255,0.08);">\n<h3 style="font-size:16px; font-weight:800; margin:0 0 16px; color:#ffd700;">🔗 관련 참고 링크</h3>\n<ul style="list-style:none; padding:0; margin:0;">\n${items}\n</ul>\n</div>`;
+  };
+
+  // 메타설명 글자 수에 따른 색상
+  const getMetaDescColor = (len: number) => {
+    if (len === 0) return "rgba(255,255,255,0.3)";
+    if (len < 60) return "#ff9f0a";
+    if (len <= 110) return "#30d158";
+    return "#ff453a";
   };
 
   const downloadCard = async (slideIndex: number) => {
@@ -607,6 +917,38 @@ export default function ContentFactoryPanel() {
           sub: "rgba(248, 250, 252, 0.65)"
         };
     }
+  };
+
+  const renderHighlightedTitle = (title: string, keyword: string | null) => {
+    if (!title) return "";
+    if (!keyword) return title;
+    
+    // Split keyphrase into individual words and filter out short ones
+    const keywords = keyword
+      .split(/\s+/)
+      .map(w => w.replace(/[^a-zA-Z0-9가-힣]/g, "").trim())
+      .filter(w => w.length >= 2);
+      
+    if (keywords.length === 0) {
+      return title;
+    }
+    
+    // Create safe search regex for any of the keywords
+    const escapedKeywords = keywords.map(w => w.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+    const regex = new RegExp(`(${escapedKeywords.join("|")})`, "gi");
+    const parts = title.split(regex);
+    
+    return parts.map((part, index) => {
+      const isMatch = keywords.some(w => w.toLowerCase() === part.toLowerCase());
+      if (isMatch) {
+        return (
+          <span key={index} style={{ color: "#ffd700", fontWeight: "900", borderBottom: "3px solid #ffd700", paddingBottom: "2px", margin: "0 2px", display: "inline-block" }}>
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
   };
 
   return (
@@ -922,192 +1264,652 @@ export default function ContentFactoryPanel() {
       )}
 
       {/* 4. Generated Post Preview */}
-      {(wpMarkdown || bloggerMarkdown) && (
+      {(wpMarkdown || bloggerMarkdown || bloggerHtml) && (
         <div className="card-panel">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px" }}>
             <div>
-              <h3 style={{ fontSize: "17px", fontWeight: "800", color: "#ffd700", marginBottom: "8px" }}>
-                📝 생성 완료: 블로그 포스트 초안
+              <h3 style={{ fontSize: "17px", fontWeight: "800", color: "#ffd700", margin: 0 }}>
+                📝 생성 완료: 블로그 포스트 초안 검토 및 편집
               </h3>
-              <div style={{ display: "flex", gap: "8px" }}>
-                {wpMarkdown && (
-                  <button
-                    onClick={() => {
-                      setActivePreviewTab("wp");
-                      saveStateToLocalStorage("cf_activePreviewTab", "wp");
-                    }}
-                    style={{
-                      background: activePreviewTab === "wp" ? "rgba(48, 209, 88, 0.15)" : "transparent",
-                      border: `1px solid ${activePreviewTab === "wp" ? "#30d158" : "rgba(255,255,255,0.1)"}`,
-                      color: activePreviewTab === "wp" ? "#30d158" : "#a1a1a6",
-                      padding: "4px 10px",
-                      borderRadius: "6px",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                      fontWeight: "bold"
-                    }}
-                  >
-                    🟢 WP 초안
-                  </button>
-                )}
-                {bloggerMarkdown && (
-                  <button
-                    onClick={() => {
-                      setActivePreviewTab("blogger");
-                      saveStateToLocalStorage("cf_activePreviewTab", "blogger");
-                    }}
-                    style={{
-                      background: activePreviewTab === "blogger" ? "rgba(88, 86, 214, 0.15)" : "transparent",
-                      border: `1px solid ${activePreviewTab === "blogger" ? "#5856d6" : "rgba(255,255,255,0.1)"}`,
-                      color: activePreviewTab === "blogger" ? "#5856d6" : "#a1a1a6",
-                      padding: "4px 10px",
-                      borderRadius: "6px",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                      fontWeight: "bold"
-                    }}
-                  >
-                    🔵 Blogger 초안
-                  </button>
-                )}
-              </div>
+              <p style={{ fontSize: "12px", opacity: 0.6, marginTop: "4px", marginBottom: 0 }}>
+                워드프레스와 구글 블로그 초안을 각각 편집하고 개별 발행하거나, n8n으로 한 번에 보낼 수 있습니다.
+              </p>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 className="btn-submit"
-                style={{ width: "120px", height: "34px", fontSize: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #30d158 0%, #10b981 100%)" }}
-                onClick={handlePublish}
-                disabled={loadingPublish}
-              >
-                {loadingPublish ? "워드프레스 배포 중..." : "워드프레스 발행"}
-              </button>
-              <button
-                className="btn-submit"
-                style={{ width: "120px", height: "34px", fontSize: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #5856d6 0%, #4338ca 100%)" }}
-                onClick={handleSendToN8n}
-                disabled={loadingN8n}
-              >
-                {loadingN8n ? "n8n 전송 중..." : "n8n 자동화 전송"}
-              </button>
-              <button
-                className="btn-submit"
-                style={{ width: "120px", height: "34px", fontSize: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #ff9f0a 0%, #ff7f00 100%)" }}
+                style={{ width: "130px", height: "36px", fontSize: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #ff9f0a 0%, #ff7f00 100%)" }}
                 onClick={handleRefactor}
                 disabled={loadingRefactor}
               >
-                {loadingRefactor ? "SNS 가공 중..." : "SNS 멀티채널 가공"}
+                {loadingRefactor ? "SNS 가공 중..." : "SNS 멀티채널 가공 📱"}
+              </button>
+              <button
+                className="btn-submit"
+                style={{ width: "140px", height: "36px", fontSize: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #ffd700 0%, #ffa500 100%)", color: "#000", fontWeight: "800" }}
+                onClick={handleSendToN8n}
+                disabled={loadingN8n}
+              >
+                {loadingN8n ? "n8n 전송 중..." : "n8n 자동화 전송 ⚡"}
               </button>
             </div>
           </div>
 
-          <div style={{ marginBottom: "16px" }}>
-            <label className="form-label" style={{ marginBottom: "6px" }}>게시글 제목 수정</label>
-            <input
-              type="text"
-              className="form-input"
-              value={suggestedTitle}
-              onChange={(e) => setSuggestedTitle(e.target.value)}
-            />
+          {/* 🎨 AI 일러스트 썸네일 카드 제작기 */}
+          <div style={{ 
+            background: "rgba(255, 255, 255, 0.02)", 
+            border: "1px solid rgba(255, 215, 0, 0.15)", 
+            borderRadius: "12px", 
+            padding: "16px", 
+            marginBottom: "24px" 
+          }}>
+            <h4 style={{ fontSize: "14px", fontWeight: "800", color: "#ffd700", marginBottom: "8px", marginTop: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>🎨</span> AI 일러스트 카드형 썸네일 자동 메이커
+            </h4>
+            <p style={{ fontSize: "12px", opacity: 0.7, marginBottom: "12px", marginTop: 0 }}>
+              AI가 추천한 제목을 바탕으로 그림처럼 세련된 대표 카드 이미지를 자동 생성하고 워드프레스/블로거 썸네일에 동시 적용합니다.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+              <span style={{ fontSize: "12px", color: "#d1d1d6", fontWeight: "700" }}>일러스트 화풍 선택:</span>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {thumbnailBackgrounds.map((bg) => (
+                  <button
+                    key={bg.id}
+                    onClick={() => setSelectedThumbBg(bg.id)}
+                    style={{
+                      padding: "6px 12px",
+                      background: selectedThumbBg === bg.id ? "rgba(255, 215, 0, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                      border: `1px solid ${selectedThumbBg === bg.id ? "#ffd700" : "rgba(255, 255, 255, 0.1)"}`,
+                      borderRadius: "6px",
+                      color: selectedThumbBg === bg.id ? "#ffd700" : "#d1d1d6",
+                      fontSize: "12px",
+                      fontWeight: selectedThumbBg === bg.id ? "bold" : "normal",
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    {bg.name}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleAutoGenerateThumbnail}
+                disabled={generatingThumb}
+                style={{
+                  marginLeft: "auto",
+                  padding: "8px 16px",
+                  background: "linear-gradient(135deg, #ffd700 0%, #ff9f0a 100%)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#000",
+                  fontWeight: "800",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}
+              >
+                {generatingThumb ? "⚙️ 생성 중..." : "🪄 일러스트 썸네일 만들기"}
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
-            <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
-              <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
-                🖼️ 워드프레스 메인 썸네일 (선택)
-              </label>
-              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
-                이미지를 첨부하면 글의 대표 썸네일(특성 이미지)로 지정됩니다.
-              </p>
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={(e) => handleFileChange(e, setWpThumbnailBase64, "cf_wpThumbnailBase64")}
-                style={{ fontSize: "12px", color: "white" }}
-              />
-              {wpThumbnailBase64 && (
-                <img 
-                  src={`data:image/png;base64,${wpThumbnailBase64}`} 
-                  alt="wp_thumb_preview" 
-                  style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
-                />
-              )}
-            </div>
-            
-            <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
-              <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
-                📊 본문 중간 이미지 (선택)
-              </label>
-              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
-                아래 마크다운 에디터 안에 [IMAGE] 라고 적힌 곳에 사진이 삽입됩니다.
-              </p>
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={(e) => handleFileChange(e, setWpContentImageBase64, "cf_wpContentImageBase64")}
-                style={{ fontSize: "12px", color: "white" }}
-              />
-              {wpContentImageBase64 && (
-                <img 
-                  src={`data:image/png;base64,${wpContentImageBase64}`} 
-                  alt="wp_content_preview" 
-                  style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Wordpress Result Alert */}
-          {publishResult && (
+          {/* Hidden Canvases for html2canvas to capture */}
+          <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+            {/* WordPress Canvas */}
             <div
+              id="auto-thumbnail-canvas-wp"
               style={{
-                background: "rgba(48,209,88,0.1)",
-                border: "1px solid #30d158",
-                borderRadius: "10px",
-                padding: "16px",
-                marginBottom: "20px",
+                width: "800px",
+                height: "450px",
+                backgroundImage: `url(${thumbnailBackgrounds.find(b => b.id === selectedThumbBg)?.url || thumbnailBackgrounds[0].url})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
                 display: "flex",
                 flexDirection: "column",
-                gap: "8px"
+                justifyContent: "space-between",
+                padding: "45px 50px",
+                boxSizing: "border-box",
+                position: "relative",
+                fontFamily: "'Pretendard', sans-serif",
+                color: "#ffffff"
               }}
             >
-              <span style={{ fontWeight: "800", color: "#30d158" }}>🎉 워드프레스 임시저장 업로드 완료! (ID: {publishResult.postId})</span>
-              {publishResult.editLink && (
-                <a
-                  href={publishResult.editLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "#ffd700", textDecoration: "underline", fontSize: "13px", fontWeight: "700" }}
-                >
-                  워드프레스에서 글 편집 및 승인하러 가기 🔗
-                </a>
-              )}
-            </div>
-          )}
+              <div style={{
+                position: "absolute",
+                inset: 0,
+                backgroundColor: "rgba(15, 23, 42, 0.4)",
+                zIndex: 1
+              }} />
 
-          {/* Markdown Output Area */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
-              <span>마크다운 형식 ({activePreviewTab === "wp" ? "WP 초안: blog_post.md" : "Blogger 초안"})</span>
-              <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(activePreviewTab === "wp" ? wpMarkdown : bloggerMarkdown)}>
-                전체 복사
-              </span>
+              <div style={{ zIndex: 2, display: "flex", alignItems: "center" }}>
+                <span style={{
+                  backgroundColor: "#30d158",
+                  color: "#0f172a",
+                  fontSize: "13px",
+                  fontWeight: "900",
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  letterSpacing: "1.5px",
+                  boxShadow: "0 4px 12px rgba(48, 209, 88, 0.3)"
+                }}>
+                  {wpKeyword || selectedKeyword || "WP REPORT"}
+                </span>
+              </div>
+
+              <div style={{
+                zIndex: 2,
+                backgroundColor: "rgba(10, 15, 30, 0.94)",
+                border: "2px solid rgba(255, 215, 0, 0.45)",
+                borderRadius: "16px",
+                padding: "26px 32px",
+                margin: "10px 0",
+                boxShadow: "0 12px 36px rgba(0, 0, 0, 0.4)"
+              }}>
+                <h1 style={{
+                  fontSize: "42px",
+                  fontWeight: "900",
+                  lineHeight: "1.4",
+                  margin: 0,
+                  color: "#ffffff",
+                  textShadow: "0 2px 4px rgba(0, 0, 0, 0.6)",
+                  wordBreak: "keep-all"
+                }}>
+                  {renderHighlightedTitle(wpTitle || suggestedTitle || "무림북 블로그 추천 가이드", wpKeyword || selectedKeyword)}
+                </h1>
+              </div>
+
+              <div style={{
+                zIndex: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderTop: "1px solid rgba(255, 255, 255, 0.2)",
+                paddingTop: "15px"
+              }} >
+                <span style={{ fontSize: "14px", fontWeight: "700", opacity: 0.8, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                  💡 똑똑한 지출 & 재테크 가이드
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: "900", color: "#ffd700", textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                  murimbook.com
+                </span>
+              </div>
             </div>
-            <textarea
-              className="form-textarea"
-              style={{ height: "300px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
-              value={activePreviewTab === "wp" ? wpMarkdown : bloggerMarkdown}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (activePreviewTab === "wp") {
-                  setWpMarkdown(val);
-                  saveStateToLocalStorage("cf_wpMarkdown", val);
-                } else {
-                  setBloggerMarkdown(val);
-                  saveStateToLocalStorage("cf_bloggerMarkdown", val);
-                }
+
+            {/* Blogger Canvas */}
+            <div
+              id="auto-thumbnail-canvas-blogger"
+              style={{
+                width: "800px",
+                height: "450px",
+                backgroundImage: `url(${thumbnailBackgrounds.find(b => b.id === selectedThumbBg)?.url || thumbnailBackgrounds[0].url})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                padding: "45px 50px",
+                boxSizing: "border-box",
+                position: "relative",
+                fontFamily: "'Pretendard', sans-serif",
+                color: "#ffffff"
               }}
-              placeholder="수정할 본문 내용 (마크다운)을 작성하거나 [IMAGE] 태그를 삽입하세요."
-            />
+            >
+              <div style={{
+                position: "absolute",
+                inset: 0,
+                backgroundColor: "rgba(15, 23, 42, 0.4)",
+                zIndex: 1
+              }} />
+
+              <div style={{ zIndex: 2, display: "flex", alignItems: "center" }}>
+                <span style={{
+                  backgroundColor: "#5856d6",
+                  color: "#ffffff",
+                  fontSize: "13px",
+                  fontWeight: "900",
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  letterSpacing: "1.5px",
+                  boxShadow: "0 4px 12px rgba(88, 86, 214, 0.3)"
+                }}>
+                  {bloggerKeyword || selectedKeyword || "BLOGGER REPORT"}
+                </span>
+              </div>
+
+              <div style={{
+                zIndex: 2,
+                backgroundColor: "rgba(10, 15, 30, 0.94)",
+                border: "2px solid rgba(255, 215, 0, 0.45)",
+                borderRadius: "16px",
+                padding: "26px 32px",
+                margin: "10px 0",
+                boxShadow: "0 12px 36px rgba(0, 0, 0, 0.4)"
+              }}>
+                <h1 style={{
+                  fontSize: "42px",
+                  fontWeight: "900",
+                  lineHeight: "1.4",
+                  margin: 0,
+                  color: "#ffffff",
+                  textShadow: "0 2px 4px rgba(0, 0, 0, 0.6)",
+                  wordBreak: "keep-all"
+                }}>
+                  {renderHighlightedTitle(bloggerTitle || suggestedTitle || "구글 블로그 정보 가이드", bloggerKeyword || selectedKeyword)}
+                </h1>
+              </div>
+
+              <div style={{
+                zIndex: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderTop: "1px solid rgba(255, 255, 255, 0.2)",
+                paddingTop: "15px"
+              }} >
+                <span style={{ fontSize: "14px", fontWeight: "700", opacity: 0.8, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                  💡 똑똑한 지출 & 재테크 가이드
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: "900", color: "#ffd700", textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                  murimbook.com
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))", gap: "24px" }}>
+            
+            {/* WordPress Draft Box */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(48, 209, 88, 0.15)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "15px", fontWeight: "800", color: "#30d158" }}>🟢 워드프레스 초안 (WP Draft)</span>
+                {wpKeyword && (
+                  <span style={{ fontSize: "11px", background: "rgba(48, 209, 88, 0.1)", color: "#30d158", padding: "2px 6px", borderRadius: "4px" }}>
+                    키워드: {wpKeyword}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label" style={{ marginBottom: "6px" }}>게시글 제목 수정</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={wpTitle}
+                  onChange={(e) => {
+                    setWpTitle(e.target.value);
+                    saveStateToLocalStorage("cf_wpTitle", e.target.value);
+                  }}
+                  placeholder="워드프레스 제목을 입력하세요"
+                />
+              </div>
+
+              {/* ✅ 메타 설명 (필수) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    🔍 메타 설명 <span style={{ color: "#ff453a", fontSize: "11px" }}>* 필수 (60~110자)</span>
+                  </label>
+                  <span style={{
+                    fontSize: "12px",
+                    fontWeight: "800",
+                    color: getMetaDescColor(wpMetaDescription.length),
+                    transition: "color 0.2s"
+                  }}>
+                    {wpMetaDescription.length} / 110자
+                  </span>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  style={{
+                    height: "72px",
+                    fontSize: "13px",
+                    lineHeight: "1.6",
+                    resize: "vertical",
+                    border: `1px solid ${wpMetaDescription.length >= 60 && wpMetaDescription.length <= 110 ? "rgba(48,209,88,0.5)" : wpMetaDescription.length > 0 ? "rgba(255,159,10,0.5)" : "rgba(255,255,255,0.12)"}`,
+                    transition: "border-color 0.2s"
+                  }}
+                  value={wpMetaDescription}
+                  onChange={(e) => {
+                    setWpMetaDescription(e.target.value);
+                    saveStateToLocalStorage("cf_wpMetaDescription", e.target.value);
+                  }}
+                  placeholder="검색 결과에 표시될 설명 (60~110자). 예: '2026년 최신 청년도약계좌 가입 조건부터 혜택까지 A to Z 완벽 정리. 신청 방법과 주의사항도 한 번에 확인하세요.'"
+                  maxLength={120}
+                />
+                {wpMetaDescription.length > 0 && wpMetaDescription.length < 60 && (
+                  <p style={{ fontSize: "11px", color: "#ff9f0a", margin: 0 }}>⚠️ 최소 {60 - wpMetaDescription.length}자 더 입력해주세요</p>
+                )}
+                {wpMetaDescription.length > 110 && (
+                  <p style={{ fontSize: "11px", color: "#ff453a", margin: 0 }}>⚠️ {wpMetaDescription.length - 110}자 초과 – 줄여주세요</p>
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
+                  <span>본문 내용 (마크다운 형식)</span>
+                  <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(wpMarkdown)}>
+                    복사
+                  </span>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  style={{ height: "350px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
+                  value={wpMarkdown}
+                  onChange={(e) => {
+                    setWpMarkdown(e.target.value);
+                    saveStateToLocalStorage("cf_wpMarkdown", e.target.value);
+                  }}
+                  placeholder="수정할 워드프레스 본문 마크다운 내용..."
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.15)" }}>
+                  <label className="form-label" style={{ marginBottom: "4px", fontSize: "11px", display: "block" }}>🖼️ 썸네일 (대표 이미지)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => handleFileChange(e, setWpThumbnailBase64, "cf_wpThumbnailBase64")}
+                    style={{ fontSize: "11px", color: "white", width: "100%" }}
+                  />
+                  {wpThumbnailBase64 && (
+                    <img 
+                      src={`data:image/png;base64,${wpThumbnailBase64}`} 
+                      alt="wp_thumb_preview" 
+                      style={{ marginTop: "8px", width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }} 
+                    />
+                  )}
+                </div>
+                
+                <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.15)" }}>
+                  <label className="form-label" style={{ marginBottom: "4px", fontSize: "11px", display: "block" }}>📊 본문 내 삽입 이미지</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => handleFileChange(e, setWpContentImageBase64, "cf_wpContentImageBase64")}
+                    style={{ fontSize: "11px", color: "white", width: "100%" }}
+                  />
+                  {wpContentImageBase64 && (
+                    <img 
+                      src={`data:image/png;base64,${wpContentImageBase64}`} 
+                      alt="wp_content_preview" 
+                      style={{ marginTop: "8px", width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }} 
+                    />
+                  )}
+                </div>
+              </div>
+
+              {publishResult && (
+                <div style={{ background: "rgba(48,209,88,0.1)", border: "1px solid #30d158", borderRadius: "8px", padding: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontWeight: "800", color: "#30d158", fontSize: "12px" }}>🎉 워드프레스 임시저장 업로드 완료!</span>
+                  {publishResult.editLink && (
+                    <a href={publishResult.editLink} target="_blank" rel="noreferrer" style={{ color: "#ffd700", textDecoration: "underline", fontSize: "12px", fontWeight: "700" }}>
+                      글 편집 및 승인하러 가기 🔗
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* ✅ 관련 링크 첨부 (글 끝 삽입) */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,215,0,0.2)", borderRadius: "10px", padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "800", color: "#ffd700" }}>🔗 관련 참고 링크 첨부 (글 끝에 자동 삽입)</span>
+                  <span style={{ fontSize: "11px", opacity: 0.5 }}>유튜브/블로그 최대 3개</span>
+                </div>
+                {wpRelatedLinks.map((link, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <select
+                      value={link.type}
+                      onChange={(e) => {
+                        const updated = wpRelatedLinks.map((l, i) => i === idx ? { ...l, type: e.target.value as "youtube" | "blog" } : l);
+                        setWpRelatedLinks(updated);
+                        saveStateToLocalStorage("cf_wpRelatedLinks", updated);
+                      }}
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "white", borderRadius: "6px", padding: "6px 8px", fontSize: "12px", flexShrink: 0, cursor: "pointer", colorScheme: "dark" }}
+                    >
+                      <option value="youtube">📺 유튜브</option>
+                      <option value="blog">📝 블로그</option>
+                    </select>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ flex: 1, height: "34px", fontSize: "12px", padding: "6px 10px" }}
+                      placeholder={link.type === "youtube" ? "https://youtu.be/..." : "https://blog.naver.com/..."}
+                      value={link.url}
+                      onChange={(e) => {
+                        const updated = wpRelatedLinks.map((l, i) => i === idx ? { ...l, url: e.target.value } : l);
+                        setWpRelatedLinks(updated);
+                        saveStateToLocalStorage("cf_wpRelatedLinks", updated);
+                      }}
+                    />
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ width: "140px", flexShrink: 0, height: "34px", fontSize: "12px", padding: "6px 10px" }}
+                      placeholder="링크 제목 (선택)"
+                      value={link.title}
+                      onChange={(e) => {
+                        const updated = wpRelatedLinks.map((l, i) => i === idx ? { ...l, title: e.target.value } : l);
+                        setWpRelatedLinks(updated);
+                        saveStateToLocalStorage("cf_wpRelatedLinks", updated);
+                      }}
+                    />
+                  </div>
+                ))}
+                {wpRelatedLinks.some(l => l.url.trim()) && (
+                  <div style={{ background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.1)", borderRadius: "6px", padding: "8px 10px", fontSize: "11px", color: "rgba(255,255,255,0.6)" }}>
+                    💡 미리보기: 총 {wpRelatedLinks.filter(l => l.url.trim()).length}개 링크가 글 끝에 '관련 참고 링크' 섹션으로 삽입됩니다.
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="btn-submit"
+                style={{ width: "100%", height: "38px", fontSize: "13px", borderRadius: "8px", background: "linear-gradient(135deg, #30d158 0%, #10b981 100%)", fontWeight: "bold", opacity: (wpMetaDescription.length >= 60 && wpMetaDescription.length <= 110) ? 1 : 0.6 }}
+                onClick={handlePublish}
+                disabled={loadingPublish}
+              >
+                {loadingPublish ? "워드프레스 발행 중..." : "워드프레스 발행 🚀"}
+              </button>
+            </div>
+
+            {/* Blogger Draft Box */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(88, 86, 214, 0.15)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "15px", fontWeight: "800", color: "#5856d6" }}>🔵 구글 블로거 초안 (Blogger Draft)</span>
+                {bloggerKeyword && (
+                  <span style={{ fontSize: "11px", background: "rgba(88, 86, 214, 0.1)", color: "#5856d6", padding: "2px 6px", borderRadius: "4px" }}>
+                    키워드: {bloggerKeyword}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label" style={{ marginBottom: "6px" }}>게시글 제목 수정</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={bloggerTitle}
+                  onChange={(e) => {
+                    setBloggerTitle(e.target.value);
+                    saveStateToLocalStorage("cf_bloggerTitle", e.target.value);
+                  }}
+                  placeholder="블로거 제목을 입력하세요"
+                />
+              </div>
+
+              {/* ✅ 메타 설명 (필수) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    🔍 메타 설명 <span style={{ color: "#ff453a", fontSize: "11px" }}>* 필수 (60~110자)</span>
+                  </label>
+                  <span style={{
+                    fontSize: "12px",
+                    fontWeight: "800",
+                    color: getMetaDescColor(bloggerMetaDescription.length),
+                    transition: "color 0.2s"
+                  }}>
+                    {bloggerMetaDescription.length} / 110자
+                  </span>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  style={{
+                    height: "72px",
+                    fontSize: "13px",
+                    lineHeight: "1.6",
+                    resize: "vertical",
+                    border: `1px solid ${bloggerMetaDescription.length >= 60 && bloggerMetaDescription.length <= 110 ? "rgba(88,86,214,0.6)" : bloggerMetaDescription.length > 0 ? "rgba(255,159,10,0.5)" : "rgba(255,255,255,0.12)"}`,
+                    transition: "border-color 0.2s"
+                  }}
+                  value={bloggerMetaDescription}
+                  onChange={(e) => {
+                    setBloggerMetaDescription(e.target.value);
+                    saveStateToLocalStorage("cf_bloggerMetaDescription", e.target.value);
+                  }}
+                  placeholder="검색 결과에 표시될 설명 (60~110자). 예: '2026년 최신 청년도약계좌 가입 조건부터 혜택까지 A to Z 완벽 정리. 신청 방법과 주의사항도 한 번에 확인하세요.'"
+                  maxLength={120}
+                />
+                {bloggerMetaDescription.length > 0 && bloggerMetaDescription.length < 60 && (
+                  <p style={{ fontSize: "11px", color: "#ff9f0a", margin: 0 }}>⚠️ 최소 {60 - bloggerMetaDescription.length}자 더 입력해주세요</p>
+                )}
+                {bloggerMetaDescription.length > 110 && (
+                  <p style={{ fontSize: "11px", color: "#ff453a", margin: 0 }}>⚠️ {bloggerMetaDescription.length - 110}자 초과 – 줄여주세요</p>
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
+                  <span>본문 내용 (HTML/스핀 원고 형식)</span>
+                  <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(bloggerHtml)}>
+                    복사
+                  </span>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  style={{ height: "350px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
+                  value={bloggerHtml}
+                  onChange={(e) => {
+                    setBloggerHtml(e.target.value);
+                    saveStateToLocalStorage("cf_bloggerHtml", e.target.value);
+                  }}
+                  placeholder="수정할 구글 블로그 HTML 내용..."
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.15)" }}>
+                  <label className="form-label" style={{ marginBottom: "4px", fontSize: "11px", display: "block" }}>🖼️ 썸네일 (대표 이미지)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => handleFileChange(e, setBloggerThumbnailBase64, "cf_bloggerThumbnailBase64")}
+                    style={{ fontSize: "11px", color: "white", width: "100%" }}
+                  />
+                  {bloggerThumbnailBase64 && (
+                    <img 
+                      src={`data:image/png;base64,${bloggerThumbnailBase64}`} 
+                      alt="blogger_thumb_preview" 
+                      style={{ marginTop: "8px", width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }} 
+                    />
+                  )}
+                </div>
+                
+                <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.15)" }}>
+                  <label className="form-label" style={{ marginBottom: "4px", fontSize: "11px", display: "block" }}>📊 본문 내 삽입 이미지</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => handleFileChange(e, setBloggerContentImageBase64, "cf_bloggerContentImageBase64")}
+                    style={{ fontSize: "11px", color: "white", width: "100%" }}
+                  />
+                  {bloggerContentImageBase64 && (
+                    <img 
+                      src={`data:image/png;base64,${bloggerContentImageBase64}`} 
+                      alt="blogger_content_preview" 
+                      style={{ marginTop: "8px", width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }} 
+                    />
+                  )}
+                </div>
+              </div>
+
+              {bloggerPublishResult && (
+                <div style={{ background: "rgba(88,86,214,0.1)", border: "1px solid #5856d6", borderRadius: "8px", padding: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontWeight: "800", color: "#5856d6", fontSize: "12px" }}>🎉 구글 블로그 임시저장 업로드 완료!</span>
+                  {bloggerPublishResult.editLink && (
+                    <a href={bloggerPublishResult.editLink} target="_blank" rel="noreferrer" style={{ color: "#ffd700", textDecoration: "underline", fontSize: "12px", fontWeight: "700" }}>
+                      글 편집 및 승인하러 가기 🔗
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* ✅ 관련 링크 첨부 (글 끝 삽입) */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(88,86,214,0.3)", borderRadius: "10px", padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "800", color: "#a78bfa" }}>🔗 관련 참고 링크 첨부 (글 끝에 자동 삽입)</span>
+                  <span style={{ fontSize: "11px", opacity: 0.5 }}>유튜브/블로그 최대 3개</span>
+                </div>
+                {bloggerRelatedLinks.map((link, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <select
+                      value={link.type}
+                      onChange={(e) => {
+                        const updated = bloggerRelatedLinks.map((l, i) => i === idx ? { ...l, type: e.target.value as "youtube" | "blog" } : l);
+                        setBloggerRelatedLinks(updated);
+                        saveStateToLocalStorage("cf_bloggerRelatedLinks", updated);
+                      }}
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "white", borderRadius: "6px", padding: "6px 8px", fontSize: "12px", flexShrink: 0, cursor: "pointer", colorScheme: "dark" }}
+                    >
+                      <option value="youtube">📺 유튜브</option>
+                      <option value="blog">📝 블로그</option>
+                    </select>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ flex: 1, height: "34px", fontSize: "12px", padding: "6px 10px" }}
+                      placeholder={link.type === "youtube" ? "https://youtu.be/..." : "https://blog.naver.com/..."}
+                      value={link.url}
+                      onChange={(e) => {
+                        const updated = bloggerRelatedLinks.map((l, i) => i === idx ? { ...l, url: e.target.value } : l);
+                        setBloggerRelatedLinks(updated);
+                        saveStateToLocalStorage("cf_bloggerRelatedLinks", updated);
+                      }}
+                    />
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ width: "140px", flexShrink: 0, height: "34px", fontSize: "12px", padding: "6px 10px" }}
+                      placeholder="링크 제목 (선택)"
+                      value={link.title}
+                      onChange={(e) => {
+                        const updated = bloggerRelatedLinks.map((l, i) => i === idx ? { ...l, title: e.target.value } : l);
+                        setBloggerRelatedLinks(updated);
+                        saveStateToLocalStorage("cf_bloggerRelatedLinks", updated);
+                      }}
+                    />
+                  </div>
+                ))}
+                {bloggerRelatedLinks.some(l => l.url.trim()) && (
+                  <div style={{ background: "rgba(88,86,214,0.06)", border: "1px solid rgba(88,86,214,0.15)", borderRadius: "6px", padding: "8px 10px", fontSize: "11px", color: "rgba(255,255,255,0.6)" }}>
+                    💡 미리보기: 총 {bloggerRelatedLinks.filter(l => l.url.trim()).length}개 링크가 글 끝에 '관련 참고 링크' 섹션으로 삽입됩니다.
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="btn-submit"
+                style={{ width: "100%", height: "38px", fontSize: "13px", borderRadius: "8px", background: "linear-gradient(135deg, #5856d6 0%, #4338ca 100%)", fontWeight: "bold", opacity: (bloggerMetaDescription.length >= 60 && bloggerMetaDescription.length <= 110) ? 1 : 0.6 }}
+                onClick={handleBloggerPublish}
+                disabled={loadingBloggerPublish}
+              >
+                {loadingBloggerPublish ? "구글 블로그 발행 중..." : "구글 블로그 발행 🚀"}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -1171,20 +1973,7 @@ export default function ContentFactoryPanel() {
             >
               X 스레드 타래
             </button>
-            <button
-              onClick={() => setActiveSnsTab("blogger")}
-              style={{
-                padding: "8px 16px",
-                background: "none",
-                border: "none",
-                color: activeSnsTab === "blogger" ? "white" : "rgba(255,255,255,0.5)",
-                borderBottom: activeSnsTab === "blogger" ? "2px solid #ff2a5f" : "none",
-                fontWeight: "700",
-                cursor: "pointer"
-              }}
-            >
-              구글 블로그 스핀
-            </button>
+
             <button
               onClick={() => setActiveSnsTab("facebook_insta")}
               style={{
@@ -1213,8 +2002,13 @@ export default function ContentFactoryPanel() {
                 <textarea
                   className="form-textarea"
                   style={{ height: "250px", fontSize: "13px", lineHeight: "1.6" }}
-                  readOnly
                   value={refactorData.shorts}
+                  onChange={(e) => {
+                    const updated = { ...refactorData, shorts: e.target.value };
+                    setRefactorData(updated);
+                    saveStateToLocalStorage("cf_refactorData", updated);
+                  }}
+                  placeholder="쇼츠 대본 내용입니다. 자유롭게 수정하고 복사해서 사용할 수 있습니다."
                 />
               </div>
             )}
@@ -1483,79 +2277,18 @@ export default function ContentFactoryPanel() {
                 <textarea
                   className="form-textarea"
                   style={{ height: "250px", fontSize: "13px", lineHeight: "1.6" }}
-                  readOnly
                   value={refactorData.xThread}
+                  onChange={(e) => {
+                    const updated = { ...refactorData, xThread: e.target.value };
+                    setRefactorData(updated);
+                    saveStateToLocalStorage("cf_refactorData", updated);
+                  }}
+                  placeholder="X 스레드 타래 내용입니다. 자유롭게 수정하고 복사해서 사용할 수 있습니다."
                 />
               </div>
             )}
 
-            {activeSnsTab === "blogger" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
-                  <span>구글 블로그 업로드용 1000자 스핀 원고 (HTML)</span>
-                  <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(refactorData.bloggerPost || "")}>
-                    원고 복사
-                  </span>
-                </div>
-                <textarea
-                  className="form-textarea"
-                  style={{ height: "250px", fontSize: "13px", lineHeight: "1.6" }}
-                  value={refactorData.bloggerPost || ""}
-                  onChange={(e) => {
-                    const updated = { ...refactorData, bloggerPost: e.target.value };
-                    setRefactorData(updated);
-                    saveStateToLocalStorage("cf_refactorData", updated);
-                  }}
-                  placeholder="제미나이 등에서 수동 가공한 최종 원고를 이곳에 붙여넣고 수정할 수 있습니다."
-                />
-                
-                <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                  <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
-                    <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
-                      🖼️ 블로그 썸네일 (맨 위 상단)
-                    </label>
-                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
-                      목록에 노출될 메인 이미지입니다. [THUMBNAIL] 위치나 맨 위에 삽입됩니다.
-                    </p>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => handleFileChange(e, setBloggerThumbnailBase64, "cf_bloggerThumbnailBase64")}
-                      style={{ fontSize: "12px", color: "white" }}
-                    />
-                    {bloggerThumbnailBase64 && (
-                      <img 
-                        src={`data:image/png;base64,${bloggerThumbnailBase64}`} 
-                        alt="blogger_thumb_preview" 
-                        style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
-                      />
-                    )}
-                  </div>
-                  
-                  <div style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.2)" }}>
-                    <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
-                      📊 본문 이미지 (표 대체 등)
-                    </label>
-                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
-                      본문 내용 중간에 삽입됩니다. 본문 내 [IMAGE] 라고 적힌 곳에 들어갑니다.
-                    </p>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => handleFileChange(e, setBloggerContentImageBase64, "cf_bloggerContentImageBase64")}
-                      style={{ fontSize: "12px", color: "white" }}
-                    />
-                    {bloggerContentImageBase64 && (
-                      <img 
-                        src={`data:image/png;base64,${bloggerContentImageBase64}`} 
-                        alt="blogger_content_preview" 
-                        style={{ marginTop: "10px", width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} 
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {activeSnsTab === "facebook_insta" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
