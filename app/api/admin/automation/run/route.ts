@@ -252,9 +252,27 @@ export async function POST(req: Request) {
             });
           });
 
-          const genResult = await novelGenPromise;
-          sendLog("success", `✨ [집필 완료] 제${genResult.chapter}화. <${genResult.title}>`);
-          sendLog("info", `저장 경로: ${genResult.file_path}`);
+          // --- 1단계: 소설 다음 회차 집필 ---
+const genResult = await novelGenPromise;
+sendLog("success", `✨ [집필 완료] 제${genResult.chapter}화. <${genResult.title}>`);
+
+// [복붙 시작: 회차별 폴더 분리 로직]
+const epNum = Number(genResult.chapter);
+const chapterFolderName = String(epNum).padStart(3, "0");
+const finalOutputDir = path.join(outputDirPath, chapterFolderName);
+
+if (!fs.existsSync(finalOutputDir)) {
+  fs.mkdirSync(finalOutputDir, { recursive: true });
+}
+
+const oldPath = genResult.file_path;
+const newPath = path.join(finalOutputDir, path.basename(oldPath));
+
+fs.renameSync(oldPath, newPath);
+genResult.file_path = newPath; 
+// [복붙 끝]
+
+sendLog("info", `저장 경로: ${genResult.file_path}`);
 
           // --- 2단계: TTS 변환 & 3단계: R2 업로드 ---
           let totalParts = 1;

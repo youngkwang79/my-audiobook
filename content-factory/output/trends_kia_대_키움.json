@@ -1,0 +1,31 @@
+{
+  "trends": [
+    {
+      "keyword": "KIA 타이거즈 vs 키움 히어로즈 최근 5경기 기록 비교 및 승률 분석",
+      "intent": "informational",
+      "search_intent_description": "팬들은 팀 간 전적, 승률, 최근 경기 흐름을 비교하며 경기 예측에 활용하려는 경향이 강함.",
+      "content_gap_reason": "경기 통계 및 승률 분석 관련 콘텐츠는 높은 CPC와 광고 노출 빈도를 가질 수 있으나, 기존 검색 결과에서 이러한 심층적이고 Adsense 수익화에 최적화된 분석 콘텐츠가 부족할 수 있음.",
+      "suggested_title": "🚨필승 예측! KIA vs 키움, 최근 5경기 기록 비교 및 승률 분석으로 승자는?",
+      "combo_type": "adsense_optimized",
+      "top_rank_post_summary": "제공된 텍스트에 해당 정보 없음."
+    },
+    {
+      "keyword": "2026 KBO 리그 KIA vs 키움 경기 예측 및 점수 예상 (6월 24~25일)",
+      "intent": "transactional/informational",
+      "search_intent_description": "특정 경기 날짜(6월 24~25일)를 언급한 검색은 실시간 경기 예측, 점수 예상, 중계 정보 등을 원하는 팬들이 많음.",
+      "content_gap_reason": "실시간 경기 예측 및 점수 예상 콘텐츠는 높은 CPC와 실시간 광고 노출 기회를 제공하지만, 기존 검색 결과에서 시의성 있고 거래성 의도를 충족하는 콘텐츠가 부족할 수 있음.",
+      "suggested_title": "🔥속보! 2026 KBO 6월 24~25일 KIA vs 키움, 승패와 점수 예측 대공개!",
+      "combo_type": "adsense_optimized",
+      "top_rank_post_summary": "제공된 텍스트에 해당 정보 없음."
+    },
+    {
+      "keyword": "기아 타이거즈 vs 키움 히어로즈 선수 간 기록 비교 (투수/타자) 및 핵심 포인트",
+      "intent": "informational",
+      "search_intent_description": "팬들은 특정 선수(투수/타자)의 기록 비교, 핵심 플레이, 팀 전략을 분석하려는 경향이 강함.",
+      "content_gap_reason": "선수 기록 비교 및 핵심 포인트 분석 콘텐츠는 높은 전문성과 CPC를 가지며 광고 노출 빈도가 높으나, 기존 검색 결과에서 이러한 심층적인 선수 분석 콘텐츠가 부족할 수 있음.",
+      "suggested_title": "🏆승리의 열쇠는? 기아 vs 키움, 핵심 선수(투수/타자) 기록 비교 및 승부 예측!",
+      "combo_type": "adsense_optimized",
+      "top_rank_post_summary": "제공된 텍스트에 해당 정보 없음."
+    }
+  ]
+}

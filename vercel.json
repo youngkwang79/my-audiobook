@@ -3,6 +3,16 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "functions": {
+    "app/api/admin/content-factory/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "app/api/admin/r2-download/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
 
   "regions": [
     "icn1"

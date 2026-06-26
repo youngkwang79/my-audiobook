@@ -456,6 +456,7 @@ export default function AutomationPanel({
       body: JSON.stringify({
         workId: oneTouchWorkId,
         outputDirPath: selectedFolder,
+        currentChapter: successCount + 1, // 서버가 폴더를 구분할 수 있도록 인덱스 전달
         voice: oneTouchVoice,
         pitch: oneTouchPitch,
         rate: oneTouchRate,

@@ -4,6 +4,10 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
 function runScript(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     console.log(`Executing: ${command} ${args.join(" ")}`);
@@ -219,6 +223,83 @@ function sanitizeKeyword(keyword: string): string {
   return keyword.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ \-_]/g, "").trim().replace(/\s+/g, "_");
 }
 
+function safeSanitizeKeyword(keyword: string): string {
+  return keyword
+    .replace(/[^\p{L}\p{N}\s\-_]/gu, "")
+    .trim()
+    .replace(/\s+/g, "_");
+}
+
+function makeFallbackTitle(keyword: string): string {
+  const cleanKeyword = keyword.replace(/_/g, " ").trim();
+  return cleanKeyword.length > 32 ? cleanKeyword : `${cleanKeyword} 핵심 비교 가이드`;
+}
+
+type TrendItem = Record<string, unknown> & {
+  keyword?: string;
+  title?: string;
+  combo_type?: string;
+  suggested_title?: string;
+  recommended_title?: string;
+  top_rank_post_summary?: string;
+  top_post_summary?: string;
+  summary?: string;
+  search_intent_description?: string;
+  intent_description?: string;
+  content_gap_reason?: string;
+  gap_reason?: string;
+  intent?: string;
+};
+
+function normalizeTrendItems(data: unknown): unknown {
+  if (!data || typeof data !== "object" || !Array.isArray((data as { trends?: unknown }).trends)) return data;
+  const source = data as Record<string, unknown> & { trends: TrendItem[] };
+
+  return {
+    ...source,
+    trends: source.trends
+      .map((item, index) => {
+        const keyword = String(item?.keyword || item?.title || "").trim();
+        const comboType =
+          item?.combo_type === "blogger" || item?.combo_type === "wordpress"
+            ? item.combo_type
+            : index % 2 === 0
+              ? "wordpress"
+              : "blogger";
+
+        return {
+          ...item,
+          keyword,
+          combo_type: comboType,
+          suggested_title: String(
+            item?.suggested_title ||
+            item?.recommended_title ||
+            item?.title ||
+            makeFallbackTitle(keyword)
+          ).trim(),
+          top_rank_post_summary: String(
+            item?.top_rank_post_summary ||
+            item?.top_post_summary ||
+            item?.summary ||
+            ""
+          ).trim(),
+          search_intent_description: String(
+            item?.search_intent_description ||
+            item?.intent_description ||
+            "고단가 광고와 연결될 수 있는 정보 탐색형 키워드입니다."
+          ).trim(),
+          content_gap_reason: String(
+            item?.content_gap_reason ||
+            item?.gap_reason ||
+            "상위 글의 구조를 참고하되 최신 정보와 비교표를 보강하면 차별화할 수 있습니다."
+          ).trim(),
+          intent: item?.intent || "informational"
+        };
+      })
+      .filter((item) => item.keyword)
+  };
+}
+
 export async function POST(req: Request) {
   try {
     // 1. 관리자 권한 확인 (로컬 호스팅 환경에서는 로컬 테스트 편의성을 위해 유연한 인증 제공)
@@ -290,7 +371,7 @@ export async function POST(req: Request) {
       const scriptPath = path.join(process.cwd(), "content-factory", "scripts", "1_search_trend.py");
       await runScript("python", [scriptPath, "--query", query]);
       
-      const sanitizedQuery = sanitizeKeyword(query);
+      const sanitizedQuery = safeSanitizeKeyword(query);
       const outputPath = path.join(process.cwd(), "content-factory", "output", `trends_${sanitizedQuery}.json`);
       
       if (!fs.existsSync(outputPath)) {
@@ -298,14 +379,14 @@ export async function POST(req: Request) {
       }
       
       const rawData = fs.readFileSync(outputPath, "utf8");
-      return NextResponse.json(JSON.parse(rawData));
+      return NextResponse.json(normalizeTrendItems(JSON.parse(rawData)));
     }
 
     // --- Action: Generate (Claude/OpenAI Blog Writer) ---
     if (action === "generate") {
       if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
       
-      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const sanitizedKeyword = safeSanitizeKeyword(keyword);
       const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
       
       // 기존 이미지 캐시 및 잔여 파일 완벽 청소
@@ -369,7 +450,7 @@ export async function POST(req: Request) {
     if (action === "refactor") {
       if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
       
-      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const sanitizedKeyword = safeSanitizeKeyword(keyword);
       const scriptPath = path.join(process.cwd(), "content-factory", "scripts", "3_refactor_post.py");
       
       await runScript("python", [scriptPath, "--dir", sanitizedKeyword]);
@@ -418,7 +499,7 @@ export async function POST(req: Request) {
     if (action === "publish") {
       if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
       
-      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const sanitizedKeyword = safeSanitizeKeyword(keyword);
       const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
       
       if (!fs.existsSync(folderPath)) {
@@ -476,7 +557,7 @@ export async function POST(req: Request) {
     if (action === "publish-blogger") {
       if (!keyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
       
-      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const sanitizedKeyword = safeSanitizeKeyword(keyword);
       const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
       
       if (!fs.existsSync(folderPath)) {
@@ -606,7 +687,7 @@ export async function POST(req: Request) {
 
       // 3. 유튜브 임베드 처리
       const youtubePattern = /\[YOUTUBE:\s*([\s\S]*?)\s*\]/gi;
-      finalBloggerPost = finalBloggerPost.replace(youtubePattern, (match, url) => {
+      finalBloggerPost = finalBloggerPost.replace(youtubePattern, (match: string, url: string) => {
         let videoId = "";
         try {
           const cleanUrl = url.replace(/[\n\r]/g, "").trim();
@@ -642,7 +723,7 @@ export async function POST(req: Request) {
       // 4. 가독성 줄바꿈 태그 변환
       let formattedBloggerPost = finalBloggerPost;
       const paragraphs = formattedBloggerPost.split(/\n\s*\n/);
-      formattedBloggerPost = paragraphs.map(pBlock => {
+      formattedBloggerPost = paragraphs.map((pBlock: string) => {
         const trimmed = pBlock.trim();
         if (!trimmed) return "";
         if (trimmed.startsWith("<div") || trimmed.startsWith("<p") || trimmed.startsWith("<iframe") ||
@@ -653,8 +734,18 @@ export async function POST(req: Request) {
             trimmed.startsWith("<img") || trimmed.startsWith("<table") || trimmed.startsWith("<figure")) {
           return trimmed;
         }
+        // 마크다운 ## 목차 제목 → <h2> (굵게, 중간 크기)
+        if (/^##\s+/.test(trimmed)) {
+          const headingText = trimmed.replace(/^##\s+/, "");
+          return `<h2 style="font-size:1.4em; font-weight:bold; margin-top:36px; margin-bottom:12px; line-height:1.5; word-break:keep-all;">${headingText}</h2>`;
+        }
+        // 마크다운 ### 소목차 → <h3>
+        if (/^###\s+/.test(trimmed)) {
+          const headingText = trimmed.replace(/^###\s+/, "");
+          return `<h3 style="font-size:1.2em; font-weight:bold; margin-top:28px; margin-bottom:10px; line-height:1.5; word-break:keep-all;">${headingText}</h3>`;
+        }
         const cleanContent = trimmed.replace(/\n/g, "<br />");
-        return `<p style="line-height:1.8; margin-bottom:24px; word-break:keep-all;">${cleanContent}</p>`;
+        return `<p style="line-height:1.8; margin-bottom:40px; word-break:keep-all;">${cleanContent}</p>`;
       }).join("\n");
 
       // 4.1 JSON-LD 추가
@@ -694,7 +785,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "missing_slides" }, { status: 400 });
       }
 
-      const sanitizedKeyword = sanitizeKeyword(keyword);
+      const sanitizedKeyword = safeSanitizeKeyword(keyword);
       const folderPath = path.join(process.cwd(), "content-factory", "output", sanitizedKeyword);
       
       if (!fs.existsSync(folderPath)) {
@@ -725,8 +816,8 @@ export async function POST(req: Request) {
 
       if (!targetWpKeyword) return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
 
-      const sanitizedWpKeyword = sanitizeKeyword(targetWpKeyword);
-      const sanitizedBloggerKeyword = targetBloggerKeyword ? sanitizeKeyword(targetBloggerKeyword) : sanitizedWpKeyword;
+      const sanitizedWpKeyword = safeSanitizeKeyword(targetWpKeyword);
+      const sanitizedBloggerKeyword = targetBloggerKeyword ? safeSanitizeKeyword(targetBloggerKeyword) : sanitizedWpKeyword;
 
       const wpFolderPath = path.join(process.cwd(), "content-factory", "output", sanitizedWpKeyword);
       const bloggerFolderPath = path.join(process.cwd(), "content-factory", "output", sanitizedBloggerKeyword);
@@ -859,7 +950,7 @@ export async function POST(req: Request) {
       }
 
       const youtubePattern = /\[YOUTUBE:\s*([\s\S]*?)\s*\]/gi;
-      finalBloggerPost = finalBloggerPost.replace(youtubePattern, (match, url) => {
+      finalBloggerPost = finalBloggerPost.replace(youtubePattern, (match: string, url: string) => {
         let videoId = "";
         try {
           const cleanUrl = url.replace(/[\n\r]/g, "").trim();
@@ -892,7 +983,7 @@ export async function POST(req: Request) {
 
       let formattedBloggerPost = finalBloggerPost;
       const paragraphs = formattedBloggerPost.split(/\n\s*\n/);
-      formattedBloggerPost = paragraphs.map(pBlock => {
+      formattedBloggerPost = paragraphs.map((pBlock: string) => {
         const trimmed = pBlock.trim();
         if (!trimmed) return "";
         if (trimmed.startsWith("<div") || trimmed.startsWith("<p") || trimmed.startsWith("<iframe") ||
@@ -903,8 +994,18 @@ export async function POST(req: Request) {
             trimmed.startsWith("<img") || trimmed.startsWith("<table") || trimmed.startsWith("<figure")) {
           return trimmed;
         }
+        // 마크다운 ## 목차 제목 → <h2> (굵게, 중간 크기)
+        if (/^##\s+/.test(trimmed)) {
+          const headingText = trimmed.replace(/^##\s+/, "");
+          return `<h2 style="font-size:1.4em; font-weight:bold; margin-top:36px; margin-bottom:12px; line-height:1.5; word-break:keep-all;">${headingText}</h2>`;
+        }
+        // 마크다운 ### 소목차 → <h3>
+        if (/^###\s+/.test(trimmed)) {
+          const headingText = trimmed.replace(/^###\s+/, "");
+          return `<h3 style="font-size:1.2em; font-weight:bold; margin-top:28px; margin-bottom:10px; line-height:1.5; word-break:keep-all;">${headingText}</h3>`;
+        }
         const cleanContent = trimmed.replace(/\n/g, "<br />");
-        return `<p style="line-height:1.8; margin-bottom:24px; word-break:keep-all;">${cleanContent}</p>`;
+        return `<p style="line-height:1.8; margin-bottom:40px; word-break:keep-all;">${cleanContent}</p>`;
       }).join("\n");
 
       if (bloggerSeoMeta.json_ld && Object.keys(bloggerSeoMeta.json_ld).length > 0) {

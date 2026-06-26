@@ -312,6 +312,11 @@ export default function ContentFactoryPanel() {
     }
   };
 
+  const makeFallbackTitle = (keyword: string) => {
+    const cleanKeyword = keyword.replace(/_/g, " ").trim();
+    return cleanKeyword.length > 32 ? cleanKeyword : `${cleanKeyword} 핵심 비교 가이드`;
+  };
+
   // 작업 패널 초기화 (새 시작용)
   const handleClearAll = () => {
     if (confirm("진행 중인 모든 콘텐츠 팩토리 임시 기획 데이터를 삭제하고 초기화하시겠습니까?")) {
@@ -458,30 +463,31 @@ export default function ContentFactoryPanel() {
 
   // Action 2: Generate Blog
   const handleGenerate = async (keyword: string, titleSuggestion: string, topRankPostSummary?: string, comboType: "wordpress" | "blogger" = "wordpress") => {
+    const safeTitleSuggestion = (titleSuggestion || "").trim() || makeFallbackTitle(keyword);
     setSelectedKeyword(keyword);
-    setSuggestedTitle(titleSuggestion);
+    setSuggestedTitle(safeTitleSuggestion);
     setLoadingGenerate(true);
     
     if (comboType === "wordpress") {
       setWpKeyword(keyword);
-      setWpTitle(titleSuggestion);
+      setWpTitle(safeTitleSuggestion);
       setWpMarkdown("");
       setWpThumbnailBase64(null);
       setWpContentImageBase64(null);
       saveStateToLocalStorage("cf_wpKeyword", keyword);
-      saveStateToLocalStorage("cf_wpTitle", titleSuggestion);
+      saveStateToLocalStorage("cf_wpTitle", safeTitleSuggestion);
       saveStateToLocalStorage("cf_wpMarkdown", null);
       saveStateToLocalStorage("cf_wpThumbnailBase64", null);
       saveStateToLocalStorage("cf_wpContentImageBase64", null);
       setPublishResult(null);
     } else {
       setBloggerKeyword(keyword);
-      setBloggerTitle(titleSuggestion);
+      setBloggerTitle(safeTitleSuggestion);
       setBloggerMarkdown("");
       setBloggerThumbnailBase64(null);
       setBloggerContentImageBase64(null);
       saveStateToLocalStorage("cf_bloggerKeyword", keyword);
-      saveStateToLocalStorage("cf_bloggerTitle", titleSuggestion);
+      saveStateToLocalStorage("cf_bloggerTitle", safeTitleSuggestion);
       saveStateToLocalStorage("cf_bloggerMarkdown", null);
       saveStateToLocalStorage("cf_bloggerThumbnailBase64", null);
       saveStateToLocalStorage("cf_bloggerContentImageBase64", null);
@@ -499,7 +505,7 @@ export default function ContentFactoryPanel() {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ action: "generate", keyword, title: titleSuggestion, extraFact, topRankPostSummary })
+        body: JSON.stringify({ action: "generate", keyword, title: safeTitleSuggestion, extraFact, topRankPostSummary })
       });
       
       const text = await res.text();

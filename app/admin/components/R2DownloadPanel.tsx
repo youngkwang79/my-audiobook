@@ -14,9 +14,18 @@ type EpisodeGroup = {
   files: R2File[];
 };
 
-type Props = {
-  worksList: any[];
+type WorkOption = {
+  id: string;
+  title?: string;
 };
+
+type Props = {
+  worksList: WorkOption[];
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -122,8 +131,8 @@ export default function R2DownloadPanel({ worksList }: Props) {
       } else {
         setStatusMsg(`조회 실패: ${data.error || "unknown"}`);
       }
-    } catch (e: any) {
-      setStatusMsg(`에러: ${e.message}`);
+    } catch (e: unknown) {
+      setStatusMsg(`에러: ${getErrorMessage(e)}`);
     } finally {
       setLoading(false);
     }
@@ -176,8 +185,8 @@ export default function R2DownloadPanel({ worksList }: Props) {
       window.URL.revokeObjectURL(url);
 
       setStatusMsg(`✅ ${selectedKeys.size}개 파일 다운로드 완료!`);
-    } catch (e: any) {
-      setStatusMsg(`다운로드 에러: ${e.message}`);
+    } catch (e: unknown) {
+      setStatusMsg(`다운로드 에러: ${getErrorMessage(e)}`);
     } finally {
       setDownloading(false);
     }
@@ -243,6 +252,105 @@ export default function R2DownloadPanel({ worksList }: Props) {
     }
     return sum;
   }, [episodes, selectedKeys]);
+
+  const selectedFiles = useMemo(() => {
+    return episodes
+      .flatMap((ep) => ep.files)
+      .filter((file) => selectedKeys.has(file.key));
+  }, [episodes, selectedKeys]);
+
+  const createDownloadBatches = (files: R2File[]) => {
+    const maxFilesPerBatch = 8;
+    const maxBytesPerBatch = 180 * 1024 * 1024;
+    const batches: R2File[][] = [];
+    let current: R2File[] = [];
+    let currentSize = 0;
+
+    for (const file of files) {
+      const wouldOverflow =
+        current.length >= maxFilesPerBatch ||
+        (current.length > 0 && currentSize + file.size > maxBytesPerBatch);
+
+      if (wouldOverflow) {
+        batches.push(current);
+        current = [];
+        currentSize = 0;
+      }
+
+      current.push(file);
+      currentSize += file.size;
+    }
+
+    if (current.length > 0) batches.push(current);
+    return batches;
+  };
+
+  const saveZipResponse = async (res: Response, batchIndex: number, totalBatches: number) => {
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const safeName = (selectedWork?.title || selectedWorkId)
+      .replace(/[^\p{L}\p{N}\- ]/gu, "")
+      .substring(0, 50) || "download";
+
+    a.href = url;
+    a.download = totalBatches > 1
+      ? `${safeName}_audio_part${batchIndex + 1}.zip`
+      : `${safeName}_audio.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadZipBatched = async () => {
+    if (selectedFiles.length === 0) {
+      alert("다운로드할 파일을 선택해주세요.");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const token = getAuthToken();
+      const batches = createDownloadBatches(selectedFiles);
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        const batchSize = batch.reduce((sum, file) => sum + file.size, 0);
+        setStatusMsg(`${i + 1}/${batches.length} 묶음 다운로드 중... ${batch.length}개 파일 (${formatBytes(batchSize)})`);
+
+        const res = await fetch("/api/admin/r2-download", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify({
+            action: "download-zip",
+            workId: selectedWorkId,
+            workTitle: selectedWork?.title || selectedWorkId,
+            keys: batch.map((file) => file.key),
+            batchIndex: i,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          setStatusMsg(`다운로드 실패 (${i + 1}/${batches.length}): ${errData.error || res.statusText}`);
+          return;
+        }
+
+        await saveZipResponse(res, i, batches.length);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+
+      setStatusMsg(`다운로드 완료: ${selectedFiles.length}개 파일을 ${batches.length}개 ZIP으로 나눠 저장했습니다.`);
+    } catch (e: unknown) {
+      setStatusMsg(`다운로드 오류: ${getErrorMessage(e)}`);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="card-panel">
@@ -439,7 +547,7 @@ export default function R2DownloadPanel({ worksList }: Props) {
           {/* 전체 다운로드 버튼 */}
           <button
             className="btn-submit"
-            onClick={handleDownloadZip}
+            onClick={handleDownloadZipBatched}
             disabled={downloading || selectedKeys.size === 0}
             style={{
               background: downloading
