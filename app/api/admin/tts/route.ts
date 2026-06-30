@@ -218,22 +218,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "missing_required_metadata" }, { status: 400 });
     }
 
-    // 오디오에 제목은 함께 낭독하되, 흐름을 깨는 회차 표시(제 몇화)는 낭독에서 제외합니다.
+    // 오디오에 제목 및 회차 표시(제 몇화)를 완전히 제외하여 자연스러운 이야기 연속 낭독을 보장합니다.
     let fullText = text.trim();
     const cleanTitle = title.trim();
 
-    // 1. 본문 첫 머리에 들어 있는 "제N화 - " 또는 "[제N화. ]" 등 회차 번호 낭독 기호 제거
-    fullText = fullText.replace(/^\[?제\s*\d+\s*화\s*[-.]\s*/, "");
-    fullText = fullText.replace(/^\[?제\s*\d+\s*화\s+/, "");
-    // 대괄호 닫는 기호가 남아있다면 제거
-    if (fullText.startsWith(cleanTitle) && fullText.substring(cleanTitle.length).startsWith("]")) {
-      fullText = cleanTitle + fullText.substring(cleanTitle.length + 1);
-    }
+    // 첫 줄 가져와 제목/회차 라인 여부 검증 후 제거
+    const lines = fullText.split(/\r?\n/);
+    if (lines.length > 0) {
+      const firstLine = lines[0].trim();
+      const cleanFirstLine = firstLine.replace(/[^a-zA-Z0-9가-힣]/g, "");
+      const normalizedTitle = cleanTitle.replace(/[^a-zA-Z0-9가-힣]/g, "");
+      
+      const isHeader = 
+        /^\[?제\s*\d+\s*화\s*[-.]\s*.*\]?$/.test(firstLine) ||
+        /^\[?제\s*\d+\s*화\s*.*\]?$/.test(firstLine) ||
+        (normalizedTitle && cleanFirstLine.includes(normalizedTitle)) ||
+        (normalizedTitle && normalizedTitle.includes(cleanFirstLine) && cleanFirstLine.length >= 2);
 
-    // 2. 제목(cleanTitle)만 본문 서두에 들어가도록 추가 (이미 제목이 본문 첫 부분에 정규적으로 들어가 있지 않은 경우만)
-    const normalize = (s: string) => s.replace(/[^a-zA-Z0-9가-힣]/g, "");
-    if (cleanTitle && !normalize(fullText.substring(0, 150)).includes(normalize(cleanTitle))) {
-      fullText = `${cleanTitle}.\n\n${fullText}`;
+      if (isHeader) {
+        lines.shift(); // 첫 줄(제목/회차) 제거
+        fullText = lines.join("\n").trim();
+      }
     }
 
     // 텍스트 분할 (최대 3000글자 기준)

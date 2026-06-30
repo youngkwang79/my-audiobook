@@ -397,6 +397,7 @@ export default function EpisodePage() {
 
   const [signedAudioSrc, setSignedAudioSrc] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const signedUrlCacheRef = useRef<Record<string, string>>({});
 
   const R2_BASE = "https://pub-0f35ad90f1ea477d862bf039f6761249.r2.dev";
   const WORKER_BASE = "https://transcribe-worker.uns00.workers.dev";
@@ -568,15 +569,65 @@ export default function EpisodePage() {
     }
 
     let isMounted = true;
+
+    const prefetchNext = async (token: string) => {
+      let nextEpKey = "";
+      let nextPartNum = 1;
+      
+      if (part < TOTAL_PARTS) {
+        nextEpKey = episodeKey;
+        nextPartNum = part + 1;
+      } else {
+        const nextEpisode = episodes[currentEpisodeIndex + 1];
+        if (nextEpisode) {
+          nextEpKey = String(nextEpisode.id);
+          nextPartNum = 1;
+        }
+      }
+
+      if (nextEpKey) {
+        const nextCacheKey = `${nextEpKey}_p${nextPartNum}`;
+        if (!signedUrlCacheRef.current[nextCacheKey]) {
+          try {
+            const resNext = await fetch("/api/media/sign", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ workId, episodeId: nextEpKey, part: nextPartNum })
+            });
+            if (resNext.ok) {
+              const dataNext = await resNext.json();
+              if (isMounted && dataNext.url) {
+                signedUrlCacheRef.current[nextCacheKey] = dataNext.url;
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    };
+
     const fetchSignedUrl = async () => {
       setIsSigning(true);
-      setSignedAudioSrc(null);
+      const cacheKey = `${episodeKey}_p${part}`;
+
       try {
         const token = await getAccessToken();
         if (!token || token === "null") {
           setIsSigning(false);
           return;
         }
+
+        // 캐시 확인 시 즉시 세팅해 로딩 딜레이 제거
+        if (signedUrlCacheRef.current[cacheKey]) {
+          setSignedAudioSrc(signedUrlCacheRef.current[cacheKey]);
+          setIsSigning(false);
+          prefetchNext(token);
+          return;
+        }
+
+        setSignedAudioSrc(null);
 
         const res = await fetch("/api/media/sign", {
           method: "POST",
@@ -591,9 +642,10 @@ export default function EpisodePage() {
           const data = await res.json();
           if (isMounted && data.url) {
             setSignedAudioSrc(data.url);
+            signedUrlCacheRef.current[cacheKey] = data.url;
+            prefetchNext(token);
           }
         } else {
-          // 401 Unauthorized 등 에러 시 콘솔에 과도한 로깅 방지 및 상태 처리
           if (res.status !== 401) {
             const errData = await res.json().catch(() => ({}));
             console.error("오디오 파일을 찾을 수 없거나 권한이 없습니다. HTTP:", res.status, errData);
@@ -609,7 +661,7 @@ export default function EpisodePage() {
     fetchSignedUrl();
 
     return () => { isMounted = false; };
-  }, [locked, entBusy, loadingData, currentEpisode, workId, episodeKey, part]);
+  }, [locked, entBusy, loadingData, currentEpisode, workId, episodeKey, part, episodes, currentEpisodeIndex, TOTAL_PARTS]);
 
 
 
