@@ -396,7 +396,16 @@ async def amain():
         communicate.texts = [ssml]
         
         try:
-            await communicate.save(temp_raw)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    await communicate.save(temp_raw)
+                    break
+                except Exception as e:
+                    print(f"Edge TTS connection attempt {attempt + 1} failed: {e}", file=sys.stderr)
+                    if attempt == max_retries - 1:
+                        raise e
+                    await asyncio.sleep(2)
         except Exception as e:
             print(f"Error calling Edge TTS: {e}", file=sys.stderr)
             sys.exit(1)

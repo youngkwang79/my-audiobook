@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { cleanHanja, parseFilename } from "../utils/stringHelpers";
+import { downloadBase64Parts } from "../utils/downloadHelper";
 
 const DEFAULT_VOICE_GUIDE = `[Audio Generation Rules]
 - Core Rule (STRICT): Read the provided text EXACTLY as written. NEVER add, alter, or invent any dialogues, commentaries, or explanations. 
@@ -86,6 +87,9 @@ export default function AutomationPanel({
     "one-touch" | "legacy-tts" | "batch-tts" | "merger"
   >("one-touch");
 
+  const [uploadR2AndDb, setUploadR2AndDb] = useState(true);
+  const [downloadAfterGen, setDownloadAfterGen] = useState(false);
+
   // --- ONE-TOUCH AUTOMATION STATE ---
   const [diskFolders, setDiskFolders] = useState<
     Array<{ name: string; path: string }>
@@ -121,6 +125,7 @@ export default function AutomationPanel({
   >("1day");
   const [oneTouchStopRequested, setOneTouchStopRequested] = useState(false);
   const stopRequestedRef = useRef(false);
+  const directoryHandleRef = useRef<any>(null);
 
   const [oneTouchRunning, setOneTouchRunning] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([]);
@@ -456,7 +461,6 @@ export default function AutomationPanel({
       body: JSON.stringify({
         workId: oneTouchWorkId,
         outputDirPath: selectedFolder,
-        currentChapter: successCount + 1, // 서버가 폴더를 구분할 수 있도록 인덱스 전달
         voice: oneTouchVoice,
         pitch: oneTouchPitch,
         rate: oneTouchRate,
@@ -904,11 +908,17 @@ export default function AutomationPanel({
     return null;
   };
 
-  /** 파일명에서 회차번호·제목 추출 (폴백) */
   const parseTitleFromFilename = (
     filename: string,
   ): { id: string; title: string } => {
     const base = filename.replace(/\.[^/.]+$/, "");
+    
+    // 제N화 / 제N편 매칭
+    const jeMatch = base.trim().match(/^제\s*(\d+)\s*(?:화|편)?[\s\-_.]*(.*)$/);
+    if (jeMatch) {
+      return { id: String(Number(jeMatch[1])), title: jeMatch[2].trim() || `제${Number(jeMatch[1])}화` };
+    }
+
     const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
     if (match) return { id: String(Number(match[1])), title: match[2].trim() };
     const onlyNum = base.trim().match(/^(\d+)(?:화)?$/);
@@ -975,24 +985,32 @@ export default function AutomationPanel({
     e.target.value = "";
   };
 
-  /** 합본 파일의 헤더 텍스트에서 회차번호·제목 추출 (제N화, N화, N_제목 등 지원) */
+  /** 합본 파일의 헤더 텍스트에서 회차번호·제목 추출 (제N화, N화, 제N편, N편, N_제목 등 지원) */
   const parseHeaderText = (headerText: string): { id: string; title: string } => {
     const h = headerText.trim();
 
-    // 패턴 1: 제N화_제목 / 제N화 제목 / 제N화. 제목 (「」<> 등 꺾쇠 포함)
-    const p1 = h.match(/^제\s*(\d+)\s*화[_\s.\-「"<『【]*(.*?)[">」』】]*$/);
+    // 패턴 1: 제N화_제목 / 제N화 제목 / 제N화. 제목 / 제N편_제목 (「」<> 등 꺾쇠 포함)
+    const p1 = h.match(/^제\s*(\d+)\s*(?:화|편)[_\s.\-「"<『【]*(.*?)[">」』】]*$/);
     if (p1) {
       const num = Number(p1[1]);
       const t = p1[2].trim().replace(/[_\-「」『』【】<>"]/g, " ").trim();
       return { id: String(num), title: t || `${num}화` };
     }
 
-    // 패턴 2: N화_제목 / N화 제목
-    const p2 = h.match(/^(\d+)\s*화[_\s.\-"「<『【]*(.*?)[">」』】]*$/);
+    // 패턴 2: N화_제목 / N화 제목 / N편_제목 / N편 제목
+    const p2 = h.match(/^(\d+)\s*(?:화|편)[_\s.\-"「<『【]*(.*?)[">」』】]*$/);
     if (p2) {
       const num = Number(p2[1]);
       const t = p2[2].trim().replace(/[_\-「」『』【】<>"]/g, " ").trim();
       return { id: String(num), title: t || `${num}화` };
+    }
+
+    // 패턴 chapter: chapter_N / chapter N / ep_N / ep N / episode N (대소문자 구분 없음)
+    const pChapter = h.match(/^(?:chapter|ep|episode)[_\s.\-]*(\d+)[_\s.\-「"<『【]*(.*?)[">」』】]*$/i);
+    if (pChapter) {
+      const num = Number(pChapter[1]);
+      const t = pChapter[2].trim().replace(/[_\-「」『』【】<>"]/g, " ").trim();
+      return { id: String(num), title: t || `chapter_${num}` };
     }
 
     // 패턴 3: N_제목 / N-제목 / N. 제목 / N 제목
@@ -1021,15 +1039,19 @@ export default function AutomationPanel({
     if (file) {
       const text = cleanHanja(await file.text());
 
-      const headerRegex = /^\[\s*(.+?)\s*\]$/;
+      const bracketRegex = /^\[\s*(.+?)\s*\]$/;
+      const jeRegex = /^제\s*(\d+)\s*(?:화|편)(?:\s*(.*))?$/;
       const lines = text.split(/\r?\n/);
       const chapters: ParsedChapter[] = [];
       let currentHeader = "";
       let currentLines: string[] = [];
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const match = line.match(headerRegex);
+        const line = lines[i].trim();
+        const bracketMatch = line.match(bracketRegex);
+        const jeMatch = line.match(jeRegex);
+        const match = bracketMatch || jeMatch;
+
         if (match) {
           if (currentHeader || currentLines.join("").trim().length > 0) {
             const titleText = currentHeader || "프롤로그";
@@ -1040,10 +1062,10 @@ export default function AutomationPanel({
               text: currentLines.join("\n").trim(),
             });
           }
-          currentHeader = match[1].trim();
+          currentHeader = bracketMatch ? bracketMatch[1].trim() : line;
           currentLines = [];
         } else {
-          currentLines.push(line);
+          currentLines.push(lines[i]); // Keep original line formatting (including indentation)
         }
       }
 
@@ -1233,6 +1255,20 @@ export default function AutomationPanel({
       return;
     }
 
+    if (downloadAfterGen && !directoryHandleRef.current) {
+      try {
+        if ("showDirectoryPicker" in window) {
+          const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+          directoryHandleRef.current = handle;
+        }
+      } catch (err: any) {
+        console.warn("Directory picker error or cancelled:", err);
+        if (!confirm("저장할 폴더를 지정하지 않으면 브라우저 기본 다운로드 폴더에 개별 저장됩니다. 계속 연성을 진행하시겠습니까?")) {
+          return;
+        }
+      }
+    }
+
     const token = await supabase.auth
       .getSession()
       .then((s) => s.data.session?.access_token);
@@ -1296,6 +1332,8 @@ export default function AutomationPanel({
               releaseDate: new Date(episodeReleaseDate).toISOString(),
               is_membership_only: ttsIsMembershipOnly,
               voiceGuide,
+              uploadR2AndDb: uploadR2AndDb,
+              downloadLocal: downloadAfterGen
             }),
           });
           const result = await res.json();
@@ -1303,6 +1341,11 @@ export default function AutomationPanel({
             throw new Error(
               result.details || result.error || "오디오 생성 실패",
             );
+          
+          if (downloadAfterGen && result.parts) {
+            await downloadBase64Parts(result.parts, selectedWorkId, item.episodeId, item.episodeTitle, directoryHandleRef.current);
+          }
+
           setTxtFileQueue((prev) =>
             prev.map((q, idx) => (idx === i ? { ...q, status: "success" } : q)),
           );
@@ -1366,6 +1409,8 @@ export default function AutomationPanel({
           releaseDate: episodeReleaseDate,
           is_membership_only: ttsIsMembershipOnly,
           voiceGuide,
+          uploadR2AndDb: uploadR2AndDb,
+          downloadLocal: downloadAfterGen
         }),
       });
 
@@ -1375,10 +1420,15 @@ export default function AutomationPanel({
           result.details || result.error || "오디오 생성/등록 실패",
         );
 
+      if (downloadAfterGen && result.parts) {
+        await downloadBase64Parts(result.parts, selectedWorkId, episodeId, episodeTitle, directoryHandleRef.current);
+      }
+
       setTtsStatus("success");
-      alert(
-        `🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`,
-      );
+      const successMessage = uploadR2AndDb 
+        ? `🎉 [연성 완료] ${episodeTitle} 오디오가 R2에 업로드되고 홈페이지에 즉시 반영되었습니다!`
+        : `🎉 [연성 완료] ${episodeTitle} 오디오 연성 및 로컬 저장이 완료되었습니다!`;
+      alert(successMessage);
       setEpisodeId("");
       setEpisodeTitle("");
       setTextInput("");
@@ -1393,6 +1443,21 @@ export default function AutomationPanel({
 
   const runBatch = async (startIndex: number) => {
     if (parsedChapters.length === 0) return;
+
+    if (downloadAfterGen && !directoryHandleRef.current) {
+      try {
+        if ("showDirectoryPicker" in window) {
+          const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+          directoryHandleRef.current = handle;
+        }
+      } catch (err: any) {
+        console.warn("Directory picker error or cancelled:", err);
+        if (!confirm("저장할 폴더를 지정하지 않으면 브라우저 기본 다운로드 폴더에 개별 저장됩니다. 계속 연성을 진행하시겠습니까?")) {
+          return;
+        }
+      }
+    }
+
     batchActiveRef.current = true;
     setBatchStatus("running");
 
@@ -1464,6 +1529,8 @@ export default function AutomationPanel({
             releaseDate: calculatedReleaseDate.toISOString(),
             is_membership_only: isMembershipOnlyVal,
             voiceGuide,
+            uploadR2AndDb: uploadR2AndDb,
+            downloadLocal: downloadAfterGen,
           }),
         });
 
@@ -1472,6 +1539,10 @@ export default function AutomationPanel({
           throw new Error(
             result.details || result.error || "오디오 생성/등록 실패",
           );
+        }
+
+        if (downloadAfterGen && result.parts) {
+          await downloadBase64Parts(result.parts, selectedWorkId, chapter.id, chapter.title, directoryHandleRef.current);
         }
 
         setItemStatuses((prev) => ({
@@ -1525,6 +1596,7 @@ export default function AutomationPanel({
     setBatchStatus("idle");
     setCurrentBatchIndex(0);
     setItemStatuses({});
+    directoryHandleRef.current = null;
   };
 
   const handleMergeSubmit = async (e: React.FormEvent) => {
@@ -3116,6 +3188,27 @@ export default function AutomationPanel({
             </div>
           )}
 
+          <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={uploadR2AndDb}
+                onChange={(e) => setUploadR2AndDb(e.target.checked)}
+                style={{ accentColor: "#ff2a5f" }}
+              />
+              <span>☁️ R2 클라우드에 업로드 및 홈페이지 반영</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={downloadAfterGen}
+                onChange={(e) => setDownloadAfterGen(e.target.checked)}
+                style={{ accentColor: "#ff2a5f" }}
+              />
+              <span>💻 내 컴퓨터에 다운로드 (순차 다운)</span>
+            </label>
+          </div>
+
           <button
             type="submit"
             className="btn-submit"
@@ -3393,6 +3486,29 @@ export default function AutomationPanel({
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={uploadR2AndDb}
+                    onChange={(e) => setUploadR2AndDb(e.target.checked)}
+                    style={{ accentColor: "#ff2a5f" }}
+                    disabled={batchStatus === "running"}
+                  />
+                  <span>☁️ R2 클라우드에 업로드 및 홈페이지 반영</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={downloadAfterGen}
+                    onChange={(e) => setDownloadAfterGen(e.target.checked)}
+                    style={{ accentColor: "#ff2a5f" }}
+                    disabled={batchStatus === "running"}
+                  />
+                  <span>💻 내 컴퓨터에 다운로드 (순차 다운)</span>
+                </label>
               </div>
 
               {/* 일괄 컨트롤러 */}

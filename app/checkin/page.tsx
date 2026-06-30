@@ -33,13 +33,13 @@ const ATTENDANCE_REWARDS = [
 
 const EARN_TASKS = [
   {
-    id: "ad",
-    icon: "🎬",
-    title: "보상을 받으세요",
-    subtitle: "영상을 보고 코인 20개 획득",
-    badge: "(0/20)",
-    coin: 20,
-    btnLabel: "광고 보기",
+    id: "blog_read",
+    icon: "📖",
+    title: "오늘의 새소식 읽기",
+    subtitle: "무림 지식을 쌓고 매일 최대 500 코인 획득!",
+    badge: "(0/5)",
+    coin: 100,
+    btnLabel: "새소식 읽기",
     done: false,
   },
   {
@@ -150,6 +150,87 @@ export default function CheckinPage() {
   const [ytModalOpen, setYtModalOpen] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // ── 블로그 퀴즈 모달 관련 상태 ──
+  const [blogQuizModalOpen, setBlogQuizModalOpen] = useState(false);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizTimer, setQuizTimer] = useState(0);
+  const [quizTimerActive, setQuizTimerActive] = useState(false);
+  const [quizStep, setQuizStep] = useState<"timer" | "timer_done" | "q1" | "q1_done" | "q2" | "success" | "fail">("timer");
+  const [currentQuiz, setCurrentQuiz] = useState<any>(null);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [currentBlogUrl, setCurrentBlogUrl] = useState("");
+  const [q2InputText, setQ2InputText] = useState("");
+
+  const [quizStartTime, setQuizStartTime] = useState<number | null>(null);
+  const [quizDuration, setQuizDuration] = useState<number>(30);
+  const [timerTarget, setTimerTarget] = useState<"basic" | "q1" | "q2">("basic");
+
+  // ── 퀴즈 타이머 관리 (Timestamp 방식 + 브라우저 백그라운드 절전 대응) ──
+  useEffect(() => {
+    let interval: any = null;
+    if (quizTimerActive && quizStartTime !== null) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
+        const remaining = Math.max(0, quizDuration - elapsed);
+        setQuizTimer(remaining);
+        
+        if (remaining === 0) {
+          setQuizTimerActive(false);
+          setQuizStartTime(null);
+          if (timerTarget === "basic") {
+            handleBasicClaim();
+          } else if (timerTarget === "q1") {
+            setQuizStep("q1");
+            setSelectedOption(null);
+          } else if (timerTarget === "q2") {
+            setQuizStep("q2");
+            setSelectedOption(null);
+          }
+        }
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [quizTimerActive, quizStartTime, quizDuration, timerTarget]);
+
+  // ── 뒤로가기 방지 및 이탈 경고 로직 ──
+  useEffect(() => {
+    if (!blogQuizModalOpen) return;
+
+    // 모달이 열릴 때 히스토리에 가상 상태 추가
+    window.history.pushState({ quizActive: true }, "", window.location.href);
+
+    const handlePopState = (e: PopStateEvent) => {
+      const confirmLeave = window.confirm(
+        "경고: 퀴즈 진행 도중 뒤로가기를 누르시면 진행 상황이 초기화되며, 처음부터 다시 정독하셔야 합니다. 정말 나가시겠습니까?"
+      );
+
+      if (confirmLeave) {
+        // 모든 퀴즈 상태 리셋 후 모달 닫기
+        setBlogQuizModalOpen(false);
+        setQuizTimerActive(false);
+        setQuizStartTime(null);
+        setQuizTimer(0);
+      } else {
+        // 뒤로가기를 취소하기 위해 히스토리에 다시 가상 상태 추가
+        window.history.pushState({ quizActive: true }, "", window.location.href);
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "퀴즈 진행 중 페이지를 벗어나면 진행 상황이 초기화됩니다.";
+      return e.returnValue;
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [blogQuizModalOpen]);
 
 
 
@@ -383,7 +464,203 @@ export default function CheckinPage() {
     }
   };
 
+  // ── 블로그 퀴즈 미션 시작 ──
+  const handleBlogReadStart = async () => {
+    const todayStr = getTodayDateString();
+    const blogReadCount = Object.keys(taskDone || {}).filter(
+      (key) => key.startsWith("blog_read_basic_") && key.endsWith(`_${todayStr}`)
+    ).length;
+
+    if (blogReadCount >= 5) {
+      alert("오늘의 새소식 읽기 미션을 모두 완료하셨습니다!");
+      return;
+    }
+
+    setQuizLoading(true);
+    try {
+      const { data: quizzes, error } = await supabase
+        .from("blog_quizzes")
+        .select("*");
+
+      if (error || !quizzes || quizzes.length === 0) {
+        alert("퀴즈 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setQuizLoading(false);
+        return;
+      }
+
+      const selectedQuiz = quizzes[Math.floor(Math.random() * quizzes.length)];
+
+      setCurrentQuiz(selectedQuiz);
+      setCurrentBlogUrl(selectedQuiz.blog_url);
+      setQ2InputText("");
+      setQuizStep("timer");
+      setQuizDuration(30);
+      setQuizTimer(30);
+      setQuizStartTime(Date.now());
+      setTimerTarget("basic");
+      setQuizTimerActive(true);
+      setBlogQuizModalOpen(true);
+    } catch (err: any) {
+      alert(`오류: ${err.message || "잠시 후 다시 시도해 주세요."}`);
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  // 30초 완료 시 기본 보상 10코인 지급
+  const handleBasicClaim = async () => {
+    const todayStr = getTodayDateString();
+    const blogReadCount = Object.keys(taskDone || {}).filter(
+      (key) => key.startsWith("blog_read_basic_") && key.endsWith(`_${todayStr}`)
+    ).length;
+    const nextIndex = blogReadCount + 1;
+
+    try {
+      const token = await getAccessToken();
+      const taskId = `blog_read_basic_${nextIndex}_${todayStr}`;
+      
+      if (token) {
+        const res = await fetch("/api/me/tasks", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ taskId, coin: 10 }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          setCoins(Number(data.newRewardPoints || coins + 10));
+        }
+      } else {
+        setCoins((prev) => prev + 10);
+        const savedTasks = localStorage.getItem("checkin_tasks");
+        const existing = savedTasks ? JSON.parse(savedTasks) : {};
+        existing[taskId] = true;
+        localStorage.setItem("checkin_tasks", JSON.stringify(existing));
+      }
+
+      setTaskDone((prev) => ({ ...prev, [taskId]: true }));
+      window.dispatchEvent(new Event("wallet-updated"));
+      setQuizStep("timer_done");
+    } catch (e: any) {
+      alert("기본 보상 지급 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    }
+  };
+
+  // 1단계 퀴즈 정답 제출 (추가 40코인 지급, 총 50코인)
+  const handleQ1Submit = async () => {
+    if (selectedOption === null) {
+      alert("보기를 선택해 주세요.");
+      return;
+    }
+
+    if (selectedOption !== currentQuiz.q1_answer) {
+      setQuizStep("fail");
+      setTimerTarget("q1");
+      return;
+    }
+
+    const todayStr = getTodayDateString();
+    const blogReadCount = Object.keys(taskDone || {}).filter(
+      (key) => key.startsWith("blog_read_basic_") && key.endsWith(`_${todayStr}`)
+    ).length;
+
+    try {
+      const token = await getAccessToken();
+      const taskId = `blog_read_q1_${blogReadCount}_${todayStr}`;
+      
+      if (token) {
+        const res = await fetch("/api/me/tasks", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ taskId, coin: 40 }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          setCoins(Number(data.newRewardPoints || coins + 40));
+        }
+      } else {
+        setCoins((prev) => prev + 40);
+        const savedTasks = localStorage.getItem("checkin_tasks");
+        const existing = savedTasks ? JSON.parse(savedTasks) : {};
+        existing[taskId] = true;
+        localStorage.setItem("checkin_tasks", JSON.stringify(existing));
+      }
+
+      setTaskDone((prev) => ({ ...prev, [taskId]: true }));
+      window.dispatchEvent(new Event("wallet-updated"));
+      
+      setQuizStep("q1_done");
+      setSelectedOption(null);
+    } catch (e: any) {
+      alert("코인 지급 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    }
+  };
+
+  // 2단계 퀴즈 정답 제출 (주관식/서술형)
+  const handleQ2Submit = async () => {
+    if (!q2InputText.trim()) {
+      alert("정답을 입력해 주세요.");
+      return;
+    }
+
+    const cleanUser = q2InputText.trim().toLowerCase().replace(/\s+/g, "");
+    const cleanCorrect = currentQuiz.q2_options[currentQuiz.q2_answer].trim().toLowerCase().replace(/\s+/g, "");
+
+    if (cleanUser !== cleanCorrect) {
+      setQuizStep("fail");
+      setTimerTarget("q2");
+      return;
+    }
+
+    const todayStr = getTodayDateString();
+    const blogReadCount = Object.keys(taskDone || {}).filter(
+      (key) => key.startsWith("blog_read_basic_") && key.endsWith(`_${todayStr}`)
+    ).length;
+
+    try {
+      const token = await getAccessToken();
+      const taskId = `blog_read_q2_${blogReadCount}_${todayStr}`;
+
+      if (token) {
+        const res = await fetch("/api/me/tasks", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ taskId, coin: 50 }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          setCoins(Number(data.newRewardPoints || coins + 50));
+        }
+      } else {
+        setCoins((prev) => prev + 50);
+        const savedTasks = localStorage.getItem("checkin_tasks");
+        const existing = savedTasks ? JSON.parse(savedTasks) : {};
+        existing[taskId] = true;
+        localStorage.setItem("checkin_tasks", JSON.stringify(existing));
+      }
+
+      setTaskDone((prev) => ({ ...prev, [taskId]: true }));
+      window.dispatchEvent(new Event("wallet-updated"));
+      
+      setQuizStep("success");
+    } catch (e: any) {
+      alert("코인 지급 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    }
+  };
+
   const handleTask = (taskId: string, label: string) => {
+    if (taskId === "blog_read") {
+      handleBlogReadStart();
+      return;
+    }
     const todayStr = getTodayDateString();
     const isDaily = taskId !== "youtube" && taskId !== "more";
     const taskKey = isDaily ? `${taskId}_${todayStr}` : taskId;
@@ -1227,7 +1504,7 @@ export default function CheckinPage() {
           position: fixed;
           inset: 0;
           background: rgba(0,0,0,0.8);
-          z-index: 9999;
+          z-index: 9999999 !important;
           display: flex;
           align-items: flex-end;
           justify-content: center;
@@ -1244,9 +1521,11 @@ export default function CheckinPage() {
         .yt-modal-sheet {
           width: 100%;
           max-width: 480px;
+          max-height: 85vh;
+          overflow-y: auto;
           background: #141217;
           border-radius: 24px 24px 0 0;
-          padding: 28px 20px calc(28px + env(safe-area-inset-bottom));
+          padding: 24px 20px calc(30px + env(safe-area-inset-bottom));
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -1578,27 +1857,30 @@ export default function CheckinPage() {
 
           {/* 7일 달력 */}
           <div className="ci-days-row">
-            {ATTENDANCE_REWARDS.map((item, idx) => {
-              const isDone = idx < (streak % 7 === 0 && streak > 0 ? 7 : streak % 7);
-              const isToday = idx === todayIdx && !checkedIn;
+            {(() => {
+              const todayIdx = streak % 7;
+              return ATTENDANCE_REWARDS.map((item, idx) => {
+                const isDone = idx < (streak % 7 === 0 && streak > 0 ? 7 : streak % 7);
+                const isToday = idx === todayIdx && !checkedIn;
 
-              return (
-                <div
-                  key={idx}
-                  className={`ci-day-box ${isDone ? "done" : ""} ${isToday ? "today" : ""}`}
-                >
-                  <span className="ci-day-coin-text">+{item.coin}</span>
-                  {isDone ? (
-                    <div className="ci-day-stamp">出席</div>
-                  ) : isToday ? (
-                    <div className="ci-day-coin-icon">🪙</div>
-                  ) : (
-                    <div className="ci-day-icon-grey">🪙</div>
-                  )}
-                  <span className={`ci-day-label ${isToday ? "today" : ""}`}>{item.day}</span>
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={idx}
+                    className={`ci-day-box ${isDone ? "done" : ""} ${isToday ? "today" : ""}`}
+                  >
+                    <span className="ci-day-coin-text">+{item.coin}</span>
+                    {isDone ? (
+                      <div className="ci-day-stamp">出席</div>
+                    ) : isToday ? (
+                      <div className="ci-day-coin-icon">🪙</div>
+                    ) : (
+                      <div className="ci-day-icon-grey">🪙</div>
+                    )}
+                    <span className={`ci-day-label ${isToday ? "today" : ""}`}>{item.day}</span>
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {/* 출석 버튼 */}
@@ -1619,7 +1901,18 @@ export default function CheckinPage() {
               const todayStr = getTodayDateString();
               const isDaily = task.id !== "youtube" && task.id !== "more";
               const taskKey = isDaily ? `${task.id}_${todayStr}` : task.id;
-              const isDone = task.done || !!taskDone[taskKey];
+              const blogReadCount = Object.keys(taskDone || {}).filter(
+                (key) => key.startsWith("blog_read_basic_") && key.endsWith(`_${todayStr}`)
+              ).length;
+              
+              let isDone = task.done || !!taskDone[taskKey];
+              let badgeText = task.badge;
+
+              if (task.id === "blog_read") {
+                isDone = blogReadCount >= 5;
+                badgeText = `(${blogReadCount}/5)`;
+              }
+
               const isTimerTask = !!(task as any).minutesRequired;
               const requiredSecs = ((task as any).minutesRequired ?? 0) * 60;
               const progress = isTimerTask ? Math.min(100, (elapsedSeconds / requiredSecs) * 100) : 100;
@@ -1634,7 +1927,7 @@ export default function CheckinPage() {
                   <div className="ci-task-info">
                     <span className="ci-task-title">
                       {task.title}
-                      {task.badge && <span className="ci-task-title-badge">{task.badge}</span>}
+                      {badgeText && <span className="ci-task-title-badge">{badgeText}</span>}
                     </span>
                     <span className="ci-task-sub">
                       {task.subtitle.includes("코인") ? (
@@ -1689,24 +1982,243 @@ export default function CheckinPage() {
         </div>
       </div>
 
-      {/* 유튜브 구독 확인 모달 */}
-      {ytModalOpen && (
-        <div className="yt-modal-overlay" onClick={() => setYtModalOpen(false)}>
-          <div className="yt-modal-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="yt-modal-handle" />
-            <div className="yt-modal-icon">▶</div>
-            <h2 className="yt-modal-title">유튜브 채널을 구독하셨나요?</h2>
-            <p className="yt-modal-desc">
-              무림북 공식 유튜브 채널을 구독하시면<br />
-              코인이 즉시 지급됩니다.
-            </p>
-            <div className="yt-modal-coin-badge">🪙 +50 코인 지급</div>
-            <button className="yt-modal-confirm-btn" onClick={handleYoutubeConfirm}>
-              구독 완료했어요!
-            </button>
-            <button className="yt-modal-cancel-btn" onClick={() => setYtModalOpen(false)}>
-              아직 구독하지 않았어요
-            </button>
+      {/* 블로그 퀴즈 모달 */}
+      {blogQuizModalOpen && currentQuiz && (
+        <div className="yt-modal-overlay" onClick={() => {
+          if (quizStep !== "timer" && quizStep !== "q1" && quizStep !== "q2" && quizStep !== "timer_done" && quizStep !== "q1_done") {
+            setBlogQuizModalOpen(false);
+          }
+        }}>
+          <div className="yt-modal-sheet" onClick={(e) => e.stopPropagation()} style={{ 
+            padding: quizStep === "timer" ? "0" : "24px 20px calc(30px + env(safe-area-inset-bottom))",
+            height: quizStep === "timer" ? "90vh" : "auto",
+            maxHeight: quizStep === "timer" ? "90vh" : "85vh",
+            display: "flex",
+            flexDirection: "column"
+          }}>
+            <div className="yt-modal-handle" style={{ display: quizStep === "timer" ? "none" : "block" }} />
+            
+            {quizStep === "timer" && (
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%" }}>
+                {/* 퀴즈 상단 헤더 */}
+                <div style={{ width: "100%", padding: "16px 20px", background: "#141217", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: "#ffe066" }}>📖 무림 지식 쌓기 (정독 중)</span>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: "#fff", background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: 8 }}>
+                      ⏱️ {quizTimer}초 남음
+                    </span>
+                  </div>
+                  <div style={{ width: "100%", height: 5, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${(quizTimer / quizDuration) * 100}%`, height: "100%", background: "linear-gradient(90deg, #ffe066 0%, #cc9900 100%)", transition: "width 0.2s linear" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>💡 화면을 위아래로 스크롤하며 정독하세요.</span>
+                    <button 
+                      onClick={() => window.open(currentBlogUrl, "_blank", "noopener,noreferrer")}
+                      style={{ background: "none", border: "none", color: "#ffe066", fontSize: 11, cursor: "pointer", fontWeight: 700, padding: 0 }}
+                    >
+                      ↗ 새 창으로 열기
+                    </button>
+                  </div>
+                </div>
+                {/* 블로그 아이프레임 본문 */}
+                <div style={{ flex: 1, width: "100%", background: "white", position: "relative" }}>
+                  <iframe
+                    src={currentBlogUrl}
+                    style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+                    title="Blog Content"
+                  />
+                </div>
+              </div>
+            )}
+
+            {quizStep === "timer_done" && (
+              <>
+                <div className="yt-modal-icon" style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 100%)", fontSize: 24 }}>📖</div>
+                <h2 className="yt-modal-title">정독 완료! (+10 코인)</h2>
+                <p className="yt-modal-desc">
+                  30초 동안 본문을 성실히 확인하셨습니다.<br />
+                  기본 보상 **10코인**이 적립되었습니다.
+                </p>
+                <div style={{ width: "100%", display: "flex", gap: 10 }}>
+                  <button 
+                    className="yt-modal-confirm-btn" 
+                    style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "white", boxShadow: "none" }}
+                    onClick={() => setBlogQuizModalOpen(false)}
+                  >
+                    여기서 멈추기
+                  </button>
+                  <button className="yt-modal-confirm-btn" style={{ flex: 1 }} onClick={() => setQuizStep("q1")}>
+                    1단계 퀴즈 도전
+                  </button>
+                </div>
+              </>
+            )}
+
+            {quizStep === "q1" && (
+              <>
+                <div className="yt-modal-icon" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" }}>Q1</div>
+                <h2 className="yt-modal-title" style={{ fontSize: 16, lineHeight: 1.4 }}>
+                  [1단계: 쉬운 퀴즈] {currentQuiz.q1_question}
+                </h2>
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10, margin: "16px 0" }}>
+                  {currentQuiz.q1_options.map((opt: string, idx: number) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedOption(idx)}
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        borderRadius: 12,
+                        background: selectedOption === idx ? "rgba(59, 130, 246, 0.2)" : "rgba(255,255,255,0.03)",
+                        border: selectedOption === idx ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)",
+                        color: selectedOption === idx ? "#ffe066" : "white",
+                        textAlign: "left",
+                        fontSize: 14,
+                        fontWeight: selectedOption === idx ? "800" : "500",
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {idx + 1}. {opt}
+                    </button>
+                  ))}
+                </div>
+                <button className="yt-modal-confirm-btn" onClick={handleQ1Submit}>
+                  정답 제출하고 50코인 만들기
+                </button>
+                <button 
+                  className="yt-modal-cancel-btn" 
+                  onClick={() => window.open(currentBlogUrl, "_blank", "noopener,noreferrer")}
+                >
+                  🔎 글 다시 확인하러 가기
+                </button>
+              </>
+            )}
+
+            {quizStep === "q1_done" && (
+              <>
+                <div className="yt-modal-icon" style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 100%)", fontSize: 24 }}>✓</div>
+                <h2 className="yt-modal-title">1단계 통과! (+추가 40 코인)</h2>
+                <p className="yt-modal-desc">
+                  축하합니다! 정답을 맞추어 **총 50코인**이 되었습니다.<br />
+                  마지막 2단계 퀴즈(성공 시 총 100코인)에 도전하시겠습니까?
+                </p>
+                <div style={{ width: "100%", display: "flex", gap: 10 }}>
+                  <button 
+                    className="yt-modal-confirm-btn" 
+                    style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "white", boxShadow: "none" }}
+                    onClick={() => setBlogQuizModalOpen(false)}
+                  >
+                    여기서 멈추기
+                  </button>
+                  <button className="yt-modal-confirm-btn" style={{ flex: 1 }} onClick={() => setQuizStep("q2")}>
+                    2단계 퀴즈 도전
+                  </button>
+                </div>
+              </>
+            )}
+
+            {quizStep === "q2" && (
+              <>
+                <div className="yt-modal-icon" style={{ background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)" }}>Q2</div>
+                <h2 className="yt-modal-title" style={{ fontSize: 16, lineHeight: 1.4 }}>
+                  [2단계: 주관식 퀴즈] {currentQuiz.q2_question}
+                </h2>
+                <div style={{ width: "100%", margin: "20px 0" }}>
+                  <input
+                    type="text"
+                    value={q2InputText}
+                    onChange={(e) => setQ2InputText(e.target.value)}
+                    placeholder="본문 속의 정확한 정답 단어/숫자를 입력하세요"
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      borderRadius: 12,
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "white",
+                      fontSize: 15,
+                      outline: "none",
+                      textAlign: "center",
+                      transition: "border-color 0.2s"
+                    }}
+                  />
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, textAlign: "center" }}>
+                    띄어쓰기 및 알파벳 대소문자는 달라도 괜찮습니다.
+                  </p>
+                </div>
+                <div style={{ width: "100%", display: "flex", gap: 10 }}>
+                  <button 
+                    className="yt-modal-confirm-btn" 
+                    style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "white", boxShadow: "none" }}
+                    onClick={() => {
+                      setBlogQuizModalOpen(false);
+                      alert("1단계 보상인 50코인이 적립된 상태로 종료되었습니다.");
+                    }}
+                  >
+                    여기서 그만두기
+                  </button>
+                  <button className="yt-modal-confirm-btn" style={{ flex: 1 }} onClick={handleQ2Submit}>
+                    제출 (+추가 50코인)
+                  </button>
+                </div>
+                <button 
+                  className="yt-modal-cancel-btn" 
+                  onClick={() => window.open(currentBlogUrl, "_blank", "noopener,noreferrer")}
+                >
+                  🔎 글 다시 확인하러 가기
+                </button>
+              </>
+            )}
+
+            {quizStep === "success" && (
+              <>
+                <div className="yt-modal-icon" style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 100%)" }}>✓</div>
+                <h2 className="yt-modal-title">🎉 지식 대가 달성!</h2>
+                <p className="yt-modal-desc">
+                  훌륭합니다! 2단계 퀴즈를 모두 맞추어<br />
+                  오늘의 보상 **총 100코인** 수령을 완료하셨습니다.
+                </p>
+                <button className="yt-modal-confirm-btn" onClick={() => setBlogQuizModalOpen(false)}>
+                  확인
+                </button>
+              </>
+            )}
+
+            {quizStep === "fail" && (
+              <>
+                <div className="yt-modal-icon" style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}>✗</div>
+                <h2 className="yt-modal-title">아쉽게도 오답입니다!</h2>
+                <p className="yt-modal-desc">
+                  글을 꼼꼼히 다시 확인한 뒤 언제든지 다시 도전할 수 있습니다.
+                </p>
+                <div style={{ width: "100%", display: "flex", gap: 10 }}>
+                  <button 
+                    className="yt-modal-confirm-btn" 
+                    style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "white", boxShadow: "none" }}
+                    onClick={() => setBlogQuizModalOpen(false)}
+                  >
+                    닫기
+                  </button>
+                  <button 
+                    className="yt-modal-confirm-btn" 
+                    style={{ flex: 1 }} 
+                    onClick={() => {
+                      window.open(currentBlogUrl, "_blank", "noopener,noreferrer");
+                      setQuizStep("timer");
+                      setQuizDuration(15);
+                      setQuizTimer(15);
+                      setQuizStartTime(Date.now());
+                      setQuizTimerActive(true);
+                      setSelectedOption(null);
+                    }}
+                  >
+                    다시 풀기 (15초 대기)
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1745,7 +2257,7 @@ export default function CheckinPage() {
           </div>
         </div>
       )}
-      <BottomNav />
+      {!blogQuizModalOpen && !ytModalOpen && <BottomNav />}
     </main>
   );
 }

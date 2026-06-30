@@ -8,7 +8,6 @@ import WorkPosterCard from "@/app/components/work/WorkPosterCard";
 import BottomNav from "@/app/components/BottomNav";
 import MugongGameLauncher from "@/app/components/game/MugongGameLauncher";
 import GrandOpenPopup from "@/app/components/GrandOpenPopup";
-import FreeEventPopup from "@/app/components/FreeEventPopup";
 import ComingSoonSection from "@/app/components/coming-soon/ComingSoonSection";
 import PreparingSection from "@/app/components/coming-soon/PreparingSection";
 
@@ -1917,7 +1916,6 @@ export default function Home() {
 
       {/* 이벤트 팝업 */}
       <GrandOpenPopup />
-      <FreeEventPopup />
 
       {/* 모바일 하단 네비게이션 바 */}
       <BottomNav />

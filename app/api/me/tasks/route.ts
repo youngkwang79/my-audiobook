@@ -125,6 +125,8 @@ export async function POST(req: Request) {
         desc = "15분 청취 미션 보상";
       } else if (taskId.startsWith("game_training")) {
         desc = "일일 무공수련 미션 보상";
+      } else if (taskId.startsWith("blog_read")) {
+        desc = "오늘의 새소식 읽기 보상";
       }
 
       await supabaseAdmin

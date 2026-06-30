@@ -1,0 +1,880 @@
+const { createClient } = require("@supabase/supabase-js");
+const fs = require("fs");
+const path = require("path");
+function loadEnv() {
+  const envPath = path.join(__dirname, "../.env.local");
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+        const parts = trimmed.split("=");
+        const key = parts[0].trim();
+        const value = parts.slice(1).join("=").trim().replace(/^['"]|['"]$/g, "");
+        process.env[key] = value;
+      }
+    }
+  }
+}
+loadEnv();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+const quizzes = [
+  // ==========================================
+  // Post 1: 1년내 치아보험 가입 조건 현실적으로 정리해드립니다.
+  // ==========================================
+  {
+    blog_title: "1년내 치아보험 가입 조건 현실적으로 정리해드립니다.",
+    blog_url: "https://blog.murimbook.com/dental-insurance-conditions-1%eb%85%84-%eb%82%b4-%ec%b6%a9%ec%b9%98%ec%b9%98%eb%a3%8c-%eb%b0%9b%ec%95%98%ec%9c%bc%eb%a9%b4/",
+    pair_index: 0,
+    q1_question: "보험 가입 전 자신의 건강 상태나 과거 병력을 보험사에 정확히 알려야 하는 의무를 뜻하는 용어는 무엇인가요?",
+    q1_options: ["고지의무", "비례보상의무", "면책의무"],
+    q1_answer: 0,
+    q2_question: "치아보험 가입 후 일정 기간 동안 보험금을 지급하지 않는 기간을 뜻하는 명칭은 무엇인가요?",
+    q2_options: ["감액기간", "면책기간", "유예기간"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "1년내 치아보험 가입 조건 현실적으로 정리해드립니다.",
+    blog_url: "https://blog.murimbook.com/dental-insurance-conditions-1%eb%85%84-%eb%82%b4-%ec%b6%a9%ec%b9%98%ec%b9%98%eb%a3%8c-%eb%b0%9b%ec%95%98%ec%9c%bc%eb%a9%b4/",
+    pair_index: 1,
+    q1_question: "치과 검진 없이 간단한 고지사항만으로 가입이 가능하여 문턱이 낮은 치아보험 유형은 무엇인가요?",
+    q1_options: ["진단형 치아보험", "무진단형 치아보험", "종합심사형 치아보험"],
+    q1_answer: 1,
+    q2_question: "초기 보험료는 저렴하지만 일정 주기마다 보험료가 인상될 가능성이 높은 보험 형태는 무엇인가요?",
+    q2_options: ["비갱신형", "만기환급형", "갱신형"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "1년내 치아보험 가입 조건 현실적으로 정리해드립니다.",
+    blog_url: "https://blog.murimbook.com/dental-insurance-conditions-1%eb%85%84-%eb%82%b4-%ec%b6%a9%ec%b9%98%ec%b9%98%eb%a3%8c-%eb%b0%9b%ec%95%98%ec%9c%bc%eb%a9%b4/",
+    pair_index: 2,
+    q1_question: "여러 개의 치아보험에 가입했을 때 실제 치료비가 지급되는 방식에 대한 설명으로 올바른 것은 무엇인가요?",
+    q1_options: ["각 보험사에서 모두 중복으로 100% 지급된다.", "실제 치료비는 중복 지급되지 않고 비례 보상되는 경우가 많다.", "가장 먼저 가입한 보험사에서만 지급된다."],
+    q1_answer: 1,
+    q2_question: "치아보험 가입 전 고지의무를 위반했을 때 발생할 수 있는 불이익으로 본문에서 언급하지 않은 것은 무엇인가요?",
+    q2_options: ["보험금 지급 거절", "보험 계약 해지", "형사 처벌 및 벌금 부과"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "1년내 치아보험 가입 조건 현실적으로 정리해드립니다.",
+    blog_url: "https://blog.murimbook.com/dental-insurance-conditions-1%eb%85%84-%eb%82%b4-%ec%b6%a9%ec%b9%98%ec%b9%98%eb%a3%8c-%eb%b0%9b%ec%95%98%ec%9c%bc%eb%a9%b4/",
+    pair_index: 3,
+    q1_question: "면책기간이 끝난 후 일정 기간 동안 보험금의 일부(예: 50%)만 지급하는 기간을 무엇이라고 하나요?",
+    q1_options: ["감액기간", "삭감기간", "제한기간"],
+    q1_answer: 0,
+    q2_question: "진단형 치아보험의 특징으로 올바른 것은 무엇인가요?",
+    q2_options: ["가입 전 치과 검진이 필요 없어서 편리하다.", "무진단형보다 보험료가 저렴하고 보장 범위와 한도가 넓은 경우가 많다.", "치아 상태가 나빠도 무조건 가입이 승인된다."],
+    q2_answer: 1
+  },
+  {
+    blog_title: "1년내 치아보험 가입 조건 현실적으로 정리해드립니다.",
+    blog_url: "https://blog.murimbook.com/dental-insurance-conditions-1%eb%85%84-%eb%82%b4-%ec%b6%a9%ec%b9%98%ec%b9%98%eb%a3%8c-%eb%b0%9b%ec%95%98%ec%9c%bc%eb%a9%b4/",
+    pair_index: 4,
+    q1_question: "치아보험은 보장성 보험이기 때문에 중도 해지 시 어떤 특성이 있나요?",
+    q1_options: ["납입한 보험료 전액을 돌려받는다.", "해지환급금이 적거나 없을 수 있어 손실이 발생할 수 있다.", "원금에 높은 이자가 가산되어 환급된다."],
+    q1_answer: 1,
+    q2_question: "하이브리드 차량과 비교하여 가솔린 차량이 가지는 전통적인 장점으로 본문에서 언급된 것은 무엇인가요?",
+    q2_options: ["초기 구매 비용이 다소 높다.", "비교적 저렴한 초기 구매 비용", "친환경차 세금 혜택이 더 많다."],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 2: 삼성 이병철 회장이 꿰뚫어 본 부자 습관
+  // ==========================================
+  {
+    blog_title: "삼성 이병철 회장이 꿰뚫어 본 부자 습관",
+    blog_url: "https://blog.murimbook.com/%ec%82%bc%ec%84%b1-%ec%9d%b4%eb%b3%91%ec%b2%a0-%ed%9a%8c%ec%9e%a5%ec%9d%b4-%ea%bf%b0%eb%9a%ab%ec%96%b4-%eb%b3%b8-%eb%b6%80%ec%9e%90-%ec%8a%b5%ea%b4%80/",
+    pair_index: 0,
+    q1_question: "고(故) 이병철 회장이 개인의 스펙이나 능력보다 경제적 미래를 결정짓는 핵심 요소로 강조한 것은 무엇인가요?",
+    q1_options: ["타고난 수저와 자금의 크기", "개인이 가진 태도와 사소한 습관", "학력과 인맥"],
+    q1_answer: 1,
+    q2_question: "이병철 회장이 경계한 '평생 가난하게 살 인간 유형' 3위로 꼽힌 오만한 태도는 무엇인가요?",
+    q2_options: ["작은 약속을 우습게 여기는 태도", "스스로 배움을 중단하는 태도", "변명과 남 탓만 일삼는 태도"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "삼성 이병철 회장이 꿰뚫어 본 부자 습관",
+    blog_url: "https://blog.murimbook.com/%ec%82%bc%ec%84%b1-%ec%9d%b4%eb%b3%91%ec%b2%a0-%ed%9a%8c%ec%9e%a5%ec%9d%b4-%ea%bf%b0%eb%9a%ab%ec%96%b4-%eb%b3%b8-%eb%b6%80%ec%9e%90-%ec%8a%b5%ea%b4%80/",
+    pair_index: 1,
+    q1_question: "본문에서 평생 가난한 이들의 '시간 약속 개념'에 대해 설명한 특징은 무엇인가요?",
+    q1_options: ["상대방을 존중해 10분 먼저 도착한다.", "타인의 시간을 아깝게 여기지 않고 지각을 상습화한다.", "정확히 정각에만 도착하려고 노력한다."],
+    q1_answer: 1,
+    q2_question: "이병철 회장이 가난한 팔자를 만드는 주범이자 압도적인 1위로 경계한 유형은 무엇인가요?",
+    q2_options: ["모든 원인을 외부로 돌리는 남 탓의 노예", "소액의 대출을 자주 받는 사람", "과거의 성공 경험이 전혀 없는 사람"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "삼성 이병철 회장이 꿰뚫어 본 부자 습관",
+    blog_url: "https://blog.murimbook.com/%ec%82%bc%ec%84%b1-%ec%9d%b4%eb%b3%91%ec%b2%a0-%ed%9a%8c%ec%9e%a5%ec%9d%b4-%ea%bf%b0%eb%9a%ab%ec%96%b4-%eb%b3%b8-%eb%b6%80%ec%9e%90-%ec%8a%b5%ea%b4%80/",
+    pair_index: 2,
+    q1_question: "성공하는 부자들이 어떤 악조건 속에서도 스스로에게 던지는 주도적인 질문은 무엇인가요?",
+    q1_options: ["\"이번 실패는 누구의 잘못인가?\"", "\"지금 이 상황에서 내가 할 수 있는 최선은 무엇인가?\"", "\"어떻게 하면 요행으로 극복할 수 있을까?\""],
+    q1_answer: 1,
+    q2_question: "조선 시대의 거상 임상옥이 남긴 명언 중 '재물은 평등하기가 물과 같다'는 뜻을 지닌 한자 성구는 무엇인가요?",
+    q2_options: ["인중직시형(人중直似衡)", "재상평여수(財上平如水)", "사필귀정(事必歸正)"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "삼성 이병철 회장이 꿰뚫어 본 부자 습관",
+    blog_url: "https://blog.murimbook.com/%ec%82%bc%ec%84%b1-%ec%9d%b4%eb%b3%91%ec%b2%a0-%ed%9a%8c%ec%9e%a5%ec%9d%b4-%ea%bf%b0%eb%9a%ab%ec%96%b4-%eb%b3%b8-%eb%b6%80%ec%9e%90-%ec%8a%b5%ea%b4%80/",
+    pair_index: 3,
+    q1_question: "가난한 팔자를 지닌 사람들의 '사소한 채무'에 대한 태도로 본문 표에 언급된 내용은 무엇인가요?",
+    q1_options: ["작은 돈이라도 정해진 날짜에 정확히 상환한다.", "“얼마 안 되는 돈인데 왜 그래?”라며 적반하장으로 나온다.", "이자를 복리로 계산해서 더 많이 갚는다."],
+    q1_answer: 1,
+    q2_question: "성공하는 부자가 신뢰 관리를 위해 한 번 뱉은 말에 대해 취하는 행동은 무엇인가요?",
+    q2_options: ["상황에 따라 말을 쉽게 바꾼다.", "손해를 보더라도 이행한다.", "책임을 타인에게 회피한다."],
+    q2_answer: 1
+  },
+  {
+    blog_title: "삼성 이병철 회장이 꿰뚫어 본 부자 습관",
+    blog_url: "https://blog.murimbook.com/%ec%82%bc%ec%84%b1-%ec%9d%b4%eb%b3%91%ec%b2%a0-%ed%9a%8c%ec%9e%a5%ec%9d%b4-%ea%bf%b0%eb%9a%ab%ec%96%b4-%eb%b3%b8-%eb%b6%80%ec%9e%90-%ec%8a%b5%ea%b4%80/",
+    pair_index: 4,
+    q1_question: "배움을 멈춘 인간의 뇌와 사고에 대해 본문에서 지적한 현상은 무엇인가요?",
+    q1_options: ["나이와 상관없이 뇌와 사고가 늙기 시작한다.", "더 기억력이 좋아진다.", "과거의 성공 방식에 완벽히 적응한다."],
+    q1_answer: 0,
+    q2_question: "본문에서 진정한 자산의 본질로 정의한 태도는 무엇인가요?",
+    q2_options: ["현재 가지고 있는 통장 잔고의 액수", "끊임없이 지식을 흡수하려는 태도", "외부 환경을 탓하는 비판적 자세"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 3: 가성비는 죽었다! 마음의 허기를 채우는 필코노미(Feelconomy) 소비 트렌드의 비밀
+  // ==========================================
+  {
+    blog_title: "가성비는 죽었다! 마음의 허기를 채우는 필코노미(Feelconomy) 소비 트렌드의 비밀",
+    blog_url: "https://blog.murimbook.com/%eb%a7%88%ec%9d%8c%ec%9d%98-%ed%97%88%ea%b8%b0%eb%a5%bc-%ec%b1%84%ec%9a%b0%eb%8a%94-%ed%95%84%ec%bd%94%eb%85%b8%eb%af%b8feelconomy-%ec%86%8c%eb%b9%84-%ed%8a%b8%eb%a0%8c%eb%93%9c%ec%9d%98-%eb%b9%84/",
+    pair_index: 0,
+    q1_question: "감정(Feeling)과 경제(Economy)의 합성어로, 심리적 위안과 감정적 충족을 최우선 가치로 두는 새로운 소비 현상은 무엇인가요?",
+    q1_options: ["가성비", "가심비", "필코노미(Feelconomy)"],
+    q1_answer: 2,
+    q2_question: "필코노미 트렌드가 급부상하게 된 주요 배경 원인으로 본문에서 짚은 현대인의 정서는 무엇인가요?",
+    q2_options: ["극심한 정신적 피로감과 고립감", "과도한 물질적 풍요로움", "오프라인 쇼핑에 대한 거부감"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "가성비는 죽었다! 마음의 허기를 채우는 필코노미(Feelconomy) 소비 트렌드의 비밀",
+    blog_url: "https://blog.murimbook.com/%eb%a7%88%ec%9d%8c%ec%9d%98-%ed%97%88%ea%b8%b0%eb%a5%bc-%ec%b1%84%ec%9a%b0%eb%8a%94-%ed%95%84%ec%bd%94%eb%85%b8%eb%af%b8feelconomy-%ec%86%8c%eb%b9%84-%ed%8a%b8%eb%a0%8c%eb%93%9c%ec%9d%98-%eb%b9%84/",
+    pair_index: 1,
+    q1_question: "필코노미 시대의 문화/콘텐츠 소비 분류에서 핵심 가치로 두고 있으며, 전년 대비 50%의 매출 성장률을 보인 분야는 무엇인가요?",
+    q1_options: ["자극적인 재미와 오락성", "마음 챙김(Mindfulness), 명상, 위로", "대용량 및 가성비 패키지"],
+    q1_answer: 1,
+    q2_question: "소비자의 감정을 움직이기 위해 필코노미 마케팅이 구축해야 할 3가지 핵심 요소가 아닌 것은 무엇인가요?",
+    q2_options: ["오감을 자극하는 브랜드 경험", "스토리텔링을 통한 공감대 형성", "초저가 대량 생산 시스템 구축"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "가성비는 죽었다! 마음의 허기를 채우는 필코노미(Feelconomy) 소비 트렌드의 비밀",
+    blog_url: "https://blog.murimbook.com/%eb%a7%88%ec%9d%8c%ec%9d%98-%ed%97%88%ea%b8%b0%eb%a5%bc-%ec%b1%84%ec%9a%b0%eb%8a%94-%ed%95%84%ec%bd%94%eb%85%b8%eb%af%b8feelconomy-%ec%86%8c%eb%b9%84-%ed%8a%b8%eb%a0%8c%eb%93%9c%ec%9d%98-%eb%b9%84/",
+    pair_index: 2,
+    q1_question: "리테일 커머스 산업에서 '착한 소비'에 따른 심리적 만족감을 극대화하기 위해 도입한 성공 사례는 무엇인가요?",
+    q1_options: ["숙면 패키지와 소리 명상", "감정 상태 기록 기반 음악 추천", "따뜻한 위로 카드 동봉 및 친환경 소재 활용 패키징"],
+    q1_answer: 2,
+    q2_question: "필코노미 시대의 식음료(F&B) 부문 매출 성장률 추이는 전년 대비 몇 % 증가했나요?",
+    q2_options: ["전년 대비 35% 증가", "전년 대비 42% 증가", "전년 대비 50% 증가"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "가성비는 죽었다! 마음의 허기를 채우는 필코노미(Feelconomy) 소비 트렌드의 비밀",
+    blog_url: "https://blog.murimbook.com/%eb%a7%88%ec%9d%8c%ec%9d%98-%ed%97%88%ea%b8%b0%eb%a5%bc-%ec%b1%84%ec%9a%b0%eb%8a%94-%ed%95%84%ec%bd%94%eb%85%b8%eb%af%b8feelconomy-%ec%86%8c%eb%b9%84-%ed%8a%b8%eb%a0%8c%eb%93%9c%ec%9d%98-%eb%b9%84/",
+    pair_index: 3,
+    q1_question: "현대인들에게 힐링 소비가 단순한 사치가 아니라 정신적 붕괴를 막기 위한 '이것'으로 자리 잡았다고 했습니다. 무엇인가요?",
+    q1_options: ["사치성 낭비", "생존을 위한 자구책", "비합리적 충동구매"],
+    q1_answer: 1,
+    q2_question: "제품 간의 변별력이 사라진 미래 시장에서 최종 승리자가 되기 위해 브랜드가 독점해야 하는 영역은 무엇인가요?",
+    q2_options: ["소비자의 이성(뇌)", "소비자의 감정(심장)", "제품의 스펙 경쟁력"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "가성비는 죽었다! 마음의 허기를 채우는 필코노미(Feelconomy) 소비 트렌드의 비밀",
+    blog_url: "https://blog.murimbook.com/%eb%a7%88%ec%9d%8c%ec%9d%98-%ed%97%88%ea%b8%b0%eb%a5%bc-%ec%b1%84%ec%9a%b0%eb%8a%94-%ed%95%84%ec%bd%94%eb%85%b8%eb%af%b8feelconomy-%ec%86%8c%eb%b9%84-%ed%8a%b8%eb%a0%8c%eb%93%9c%ec%9d%98-%eb%b9%84/",
+    pair_index: 4,
+    q1_question: "필코노미 시대의 뷰티/리빙 분야에서 과거의 중심 가치가 '기능성 성분, 피부 개선'이었다면, 현재 추구하는 가치는 무엇인가요?",
+    q1_options: ["저렴한 가격과 대용량", "아로마 테라피, 심리적 휴식 공간", "자극적인 재미와 오락성"],
+    q1_answer: 1,
+    q2_question: "글쓴이가 유독 업무가 몰려 마음이 조급한 날에 퇴근길에 사 온다고 언급한 힐링 아이템은 무엇인가요?",
+    q2_options: ["고급 아로마 캔들", "인센스 스틱", "위스키"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 4: 오프라인 매장의 종말? 치솟는 고정비를 부수는 자영업 서바이벌 6가지 전략!
+  // ==========================================
+  {
+    blog_title: "오프라인 매장의 종말? 치솟는 고정비를 부수는 자영업 서바이벌 6가지 전략!",
+    blog_url: "https://blog.murimbook.com/%ec%9e%90%ec%98%81%ec%97%85-%ec%84%9c%eb%b0%94%ec%9d%b4%eb%b2%8c-%ec%98%a4%ed%94%84%eb%9d%bc%ec%9d%b8-%eb%a7%a4%ec%9e%a5%ec%9d%98-%ec%a2%85%eb%a7%90-%ec%b9%98%ec%86%9f%eb%8a%94-%ea%b3%a0%ec%a0%95/",
+    pair_index: 0,
+    q1_question: "자영업 서바이벌 전략의 시작점으로 본문에서 가장 강조한 핵심 방어적 혁신 요쇠는 무엇인가요?",
+    q1_options: ["외형 성장을 위한 공격적 마케팅", "매달 지출되는 고정비의 허리를 자르는 비용 절감", "인테리어의 화려한 리뉴얼"],
+    q1_answer: 1,
+    q2_question: "소상공인시장진흥공단의 통계 지표에 따르면, 전통적인 오프라인 홀 중심 매장의 3년 이내 평균 폐업률은 몇 %를 상회하나요?",
+    q2_options: ["20% 미만", "50% 수준", "70% 상회"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "오프라인 매장의 종말? 치솟는 고정비를 부수는 자영업 서바이벌 6가지 전략!",
+    blog_url: "https://blog.murimbook.com/%ec%9e%90%ec%98%81%ec%97%85-%ec%84%9c%eb%b0%94%ec%9d%b4%eb%b2%8c-%ec%98%a4%ed%94%84%eb%9d%bc%ec%9d%b8-%eb%a7%a4%ec%9e%a5%ec%9d%98-%ec%a2%85%eb%a7%90-%ec%b9%98%ec%86%9f%eb%8a%94-%ea%b3%a0%ec%a0%95/",
+    pair_index: 1,
+    q1_question: "자영업 서바이벌을 위해 본문에서 제안한 3대 핵심 디지털 다각화 전략에 해당하지 않는 것은 무엇인가요?",
+    q1_options: ["무인 시스템 및 자동화 솔루션 내재화", "시간제 공간 공유 및 스위칭 레이아웃", "대형 백화점 및 복합쇼핑몰 내 추가 오프라인 직영점 출점"],
+    q1_answer: 2,
+    q2_question: "피크 타임 인건비를 기존 대비 50% 이하로 혁신적으로 절감하기 위해 결합해야 하는 자동화 솔루션 구성 요소가 아닌 것은 무엇인가요?",
+    q2_options: ["키오스크", "테이블 오더 및 서빙 로봇", "전문 오픈마켓 MD 고용"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "오프라인 매장의 종말? 치솟는 고정비를 부수는 자영업 서바이벌 6가지 전략!",
+    blog_url: "https://blog.murimbook.com/%ec%9e%90%ec%98%81%ec%97%85-%ec%84%9c%eb%b0%94%ec%9d%b4%eb%b2%8c-%ec%98%a4%ed%94%84%eb%9d%bc%ec%9d%b8-%eb%a7%a4%ec%9e%a5%ec%9d%98-%ec%a2%85%eb%a7%90-%ec%b9%98%ec%86%9f%eb%8a%94-%ea%b3%a0%ec%a0%95/",
+    pair_index: 2,
+    q1_question: "소상공인이 당장 실천해야 할 고정비 파괴 3단계 실전 매뉴얼 중 하나로, 과도한 로열티를 요구하는 프랜차이즈 구조에서 벗어나는 방법은 무엇인가요?",
+    q1_options: ["무인 자판기 설치", "직거래 플랫폼과 로컬 협동조합 적극 활용", "촬영 스튜디오 단독 임대"],
+    q1_answer: 1,
+    q2_question: "매장의 유휴 시간대(브레이크 타임이나 정기 휴무일)를 활용하여 추가 수익을 올리는 방식을 뜻하는 단어는 무엇인가요?",
+    q2_options: ["인력 구조 다이어트", "유유자적 마케팅", "유휴 시간대의 상품화 (Space Monetization)"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "오프라인 매장의 종말? 치솟는 고정비를 부수는 자영업 서바이벌 6가지 전략!",
+    blog_url: "https://blog.murimbook.com/%ec%9e%90%ec%98%81%ec%97%85-%ec%84%9c%eb%b0%94%ec%9d%b4%eb%b2%8c-%ec%98%a4%ed%94%84%eb%9d%bc%ec%9d%b8-%eb%a7%a4%ec%9e%a5%ec%9d%98-%ec%a2%85%eb%a7%90-%ec%b9%98%ec%86%9f%eb%8a%94-%ea%b3%a0%ec%a0%95/",
+    pair_index: 3,
+    q1_question: "글쓴이가 최근 직접 목격하고 깊은 감명을 받았다고 설명한 공간 다각화 매장의 예시는 무엇인가요?",
+    q1_options: ["낮에는 헬스장, 밤에는 필라테스 샵으로 변하는 공간", "낮에는 서점 겸 카페, 저녁 8시 이후에는 프라이빗 위스키 바로 변모하는 공간", "새벽에만 무인으로 운영되는 과일 전문점"],
+    q1_answer: 1,
+    q2_question: "피터 드러커의 명언 중 \"위기의 시대에 가장 위험한 것은 위기 그 자체가 아니다. 그것은 지난날의 논리로 오늘을 대처하려는 '이것'이다.\" 빈칸에 들어갈 말은 무엇인가요?",
+    q2_options: ["조급함", "나태함", "무모함"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "오프라인 매장의 종말? 치솟는 고정비를 부수는 자영업 서바이벌 6가지 전략!",
+    blog_url: "https://blog.murimbook.com/%ec%9e%90%ec%98%81%ec%97%85-%ec%84%9c%eb%b0%94%ec%9d%b4%eb%b2%8c-%ec%98%a4%ed%94%84%eb%9d%bc%ec%9d%b8-%eb%a7%a4%ec%9e%a5%ec%9d%98-%ec%a2%85%eb%a7%90-%ec%b9%98%ec%86%9f%eb%8a%94-%ea%b3%a0%ec%a0%95/",
+    pair_index: 4,
+    q1_question: "공간 다각화 및 하이브리드 매장이 달성할 수 있는 공간 효율성은 단일 목적 매장 대비 몇 % 수준인가요?",
+    q1_options: ["100% 수준", "150% 달성", "300% 달성"],
+    q1_answer: 2,
+    q2_question: "현대의 자영업 서바이벌에서 장기적으로 살아남기 위해 가장 중요하게 보아야 할 체력 지표는 무엇인가요?",
+    q2_options: ["'얼마를 버느냐'의 매출 총액", "고정비를 최소화하여 '얼마를 남기느냐'와 '얼마나 오래 버틸 수 있느냐'", "상권 내 유동인구 수"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 5: 2026년 AI 시대의 안전 브레이크, 휴먼인더루프 향후 전망
+  // ==========================================
+  {
+    blog_title: "2026년 AI 시대의 안전 브레이크, 휴먼인더루프 향후 전망",
+    blog_url: "https://blog.murimbook.com/ai-%ec%8b%9c%eb%8c%80%ec%9d%98-%ec%95%88%ec%a0%84-%eb%b8%8c%eb%a0%8c%ec%9d%b4%ed%81%ac-%ed%9c%b4%eb%a8%bc%ec%9d%b8%eb%8d%94%eb%a3%a8%ed%94%84human-in-the-loop/",
+    pair_index: 0,
+    q1_question: "AI 학습, 판단 및 의사결정 프로세스 중간에 인간이 직접 개입하여 시스템을 검증하고 고도화하는 하이브리드 모델을 지칭하는 용어는 무엇인가요?",
+    q1_options: ["머신러닝 프리패스", "휴먼인더루프 (Human-in-the-loop, HITL)", "완전 자율화 알고리즘"],
+    q1_answer: 1,
+    q2_question: "휴먼인더루프 시스템의 4단계 프로세스 순서가 올바르게 연결된 것은 무엇인가요?",
+    q2_options: ["[데이터 입력] ➔ [AI 1차 판단] ➔ [인간의 최종 검증 및 피드백] ➔ [최종 결과 도출 및 AI 재학습]", "[인간의 입력] ➔ [최종 결과 도출] ➔ [AI 1차 판단] ➔ [데이터 자동 폐기]", "[데이터 입력] ➔ [인간 피드백] ➔ [AI 최종 결과 도출] ➔ [추가 개입 없음]"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "2026년 AI 시대의 안전 브레이크, 휴먼인더루프 향후 전망",
+    blog_url: "https://blog.murimbook.com/ai-%ec%8b%9c%eb%8c%80%ec%9d%98-%ec%95%88%ec%a0%84-%eb%b8%8c%eb%a0%8c%ec%9d%b4%ed%81%ac-%ed%9c%b4%eb%a8%bc%ec%9d%b8%eb%8d%94%eb%a3%a8%ed%94%84human-in-the-loop/",
+    pair_index: 1,
+    q1_question: "AI가 가지는 치명적인 단점인 학습 데이터 내 차별, 혐오 등을 걸러내어 도덕적 기준을 준수하게 만드는 역할을 무엇이라 하나요?",
+    q1_options: ["윤리적 가이드라인 확립과 편향성 필터링", "알고리즘 무조건 승인", "할루시네이션 가속화"],
+    q1_answer: 0,
+    q2_question: "오픈AI, 구글, 마이크로소프트 등 글로벌 빅테크 기업들이 AI의 법적, 경제적 리스크를 줄이기 위해 해결하려는 고질적인 인공지능 문제는 무엇인가요?",
+    q2_options: ["하드웨어 노후화 현상", "할루시네이션(환각 현상)과 저작권 침해 문제", "인터넷 속도 저하 현상"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026년 AI 시대의 안전 브레이크, 휴먼인더루프 향후 전망",
+    blog_url: "https://blog.murimbook.com/ai-%ec%8b%9c%eb%8c%80%ec%9d%98-%ec%95%88%ec%a0%84-%eb%b8%8c%eb%a0%8c%ec%9d%b4%ed%81%ac-%ed%9c%b4%eb%a8%bc%ec%9d%b8%eb%8d%94%eb%a3%a8%ed%94%84human-in-the-loop/",
+    pair_index: 2,
+    q1_question: "본문 표의 '주관적 비즈니스 관점'에서 휴먼인더루프 시스템을 설명한 핵심 요약은 무엇인가요?",
+    q1_options: ["규제 대응 및 법적 리스크 최소화", "인간 고유의 감성과 신뢰성 결합", "할루시네이션 의무화"],
+    q1_answer: 1,
+    q2_question: "불완전하거나 오류가 있는 예측 데이터에 대해 인간이 지속적으로 정답을 피드백해 줌으로써 달성할 수 있는 효과는 무엇인가요?",
+    q2_options: ["AI 모델을 더욱 정교하고 신뢰성 높게 고도화", "AI 연산 속도를 10배 이상 가속화", "기존 데이터의 완전 자동 삭제"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "2026년 AI 시대의 안전 브레이크, 휴먼인더루프 향후 전망",
+    blog_url: "https://blog.murimbook.com/ai-%ec%8b%9c%eb%8c%80%ec%9d%98-%ec%95%88%ec%a0%84-%eb%b8%8c%eb%a0%8c%ec%9d%b4%ed%81%ac-%ed%9c%b4%eb%a8%bc%ec%9d%b8%eb%8d%94%eb%a3%a8%ed%94%84human-in-the-loop/",
+    pair_index: 3,
+    q1_question: "본문 표의 '객관적 시장 관점'에서 마주한 주요 해결 과제로 분류된 것은 무엇인가요?",
+    q1_options: ["알고리즘이 대체할 수 없는 도덕적 책임", "할루시네이션(환각) 및 저작권 문제", "글로벌 핀테크 연동 규제"],
+    q1_answer: 1,
+    q2_question: "글쓴이가 최근 인공지능이 작성한 글이나 영상을 보며 느꼈던 이질감의 원인으로 꼽은 것은 무엇인가요?",
+    q2_options: ["동영상의 화질과 해상도 부족", "사람의 마음을 움직이는 ‘진정성’과 ‘경험의 깊이’의 부재", "맞춤법 및 문법 오류의 남발"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026년 AI 시대의 안전 브레이크, 휴먼인더루프 향후 전망",
+    blog_url: "https://blog.murimbook.com/ai-%ec%8b%9c%eb%8c%80%ec%9d%98-%ec%95%88%ec%a0%84-%eb%b8%8c%eb%a0%8c%ec%9d%b4%ed%81%ac-%ed%9c%b4%eb%a8%bc%ec%9d%b8%eb%8d%94%eb%a3%a8%ed%94%84human-in-the-loop/",
+    pair_index: 4,
+    q1_question: "다가오는 미래 테크 트렌드에서 가장 중요하게 구축해야 할 상생 생태계는 무엇인가요?",
+    q1_options: ["인간의 개입을 완전히 배제한 무인 자동화 생태계", "인간과 AI가 상생하는 균형 잡힌 협업 생태계", "소프트웨어 오픈소스 무료 배포 생태계"],
+    q1_answer: 1,
+    q2_question: "AI 시대의 진정한 승자가 되기 위해 기업이 지녀야 할 태도는 무엇인가요?",
+    q2_options: ["인공지능의 자율 자동화 기술만을 맹신한다.", "기술의 고도화 속에서 인간 고유의 판단력과 검증 능력을 조화롭게 결합한다.", "AI 솔루션 도입을 전면 중단하고 아날로그 방식으로 복귀한다."],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 6: 스페이스X 2026 스타쉽 발사와 테슬라의 끝은 어디인가?
+  // ==========================================
+  {
+    blog_title: "스페이스X 2026 스타쉽 발사와 테슬라의 끝은 어디인가?",
+    blog_url: "https://blog.murimbook.com/%ec%8a%a4%ed%8e%98%ec%9a%bace-%ec%8a%a4%ed%83%80%ec%89%bd-%eb%b0%9c%ec%82%ac%ec%99%80-%eb%af%bc%ea%b0%84-%ec%9a%b0%ec%a3%ac%ec%97%ac%ed%96%89-%eb%af%b8%eb%9e%98-%ec%a0%84%eb%a7%9d-%ec%b4%9d/",
+    pair_index: 0,
+    q1_question: "스페이스X가 1단 추진체를 수직 착륙시켜 완벽히 회수하는 기술을 성공시킨 대표 로켓의 명칭은 무엇인가요?",
+    q1_options: ["팰컨 9 (Falcon 9)", "아르테미스 1호", "새턴 V"],
+    q1_answer: 0,
+    q2_question: "로켓을 비행기처럼 주유만 해서 다시 띄우는 완전 재사용 구조가 완성되면, 우주 수송 비용은 기존의 어느 수준 이하로 떨어지나요?",
+    q2_options: ["기존의 2분의 1 이하", "기존의 5분의 1 이하", "기존의 10분의 1 이하"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "스페이스X 2026 스타쉽 발사와 테슬라의 끝은 어디인가?",
+    blog_url: "https://blog.murimbook.com/%ec%8a%a4%ed%8e%98%ec%9a%bace-%ec%8a%a4%ed%83%80%ec%89%bd-%eb%b0%9c%ec%82%ac%ec%99%80-%eb%af%bc%ea%b0%84-%ec%9a%b0%ec%a3%ac%ec%97%ac%ed%96%89-%eb%af%b8%eb%9e%98-%ec%a0%84%eb%a7%9d-%ec%b4%9d/",
+    pair_index: 1,
+    q1_question: "인류의 화성 이주와 민간 우주여행 대중화를 목표로 스페이스X가 개발 중인 인류 역사상 가장 거대한 로켓의 이름은 무엇인가요?",
+    q1_options: ["팰컨 헤비", "스타쉽 (Starship)", "스타링크"],
+    q1_answer: 1,
+    q2_question: "본문에서 언급한 스타쉽이 특별한 이유 3가지에 포함되지 않는 것은 무엇인가요?",
+    q2_options: ["압도적인 수송 능력 (100명 이상 탑재 가능)", "화성에서 메탄 연료를 자체 생산하는 지구-화성 간 셔틀 목표", "심해 탐사를 위한 고압 잠수 기능 탑재"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "스페이스X 2026 SN우주선 발사와 테슬라의 끝은 어디인가?",
+    blog_url: "https://blog.murimbook.com/%ec%8a%a4%ed%8e%98%ec%9a%bace-%ec%8a%a4%ed%83%80%ec%89%bd-%eb%b0%9c%ec%82%ac%ec%99%80-%eb%af%bc%ea%b0%84-%ec%9a%b0%ec%a3%ac%ec%97%ac%ed%96%89-%eb%af%b8%eb%9e%98-%ec%a0%84%eb%a7%9d-%ec%b4%9d/",
+    pair_index: 2,
+    q1_question: "지구 전체를 저궤도 위성망으로 연결하여 글로벌 통신 사각지대를 해소해 나가는 스페이스X의 핵심 우주 인터넷 서비스 명칭은 무엇인가요?",
+    q1_options: ["스타링크 (Starlink)", "셀룰러 스페이스", "스페이스 웹"],
+    q1_answer: 0,
+    q2_question: "스타쉽은 NASA의 인류 달 복귀 프로젝트에서 공식 인간 착륙 시스템(HLS)으로 선정되었습니다. 이 NASA 프로젝트의 이름은 무엇인가요?",
+    q2_options: ["아폴로 프로젝트", "아르테미스 프로젝트", "보이저 프로젝트"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "스페이스X 2026 스타쉽 발사와 테슬라의 끝은 어디인가?",
+    blog_url: "https://blog.murimbook.com/%ec%8a%a4%ed%8e%98%ec%9a%bace-%ec%8a%a4%ed%83%80%ec%89%bd-%eb%b0%9c%ec%82%ac%ec%99%80-%eb%af%bc%ea%b0%84-%ec%9a%b0%ec%a3%ac%ec%97%ac%ed%96%89-%eb%af%b8%eb%9e%98-%ec%a0%84%eb%a7%9d-%ec%b4%9d/",
+    pair_index: 3,
+    q1_question: "차세대 스타쉽이 본격 가동되면 스마트폰과 위성을 직접 연결하는 어떤 서비스의 도입이 가속화되나요?",
+    q1_options: ["광케이블 유선 서비스", "셀룰러 서비스", "단파 라디오 서비스"],
+    q1_answer: 1,
+    q2_question: "스페이스X의 핵심 서비스 요약 표에서 '스타링크'의 미래 전망과 기대 효과로 명시된 것은 무엇인가요?",
+    q2_options: ["우주 수송 비용을 10분의 1 이하로 절감", "전 세계 통신 사각지대 해소 및 셀룰러 서비스 도입", "인류의 화성 이주 실현"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "스페이스X 2026 스타쉽 발사와 테슬라의 끝은 어디인가?",
+    blog_url: "https://blog.murimbook.com/%ec%8a%a4%ed%8e%98%ec%9a%bace-%ec%8a%a4%ed%83%80%ec%89%bd-%eb%b0%9c%ec%82%ac%ec%99%80-%eb%af%bc%ea%b0%84-%ec%9a%b0%ec%a3%ac%ec%97%ac%ed%96%89-%eb%af%b8%eb%9e%98-%ec%a0%84%eb%a7%9d-%ec%b4%9d/",
+    pair_index: 4,
+    q1_question: "스페이스X의 핵심 서비스 요약 표에서 '스타쉽'의 주요 특징 및 역할로 명시된 항목은 무엇인가요?",
+    q1_options: ["추진체 수직 착륙 및 완벽한 회수", "100명 탑재, 메탄 연료 자체 생산", "지구 저궤도 위성망 구축"],
+    q1_answer: 1,
+    q2_question: "일론 머스크가 이끄는 스페이스X의 거침없는 행보가 궁극적으로 확장하고자 하는 인류의 무대는 어디인가요?",
+    q2_options: ["지구 저궤도에 국한된 연구 단지", "지구 밖 우주 공간", "심해 및 해저 도시"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 7: 부가세 신고 일반사업자 ▶완벽 가이드 ◀ 핵심 5단계 절차와 주의사항
+  // ==========================================
+  {
+    blog_title: "부가세 신고 일반사업자 ▶완벽 가이드 ◀ 핵심 5단계 절차와 주의사항",
+    blog_url: "https://blog.murimbook.com/%ea%b0%9c%ec%9d%b8%ec%82%ac%ec%97%85%ec%9e%90-%eb%b6%80%ea%b0%80%ec%84%b8%ec%8b%a0%ea%b3%a0-%e2%96%b6%ec%99%84%eb%b2%bd-%ea%b0%80%ec%9d%b4%eb%93%9c-%e2%97%80-%ed%95%b5%ec%8b%ac-5%eb%8b%a8%ea%b3%84/",
+    pair_index: 0,
+    q1_question: "상품이나 서비스가 생산 및 유통되는 과정에서 창출되는 가치에 대해 부과하는 세금을 무엇이라 하나요?",
+    q1_options: ["부가가치세 (VAT)", "종합소득세", "법인세"],
+    q1_answer: 0,
+    q2_question: "신고 기간에 부가세 납부 잔고가 부족해 당황하는 일을 막기 위한 핵심 자금 관리 실천법은 무엇인가요?",
+    q2_options: ["매출 전체를 주식에 투자하기", "매출 발생 시 VAT 10%를 별도의 '세금 예비 계좌'로 즉시 이체 분리하기", "현금 거래만 고집하기"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "부가세 신고 일반사업자 ▶완벽 가이드 ◀ 핵심 5단계 절차와 주의사항",
+    blog_url: "https://blog.murimbook.com/%ea%b0%9c%ec%9d%b8%ec%82%ac%ec%97%85%ec%9e%90-%eb%b6%80%ea%b0%80%ec%84%b8%ec%8b%a0%ea%b3%a0-%e2%96%b6%ec%99%84%eb%b2%bd-%ea%b0%80%ec%9d%b4%eb%93%9c-%e2%97%80-%ed%95%b5%ec%8b%ac-5%eb%8b%a8%ea%b3%84/",
+    pair_index: 1,
+    q1_question: "매입세액 공제를 통해 납부할 세금을 줄이기 위해 반드시 챙겨야 하는 적격증빙 자료에 해당하지 않는 것은 무엇인가요?",
+    q1_options: ["세금계산서", "현금영수증 및 사업용 신용카드", "간이 영수증 및 메모지"],
+    q1_answer: 2,
+    q2_question: "개인사업자의 부가가치세 정기 확정 신고는 매년 몇 월에 진행되나요?",
+    q2_options: ["3월과 9월", "1월과 7월", "5월과 11월"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "부가세 신고 일반사업자 ▶완벽 가이드 ◀ 핵심 5단계 절차와 주의사항",
+    blog_url: "https://blog.murimbook.com/%ea%b0%9c%ec%9d%b8%ec%82%ac%ec%97%85%ec%9e%90-%eb%b6%80%ea%b0%80%ec%84%b8%ec%8b%a0%ea%b3%a0-%e2%96%b6%ec%99%84%eb%b2%bd-%ea%b0%80%ec%9d%b4%eb%93%9c-%e2%97%80-%ed%95%b5%ec%8b%ac-5%eb%8b%a8%ea%b3%84/",
+    pair_index: 2,
+    q1_question: "일반과세자와 간이과세자를 구분 짓는 연간 매출 기준 금액은 얼마인가요?",
+    q1_options: ["연간 4,800만 원", "연간 8,000만 원", "연간 1억 400만 원"],
+    q1_answer: 2,
+    q2_question: "간이과세자의 부가가치세 신고 주기는 어떻게 되나요?",
+    q2_options: ["연 1회 (1월)", "연 2회 (1월, 7월)", "연 4회 (분기별)"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "부가세 신고 일반사업자 ▶완벽 가이드 ◀ 핵심 5단계 절차와 주의사항",
+    blog_url: "https://blog.murimbook.com/%ea%b0%9c%ec%9d%b8%ec%82%ac%ec%97%85%ec%9e%90-%eb%b6%80%ea%b0%80%ec%84%b8%ec%8b%a0%ea%b3%a0-%e2%96%b6%ec%99%84%eb%b2%bd-%ea%b0%80%ec%9d%b4%eb%93%9c-%e2%97%80-%ed%95%b5%ec%8b%ac-5%eb%8b%a8%ea%b3%84/",
+    pair_index: 3,
+    q1_question: "홈택스를 이용한 부가세 신고 실무 5단계 중 3단계에서 누락된 수입이 없는지 확인하며 입력해야 하는 정보는 무엇인가요?",
+    q1_options: ["매입 입력", "매출 입력", "최종 납부 세액 조회"],
+    q1_answer: 1,
+    q2_question: "해당 기간에 매출이 전혀 발생하지 않았더라도 가산세를 피하기 위해 반드시 이행해야 하는 신고 의무는 무엇인가요?",
+    q2_options: ["기한후 신고", "무실적 신고", "수정 신고"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "부가세 신고 일반사업자 ▶완벽 가이드 ◀ 핵심 5단계 절차와 주의사항",
+    blog_url: "https://blog.murimbook.com/%ea%b0%9c%ec%9d%b8%ec%82%ac%ec%97%85%ec%9e%90-%eb%b6%80%ea%b0%80%ec%84%b8%ec%8b%a0%ea%b3%a0-%e2%96%b6%ec%99%84%eb%b2%bd-%ea%b0%80%ec%9d%b4%eb%93%9c-%e2%97%80-%ed%95%b5%ec%8b%ac-5%eb%8b%a8%ea%b3%84/",
+    pair_index: 4,
+    q1_question: "개인사업자가 부가세 확정 신고 외에 4월과 10월에 통지받게 되는 세액 고지 제도를 무엇이라 하나요?",
+    q1_options: ["수시 고지", "예정 고지", "중간 고지"],
+    q1_answer: 1,
+    q2_question: "간이과세자 업종별 부가가치율 예시 중 '소매/음식' 업종에 적용되는 요율은 몇 %인가요?",
+    q2_options: ["10%", "20%", "30%"],
+    q2_answer: 0
+  },
+
+  // ==========================================
+  // Post 8: ‘금리인하요구권 자동 신청’으로 이자 폭탄 피하는 구체적인 방법 추천
+  // ==========================================
+  {
+    blog_title: "‘금리인하요구권 자동 신청’으로 이자 폭탄 피하는 구체적인 방법 추천",
+    blog_url: "https://blog.murimbook.com/%ea%b8%88%eb%a6%ac%ec%9d%b8%ed%95%98%ec%9a%94%ea%b5%ac%ea%b6%8c-%ec%9e%90%eb%8f%99-%ec%8b%a0%ec%b2%ad%ec%9c%bc%eb%a1%9c-%ec%9d%b4%ec%9e%90-%ed%8f%ad%ed%83%84-%ed%94%bc%ed%95%98%eb%8a%94-%ea%b5%ac/",
+    pair_index: 0,
+    q1_question: "대출을 받은 사람이 취업, 승진, 소득 증가 등으로 신용 상태가 개선되었을 때 금융기관에 금리를 낮춰달라고 요구할 수 있는 법적 권리는 무엇인가요?",
+    q1_options: ["금리인하요구권", "금리유예청구권", "대출 철회권"],
+    q1_answer: 0,
+    q2_question: "최근 번거로운 서류 제출 없이 스마트폰 터치만으로 금리인하를 대리 신청할 수 있게 기반이 된 금융 데이터 통합 기술은 무엇인가요?",
+    q2_options: ["블록체인 시스템", "마이데이터 및 핀테크", "AI 딥러닝 트레이딩"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "‘금리인하요구권 자동 신청’으로 이자 폭탄 피하는 구체적인 방법 추천",
+    blog_url: "https://blog.murimbook.com/%ea%b8%88%eb%a6%ac%ec%9d%b8%ed%95%98%ec%9a%94%ea%b5%ac%ea%b6%8c-%ec%9e%90%eb%8f%99-%ec%8b%a0%ec%b2%ad%ec%9c%bc%eb%a1%9c-%ec%9d%b4%ec%9e%90-%ed%8f%ad%ed%83%84-%ed%94%bc%ed%95%98%eb%8a%94-%ea%b5%ac/",
+    pair_index: 1,
+    q1_question: "금리인하요구권 자동 신청 서비스를 활성화할 수 있는 대표적인 핀테크 플랫폼으로 본문에 언급되지 않은 곳은 어디인가요?",
+    q1_options: ["토스, 카카오페이, 뱅크샐러드", "네이버페이", "본문에는 두 항목 다 언급됨"],
+    q1_answer: 1,
+    q2_question: "금리인하요구권 자동 신청 서비스 이용 시 주의할 사항으로 올바른 것은 무엇인가요?",
+    q2_options: ["앱의 알림(Push) 설정을 꺼두어야 자동 실행된다.", "정확한 스캔을 위해 건강보험공단, 국세청 등 주요 기관의 마이데이터를 미리 연동해 두어야 한다.", "대한민국의 모든 종류의 대출 상품은 예외 없이 전부 적용 대상이다."],
+    q2_answer: 1
+  },
+  {
+    blog_title: "‘금리인하요구권 자동 신청’으로 이자 폭탄 피하는 구체적인 방법 추천",
+    blog_url: "https://blog.murimbook.com/%ea%b8%88%eb%a6%ac%ec%9d%b8%ed%95%98%ec%9a%94%ea%b5%ac%ea%b6%8c-%ec%9e%90%eb%8f%99-%ec%8b%a0%ec%b2%ad%ec%9c%bc%eb%a1%9c-%ec%9d%b4%ec%9e%90-%ed%8f%ad%ed%83%84-%ed%94%bc%ed%95%98%eb%8a%94-%ea%b5%ac/",
+    pair_index: 2,
+    q1_question: "다음 중 금리인하요구권의 기본 신청 가능 요건 상황에 해당하지 않는 것은 무엇인가요?",
+    q1_options: ["더 안정적인 직장으로의 이직 및 직급 승진", "신용평가회사의 신용점수 대폭 상승", "개인적인 해외 여행 및 소비 지출 증가"],
+    q1_answer: 2,
+    q2_question: "대출 이자는 고정비 중에서도 큰 비중을 차지하므로, 금리를 단 몇 %p만 낮춰도 연간 수십만 원 이상을 아낄 수 있습니다. 본문에서 언급한 수치는 무엇인가요?",
+    q2_options: ["0.1%p", "1.0%p", "2.0%p"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "‘금리인하요구권 자동 신청’으로 이자 폭탄 피하는 구체적인 방법 추천",
+    blog_url: "https://blog.murimbook.com/%ea%b8%88%eb%a6%ac%ec%9d%b8%ed%95%98%ec%9a%94%ea%b5%ac%ea%b6%8c-%ec%9e%90%eb%8f%99-%ec%8b%a0%ec%b2%ad%ec%9c%bc%eb%a1%9c-%ec%9d%b4%ec%9e%90-%ed%8f%ad%ed%83%84-%ed%94%bc%ed%95%98%eb%8a%94-%ea%b5%ac/",
+    pair_index: 3,
+    q1_question: "금리인하요구권 자동 신청 서비스의 장점 중, 조건이 충족되었을 때 금융 앱이 처리해 주는 방식은 무엇인가요?",
+    q1_options: ["가입자의 동의 하에 금융기관에 원클릭 대리 신청을 진행한다.", "은행 창구 방문 예약증을 자동 발급한다.", "대출을 다른 은행으로 즉시 자동 환승시킨다."],
+    q1_answer: 0,
+    q2_question: "금리인하요구권 대상에서 제외될 수 있는 대출 상품 종류로 본문에서 언급한 것은 무엇인가요?",
+    q2_options: ["정부 정책 자금 대출이나 제한 금리가 정해진 일부 상품", "일반 신용대출 상품", "마이너스 통장 대출 상품"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "‘금리인하요구권 자동 신청’으로 이자 폭탄 피하는 구체적인 방법 추천",
+    blog_url: "https://blog.murimbook.com/%ea%b8%88%eb%a6%ac%ec%9d%b8%ed%95%98%ec%9a%94%ea%b5%ac%ea%b6%8c-%ec%9e%90%eb%8f%99-%ec%8b%a0%ec%b2%ad%ec%9c%bc%eb%a1%9c-%ec%9d%b4%ec%9e%90-%ed%8f%ad%ed%83%84-%ed%94%bc%ed%95%98%eb%8a%94-%ea%b5%ac/",
+    pair_index: 4,
+    q1_question: "본문 하단 하이라이트 글 제목으로 언급된 증권사 금융 상품의 종류는 무엇인가요?",
+    q1_options: ["CMA 통장", "ISA 계좌", "해외 주식 펀드"],
+    q1_answer: 0,
+    q2_question: "재테크의 시작은 수입을 늘리는 것도 중요하지만 가장 먼저 선행되어야 할 것은 무엇인가요?",
+    q2_options: ["무리한 레버리지 투자", "새는 돈(지출 및 고정비 이자)을 막는 것", "다양한 신용카드 발급"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 9: SK테크닉스 투자: 2026년 배당금 분석과 장기 수익 극대화 전략
+  // ==========================================
+  {
+    blog_title: "SK테크닉스 투자: 2026년 배당금 분석과 장기 수익 극대화 전략",
+    blog_url: "https://blog.murimbook.com/sk%ed%85%8c%ed%81%ac%eb%8b%89%ec%8a%a4-%ed%88%ac%ec%9e%90-2026%eb%85%84-%eb%b0%b0%eb%8b%b9%ea%b8%88-%eb%b6%84%ec%84%9d%ea%b3%bc-%ec%9e%a5%ea%b8%b0-%ec%88%98%ec%9d%b5-%ea%b7%b9%eb%8c%80%ed%99%94/",
+    pair_index: 0,
+    q1_question: "2026년 SK그룹 주요 계열사의 뚜렷한 경영 기조 이동 방향은 무엇인가요?",
+    q1_options: ["공격적인 무조건적 외형 확장", "주주 가치 제고와 안정적인 현금 흐름 창출", "해외 리테일 시장 올인"],
+    q1_answer: 1,
+    q2_question: "본문에서 전망한 2026년 SK테크닉스의 예상 배당수익률 범위는 대략 어느 정도인가요?",
+    q2_options: ["약 1.0% ~ 2.0%", "약 2.5% ~ 3.5%", "약 3.8% ~ 4.2%"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "SK테크닉스 투자: 2026년 배당금 분석과 장기 수익 극대화 전략",
+    blog_url: "https://blog.murimbook.com/sk%ed%85%8c%ed%81%ac%eb%8b%89%ec%8a%a4-%ed%88%ac%ec%9e%90-2026%eb%85%84-%eb%b0%b0%eb%8b%b9%ea%b8%88-%eb%b6%84%ec%84%9d%ea%b3%bc-%ec%9e%a5%ea%b8%b0-%ec%88%98%ec%9d%b5-%ea%b7%b9%eb%8c%80%ed%99%94/",
+    pair_index: 1,
+    q1_question: "글쓴이가 배당주 투자 시 하락장을 버티게 해주는 요소와 계좌를 불려주는 요소로 대조하여 표현한 것은 무엇인가요?",
+    q1_options: ["배당은 '방패', AI와 IT 기술력은 '창'", "배당은 '창', AI 인프라는 '방패'", "주식은 '방패', 부동산은 '창'"],
+    q1_answer: 0,
+    q2_question: "SK테크닉스의 배당 질 개선 분석 시 주목한 현금흐름 지표 지칭 용어는 무엇인가요?",
+    q2_options: ["잉여현금흐름 (FCF)", "당기순이익 (NI)", "영업이익 (OP)"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "SK테크닉스 투자: 2026년 배당금 분석과 장기 수익 극대화 전략",
+    blog_url: "https://blog.murimbook.com/sk%ed%85%8c%ed%81%ac%eb%8b%89%ec%8a%a4-%ed%88%ac%ec%9e%90-2026%eb%85%84-%eb%b0%b0%eb%8b%b9%ea%b8%88-%eb%b6%84%ec%84%9d%ea%b3%bc-%ec%9e%a5%ea%b8%b0-%ec%88%98%ec%9d%b5-%ea%b7%b9%eb%8c%80%ed%99%94/",
+    pair_index: 2,
+    q1_question: "고액 투자자를 위한 장기 최적화 3단계 전략 중 Step 1에 해당하는 내용은 무엇인가요?",
+    q1_options: ["무조건 배당률이 가장 높은 부실주 매수", "배당금 자체가 매년 증가하는 '배당 성장주' 집중 배치", "해외 선물 옵션 100% 분산"],
+    q1_answer: 1,
+    q2_question: "개별 종목이 가진 경영 리스크를 회피하기 위해 자산의 약 30%를 배분하라고 권장한 투자 섹터는 무엇인가요?",
+    q2_options: ["전통 제조업 종목", "AI 섹터 ETF", "가상자산 단일 종목"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "SK테크닉스 투자: 2026년 배당금 분석과 장기 수익 극대화 전략",
+    blog_url: "https://blog.murimbook.com/sk%ed%85%8c%ed%81%ac%eb%8b%89%ec%8a%a4-%ed%88%ac%ec%9e%90-2026%eb%85%84-%eb%b0%b0%eb%8b%b9%ea%b8%88-%eb%b6%84%ec%84%9d%ea%b3%bc-%ec%9e%a5%ea%b8%b0-%ec%88%98%ec%9d%b5-%ea%b7%b9%eb%8c%80%ed%99%94/",
+    pair_index: 3,
+    q1_question: "장기 최적화 전략의 마지막 Step 3에서 복리 효과를 위해 배당으로 들어온 현금을 어디에 재투자하라고 추천하나요?",
+    q1_options: ["유망한 AI 섹터 ETF", "단기 은행 정기적금", "파킹통장 현금 보유"],
+    q1_answer: 0,
+    q2_question: "기업의 장기 우상향 퍼즐이 완성되는 실질적 시점으로 본문에서 언급한 조건은 무엇인가요?",
+    q2_options: ["단순히 배당 성향만 대폭 올렸을 때", "인프라 구축 위에서 AI 수익화 모델이 실질적인 마진을 남기기 시작할 때", "고금리 기조가 평생 지속될 때"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "SK테크닉스 투자: 2026년 배당금 분석과 장기 수익 극대화 전략",
+    blog_url: "https://blog.murimbook.com/sk%ed%85%8c%ed%81%ac%eb%8b%89%ec%8a%a4-%ed%88%ac%ec%9e%90-2026%eb%85%84-%eb%b0%b0%eb%8b%b9%ea%b8%88-%eb%b6%84%ec%84%9d%ea%b3%bc-%ec%9e%a5%ea%b8%b0-%ec%88%98%ec%9d%b5-%ea%b7%b9%eb%8c%80%ed%99%94/",
+    pair_index: 4,
+    q1_question: "본문 하단에서 추가 연동되어 소개된 핵심 기업 주가 전망의 주인공은 어느 회사인가요?",
+    q1_options: ["LG이노텍", "기아자동차", "삼성전자"],
+    q1_answer: 0,
+    q2_question: "투자의 리스크를 줄이기 위해 분기별로 포트폴리오 섹터 비중을 조정해 주는 작업을 무엇이라 하나요?",
+    q2_options: ["레버리지", "리밸런싱", "헤징"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 10: LG이노텍 주가 전망: 외국인 순매수 1,381억 원!
+  // ==========================================
+  {
+    blog_title: "LG이노텍 주가 전망: 외국인 순매수 1,381억 원!",
+    blog_url: "https://blog.murimbook.com/lg%ec%9d%b4%eb%85%b8%ed%85%8d-%ec%a3%bc%ea%b0%80-%ec%a0%84%eb%a7%9d-%ec%99%b8%ea%b5%ad%ec%9d%b8-%ec%88%9c%eb%a7%a4%ec%88%98%ec%99%80-%ec%8b%a4%ec%a0%81-%eb%b0%98%eb%93%b1%ec%9d%98-%ec%97%b0%ea%b2%b0/",
+    pair_index: 0,
+    q1_question: "최근 반도체 업종 조정 국면 속에서 외국인 투자자가 이틀간 대규모로 순매수한 LG이노텍의 총 대금 규모는 얼마인가요?",
+    q1_options: ["500억 원", "1,000억 원", "1,381억 원"],
+    q1_answer: 2,
+    q2_question: "증권가 및 에픽AI에서 전망한 LG이노텍의 올해 연간 영업이익 컨센서스 금액은 얼마인가요?",
+    q2_options: ["5,000억 원", "1조 1,286억 원", "2조 원"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "LG이노텍 주가 전망: 외국인 순매수 1,381억 원!",
+    blog_url: "https://blog.murimbook.com/lg%ec%9d%b4%eb%85%b8%ed%85%8d-%ec%a3%bc%ea%b0%80-%ec%a0%84%eb%a7%9d-%ec%99%b8%ea%b5%ad%ec%9d%b8-%ec%88%9c%eb%a7%a4%ec%88%98%ec%99%80-%ec%8b%a4%ec%a0%81-%eb%b0%98%eb%93%b1%ec%9d%98-%ec%97%b0%ea%b2%b0/",
+    pair_index: 1,
+    q1_question: "단순 스마트폰 부품주 오명을 벗고, AI 서버 및 고성능 컴퓨팅(HPC) 핵심 성장 엔진으로 급부상한 LG이노텍의 기판 사업 명칭은 무엇인가요?",
+    q1_options: ["FC-BGA", "DRAM", "NAND Flash"],
+    q1_answer: 0,
+    q2_question: "대신증권 리포트에 따르면, 향후 LG이노텍의 공급 물량 확대 변수가 될 2027년 북미 고객사의 아이폰 출시 모델 수는 몇 종으로 확대될 전망인가요?",
+    q2_options: ["2~3종", "4종 유지", "6~7종 대폭 확대"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "LG이노텍 주가 전망: 외국인 순매수 1,381억 원!",
+    blog_url: "https://blog.murimbook.com/lg%ec%9d%b4%eb%85%b8%ed%85%8d-%ec%a3%bc%ea%b0%80-%ec%a0%84%eb%a7%9d-%ec%99%b8%ea%b5%ad%ec%9d%b8-%ec%88%9c%eb%a7%a4%ec%88%98%ec%99%80-%ec%8b%a4%ec%a0%81-%eb%b0%98%eb%93%b1%ec%9d%98-%ec%97%b0%ea%b2%b0/",
+    pair_index: 2,
+    q1_question: "KB증권이 전망한 LG이노텍의 2028년 FC-BGA 매출 성장 규모는 대략 얼마 수준인가요?",
+    q1_options: ["1,400억 원 수준", "5,000억 원 수준", "1조 2,000억 원 규모 퀀텀 점프"],
+    q1_answer: 2,
+    q2_question: "본문에서 제시한 변동성 시장 대응을 위한 현명한 LG이노텍 투자 주식 접근 전략은 무엇인가요?",
+    q2_options: ["신용 미수 몰빵 매수", "확인 후 분할 매수로 접근하는 전략", "주가 폭락 시 전량 손절 후 방치"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "LG이노텍 주가 전망: 외국인 순매수 1,381억 원!",
+    blog_url: "https://blog.murimbook.com/lg%ec%9d%b4%eb%85%b8%ed%85%8d-%ec%a3%bc%ea%b0%80-%ec%a0%84%eb%a7%9d-%ec%99%b8%ea%b5%ad%ec%9d%b8-%ec%88%9c%eb%a7%a4%ec%88%98%ec%99%80-%ec%8b%a4%ec%a0%81-%eb%b0%98%eb%93%b1%ec%9d%98-%ec%97%b0%ea%b2%b0/",
+    pair_index: 3,
+    q1_question: "LG이노텍의 전통적인 매출 효자 품목이자 프리미엄 아이폰 모델 비중 확대로 수익성이 개선 중인 사업 부문은 무엇인가요?",
+    q1_options: ["광학솔루션 (카메라 모듈)", "디스플레이 패널", "차량용 내비게이션"],
+    q1_answer: 0,
+    q2_question: "올해 예상되는 LG이노텍의 연간 영업이익 성장률은 전년 대비 약 몇 % 증가한 수치인가요?",
+    q2_options: ["10.5% 증가", "35.2% 증가", "69.7% 증가"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "LG이노텍 주가 전망: 외국인 순매수 1,381억 원!",
+    blog_url: "https://blog.murimbook.com/lg%ec%9d%b4%eb%85%b8%ed%85%8d-%ec%a3%bc%ea%b0%80-%ec%a0%84%eb%a7%9d-%ec%99%b8%ea%b5%ad%ec%9d%b8-%ec%88%9c%eb%a7%a4%ec%88%98%ec%99%80-%ec%8b%a4%ec%a0%81-%eb%b0%98%eb%93%b1%ec%9d%98-%ec%97%b0%ea%b2%b0/",
+    pair_index: 4,
+    q1_question: "LG이노텍 주가 전망 포스팅 하단에 함께 연동되어 배너가 노출된 또 다른 금융 절약 가이드의 주제는 무엇인가요?",
+    q1_options: ["2026년 저축은행 정기예금 금리 1위 비교", "기아 EV6 구매 전략", "CMA 금리비교 TOP 5"],
+    q1_answer: 0,
+    q2_question: "LG이노텍이 올해 기록한 최고 상승세 수치는 무려 몇 %였나요?",
+    q2_options: ["50%", "150%", "253%"],
+    q2_answer: 2
+  },
+
+  // ==========================================
+  // Post 12: 2026년 저축은행 정기예금 금리 1 위는? 수수료·조건까지 완벽 비교 (절약 가이드)
+  // ==========================================
+  {
+    blog_title: "2026년 저축은행 정기예금 금리 1 위는? 수수료·조건까지 완벽 비교 (절약 가이드)",
+    blog_url: "https://blog.murimbook.com/2026%eb%85%84-%ec%a0%80%ec%b6%95%ec%9d%80%ed%96%89-%ec%a0%95%ea%b8%b0%ec%98%88%ea%b8%88-%ea%b8%8%eb%a6%ac-1-%ec%9c%84%eb%8a%94-%ec%88%98%ec%88%98%eb%a3%8c%c2%b7%ec%a1%b0%ea%b1%b4%ea%b9%8c%ec%a7%80/",
+    pair_index: 0,
+    q1_question: "2025년 9월 1일부터 법적으로 상향 조정되어 안심하고 예치할 수 있게 된 저축은행 1인당 금융회사별 예금자 보호 한도는 얼마인가요?",
+    q1_options: ["3천만 원", "5천만 원", "1억 원"],
+    q1_answer: 2,
+    q2_question: "수많은 저축은행 상품 중에서 나에게 맞는 고금리 예금을 일일이 찾아볼 수 있게 금융감독원이 운영하는 공시 웹사이트 명칭은 무엇인가요?",
+    q2_options: ["금융상품한눈에", "홈택스", "소비자포털"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "2026년 저축은행 정기예금 금리 1 위는? 수수료·조건까지 완벽 비교 (절약 가이드)",
+    blog_url: "https://blog.murimbook.com/2026%eb%85%84-%ec%a0%80%ec%b6%95%ec%9d%80%ed%96%89-%ec%a0%95%ea%b8%b0%ec%98%88%ea%b8%88-%ea%b8%8%eb%a6%ac-1-%ec%9c%84%eb%8a%94-%ec%88%98%ec%88%98%eb%a3%8c%c2%b7%ec%a1%b0%ea%b1%b4%ea%b9%8c%ec%a7%80/",
+    pair_index: 1,
+    q1_question: "원금에 대해서만 이자가 붙는 방식과 달리, 일정 기간마다 발생한 이자를 원금에 합산하여 다음 이자를 계산하는 자산 증식에 유리한 이자 계산 방식은 무엇인가요?",
+    q1_options: ["단리", "복리", "할인율"],
+    q1_answer: 1,
+    q2_question: "정기예금 중도 해지 시 받게 되는 불이익으로 본문에서 설명한 내용은 무엇인가요?",
+    q2_options: ["원금이 전액 몰수된다.", "약정된 금리보다 훨씬 낮은 중도해지 이율이 적용되어 이자 손실이 발생한다.", "향후 제1금융권 거래가 영구 중지된다."],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026년 저축은행 정기예금 금리 1 위는? 수수료·조건까지 완벽 비교 (절약 가이드)",
+    blog_url: "https://blog.murimbook.com/2026%eb%85%84-%ec%a0%80%ec%b6%95%ec%9d%80%ed%96%89-%ec%a0%95%ea%b8%b0%ec%98%88%ea%b8%88-%ea%b8%8%eb%a6%ac-1-%ec%9c%84%eb%8a%94-%ec%88%98%ec%88%98%eb%a3%8c%c2%b7%ec%a1%b0%ea%b1%b4%ea%b9%8c%ec%a7%80/",
+    pair_index: 2,
+    q1_question: "예금자 보호 한도인 1억 원을 초과하는 대규모 목돈을 저축은행에 안전하게 예치하기 위한 가장 현명한 분산 투자 전략은 무엇인가요?",
+    q1_options: ["한 저축은행에 몰아서 가입한다.", "여러 저축은행으로 자금을 나누어 각각 1억 원 이하씩 분산 예치한다.", "모두 현금화하여 금고에 보관한다."],
+    q1_answer: 1,
+    q2_question: "저축은행의 안정성을 판단하기 위해 확인해야 할 재무 건전성 대표 지표로 본문에 언급된 비율은 무엇인가요?",
+    q2_options: ["BIS 자기자본비율 및 고정이하여신비율", "이자소득세율", "물가상승률"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "2026년 저축은행 정기예금 금리 1 위는? 수수료·조건까지 완벽 비교 (절약 가이드)",
+    blog_url: "https://blog.murimbook.com/2026%eb%85%84-%ec%a0%80%ec%b6%95%ec%9d%80%ed%96%89-%ec%a0%95%ea%b8%b0%ec%98%88%ea%b8%88-%ea%b8%8%eb%a6%ac-1-%ec%9c%84%eb%8a%94-%ec%88%98%ec%88%98%eb%a3%8c%c2%b7%ec%a1%b0%ea%b1%b4%ea%b9%8c%ec%a7%80/",
+    pair_index: 3,
+    q1_question: "대한민국 금융기관에서 정기예금 이자 수령 시 기본적으로 부과되는 이자소득세의 세율은 몇 %인가요?",
+    q1_options: ["10.0%", "14.0%", "15.4%"],
+    q1_answer: 2,
+    q2_question: "저축은행이 시중 제1금융권 은행 상품보다 상대적으로 높은 금리를 제공할 수 있는 근본적인 배경 이유는 무엇인가요?",
+    q2_options: ["정부의 무조건적인 지원금 보조 때문", "자금 조달 비용이 시중은행보다 높아 예금 유치를 위해 더 높은 이자를 제시하는 경향 때문", "세금을 전혀 내지 않는 면세 기관이기 때문"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026년 저축은행 정기예금 금리 1 위는? 수수료·조건까지 완벽 비교 (절약 가이드)",
+    blog_url: "https://blog.murimbook.com/2026%eb%85%84-%ec%a0%80%ec%b6%95%ec%9d%80%ed%96%89-%ec%a0%95%ea%b8%b0%ec%98%88%ea%b8%88-%ea%b8%8%eb%a6%ac-1-%ec%9c%84%eb%8a%94-%ec%88%98%ec%88%98%eb%a3%8c%c2%b7%ec%a1%b0%ea%b1%b4%ea%b9%8c%ec%a7%80/",
+    pair_index: 4,
+    q1_question: "유동성 확보를 위해 만기를 분산하는 전략 중, 본문 하단에서 함께 유기적으로 연동하여 언급한 장기 금융 상품은 무엇인가요?",
+    q1_options: ["청년도약계좌", "스마트스토어 자금", "자동차보험 다이렉트"],
+    q1_answer: 0,
+    q2_question: "특정 조건을 충족해야만 예금 상품의 최고 금리를 제공받을 수 있도록 설정된 세부 요건들을 지칭하는 말은 무엇인가요?",
+    q2_options: ["비과세 종합저축", "숨겨진 특약 및 우대금리 조건", "중도해지 특별세율"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 13: 2026 캐리트레이드 수익률 대공개! 금리차로 돈 버는 완전 정복 가이드
+  // ==========================================
+  {
+    blog_title: "2026 캐리트레이드 수익률 대공개! 금리차로 돈 버는 완전 정복 가이드",
+    blog_url: "https://blog.murimbook.com/carry-trade-profit-strategy/",
+    pair_index: 0,
+    q1_question: "금리가 낮은 국가의 통화를 빌려 금리가 높은 다른 국가의 자산에 투자하여 금리 차익을 얻는 외환 투자 전략은 무엇인가요?",
+    q1_options: ["스윙 트레이드", "캐리 트레이드(Carry Trade)", "공매도 전략"],
+    q1_answer: 1,
+    q2_question: "2026년 글로벌 금리 현황 분석 중 전통적으로 초저금리 정책을 유지하여 대표적인 차입(빌리는) 통화로 활용되는 화폐는 무엇인가요?",
+    q2_options: ["미국 달러 (USD)", "일본 엔화 (JPY)", "호주 달러 (AUD)"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026 캐리트레이드 수익률 대공개! 금리차로 돈 버는 완전 정복 가이드",
+    blog_url: "https://blog.murimbook.com/carry-trade-profit-strategy/",
+    pair_index: 1,
+    q1_question: "투자 통화의 이자율이 차입 통화의 이자율보다 높아서 이자 수익이 비용보다 커 순이익이 발생하는 상황을 지칭하는 용어는 무엇인가요?",
+    q1_options: ["양의 캐리 (Positive Carry)", "음의 캐리 (Negative Carry)", "환차손 (Exchange Loss)"],
+    q1_answer: 0,
+    q2_question: "캐리 트레이드 총 수익률을 계산할 때 금리 차이와 함께 가장 결정적인 변수로 작용하는 요소는 무엇인가요?",
+    q2_options: ["주식 시장의 거래대금", "투자 기간 동안의 환율 변동률", "은행의 ATM 수수료"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026 캐리트레이드 수익률 대공개! 금리차로 돈 버는 완전 정복 가이드",
+    blog_url: "https://blog.murimbook.com/carry-trade-profit-strategy/",
+    pair_index: 2,
+    q1_question: "미래의 환율을 미리 고정함으로써 캐리 트레이드의 가장 큰 적인 환율 변동 위험을 회피하는 기법은 무엇인가요?",
+    q1_options: ["헤징 (Hedging)", "레버리지 (Leverage)", "마진콜 (Margin Call)"],
+    q1_answer: 0,
+    q2_question: "예상과 다른 방향으로 환율이 움직일 때 손실 확대를 막기 위해 미리 정해둔 한도에서 포지션을 자동 청산하게 만드는 안전장치는 무엇인가요?",
+    q2_options: ["분산 투자", "손절매 (Stop-Loss) 설정", "선물환 매수"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026 캐리트레이드 수익률 대공개! 금리차로 돈 버는 완전 정복 가이드",
+    blog_url: "https://blog.murimbook.com/carry-trade-profit-strategy/",
+    pair_index: 3,
+    q1_question: "2026년 가상 캐리 트레이드 잠재적 수익률 비교 표에서 JPY/USD 통화쌍의 연간 금리차(순수 캐리 수익률)는 몇 %로 제시되었나요?",
+    q1_options: ["3.00%", "4.25%", "5.25%"],
+    q1_answer: 2,
+    q2_question: "2008년 글로벌 금융 위기 당시 전 세계 금융 시장을 뒤흔들었던 캐리 트레이드 관련 대표적 리스크 사태는 무엇인가요?",
+    q2_options: ["엔 캐리 트레이드 청산 사태", "달러화 완전 붕괴 사태", "유로화 통합 취소 사태"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "2026 캐리트레이드 수익률 대공개! 금리차로 돈 버는 완전 정복 가이드",
+    blog_url: "https://blog.murimbook.com/carry-trade-profit-strategy/",
+    pair_index: 4,
+    q1_question: "비주류 통화 투자 시 원하는 시점에 포지션을 청산하기 어려워 큰 손실로 이어질 수 있는 위험을 무엇이라 하나요?",
+    q1_options: ["금리 변동 리스크", "정치적 리스크", "유동성 리스크"],
+    q1_answer: 2,
+    q2_question: "성공적인 캐리 트레이더가 되기 위해 명심해야 할 세 가지 항목 중, 리스크를 최소화하기 위한 행동 수칙은 무엇인가요?",
+    q2_options: ["무조건 최고 레버리지 유지", "엄격한 위험 관리 (헤징, 손절매, 적절한 레버리지 사용)", "중앙은행 총재 발언 무시하기"],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 15: 노무라증권 AI 챗봇. ‘알리’를 선택한 충격적 이유: 효율성 100% 증대
+  // ==========================================
+  {
+    blog_title: "노무라증권 AI 챗봇. ‘알리’를 선택한 충격적 이유: 효율성 100% 증대",
+    blog_url: "https://blog.murimbook.com/%eb%85%b8%eb%ac%b4%eb%9d%bc%ec%a6%9d%ea%b6%8c-%ea%b3%a0%ec%97%b1-%ed%88%ac%ec%9e%90%ec%9e%90/",
+    pair_index: 0,
+    q1_question: "글로벌 금융 투자사 노무라증권이 내부 업무 효율성 극대화를 위해 최종 선택한 올거나이즈의 AI 챗봇 이름은 무엇인가요?",
+    q1_options: ["알리 (Alli)", "시리 (Siri)", "알파고 (AlphaGo)"],
+    q1_answer: 0,
+    q2_question: "올거나이즈 '알리'가 기존 경쟁사 솔루션 대비 압도적인 비용 절감을 이뤄낼 수 있었던 가장 독보적인 기술적 강점은 무엇인가요?",
+    q2_options: ["수개월간의 복잡한 대규모 강제 사전 학습(Training) 능력", "사전 학습 없이 문서를 실시간 연동해 즉각 답변하는 '학습 없는 답변' 기술", "하드웨어 서버 장비 자체 무료 제공"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "노무라증권 AI 챗봇. ‘알리’를 선택한 충격적 이유: 효율성 100% 증대",
+    blog_url: "https://blog.murimbook.com/%eb%85%b8%eb%ac%b4%eb%9d%bc%ec%a6%9d%ea%b6%8c-%ea%b3%a0%ec%97%b1-%ed%88%ac%ec%9e%90%ec%9e%90/",
+    pair_index: 1,
+    q1_question: "노무라증권이 총 4개의 후보 AI 솔루션을 평가할 때 세운 핵심 기준에 포함되지 않는 것은 무엇인가요?",
+    q1_options: ["기술력 및 비용 효율성", "사내 인테리어와의 색상 조화성", "확장성 및 운영 편의성"],
+    q1_answer: 1,
+    q2_question: "노무라증권이 비용 비교 및 효율성 분석을 진행할 때, 올거나이즈 '알리' 도입을 통해 기대한 업무 효율성 증대 효과는 최대 몇 % 이상인가요?",
+    q2_options: ["10% 이상", "50% 이상", "100% 이상"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "노무라증권 AI 챗봇. ‘알리’를 선택한 충격적 이유: 효율성 100% 증대",
+    blog_url: "https://blog.murimbook.com/%eb%85%b8%eb%ac%b4%eb%9d%bc%ec%a6%9d%ea%b6%8c-%ea%b3%a0%ec%97%b1-%ed%88%ac%ec%9e%90%ec%9e%90/",
+    pair_index: 2,
+    q1_question: "AI 챗봇 도입 이후 노무라증권 내부 직원들의 업무 생산성 측면에서 나타난 긍정적인 변화는 무엇인가요?",
+    q1_options: ["단순 반복적인 문의 응대에서 벗어나 더욱 복잡하고 전략적인 업무에 집중", "출퇴근 기록의 완전 자동화 삭제", "프로그래밍 코딩 업무의 전면 중단"],
+    q1_answer: 0,
+    q2_question: "1인 기업 운영 시 AI 챗봇을 도입함으로써 얻을 수 있는 비즈니스적 혜택은 무엇인가요?",
+    q2_options: ["매장 임대료의 자동 면제 처리", "고객 응대 및 FAQ 관리를 24시간 자동화하여 운영 효율성 극대화", "정부 지원금의 무조건적인 100% 수령"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "노무라증권 AI 챗봇. ‘알리’를 선택한 충격적 이유: 효율성 100% 증대",
+    blog_url: "https://blog.murimbook.com/%eb%85%b8%eb%ac%b4%eb%9d%bc%ec%a6%9d%ea%b6%8c-%ea%b3%a0%ec%97%b1-%ed%88%ac%ec%9e%90%ec%9e%90/",
+    pair_index: 3,
+    q1_question: "최근 코딩 지식이 없어도 누구나 쉽게 자신만의 AI 챗봇을 만들 수 있게 지원해 주는 플랫폼의 형태를 무엇이라 하나요?",
+    q1_options: ["하드코딩 아키텍처 플랫폼", "노코드 / 로우코드 플랫폼", "리눅스 기반 오픈 커널 플랫폼"],
+    q1_answer: 1,
+    q2_question: "노무라증권 비용 비교 분석 데이터 표에서 올거나이즈 '알리'의 도입 및 구축 기간은 경쟁사 대비 어떠했나요?",
+    q2_options: ["매우 짧음 (빠른 연동)", "보통 (모듈형)", "김 (데이터 구축 필요)"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "노무라증권 AI 챗봇. ‘알리’를 선택한 충격적 이유: 효율성 100% 증대",
+    blog_url: "https://blog.murimbook.com/%eb%85%b8%eb%ac%b4%eb%9d%bc%ec%a6%9d%ea%b6%8c-%ea%b3%a0%ec%97%b1-%ed%88%ac%ec%9e%90%ec%9e%90/",
+    pair_index: 4,
+    q1_question: "노무라증권 비용 비교 분석 데이터 표에서 '경쟁사 A'의 운영 및 유지보수 비용 특징으로 명시된 것은 무엇인가요?",
+    q1_options: ["매우 낮음 (학습 불필요)", "높음 (지속적인 학습 및 업데이트)", "중간 (정기적인 업데이트)"],
+    q1_answer: 1,
+    q2_question: "금융과 같이 정보가 빠르게 업데이트되고 전문적인 분야에서 올거나이즈 '알리'가 규정 변경 시 대응하는 방식은 무엇인가요?",
+    q2_options: ["챗봇 전체 시스템을 처음부터 재학습시킨다.", "최신 문서를 연동하는 것만으로 재학습 없이 정확한 정보를 제공한다.", "시스템을 일시적으로 오프라인 셧다운한다."],
+    q2_answer: 1
+  },
+
+  // ==========================================
+  // Post 16: 2026 연비 끝판왕! 하이브리드 vs 가솔린 유지비 대결
+  // ==========================================
+  {
+    blog_title: "2026 연비 끝판왕! 하이브리드 vs 가솔린 유지비 대결",
+    blog_url: "https://blog.murimbook.com/%ec%97%b0%eb%b9%84%eb%81%9d%ed%8c%90%ec%99%95-%ed%95%98%ec%9d%b4%eb%b8%8c%eb%a6%ac%eb%93%9c-%vs-%ea%b0%80%ec%86%94%eb%a6%b0-%ec%9c%a0%ec%a7%80%eb%b9%84-%eb%8c%80%ea%b2%b0-%ec%97%b0%ea%b0%8b-20/",
+    pair_index: 0,
+    q1_question: "2026년 최신 차량 연비 효율 데이터 분석 중 국산 세단 연비 끝판왕으로 꼽힌 '현대 아반떼 하이브리드'의 공인 복합연비 수치는 얼마인가요?",
+    q1_options: ["17.2km/L", "19.8km/L", "21.1km/L"],
+    q1_answer: 2,
+    q2_question: "2026년 현재 하이브리드 차량을 구매할 때 정부 및 지자체로부터 받을 수 있는 대표적인 초기 세금 혜택은 무엇인가요?",
+    q2_options: ["종합소득세 완전 면제", "취득세 감면 혜택 (최대 40만 원)", "자동차 보험료 100% 국고 지원"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026 연비 끝판왕! 하이브리드 vs 가솔린 유지비 대결",
+    blog_url: "https://blog.murimbook.com/%ec%97%b0%eb%b9%84%eb%81%9d%ed%8c%90%ec%99%95-%ed%95%98%ec%9d%b4%eb%b8%8c%eb%a6%ac%eb%93%9c-%vs-%ea%b0%80%ec%86%94%eb%a6%b0-%ec%9c%a0%ec%a7%80%eb%b9%84-%eb%8c%80%ea%b2%b0-%ec%97%b0%ea%b0%8b-20/",
+    pair_index: 1,
+    q1_question: "하이브리드의 대명사로 불리며 수입 세단 중 독보적인 복합 공인연비(20.9km/L)를 자랑하는 도요타의 차량 모델명은 무엇인가요?",
+    q1_options: ["프리우스 (Prius)", "ES300h", "어코드"],
+    q1_answer: 0,
+    q2_question: "SUV 중에서 소형 SUV임에도 경차에 버금가는 놀라운 연비 효율을 자랑하며 SUV 부문 연비 1위 자리를 지키고 있는 기아의 차종은 무엇인가요?",
+    q2_options: ["코나", "니로 하이브리드", "XM3"],
+    q2_answer: 1
+  },
+  {
+    blog_title: "2026 연비 끝판왕! 하이브리드 vs 가솔린 유지비 대결",
+    blog_url: "https://blog.murimbook.com/%ec%97%b0%eb%b9%84%eb%81%9d%ed%8c%90%ec%99%95-%ed%95%98%ec%9d%b4%eb%b8%8c%eb%a6%ac%eb%93%9c-%vs-%ea%b0%80%ec%86%94%eb%a6%b0-%ec%9c%a0%ec%a7%80%eb%b9%84-%eb%8c%80%ea%b2%b0-%ec%97%b0%ea%b0%8b-20/",
+    pair_index: 2,
+    q1_question: "하이브리드 차량이 가솔린 차량에 비해 일반 브레이크 패드의 교체 주기가 오히려 더 길어질 수 있는 기술적 이유는 무엇인가요?",
+    q1_options: ["회생 제동 시스템 덕분에 브레이크 패드 마모가 적어서", "엔진오일을 전혀 사용하지 않아서", "차체 무게가 훨씬 가벼워서"],
+    q1_answer: 0,
+    q2_question: "단순히 초기 구매 비용만 보지 않고 취득세, 유류비, 정비 비용 등을 모두 포함하여 장기적 관점에서 계산해야 하는 자동차 소유 비용 개념을 뜻하는 용어는 무엇인가요?",
+    q2_options: ["총 소유 비용 (Total Cost of Ownership)", "초기 다운페이먼트", "감가상각 총액"],
+    q2_answer: 0
+  },
+  {
+    blog_title: "2026 연비 끝판왕! 하이브리드 vs 가솔린 유지비 대결",
+    blog_url: "https://blog.murimbook.com/%ec%97%b0%eb%b9%84%eb%81%9d%ed%8c%90%ec%99%95-%ed%95%98%ec%9d%b4%eb%b8%8c%eb%a6%ac%eb%93%9c-%vs-%ea%b0%80%ec%86%94%eb%a6%b0-%ec%9c%a0%ec%a7%80%eb%b9%84-%eb%8c%80%ea%b2%b0-%ec%97%b0%ea%b0%8b-20/",
+    pair_index: 3,
+    q1_question: "도심 정체 구간 주행이 많을 때 저속 구간에서 전기 모터의 개입이 활발하여 연비 관리에 훨씬 유리한 차량 종류는 무엇인가요?",
+    q1_options: ["전통 가솔린 차량", "하이브리드 차량", "대형 디젤 차량"],
+    q1_answer: 1,
+    q2_question: "본문 시뮬레이션에서 연간 주행 거리 15,000km 기준, 하이브리드 차량을 운행할 시 가솔린 대비 연간 절약할 수 있는 대략적인 유류비 규모는 얼마인가요?",
+    q2_options: ["연간 약 20만 원 내외", "연간 약 40만 원 내외", "연간 약 70만 원 이상"],
+    q2_answer: 2
+  },
+  {
+    blog_title: "2026 연비 끝판왕! 하이브리드 vs 가솔린 유지비 대결",
+    blog_url: "https://blog.murimbook.com/%ec%97%b0%eb%b9%84%eb%81%9d%ed%8c%90%ec%99%95-%ed%95%98%ec%9d%b4%eb%b8%8c%eb%a6%ac%eb%93%9c-%vs-%ea%b0%80%ec%86%94%eb%a6%b0-%ec%9c%a0%ec%a7%80%eb%b9%84-%eb%8c%80%ea%b2%b0-%ec%97%b0%ea%b0%8b-20/",
+    pair_index: 4,
+    q1_question: "최근 출시되는 하이브리드 차량의 고전압 배터리에 대해 제조사가 일반적으로 제공하는 신뢰성 높은 보증 기간 기준은 무엇인가요?",
+    q1_options: ["1년 / 2만 km", "3년 / 6만 km", "10년 / 20만 km 이상의 보증 기간"],
+    q1_answer: 2,
+    q2_question: "국산 중형 세단 중 스포티하고 세련된 디자인으로 젊은 층에게 인기가 많으며, 공인 복합연비 19.8km/L를 기록한 기아의 차량 명칭은 무엇인가요?",
+    q2_options: ["아반떼", "K5 하이브리드", "쏘나타"],
+    q2_answer: 1
+  }
+];
+async function seed() {
+  console.log(`Starting to seed ${quizzes.length} quiz records into Supabase...`);
+  
+  for (const item of quizzes) {
+    const { data, error } = await supabase
+      .from("blog_quizzes")
+      .upsert(
+        {
+          blog_title: item.blog_title,
+          blog_url: item.blog_url,
+          pair_index: item.pair_index,
+          q1_question: item.q1_question,
+          q1_options: item.q1_options,
+          q1_answer: item.q1_answer,
+          q2_question: item.q2_question,
+          q2_options: item.q2_options,
+          q2_answer: item.q2_answer,
+          created_at: new Date().toISOString()
+        },
+        { onConflict: "blog_title,pair_index" }
+      );
+    if (error) {
+      console.error(`Failed to insert quiz pair ${item.pair_index} for "${item.blog_title}":`, error.message);
+    } else {
+      console.log(`Successfully upserted pair ${item.pair_index} for "${item.blog_title}"`);
+    }
+  }
+  
+  console.log("Seeding process completed!");
+}
+seed().catch(console.error);

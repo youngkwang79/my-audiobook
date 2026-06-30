@@ -3,17 +3,33 @@ export function parseFilename(filename: string) {
   // 확장자 제거 (예: .mp3, .m4a 등)
   const base = filename.substring(0, filename.lastIndexOf(".")) || filename;
 
-  // 1. "01 새벽의 검", "01 - 새벽의 검", "1화 새벽의 검" 패턴 매칭
-  // 숫자(1개 이상) + 선택적 "화" + 공백/대시/점/언더바 + 나머지 내용
-  const match = base.trim().match(/^(\d+)(?:화)?[\s\-_.]+(.+)$/);
+  // 0. chapter_N, ep_N, episode_N 패턴 매칭
+  const chapterMatch = base.trim().match(/^(?:chapter|ep|episode)[_\s.\-]*(\d+)[_\s.\-]*([\s\S]*)$/i);
+  if (chapterMatch) {
+    const id = chapterMatch[1];
+    const title = chapterMatch[2].trim();
+    return { id: String(Number(id)), title: title || `chapter_${Number(id)}` };
+  }
+
+  // 0.5. 제N화 / 제N편 패턴 매칭
+  const jeMatch = base.trim().match(/^제\s*(\d+)\s*(?:화|편)?[\s\-_.]*(.*)$/);
+  if (jeMatch) {
+    const id = jeMatch[1];
+    const title = jeMatch[2].trim();
+    return { id: String(Number(id)), title: title || `제${Number(id)}화` };
+  }
+
+  // 1. "01 새벽의 검", "01 - 새벽의 검", "1화 새벽의 검", "1편 새벽의 검" 패턴 매칭
+  // 숫자(1개 이상) + 선택적 "화/편" + 공백/대시/점/언더바 + 나머지 내용
+  const match = base.trim().match(/^(\d+)(?:화|편)?[\s\-_.]+(.+)$/);
   if (match) {
     const id = match[1];
     const title = match[2].trim();
     return { id: String(Number(id)), title };
   }
 
-  // 2. 숫자만 있는 패턴 (예: "01", "1화")
-  const onlyNumMatch = base.trim().match(/^(\d+)(?:화)?$/);
+  // 2. 숫자만 있는 패턴 (예: "01", "1화", "1편")
+  const onlyNumMatch = base.trim().match(/^(\d+)(?:화|편)?$/);
   if (onlyNumMatch) {
     const id = onlyNumMatch[1];
     return { id: String(Number(id)), title: `${Number(id)}화` };

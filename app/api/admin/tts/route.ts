@@ -154,7 +154,9 @@ export async function POST(req: Request) {
       releaseDate,
       effect = "none",
       is_membership_only = false,
-      voiceGuide
+      voiceGuide,
+      uploadR2AndDb = true,
+      downloadLocal = false
     } = payload;
 
     if (!text || !text.trim()) {
@@ -212,20 +214,43 @@ export async function POST(req: Request) {
     }
 
     // 5. 전체 생성 및 업로드 처리
-    if (!workId || !episodeId || !title || !releaseDate) {
+    if (!workId || !episodeId || !title || (!releaseDate && uploadR2AndDb)) {
       return NextResponse.json({ error: "missing_required_metadata" }, { status: 400 });
+    }
+
+    // 오디오에 제목도 함께 낭독되도록 본문 서두에 제목 추가 (이미 시작부분에 제목이 명시되어 있지 않은 경우만)
+    let fullText = text.trim();
+    const cleanTitle = title.trim();
+    let fullTitle = cleanTitle;
+
+    if (episodeId) {
+      const cleanEpId = String(episodeId).trim();
+      const hasEpisodeNumber = cleanTitle.includes(cleanEpId);
+      if (!hasEpisodeNumber) {
+        if (/^\d+$/.test(cleanEpId)) {
+          fullTitle = `제 ${cleanEpId}화. ${cleanTitle}`;
+        } else {
+          fullTitle = `${cleanEpId}. ${cleanTitle}`;
+        }
+      }
+    }
+
+    const normalize = (s: string) => s.replace(/[^a-zA-Z0-9가-힣]/g, "");
+    if (fullTitle && !normalize(fullText.substring(0, 150)).includes(normalize(fullTitle))) {
+      fullText = `${fullTitle}.\n\n${fullText}`;
     }
 
     // 텍스트 분할 (최대 3000글자 기준)
     const maxCharsPerPart = 3000;
-    const textParts = splitTextIntoParts(text, maxCharsPerPart);
+    const textParts = splitTextIntoParts(fullText, maxCharsPerPart);
     const totalParts = textParts.length;
-    console.log(`TTS target text length: ${text.length}. Splitting into ${totalParts} parts.`);
+    console.log(`TTS target text length: ${fullText.length}. Splitting into ${totalParts} parts.`);
 
     const epNum = Number(episodeId);
     const folder = isNaN(epNum) ? String(episodeId) : String(epNum).padStart(3, "0");
     const bucketName = process.env.R2_BUCKET_NAME || "murimbook-audio";
     let firstR2Key = "";
+    const generatedPartsBase64: { partNum: number; base64: string }[] = [];
 
     for (let i = 0; i < totalParts; i++) {
       const partText = textParts[i];
@@ -266,16 +291,25 @@ export async function POST(req: Request) {
         firstR2Key = r2Key;
       }
       
-      console.log(`Uploading part ${partNum}/${totalParts} to R2: ${r2Key}...`);
-      // Cloudflare R2에 업로드
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: bucketName,
-          Key: r2Key,
-          Body: mp3Buffer,
-          ContentType: "audio/mpeg"
-        })
-      );
+      if (downloadLocal) {
+        generatedPartsBase64.push({
+          partNum,
+          base64: mp3Buffer.toString("base64")
+        });
+      }
+
+      if (uploadR2AndDb) {
+        console.log(`Uploading part ${partNum}/${totalParts} to R2: ${r2Key}...`);
+        // Cloudflare R2에 업로드
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: bucketName,
+            Key: r2Key,
+            Body: mp3Buffer,
+            ContentType: "audio/mpeg"
+          })
+        );
+      }
       
       // 개별 파트 생성 즉시 임시 파일 정리
       try {
@@ -286,48 +320,54 @@ export async function POST(req: Request) {
       }
     }
     
-    // Supabase에 에피소드 데이터 upsert
-    const { data: epData, error: epError } = await supabaseAdmin
-      .from("episodes")
-      .upsert({
-        work_id: workId,
-        id: String(episodeId),
-        title: title,
-        locked: locked,
-        parts: totalParts,
-        release_date: new Date(releaseDate).toISOString(),
-        is_membership_only: is_membership_only
-      })
-      .select();
-      
-    if (epError) {
-      throw new Error(`DB upsert failed: ${epError.message}`);
-    }
-    
-    // 작품의 총 에피소드 수 및 마지막 목소리 설정 업데이트
-    const { data: currentEpList } = await supabaseAdmin
-      .from("episodes")
-      .select("id")
-      .eq("work_id", workId);
-      
-    if (currentEpList) {
-      await supabaseAdmin
-        .from("works")
-        .update({ 
-          episode_count: currentEpList.length,
-          last_voice: voice,
-          last_pitch: pitch,
-          last_rate: rate
+    let epData: any[] | null = null;
+
+    if (uploadR2AndDb) {
+      // Supabase에 에피소드 데이터 upsert
+      const { data: upsertData, error: epError } = await supabaseAdmin
+        .from("episodes")
+        .upsert({
+          work_id: workId,
+          id: String(episodeId),
+          title: title,
+          locked: locked,
+          parts: totalParts,
+          release_date: new Date(releaseDate).toISOString(),
+          is_membership_only: is_membership_only
         })
-        .eq("id", workId);
+        .select();
+        
+      if (epError) {
+        throw new Error(`DB upsert failed: ${epError.message}`);
+      }
+      
+      epData = upsertData;
+      
+      // 작품의 총 에피소드 수 및 마지막 목소리 설정 업데이트
+      const { data: currentEpList } = await supabaseAdmin
+        .from("episodes")
+        .select("id")
+        .eq("work_id", workId);
+        
+      if (currentEpList) {
+        await supabaseAdmin
+          .from("works")
+          .update({ 
+            episode_count: currentEpList.length,
+            last_voice: voice,
+            last_pitch: pitch,
+            last_rate: rate
+          })
+          .eq("id", workId);
+      }
     }
     
     return NextResponse.json({ 
       success: true, 
-      r2Key: firstR2Key, 
-      episode: epData?.[0] 
+      r2Key: uploadR2AndDb ? firstR2Key : undefined, 
+      episode: uploadR2AndDb ? epData?.[0] : { id: episodeId, title: title, parts: totalParts },
+      parts: downloadLocal ? generatedPartsBase64 : undefined
     });
-
   } catch (error: any) {
     console.error("TTS API Route Error:", error);
     

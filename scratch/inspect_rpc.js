@@ -24,19 +24,27 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function inspect() {
-  const { data, error } = await supabase.rpc("inspect_schema");
-  if (error) {
-    console.log("RPC inspect_schema not found, trying generic table checks.");
+async function inspectRpc() {
+  console.log("Inspecting RPC routines in public schema...");
+  
+  // Try querying information_schema.routines
+  const { data: routines, error: routinesErr } = await supabase
+    .from("pg_catalog.pg_proc")
+    .select("proname, proargnames")
+    .ilike("proname", "%sql%");
     
-    const knownTables = ["wallets", "entitlements", "subscriptions", "user_tasks", "site_visits", "comments", "payments", "point_transactions", "listen_logs", "play_counts", "work_views", "blog_quizzes"];
-    for (const t of knownTables) {
-      const { error: err } = await supabase.from(t).select("*").limit(0);
-      console.log(`Table '${t}' exists?`, !err ? "YES" : `NO (${err.message})`);
-    }
+  if (routinesErr) {
+    console.error("Failed to query pg_proc:", routinesErr.message);
+    
+    // Fallback: try checking if a direct query to information_schema works
+    const { data: routines2, error: routinesErr2 } = await supabase
+      .from("pg_proc")
+      .select("*")
+      .limit(5);
+    console.log("pg_proc generic error:", routinesErr2?.message);
   } else {
-    console.log("Inspect schema data:", data);
+    console.log("Routines containing 'sql':", routines);
   }
 }
 
-inspect();
+inspectRpc().catch(console.error);

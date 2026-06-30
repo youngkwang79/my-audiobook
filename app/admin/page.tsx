@@ -13,7 +13,7 @@ import EpisodeUpload from "./components/EpisodeUpload";
 import WebPushPanel from "./components/WebPushPanel";
 import AutomationPanel from "./components/AutomationPanel";
 import ContentFactoryPanel from "./components/ContentFactoryPanel";
-import R2DownloadPanel from "./components/R2DownloadPanel";
+import BlogQuizManager from "./components/BlogQuizManager";
 
 
 export default function AdminPage() {
@@ -23,7 +23,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingCheck, setLoadingCheck] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "novels" | "episodes" | "edit" | "push" | "automation" | "contentFactory" | "r2Download"
+    "novels" | "episodes" | "edit" | "push" | "automation" | "contentFactory" | "blogQuiz"
   >("novels");
 
   const [worksList, setWorksList] = useState<any[]>([]);
@@ -399,10 +399,10 @@ export default function AdminPage() {
             콘텐츠 팩토리
           </button>
           <button
-            className={`admin-tab ${activeTab === "r2Download" ? "active" : ""}`}
-            onClick={() => setActiveTab("r2Download")}
+            className={`admin-tab ${activeTab === "blogQuiz" ? "active" : ""}`}
+            onClick={() => setActiveTab("blogQuiz")}
           >
-            R2 다운로드
+            블로그 퀴즈
           </button>
         </div>
 
@@ -432,8 +432,8 @@ export default function AdminPage() {
           <ContentFactoryPanel />
         </div>
 
-        <div style={{ display: activeTab === "r2Download" ? "block" : "none" }}>
-          <R2DownloadPanel worksList={worksList} />
+        <div style={{ display: activeTab === "blogQuiz" ? "block" : "none" }}>
+          <BlogQuizManager />
         </div>
       </div>
 
