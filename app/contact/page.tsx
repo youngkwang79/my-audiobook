@@ -20,7 +20,7 @@ export default function ContactPage() {
 
         <section className="mb-8">
           <p className="mb-2">
-            이메일: sun_writer@murimbook.com
+            이메일: murimbook@naver.com
           </p>
           <p>운영시간: 평일 10:00 ~ 17:00</p>
         </section>

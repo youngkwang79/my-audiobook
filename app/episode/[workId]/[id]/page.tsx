@@ -1274,7 +1274,7 @@ export default function EpisodePage() {
       const token = await getAccessToken();
 
       if (!token) {
-        alert("로그인이 필요합니다.");
+        alert("로그인 후 이용할 수 있습니다.");
         router.push(`/login?redirect=/episode/${workId}/${episodeKey}`);
         return false;
       }
@@ -1299,7 +1299,7 @@ export default function EpisodePage() {
           return false;
         }
         if (data?.error === "unauthorized") {
-          alert("로그인이 필요합니다.");
+          alert("로그인 후 이용할 수 있습니다.");
           router.push(`/login?redirect=/episode/${workId}/${episodeKey}`);
           return false;
         }

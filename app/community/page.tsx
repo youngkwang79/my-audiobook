@@ -328,7 +328,7 @@ export default function CommunityPage() {
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert("로그인이 필요합니다. 문파 가입(로그인)을 먼저 해주세요!");
+      alert("로그인 후 이용할 수 있습니다. 문파 가입(로그인)을 먼저 해주세요!");
       return;
     }
 
@@ -381,7 +381,7 @@ export default function CommunityPage() {
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert("로그인이 필요합니다.");
+      alert("로그인 후 이용할 수 있습니다.");
       return;
     }
     const val = newComment.trim();
@@ -1166,7 +1166,7 @@ export default function CommunityPage() {
         className="write-float-btn"
         onClick={() => {
           if (!user) {
-            alert("로그인이 필요합니다. 문파 가입(로그인)을 먼저 해주세요!");
+            alert("로그인 후 이용할 수 있습니다. 문파 가입(로그인)을 먼저 해주세요!");
             return;
           }
           if (activeCategory !== "전체") {

@@ -219,7 +219,7 @@ export default function RefundPage() {
           <section className="terms-section">
             <h2 className="terms-section-title">제5조 (환불 신청 및 처리 절차)</h2>
             <ul className="terms-bullet-list">
-              <li>환불 신청은 오늘의살롱 고객센터 유선 연락(02-6013-2299) 또는 이메일(sun_writer@murimbook.com)을 통해 접수할 수 있습니다.</li>
+              <li>환불 신청은 오늘의살롱 고객센터 유선 연락(02-6013-2299) 또는 이메일(murimbook@naver.com)을 통해 접수할 수 있습니다.</li>
               <li>이용자는 환불 신청 시 아래 정보를 성실하게 제공해야 합니다.
                 <br />1. 가입한 이메일 계정 및 회원 ID (마이페이지에서 확인 가능)
                 <br />2. 결제 일시 및 결제 수단
@@ -232,7 +232,7 @@ export default function RefundPage() {
  
           <div className="terms-footer">
             <span>제공 주체: 오늘의살롱 (Today's Salon)</span>
-            <span>공식 문의: sun_writer@murimbook.com / 대표전화: 02-6013-2299</span>
+            <span>공식 문의: murimbook@naver.com / 대표전화: 02-6013-2299</span>
             <span>개정 및 시행일: 2026-06-16</span>
           </div>
         </div>

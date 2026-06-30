@@ -260,14 +260,14 @@ export default function PrivacyPage() {
             <ul className="terms-bullet-list">
               <li>회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
                 <br />- 성명/직책: 고영광 (대표)
-                <br />- 연락처: sun_writer@murimbook.com
+                <br />- 연락처: murimbook@naver.com
               </li>
             </ul>
           </section>
  
           <div className="terms-footer">
             <span>제공 주체: 무림북 (Murimbook)</span>
-            <span>공식 문의: sun_writer@murimbook.com / 1:1 고객문의</span>
+            <span>공식 문의: murimbook@naver.com / 1:1 고객문의</span>
             <span>개정 및 시행일: 2026-06-05</span>
           </div>
         </div>

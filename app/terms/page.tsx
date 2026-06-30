@@ -251,7 +251,7 @@ export default function TermsPage() {
  
           <div className="terms-footer">
             <span>제공 주체: 무림북 (Murimbook)</span>
-            <span>공식 문의: sun_writer@murimbook.com / 1:1 고객문의</span>
+            <span>공식 문의: murimbook@naver.com / 1:1 고객문의</span>
             <span>개정 및 시행일: 2026-06-05</span>
           </div>
         </div>

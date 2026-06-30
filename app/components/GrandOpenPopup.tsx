@@ -94,7 +94,7 @@ export default function GrandOpenPopup() {
               <img src="/novel_contest.jpg" alt="공모전 이미지" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px', display: 'none' }} onError={(e) => e.currentTarget.style.display = 'none'} />
               <div className="b-desc" style={{ width: '100%' }}>
                 <strong style={{ fontSize: '18px', marginBottom: '12px' }}>무림북 창작 소설 공모!</strong>
-                <p style={{ fontSize: '15px', color: '#fff', marginBottom: '10px' }}>sun_writer@murimbook.com 으로<br/>줄거리를 보내주세요.</p>
+                <p style={{ fontSize: '15px', color: '#fff', marginBottom: '10px' }}>murimbook@naver.com 으로<br/>줄거리를 보내주세요.</p>
                 <p style={{ fontSize: '15px', color: '#ffd700', marginBottom: '16px' }}>분량에 따라 코인 차등 지급!<br/><span style={{color:"#ff2a5f", fontWeight:"bold", fontSize: '18px'}}>(최대 15,000 코인)</span></p>
                 <span style={{fontSize:"12px", color:"#888"}}>※ 소설 제출 후 심사를 통해 결과 안내</span>
               </div>

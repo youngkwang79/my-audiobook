@@ -336,7 +336,7 @@ export default function MembershipPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert("로그인이 필요합니다.");
+        alert("로그인 후 이용할 수 있습니다.");
         router.push("/login");
         return;
       }
@@ -486,7 +486,7 @@ export default function MembershipPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert("로그인이 필요합니다.");
+        alert("로그인 후 이용할 수 있습니다.");
         return;
       }
 

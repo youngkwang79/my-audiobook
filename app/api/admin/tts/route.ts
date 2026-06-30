@@ -218,26 +218,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "missing_required_metadata" }, { status: 400 });
     }
 
-    // 오디오에 제목도 함께 낭독되도록 본문 서두에 제목 추가 (이미 시작부분에 제목이 명시되어 있지 않은 경우만)
+    // 오디오에 제목은 함께 낭독하되, 흐름을 깨는 회차 표시(제 몇화)는 낭독에서 제외합니다.
     let fullText = text.trim();
     const cleanTitle = title.trim();
-    let fullTitle = cleanTitle;
 
-    if (episodeId) {
-      const cleanEpId = String(episodeId).trim();
-      const hasEpisodeNumber = cleanTitle.includes(cleanEpId);
-      if (!hasEpisodeNumber) {
-        if (/^\d+$/.test(cleanEpId)) {
-          fullTitle = `제 ${cleanEpId}화. ${cleanTitle}`;
-        } else {
-          fullTitle = `${cleanEpId}. ${cleanTitle}`;
-        }
-      }
+    // 1. 본문 첫 머리에 들어 있는 "제N화 - " 또는 "[제N화. ]" 등 회차 번호 낭독 기호 제거
+    fullText = fullText.replace(/^\[?제\s*\d+\s*화\s*[-.]\s*/, "");
+    fullText = fullText.replace(/^\[?제\s*\d+\s*화\s+/, "");
+    // 대괄호 닫는 기호가 남아있다면 제거
+    if (fullText.startsWith(cleanTitle) && fullText.substring(cleanTitle.length).startsWith("]")) {
+      fullText = cleanTitle + fullText.substring(cleanTitle.length + 1);
     }
 
+    // 2. 제목(cleanTitle)만 본문 서두에 들어가도록 추가 (이미 제목이 본문 첫 부분에 정규적으로 들어가 있지 않은 경우만)
     const normalize = (s: string) => s.replace(/[^a-zA-Z0-9가-힣]/g, "");
-    if (fullTitle && !normalize(fullText.substring(0, 150)).includes(normalize(fullTitle))) {
-      fullText = `${fullTitle}.\n\n${fullText}`;
+    if (cleanTitle && !normalize(fullText.substring(0, 150)).includes(normalize(cleanTitle))) {
+      fullText = `${cleanTitle}.\n\n${fullText}`;
     }
 
     // 텍스트 분할 (최대 3000글자 기준)

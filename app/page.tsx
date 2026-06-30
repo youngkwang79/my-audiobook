@@ -1493,7 +1493,7 @@ export default function Home() {
           {/* Mini-game List */}
           <div className="game-grid">
             <div className="game-card" onClick={() => {
-              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              if (!user) { alert("로그인 후 이용할 수 있습니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
               setActiveLauncherGame("breath");
             }}>
               <div className="game-icon-box">🌬️</div>
@@ -1505,7 +1505,7 @@ export default function Home() {
             </div>
 
             <div className="game-card" onClick={() => {
-              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              if (!user) { alert("로그인 후 이용할 수 있습니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
               setActiveLauncherGame("pulse");
             }}>
               <div className="game-icon-box">☯️</div>
@@ -1517,7 +1517,7 @@ export default function Home() {
             </div>
 
             <div className="game-card" onClick={() => {
-              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              if (!user) { alert("로그인 후 이용할 수 있습니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
               setActiveLauncherGame("puzzle");
             }}>
               <div className="game-icon-box">🧩</div>
@@ -1529,7 +1529,7 @@ export default function Home() {
             </div>
 
             <div className="game-card" onClick={() => {
-              if (!user) { alert("로그인이 필요합니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
+              if (!user) { alert("로그인 후 이용할 수 있습니다. 문파 가입(로그인) 후 수련해 주세요!"); return; }
               setActiveLauncherGame("dodge");
             }}>
               <div className="game-icon-box">👟</div>

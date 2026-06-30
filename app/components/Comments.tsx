@@ -103,7 +103,7 @@ export default function Comments({ workId, episodeId }: Props) {
         console.error("comment submit error:", data);
 
         if (data?.error === "unauthorized" || data?.error === "user_error") {
-          alert(`로그인이 필요합니다. (${data?.detail ?? data?.error ?? "auth_error"})`);
+          alert(`로그인 후 이용할 수 있습니다. (${data?.detail ?? data?.error ?? "auth_error"})`);
           return;
         }
 

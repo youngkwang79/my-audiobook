@@ -7,7 +7,7 @@ const vapidPublicKey = "BErJdJ0V49-dQF8kUs7fOXU_9W0ZI0wjEFq1uepwUvyMFtlyFodQbfn1
 const vapidPrivateKey = "FmkpjFCiv4-32zuMgqFyJhYwDquZsgsBdnPJJq2J1xg";
 
 webpush.setVapidDetails(
-  "mailto:sun_writer@murimbook.com",
+  "mailto:murimbook@naver.com",
   vapidPublicKey,
   vapidPrivateKey
 );

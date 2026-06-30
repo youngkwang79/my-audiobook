@@ -81,7 +81,7 @@ export default function LayoutFooter() {
         모든 거래에 대한 책임과 환불, 소비자 민원 등은 오늘의살롱에서
         진행합니다.
         <br />
-        고객지원 및 환불문의: 고영광 (02-6013-2299, sun_writer@murimbook.com)
+        고객지원 및 환불문의: 고영광 (02-6013-2299, murimbook@naver.com)
         <br />
         <br />© 2026 오늘의살롱 All rights reserved.
       </div>
