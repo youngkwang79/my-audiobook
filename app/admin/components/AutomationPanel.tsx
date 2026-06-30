@@ -68,6 +68,7 @@ interface ParsedChapter {
   id: string;
   title: string;
   text: string;
+  selected?: boolean;
 }
 
 interface LogLine {
@@ -371,6 +372,14 @@ export default function AutomationPanel({
 
   const batchActiveRef = useRef(false);
   const currentProcessingIndexRef = useRef(0);
+
+  const isAllSelected = parsedChapters.length > 0 && parsedChapters.every((c) => c.selected);
+
+  const toggleAllParsedChapters = (checked: boolean) => {
+    setParsedChapters((prev) =>
+      prev.map((c) => ({ ...c, selected: checked })),
+    );
+  };
 
   // 스캔 디스크 폴더 목록 로드
   const fetchDiskFolders = async () => {
@@ -1039,7 +1048,7 @@ export default function AutomationPanel({
     if (file) {
       const text = cleanHanja(await file.text());
 
-      const bracketRegex = /^\[\s*(.+?)\s*\]$/;
+      const bracketRegex = /^\[\s*(?:제\s*)?\d+\s*(?:화|편).*\]$/;
       const jeRegex = /^제\s*(\d+)\s*(?:화|편)(?:\s*(.*))?$/;
       const lines = text.split(/\r?\n/);
       const chapters: ParsedChapter[] = [];
@@ -1050,7 +1059,18 @@ export default function AutomationPanel({
         const line = lines[i].trim();
         const bracketMatch = line.match(bracketRegex);
         const jeMatch = line.match(jeRegex);
-        const match = bracketMatch || jeMatch;
+        
+        const isGuideBlock = 
+          line.includes("마지막 본문") || 
+          line.includes("연결점") || 
+          line.includes("지침") || 
+          line.includes("규칙") || 
+          line.includes("이어 쓸") || 
+          line.includes("이전 화") ||
+          line.includes("이전 ") ||
+          line.includes("화의 마지막");
+
+        const match = !isGuideBlock && (bracketMatch || jeMatch);
 
         if (match) {
           if (currentHeader || currentLines.join("").trim().length > 0) {
@@ -1060,6 +1080,7 @@ export default function AutomationPanel({
               id,
               title,
               text: currentLines.join("\n").trim(),
+              selected: true,
             });
           }
           currentHeader = bracketMatch ? bracketMatch[1].trim() : line;
@@ -1076,6 +1097,7 @@ export default function AutomationPanel({
           id,
           title,
           text: currentLines.join("\n").trim(),
+          selected: true,
         });
       }
 
@@ -1458,6 +1480,19 @@ export default function AutomationPanel({
       }
     }
 
+    // 완전히 새로 시작할 때(0번 인덱스)는 선택된 회차들의 상태만 대기(idle) 상태로 리셋
+    if (startIndex === 0) {
+      setItemStatuses((prev) => {
+        const next = { ...prev };
+        parsedChapters.forEach((ch, idx) => {
+          if (ch.selected) {
+            next[idx] = { status: "idle" };
+          }
+        });
+        return next;
+      });
+    }
+
     batchActiveRef.current = true;
     setBatchStatus("running");
 
@@ -1489,12 +1524,21 @@ export default function AutomationPanel({
     }
 
     while (index < parsedChapters.length && batchActiveRef.current) {
+      const chapter = parsedChapters[index];
+
+      // 선택되지 않은 회차는 연성하지 않고 패스
+      if (!chapter.selected) {
+        index++;
+        currentProcessingIndexRef.current = index;
+        setCurrentBatchIndex(index);
+        continue;
+      }
+
       setItemStatuses((prev) => ({
         ...prev,
         [index]: { status: "running" },
       }));
 
-      const chapter = parsedChapters[index];
       let calculatedReleaseDate = new Date(startBaseTime);
       if (schedulingType === "1hour") {
         calculatedReleaseDate.setHours(startBaseTime.getHours() + index);
@@ -3362,6 +3406,15 @@ export default function AutomationPanel({
                         color: "rgba(255,255,255,0.6)",
                       }}
                     >
+                      <th style={{ padding: "8px 4px", width: "40px", textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          onChange={(e) => toggleAllParsedChapters(e.target.checked)}
+                          disabled={batchStatus === "running"}
+                          style={{ accentColor: "#ff2a5f", cursor: "pointer" }}
+                        />
+                      </th>
                       <th style={{ padding: "8px 4px", width: "80px" }}>
                         회차 번호
                       </th>
@@ -3407,8 +3460,20 @@ export default function AutomationPanel({
                             background: isCurrent
                               ? "rgba(255, 42, 95, 0.08)"
                               : "transparent",
+                            opacity: chapter.selected ? 1 : 0.5,
                           }}
                         >
+                          <td style={{ padding: "6px 4px", textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={!!chapter.selected}
+                              onChange={() =>
+                                updateParsedChapter(idx, "selected", !chapter.selected)
+                              }
+                              disabled={batchStatus === "running"}
+                              style={{ accentColor: "#ff2a5f", cursor: "pointer" }}
+                            />
+                          </td>
                           <td style={{ padding: "6px 4px" }}>
                             <input
                               type="text"
@@ -3520,7 +3585,7 @@ export default function AutomationPanel({
                     className="btn-submit"
                     style={{ flex: 1 }}
                   >
-                    🚀 일괄 오디오 연성 시작 ({parsedChapters.length}개 회차)
+                    🚀 일괄 오디오 연성 시작 ({parsedChapters.filter(c => c.selected).length}개 회차 선택됨)
                   </button>
                 )}
                 {batchStatus === "running" && (

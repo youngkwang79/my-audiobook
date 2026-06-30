@@ -36,6 +36,14 @@ function CommunityIcon({ active }: { active: boolean }) {
   );
 }
 
+function BlogIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "#ffffff" : "#8c8c96"}>
+      <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" />
+    </svg>
+  );
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -107,6 +115,10 @@ export default function BottomNav() {
           <LibraryIcon active={pathname === "/works"} />
           <span>보관함</span>
         </Link>
+        <a href="https://blog.murimbook.com" className="nav-item">
+          <BlogIcon active={false} />
+          <span>블로그</span>
+        </a>
         <Link href={user ? "/me" : "/login"} className={`nav-item nav-item-my ${(pathname === "/me" || pathname === "/wallet" || pathname === "/checkin") ? "active" : ""}`}>
           <UserIcon active={pathname === "/me" || pathname === "/wallet" || pathname === "/checkin" || pathname === "/login"} />
           <span>내정보</span>
