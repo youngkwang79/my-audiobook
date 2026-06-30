@@ -11,4 +11,5 @@ _temp_plan_*
 *.patch
 *.log
 *.txt
+!public/ads.txt
 __pycache__
