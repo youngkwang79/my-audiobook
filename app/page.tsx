@@ -397,8 +397,11 @@ export default function Home() {
   // ✅ 이어듣기 링크
   const continueHref = useMemo(() => {
     if (!lastPlayed) return "";
+    const work = worksList.find((w) => w.id === lastPlayed.workId);
+    const isBlog = work?.subtitle?.includes("[블로그]") || work?.subtitle?.includes("[공지사항]") || work?.genre === "블로그" || work?.genre === "blog";
+    if (isBlog) return "";
     return `/episode/${lastPlayed.workId}/${lastPlayed.episodeId}?part=${lastPlayed.part}&autoplay=1`;
-  }, [lastPlayed]);
+  }, [lastPlayed, worksList]);
   const lastPlayedWorkTitle = useMemo(() => {
     if (!lastPlayed?.workId) return "";
     return worksList.find((work) => work.id === lastPlayed.workId)?.title ?? lastPlayed.workId;

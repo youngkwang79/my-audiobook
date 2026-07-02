@@ -45,8 +45,11 @@ export default function WorkPosterCard({ work }: Props) {
     firstEpId = episodes[0]?.id || null;
   }
 
-  const playHref = resumeHref
-    ?? (firstEpId ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1` : `/work/${work.id}`);
+  const isBlog = work.subtitle?.includes("[블로그]") || work.subtitle?.includes("[공지사항]") || work.genre === "블로그" || work.genre === "blog";
+
+  const playHref = isBlog
+    ? `/work/${work.id}`
+    : (resumeHref ?? (firstEpId ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1` : `/work/${work.id}`));
 
   // 배지 색상 결정
   const getBadgeStyle = (badge: string) => {
