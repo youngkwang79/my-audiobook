@@ -83,7 +83,9 @@ export default function WorkDetailPage() {
             badge: isOldNew ? "" : workData.badge,
             views: String(workData.views),
             exclusive: workData.exclusive,
-            featured: workData.featured
+            featured: workData.featured,
+            genre: workData.genre,
+            created_at: workData.created_at
           });
         }
 
@@ -198,6 +200,131 @@ export default function WorkDetailPage() {
         <TopBar />
         <div style={{ marginTop: 24, fontSize: 18, fontWeight: 800 }}>
           존재하지 않는 작품입니다.
+        </div>
+      </main>
+    );
+  }
+
+  const isBlog = work?.subtitle?.includes("[블로그]") || work?.subtitle?.includes("[공지사항]") || work?.genre === "블로그" || work?.genre === "blog";
+
+  // 마크다운 문법을 HTML로 안전하게 변환해주는 초경량 파서 함수
+  const parseMarkdownToHtml = (markdown: string) => {
+    if (!markdown) return "";
+    
+    let html = markdown;
+
+    // 1. 볼드 처리 (**텍스트**)
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // 2. 제목 태그 변환 (#, ##, ###)
+    html = html.replace(/^### (.*?)$/gm, "<h3 style='font-size: 19px; font-weight: 800; margin-top: 24px; margin-bottom: 10px; color: #ffd43b;'>$1</h3>");
+    html = html.replace(/^## (.*?)$/gm, "<h2 style='font-size: 22px; font-weight: 900; margin-top: 28px; margin-bottom: 12px; color: #ffd43b; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;'>$1</h2>");
+    html = html.replace(/^# (.*?)$/gm, "<h1 style='font-size: 26px; font-weight: 950; margin-top: 32px; margin-bottom: 14px; color: #ffd43b;'>$1</h1>");
+
+    // 3. 링크 변환 ([텍스트](링크))
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, "<a href='$2' target='_blank' rel='noopener noreferrer' style='color: #ffd43b; text-decoration: underline; font-weight: 700;'>$1</a>");
+
+    // 4. 글머리 기호 변환 (* 내용)
+    html = html.replace(/^\* (.*?)$/gm, "<li style='margin-left: 20px; margin-bottom: 6px; list-style-type: disc;'>$1</li>");
+
+    // 5. 문단(Double Newline) 및 줄바꿈(Single Newline) 변환
+    const paragraphs = html.split(/\n\n+/);
+    return paragraphs
+      .map(p => {
+        const trimmed = p.trim();
+        if (trimmed.startsWith("<h") || trimmed.startsWith("<li")) {
+          return p.replace(/\n/g, "<br />");
+        }
+        return `<p style='margin-bottom: 16px; line-height: 1.8; font-size: 16px;'>${p.replace(/\n/g, "<br />")}</p>`;
+      })
+      .join("");
+  };
+
+  if (isBlog) {
+    return (
+      <main
+        style={{
+          minHeight: "100dvh",
+          background: "#050508",
+          color: "white",
+          padding: "20px 20px 80px",
+          fontFamily:
+            'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial',
+        }}
+      >
+        <TopBar />
+
+        <div
+          style={{
+            maxWidth: 800,
+            margin: "24px auto 0",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 20,
+            padding: "28px 24px",
+            boxSizing: "border-box"
+          }}
+        >
+          {/* Breadcrumb / 카테고리 */}
+          <div style={{ fontSize: 13, color: "#ff2a5f", fontWeight: 700, marginBottom: 12 }}>
+            {work.subtitle}
+          </div>
+
+          {/* 제목 */}
+          <h1 style={{ fontSize: "28px", fontWeight: 950, lineHeight: 1.35, marginBottom: 16, marginTop: 0 }}>
+            {work.title}
+          </h1>
+
+          {/* 서브타이틀 */}
+          <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 24 }}>
+            등록일: {new Date(work.created_at || Date.now()).toLocaleDateString("ko-KR", { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+
+          {/* 썸네일 (2:3 비율 북커버 스타일) */}
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <img
+              src={work.thumbnail}
+              alt={work.title}
+              style={{
+                width: "100%",
+                maxWidth: 240,
+                aspectRatio: "2 / 3",
+                borderRadius: 16,
+                objectFit: "cover",
+                border: "1px solid rgba(255,255,255,0.1)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
+              }}
+            />
+          </div>
+
+          {/* 본문 (마크다운 파싱 렌더링) */}
+          <div
+            style={{
+              color: "#f3f4f6",
+              letterSpacing: "-0.3px",
+              wordBreak: "break-word"
+            }}
+            dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(work.description || "") }}
+          />
+
+          {/* 하단 단추 */}
+          <div style={{ marginTop: 40, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 24, textAlign: "center" }}>
+            <button
+              onClick={() => router.push("/")}
+              style={{
+                background: "linear-gradient(135deg, #ff2a5f 0%, #ff7f00 100%)",
+                color: "white",
+                border: "none",
+                padding: "12px 28px",
+                borderRadius: 14,
+                fontWeight: 900,
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(255, 42, 95, 0.3)"
+              }}
+            >
+              목록으로 돌아가기
+            </button>
+          </div>
         </div>
       </main>
     );

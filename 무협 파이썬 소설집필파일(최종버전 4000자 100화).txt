@@ -99,7 +99,7 @@ PLOT_STYLE_MATCHER = [
 ]
 
 # 중복 없는 무작위 매칭 엔진
-HISTORY_FILE = "moorim_classic_history.txt"
+HISTORY_FILE = "
 used_plots = []
 if os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, "r", encoding="utf-8") as h_f:
@@ -219,7 +219,7 @@ CLASSIC_MUHYUP_RULES = f"""
 output_dir = f"무림북_대서사_{safe_title}"
 if not os.path.exists(output_dir): os.makedirs(output_dir)
 
-info_filename = os.path.join(output_dir, f"00_🚨급전개방지_작품기획안🚨.txt")
+info_filename = os.path.join(output_dir, ")
 if not os.path.exists(info_filename):
     with open(info_filename, "w", encoding="utf-8") as info_f:
         info_f.write(f"■ 작품 제목: {novel_title}\n■ 기획 스타일: {selected_style['mood']}\n")
@@ -227,7 +227,7 @@ if not os.path.exists(info_filename):
 previous_summary = "없음 (이야기가 시작되었습니다.)"
 
 for chapter in range(1, 101):
-    filename = os.path.join(output_dir, f"{chapter:03d}화_{safe_title}.txt")
+    filename = os.path.join(output_dir, ")
     
     if os.path.exists(filename):
         print(f"⏭️ [{chapter}/100화] 이미 집필된 파일 패스 (이어 쓰기 작동)")
@@ -236,7 +236,7 @@ for chapter in range(1, 101):
             summary_prompt = f"""다음 소설 본문을 읽고 아래 구조를 유지하여 3줄로 요약해줘.
             1. 현재 에피소드 전개 및 빌런의 음모 진척도:
             2. 주인공이 최근 회상한 기연 인물의 가르침 또는 현재의 수련 상태:
-            3. 아직 해결되지 않은 긴장감 및 인물 동선:\n\n[본문]\n{existing_text}"""
+            3. 아직 해결되지 않은 긴장감 및 인물 행로:\n\n[본문]\n{existing_text}"""
             previous_summary = generate_moorim_classic(summary_prompt, f"{chapter}화 기존 줄거리 복구")
         except Exception: pass
         continue
@@ -264,7 +264,7 @@ for chapter in range(1, 101):
     summary_prompt = f"""다음 소설 본문을 읽고 아래 구조를 유지하여 3줄로 요약해줘.
     1. 현재 에피소드 전개 및 빌런의 음모 진척도:
     2. 주인공이 최근 회상한 기연 인물의 가르침 또는 현재의 수련 상태:
-    3. 아직 해결되지 않은 긴장감 및 인물 동선:\n\n[본문]\n{chapter_text}"""
+    3. 아직 해결되지 않은 긴장감 및 인물 행로:\n\n[본문]\n{chapter_text}"""
     previous_summary = generate_moorim_classic(summary_prompt, f"{chapter}화 줄거리 요약")
     time.sleep(1)
 

@@ -154,6 +154,8 @@ for chapter in range(1, 51):
     위 정보를 바탕으로 {chapter}화의 본문을 웅장하고 흡입력 있게 집필해줘."""
     
     chapter_text = generate_history(prompt, f"{chapter}화 본문 집필")
+    from novel_cleaner import clean_text
+    chapter_text = clean_text(chapter_text)
     with open(filename, "w", encoding="utf-8") as f: f.write(chapter_text)
     print(f"   ↳ ⚡ {chapter}화 초고속 저장 완료! ({filename})")
     

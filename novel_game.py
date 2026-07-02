@@ -91,6 +91,8 @@ for chapter in range(1, 51):
     print(f"▓ [{chapter}/50화] 게임 본문 폭풍 생성 중... 🔥")
     prompt = f"{RULES}\n제목: {novel_title}\n이전 요약: {previous_summary}\n이번화 시놉시스: {synopses[chapter]}\n{chapter}화 본문을 집필해줘."
     chapter_text = generate_game(prompt, "본문")
+    from novel_cleaner import clean_text
+    chapter_text = clean_text(chapter_text)
     with open(filename, "w", encoding="utf-8") as f: f.write(chapter_text)
     previous_summary = generate_game(f"다음 본문을 3줄 요약해줘.\n\n[본문]\n{chapter_text}", "요약")
     time.sleep(1)

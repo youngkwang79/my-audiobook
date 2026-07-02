@@ -169,6 +169,7 @@ export default function RefundPage() {
           <Link href="/terms" className="terms-tab">이용약관</Link>
           <Link href="/privacy" className="terms-tab">개인정보 처리</Link>
           <Link href="/refund" className="terms-tab active">환불 및 결제</Link>
+          <a href="https://blog.murimbook.com/?page_id=584" target="_blank" rel="noreferrer" className="terms-tab">대출 계산기</a>
         </div>
  
         {/* 약관 본문 */}

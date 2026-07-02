@@ -173,15 +173,15 @@ export default function GrandOpenPopup() {
           align-items: center;
           justify-content: center;
           z-index: 9999;
-          padding: 20px;
+          padding: 10px;
         }
         .popup-content {
           position: absolute;
           background: linear-gradient(180deg, #1f1a18 0%, #111012 100%);
           border: 2px solid #b38728;
           border-radius: 12px;
-          width: calc(100% - 40px);
-          max-width: 420px;
+          width: calc(100% - 20px);
+          max-width: 400px;
           max-height: 85vh;
           display: flex;
           flex-direction: column;
@@ -198,7 +198,7 @@ export default function GrandOpenPopup() {
           transition: all 0.3s ease;
         }
         .popup2-back {
-          transform: translateY(-20px) scale(0.95);
+          transform: translateY(-15px) scale(0.95);
           opacity: 0.8;
           filter: brightness(0.7);
           z-index: 1;
@@ -217,9 +217,9 @@ export default function GrandOpenPopup() {
           background: url('https://www.transparenttextures.com/patterns/stardust.png'), linear-gradient(135deg, #7b0000, #3a0000);
           border-bottom: 2px solid #b38728;
           margin: 0;
-          padding: 16px 20px;
+          padding: 14px 16px;
           text-align: center;
-          font-size: 22px;
+          font-size: 20px;
           font-weight: 900;
           line-height: 1.3;
           color: #fcf6ba;
@@ -229,24 +229,25 @@ export default function GrandOpenPopup() {
         }
         .title-sub {
           display: block;
-          font-size: 14px;
+          font-size: 13px;
           color: #b38728;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
           letter-spacing: 2px;
         }
         .benefits-list {
-          padding: 16px 20px;
+          padding: 12px 16px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
           overflow-y: auto;
           flex: 1;
+          -webkit-overflow-scrolling: touch;
         }
         .benefit-item {
           display: flex;
-          gap: 14px;
+          gap: 10px;
           background: linear-gradient(90deg, rgba(179,135,40,0.15) 0%, rgba(255,255,255,0.02) 100%);
-          padding: 16px;
+          padding: 12px;
           border-radius: 8px;
           border-left: 3px solid #b38728;
           border-right: 1px solid rgba(179,135,40,0.2);
@@ -254,7 +255,7 @@ export default function GrandOpenPopup() {
           border-bottom: 1px solid rgba(179,135,40,0.2);
         }
         .b-num {
-          width: 28px; height: 28px;
+          width: 24px; height: 24px;
           background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728);
           color: #4a0000;
           font-weight: 900;
@@ -265,16 +266,17 @@ export default function GrandOpenPopup() {
           flex-shrink: 0;
           box-shadow: 0 2px 6px rgba(0,0,0,0.5);
           font-family: sans-serif;
+          font-size: 13px;
         }
         .b-desc strong {
           display: block;
           color: #ffd700;
-          font-size: 15px;
+          font-size: 14px;
           margin-bottom: 4px;
         }
         .b-desc p {
           margin: 0 0 8px 0;
-          font-size: 13px;
+          font-size: 12px;
           color: #ccc;
           line-height: 1.4;
         }
@@ -282,9 +284,9 @@ export default function GrandOpenPopup() {
           background: linear-gradient(to right, #b38728, #fcf6ba, #b38728);
           color: #3a0000;
           border: 1px solid #7b0000;
-          padding: 8px 16px;
+          padding: 6px 12px;
           border-radius: 4px;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 900;
           cursor: pointer;
           transition: all 0.2s;
@@ -306,7 +308,7 @@ export default function GrandOpenPopup() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 12px 20px;
+          padding: 10px 16px;
           background: rgba(0,0,0,0.3);
           border-top: 1px solid #333;
           flex-shrink: 0;
@@ -315,7 +317,7 @@ export default function GrandOpenPopup() {
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 13px;
+          font-size: 12px;
           color: #aaa;
           cursor: pointer;
         }
@@ -323,10 +325,75 @@ export default function GrandOpenPopup() {
           background: none;
           border: none;
           color: white;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 600;
           cursor: pointer;
-          padding: 4px 12px;
+          padding: 4px 8px;
+        }
+
+        /* Mobile Responsive adjustments for small height devices */
+        @media (max-height: 740px) {
+          .popup-content {
+            max-height: 90vh;
+          }
+          .popup-title {
+            padding: 10px 14px;
+            font-size: 18px;
+          }
+          .benefits-list {
+            padding: 8px 12px;
+            gap: 8px;
+          }
+          .benefit-item {
+            padding: 10px;
+            gap: 8px;
+          }
+          .b-desc strong {
+            font-size: 13px;
+          }
+          .b-desc p {
+            font-size: 11px;
+            margin-bottom: 6px;
+          }
+          .claim-btn, .go-btn {
+            padding: 5px 10px;
+            font-size: 11px;
+          }
+          .popup-footer {
+            padding: 8px 12px;
+          }
+        }
+
+        @media (max-height: 600px) {
+          .popup-content {
+            max-height: 95vh;
+          }
+          .popup-title {
+            padding: 8px 12px;
+            font-size: 16px;
+          }
+          .benefits-list {
+            padding: 6px 10px;
+            gap: 6px;
+          }
+          .benefit-item {
+            padding: 8px;
+            gap: 6px;
+          }
+          .b-desc strong {
+            font-size: 12px;
+          }
+          .b-desc p {
+            font-size: 10px;
+            margin-bottom: 4px;
+          }
+          .claim-btn, .go-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+          }
+          .popup-footer {
+            padding: 6px 10px;
+          }
         }
       `}</style>
     </div>

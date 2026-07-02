@@ -713,14 +713,30 @@ for chapter in range(1, 101):
         "바이러스": "역병", "해킹": "침투", "로봇": "기계 인형", "컴퓨터": "서책", "레이저": "광선",
         "아키텍트": "설계자", "트라우마": "상처", "리스크": "위험", "컨셉": "개념", "스펙": "자질",
         "모드": "방식", "파워": "힘", "랭크": "서열", "스킬": "무공", "아이템": "물건",
-        "보스": "우두머리", "히어로": "영웅", "몬스터": "마물", "어드벤처": "모험", "배틀": "격돌"
+        "보스": "우두머리", "히어로": "영웅", "몬스터": "마물", "어드벤처": "모험", "배틀": "격돌",
+        "서스펜스": "긴장감", "대사 호흡": "호흡", "서술 주기": "", "인지 부조화": "경악", "클로즈업": "선명하게"
     }
     filtered_text = chapter_text
     for bad_word, replacement in MODERN_WORD_MAP.items():
         if bad_word in filtered_text:
             filtered_text = filtered_text.replace(bad_word, replacement)
+            
+    # 프롬프트 유출 문구 제거 (안전망)
+    leaked_patterns = [
+        r"큰따옴표로 묶인 두 무인의 대사 호흡이 3문단 이상의 서술 주기를 정확히 지키며[^\n]*\n?",
+        r"서술 3문단이 지나면 반드시 등장인물의 대사 2~3줄을 포함하여[^\n]*\n?",
+        r"대화문은 큰따옴표\(\"\"\)[^\n]*\n?",
+        r"\[🚨 이번 화 본문 서술 시 집중해야 할[^\n]*\n?",
+        r"(?:[0-9일이삼사오육칠팔구십]\s*문단의?\s*서술\s*주기가?\s*(?:지나치기|지나기|넘어가기)\s*전,?\s*)",
+        r"(?:서술이\s*(?:세\s*문단|[0-9일이삼사오육칠팔구십]\s*문단)을\s*넘어가기\s*전,?\s*)"
+    ]
+    for pattern in leaked_patterns:
+        filtered_text = re.sub(pattern, "", filtered_text)
+        
     chapter_text = filtered_text
 
+    from novel_cleaner import clean_text
+    chapter_text = clean_text(chapter_text)
     with open(filename, "w", encoding="utf-8") as f: 
         f.write(chapter_text)
     print(f"    ↳ ⚡ {chapter}화 저장 완료!")

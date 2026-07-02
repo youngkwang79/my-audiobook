@@ -386,6 +386,8 @@ export default function NovelRegistration({
             }}
           >
             {[
+              "[블로그]",
+              "[공지사항]",
               "[회귀물]",
               "[복수극]",
               "[의선]",

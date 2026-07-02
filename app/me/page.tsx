@@ -1919,6 +1919,20 @@ export default function MePage() {
                 <button
                   className="settings-row"
                   onClick={() => {
+                    window.open("https://blog.murimbook.com/?page_id=584", "_blank");
+                  }}
+                >
+                  <span>대출 이자 계산기 (머니 마그넷)</span>
+                  <div className="settings-row-right">
+                    <span className="settings-chevron">
+                      <ChevronRightIcon />
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  className="settings-row"
+                  onClick={() => {
                     router.push("/terms");
                   }}
                 >
@@ -1930,6 +1944,7 @@ export default function MePage() {
                     </span>
                   </div>
                 </button>
+
 
                 <button
                   className="settings-row"
