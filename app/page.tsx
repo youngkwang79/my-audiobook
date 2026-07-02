@@ -424,24 +424,43 @@ export default function Home() {
     }
 
     // 2. 카테고리 탭 필터링 및 정렬
-    if (activeTab === "신작") {
-      result = result.filter((w) => w.badge === "신작" && w.is_membership_only !== true);
-    } else if (activeTab === "멤버십전용") {
-      result = result.filter((w) => w.is_membership_only === true);
-    } else if (activeTab === "인기 순위") {
-      result = result.filter((w) => w.is_membership_only !== true);
-      const parseViews = (viewsStr?: string) => {
-        if (!viewsStr) return 0;
-        const s = viewsStr.toUpperCase();
-        if (s.endsWith("M")) return parseFloat(s) * 1000000;
-        if (s.endsWith("K")) return parseFloat(s) * 1000;
-        return parseFloat(s) || 0;
-      };
-      // 조회수 내림차순 정렬
-      result = [...result].sort((a, b) => parseViews(b.views) - parseViews(a.views));
+    if (activeTab === "꿀TIP") {
+      // 꿀TIP 탭은 블로그/공지사항 글만 노출
+      result = result.filter(
+        (w) =>
+          w.subtitle?.includes("[블로그]") ||
+          w.subtitle?.includes("[공지사항]") ||
+          w.genre === "블로그" ||
+          w.genre === "blog"
+      );
+    } else if (activeTab === "무공 수련") {
+      // 무공 수련 탭은 기존 로직 유지 (아래 119라인에서 별도 처리됨)
     } else {
-      // 기본/추천 등 기타 탭
-      result = result.filter((w) => w.is_membership_only !== true);
+      // 그 외 오디오북 탭들(추천, 신작, 인기 순위 등)에서는 블로그 글들을 완전히 제외하여 감춤
+      result = result.filter(
+        (w) =>
+          !w.subtitle?.includes("[블로그]") &&
+          !w.subtitle?.includes("[공지사항]") &&
+          w.genre !== "블로그" &&
+          w.genre !== "blog"
+      );
+
+      if (activeTab === "신작") {
+        result = result.filter((w) => w.badge === "신작" && w.is_membership_only !== true);
+      } else if (activeTab === "멤버십전용") {
+        result = result.filter((w) => w.is_membership_only === true);
+      } else if (activeTab === "인기 순위") {
+        result = result.filter((w) => w.is_membership_only !== true);
+        const parseViews = (viewsStr?: string) => {
+          if (!viewsStr) return 0;
+          const s = viewsStr.toUpperCase();
+          if (s.endsWith("M")) return parseFloat(s) * 1000000;
+          if (s.endsWith("K")) return parseFloat(s) * 1000;
+          return parseFloat(s) || 0;
+        };
+        // 조회수 내림차순 정렬
+        result = [...result].sort((a, b) => parseViews(b.views) - parseViews(a.views));
+      }
     }
 
     return result;
@@ -462,20 +481,20 @@ export default function Home() {
       return ordered;
     }, [filteredWorks]);
 
-  // 공개 예정 섹션용 작품 (status === "공개예정")
+  // 공개 예정 섹션용 작품 (status === "공개예정" & 오디오북만)
   const comingSoonWorks = useMemo(() => {
     return worksList
-      .filter((w) => w.status === "공개예정")
+      .filter((w) => w.status === "공개예정" && !w.subtitle?.includes("[블로그]") && !w.subtitle?.includes("[공지사항]") && w.genre !== "블로그" && w.genre !== "blog")
       .map((w) => ({
         ...w,
         views: String(w.play_count ?? w.views ?? "0")
       }));
   }, [worksList]);
 
-  // 준비중 섹션용 작품 (status === "준비중")
+  // 준비중 섹션용 작품 (status === "준비중" & 오디오북만)
   const preparingWorks = useMemo(() => {
     return worksList
-      .filter((w) => w.status === "준비중")
+      .filter((w) => w.status === "준비중" && !w.subtitle?.includes("[블로그]") && !w.subtitle?.includes("[공지사항]") && w.genre !== "블로그" && w.genre !== "blog")
       .map((w) => ({
         ...w,
         views: String(w.play_count ?? w.views ?? "0")
@@ -989,7 +1008,7 @@ export default function Home() {
 
       {/* 카테고리 탭 */}
       <div className="category-tabs">
-        {["추천", "신작", "인기 순위", "무공 수련"].map((tab) => (
+        {["추천", "신작", "인기 순위", "무공 수련", "꿀TIP"].map((tab) => (
           <div
             key={tab}
             className={`category-tab ${activeTab === tab ? "active" : ""}`}
@@ -998,13 +1017,6 @@ export default function Home() {
             {tab}
           </div>
         ))}
-        <div
-          className="category-tab"
-          onClick={() => window.open("https://blog.murimbook.com", "_blank")}
-          style={{ cursor: "pointer" }}
-        >
-          블로그
-        </div>
       </div>
 
       {activeTab !== "무공 수련" ? (
