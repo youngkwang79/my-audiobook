@@ -880,14 +880,21 @@ export default function Home() {
 
         .coming-soon-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px 10px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        @media (min-width: 480px) {
+          .coming-soon-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+          }
         }
 
         @media (min-width: 768px) {
           .coming-soon-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 20px;
           }
         }
 
