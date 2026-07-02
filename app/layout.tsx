@@ -32,6 +32,14 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  openGraph: {
+    title: "무림북",
+    description: "창작 무협 소설과 오디오 스토리를 감상하는 무협 오디오북 플랫폼",
+    url: "https://www.murimbook.com",
+    siteName: "무림북",
+    locale: "ko_KR",
+    type: "website",
+  },
 };
 
 
