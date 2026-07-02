@@ -295,8 +295,9 @@ export default function Home() {
               });
             const firstEpisodeId = publishedEpisodes[0]?.id || null;
 
-            // Determine if the work itself is published/active dynamically
-            const isPublished = (w.status !== "준비중" && w.status !== "공개예정" && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0));
+            // Determine if the work itself is published/active dynamically (지원: 예약 발행 기능)
+            const isFutureScheduled = w.status === "공개예정" && w.created_at && new Date(w.created_at).getTime() > Date.now();
+            const isPublished = (w.status !== "준비중" && !isFutureScheduled && (publishedEpisodes.length > 0 || (w.episodes || []).length === 0));
 
             // Determine scheduled release date for upcoming section
             let scheduledReleaseDate = null;

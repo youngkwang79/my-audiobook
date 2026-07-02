@@ -30,15 +30,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 1. Supabase에서 모든 작품(works) 리스트 가져오기
     const { data: works } = await supabase
       .from("works")
-      .select("id, updated_at")
+      .select("id, updated_at, status, created_at")
       .order("created_at", { ascending: false });
 
-    const workUrls = (works || []).map((work) => ({
-      url: `${baseUrl}/work/${encodeURIComponent(work.id)}`,
-      lastModified: work.updated_at ? new Date(work.updated_at) : new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    }));
+    const workUrls = (works || [])
+      .filter((work) => {
+        if (work.status === "준비중") return false;
+        // 예약 발행 대상이고, 아직 공개 시간이 되지 않은 경우 제외
+        if (work.status === "공개예정" && work.created_at && new Date(work.created_at).getTime() > Date.now()) {
+          return false;
+        }
+        return true;
+      })
+      .map((work) => ({
+        url: `${baseUrl}/work/${encodeURIComponent(work.id)}`,
+        lastModified: work.updated_at ? new Date(work.updated_at) : new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      }));
 
     // 2. 모든 에피소드(episodes) 리스트 가져오기
     const { data: episodes } = await supabase
