@@ -232,7 +232,11 @@ export default function WorkDetailPage() {
     return paragraphs
       .map(p => {
         const trimmed = p.trim();
-        if (trimmed.startsWith("<h") || trimmed.startsWith("<li")) {
+        if (trimmed.startsWith("<table") || trimmed.startsWith("<h") || trimmed.startsWith("<li")) {
+          if (trimmed.startsWith("<table")) {
+            // 테이블 태그 내부는 줄바꿈(<br />) 및 <p> 태그 적용을 완전히 제외하여 여백 깨짐을 방지합니다.
+            return p;
+          }
           return p.replace(/\n/g, "<br />");
         }
         return `<p style='margin-bottom: 16px; line-height: 1.8; font-size: 16px;'>${p.replace(/\n/g, "<br />")}</p>`;
