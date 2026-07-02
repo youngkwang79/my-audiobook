@@ -487,7 +487,7 @@ export default function Home() {
   // 공개 예정 섹션용 작품 (status === "공개예정" & 오디오북만)
   const comingSoonAudiobooks = useMemo(() => {
     return worksList
-      .filter((w) => w.status === "공개예정" && !w.subtitle?.includes("[블로그]") && !w.subtitle?.includes("[공지사항]") && w.genre !== "블로그" && w.genre !== "blog")
+      .filter((w) => w.status === "공개예정" && !w.isPublished && !w.subtitle?.includes("[블로그]") && !w.subtitle?.includes("[공지사항]") && w.genre !== "블로그" && w.genre !== "blog")
       .map((w) => ({
         ...w,
         views: String(w.play_count ?? w.views ?? "0")
@@ -497,7 +497,7 @@ export default function Home() {
   // 공개 예정 섹션용 작품 (status === "공개예정" & 블로그만)
   const comingSoonBlogs = useMemo(() => {
     return worksList
-      .filter((w) => w.status === "공개예정" && (w.subtitle?.includes("[블로그]") || w.subtitle?.includes("[공지사항]") || w.genre === "블로그" || w.genre === "blog"))
+      .filter((w) => w.status === "공개예정" && !w.isPublished && (w.subtitle?.includes("[블로그]") || w.subtitle?.includes("[공지사항]") || w.genre === "블로그" || w.genre === "blog"))
       .map((w) => ({
         ...w,
         views: String(w.play_count ?? w.views ?? "0")
