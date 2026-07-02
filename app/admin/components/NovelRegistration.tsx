@@ -167,11 +167,30 @@ export default function NovelRegistration({
       if (thumbnailFile) {
         setThumbnailUploading(true);
         setThumbnailProgress(0);
-        const ext = thumbnailFile.name.split(".").pop() || "png";
+
+        // 한글 제목 오버레이 합성 적용
+        let uploadBlob: Blob = thumbnailFile;
+        let ext = thumbnailFile.name.split(".").pop() || "png";
+
+        try {
+          const tempUrl = URL.createObjectURL(thumbnailFile);
+          const subtitleVal = selectedTags.join(" ");
+          const textOverlayBlob = await drawTitleOnThumbnail(
+            tempUrl,
+            novelTitle,
+            subtitleVal
+          );
+          uploadBlob = textOverlayBlob;
+          ext = "jpg"; // drawTitleOnThumbnail의 반환 타입은 항상 jpeg 포맷
+          URL.revokeObjectURL(tempUrl);
+        } catch (overlayErr) {
+          console.warn("한글 제목 오버레이 자동 적용 실패 (원본 파일 업로드 진행):", overlayErr);
+        }
+
         const r2Key = `thumbnails/${novelId}_${Date.now()}.${ext}`;
 
         const formData = new FormData();
-        formData.append("file", thumbnailFile);
+        formData.append("file", uploadBlob, `thumbnail.${ext}`);
         formData.append("key", r2Key);
 
         await new Promise<void>((resolve, reject) => {

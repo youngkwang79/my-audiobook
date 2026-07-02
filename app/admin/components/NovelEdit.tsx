@@ -181,10 +181,29 @@ export default function NovelEdit({
 
       if (editThumbnailFile) {
         setEditThumbnailUploading(true);
-        const ext = editThumbnailFile.name.split(".").pop() || "png";
+
+        // 한글 제목 오버레이 합성 적용
+        let uploadBlob: Blob = editThumbnailFile;
+        let ext = editThumbnailFile.name.split(".").pop() || "png";
+
+        try {
+          const tempUrl = URL.createObjectURL(editThumbnailFile);
+          const subtitleVal = editWork.subtitle || "";
+          const textOverlayBlob = await drawTitleOnThumbnail(
+            tempUrl,
+            editWork.title,
+            subtitleVal
+          );
+          uploadBlob = textOverlayBlob;
+          ext = "jpg"; // drawTitleOnThumbnail의 반환 타입은 항상 jpeg 포맷
+          URL.revokeObjectURL(tempUrl);
+        } catch (overlayErr) {
+          console.warn("한글 제목 오버레이 자동 적용 실패 (원본 파일 업로드 진행):", overlayErr);
+        }
+
         const r2Key = `thumbnails/${editWork.id}_${Date.now()}.${ext}`;
         const formData = new FormData();
-        formData.append("file", editThumbnailFile);
+        formData.append("file", uploadBlob, `thumbnail.${ext}`);
         formData.append("key", r2Key);
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
