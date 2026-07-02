@@ -18,8 +18,6 @@ export async function drawTitleOnThumbnail(
 
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imageUrl + (imageUrl.includes("?") ? "&" : "?") + "t=" + Date.now();
-
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
@@ -224,5 +222,9 @@ export async function drawTitleOnThumbnail(
     img.onerror = (e) => {
       reject(new Error("Failed to load image for canvas overlay: " + JSON.stringify(e)));
     };
+
+    img.src = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:")
+      ? imageUrl
+      : imageUrl + (imageUrl.includes("?") ? "&" : "?") + "t=" + Date.now();
   });
 }
