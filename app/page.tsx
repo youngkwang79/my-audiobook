@@ -482,7 +482,7 @@ export default function Home() {
     }, [filteredWorks]);
 
   // 공개 예정 섹션용 작품 (status === "공개예정" & 오디오북만)
-  const comingSoonWorks = useMemo(() => {
+  const comingSoonAudiobooks = useMemo(() => {
     return worksList
       .filter((w) => w.status === "공개예정" && !w.subtitle?.includes("[블로그]") && !w.subtitle?.includes("[공지사항]") && w.genre !== "블로그" && w.genre !== "blog")
       .map((w) => ({
@@ -491,10 +491,30 @@ export default function Home() {
       }));
   }, [worksList]);
 
+  // 공개 예정 섹션용 작품 (status === "공개예정" & 블로그만)
+  const comingSoonBlogs = useMemo(() => {
+    return worksList
+      .filter((w) => w.status === "공개예정" && (w.subtitle?.includes("[블로그]") || w.subtitle?.includes("[공지사항]") || w.genre === "블로그" || w.genre === "blog"))
+      .map((w) => ({
+        ...w,
+        views: String(w.play_count ?? w.views ?? "0")
+      }));
+  }, [worksList]);
+
   // 준비중 섹션용 작품 (status === "준비중" & 오디오북만)
-  const preparingWorks = useMemo(() => {
+  const preparingAudiobooks = useMemo(() => {
     return worksList
       .filter((w) => w.status === "준비중" && !w.subtitle?.includes("[블로그]") && !w.subtitle?.includes("[공지사항]") && w.genre !== "블로그" && w.genre !== "blog")
+      .map((w) => ({
+        ...w,
+        views: String(w.play_count ?? w.views ?? "0")
+      }));
+  }, [worksList]);
+
+  // 준비중 섹션용 작품 (status === "준비중" & 블로그만)
+  const preparingBlogs = useMemo(() => {
+    return worksList
+      .filter((w) => w.status === "준비중" && (w.subtitle?.includes("[블로그]") || w.subtitle?.includes("[공지사항]") || w.genre === "블로그" || w.genre === "blog"))
       .map((w) => ({
         ...w,
         views: String(w.play_count ?? w.views ?? "0")
@@ -1099,11 +1119,19 @@ export default function Home() {
             </div>
           )}
 
-          {/* 공개 예정 섹션 */}
+          {/* 공개 예정 섹션 (추천 탭 - 오디오북) */}
           {activeTab === "추천" && !searchQuery && (
             <>
-              <ComingSoonSection comingSoonWorks={comingSoonWorks} shouldPulse={shouldPulse} />
-              <PreparingSection preparingWorks={preparingWorks} />
+              <ComingSoonSection comingSoonWorks={comingSoonAudiobooks} shouldPulse={shouldPulse} />
+              <PreparingSection preparingWorks={preparingAudiobooks} />
+            </>
+          )}
+
+          {/* 공개 예정 섹션 (꿀TIP 탭 - 블로그) */}
+          {activeTab === "꿀TIP" && !searchQuery && (
+            <>
+              <ComingSoonSection comingSoonWorks={comingSoonBlogs} shouldPulse={shouldPulse} />
+              <PreparingSection preparingWorks={preparingBlogs} />
             </>
           )}
         </>
