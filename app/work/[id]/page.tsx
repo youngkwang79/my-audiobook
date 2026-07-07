@@ -235,7 +235,7 @@ export default function WorkDetailPage() {
     );
   }
 
-  const isBlog = work?.subtitle?.includes("[블로그]") || work?.subtitle?.includes("[공지사항]") || work?.genre === "블로그" || work?.genre === "blog";
+  const isBlog = work?.id?.startsWith("calc-") || work?.subtitle?.includes("[블로그]") || work?.subtitle?.includes("[공지사항]") || work?.genre === "블로그" || work?.genre === "blog";
 
   // 마크다운 문법을 HTML로 안전하게 변환해주는 초경량 파서 함수
   const parseMarkdownToHtml = (markdown: string) => {
