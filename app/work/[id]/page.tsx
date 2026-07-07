@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import TopBar from "@/app/components/TopBar";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
