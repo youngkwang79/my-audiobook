@@ -237,13 +237,38 @@ export default function WorkDetailPage() {
     // 2. 가로선 (---) 변환
     html = html.replace(/^---$/gm, "<hr style='border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0;' />");
 
-    // 3. 제목 태그 변환 (#, ##, ###)
-    html = html.replace(/^### (.*?)$/gm, "<h3 style='font-size: 19px; font-weight: 800; margin-top: 24px; margin-bottom: 10px; color: #ffd43b;'>$1</h3>");
-    html = html.replace(/^## (.*?)$/gm, "<h2 style='font-size: 22px; font-weight: 900; margin-top: 28px; margin-bottom: 12px; color: #ffd43b; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;'>$1</h2>");
-    html = html.replace(/^# (.*?)$/gm, "<h1 style='font-size: 26px; font-weight: 950; margin-top: 32px; margin-bottom: 14px; color: #ffd43b;'>$1</h1>");
+    // 3. 제목 태그 변환 (#, ##, ###) - 동적 고유 ID(id) 부여
+    // 한글, 영문, 숫자가 앵커 매칭에 매끄럽게 호환되도록 특수문자를 하이픈(-)으로 전처리한 ID 생성
+    const makeSlug = (text: string) => {
+      return text
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9가-힣\s\-]/g, "")
+        .replace(/\s+/g, "-");
+    };
+
+    html = html.replace(/^### (.*?)$/gm, (match, p1) => {
+      const slug = makeSlug(p1);
+      return `<h3 id="${slug}" style='font-size: 19px; font-weight: 800; margin-top: 24px; margin-bottom: 10px; color: #ffd43b;'>${p1}</h3>`;
+    });
+    html = html.replace(/^## (.*?)$/gm, (match, p1) => {
+      const slug = makeSlug(p1);
+      return `<h2 id="${slug}" style='font-size: 22px; font-weight: 900; margin-top: 28px; margin-bottom: 12px; color: #ffd43b; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;'>${p1}</h2>`;
+    });
+    html = html.replace(/^# (.*?)$/gm, (match, p1) => {
+      const slug = makeSlug(p1);
+      return `<h1 id="${slug}" style='font-size: 26px; font-weight: 950; margin-top: 32px; margin-bottom: 14px; color: #ffd43b;'>${p1}</h1>`;
+    });
 
     // 4. 링크 변환 ([텍스트](링크))
-    html = html.replace(/\[(.*?)\]\((.*?)\)/g, "<a href='$2' target='_blank' rel='noopener noreferrer' style='color: #2563eb; text-decoration: underline; font-weight: 700;'>$1</a>");
+    // 내부 해시(anchor) 링크(#)인 경우 target='_blank' 속성을 제외하여 제자리 스크롤을 실현
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
+      if (url.startsWith("#")) {
+        const cleanAnchor = url.substring(1);
+        return `<a href="${url}" onclick="document.getElementById('${cleanAnchor}')?.scrollIntoView({behavior: 'smooth'}); return false;" style='color: #ff2a5f; text-decoration: underline; font-weight: 700;'>${text}</a>`;
+      }
+      return `<a href='${url}' target='_blank' rel='noopener noreferrer' style='color: #2563eb; text-decoration: underline; font-weight: 700;'>${text}</a>`;
+    });
 
     // 5. 글머리 기호 변환 (* 내용 또는 - 내용)
     html = html.replace(/^[\*\-] (.*?)$/gm, "<li style='margin-left: 20px; margin-bottom: 6px; list-style-type: disc;'>$1</li>");
