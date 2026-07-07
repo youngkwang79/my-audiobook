@@ -81,7 +81,7 @@ export default function WorkDetailPage() {
             status: workData.status,
             subtitle: workData.subtitle,
             badge: isOldNew ? "" : workData.badge,
-            views: String(workData.views),
+            views: String(workData.play_count ?? workData.views ?? "0"),
             exclusive: workData.exclusive,
             featured: workData.featured,
             genre: workData.genre,
@@ -127,6 +127,21 @@ export default function WorkDetailPage() {
     };
     fetchData();
   }, [workId, isAdmin]);
+
+  // ✅ 블로그 글 조회수 카운트: 페이지 진입 시 1회 track-play 호출
+  useEffect(() => {
+    if (!workId) return;
+    const sessionKey = `tracked_view_${workId}`;
+    // 같은 세션에서 이미 카운트했으면 중복 방지
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, "1");
+
+    fetch("/api/media/track-play", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workId }),
+    }).catch(() => {});
+  }, [workId]);
 
   const DEFAULT_FREE_UNTIL = work?.freeEpisodes ?? 1;
   const total = episodes.length || work?.totalEpisodes || work?.episodeCount || 0;
@@ -213,31 +228,88 @@ export default function WorkDetailPage() {
     
     let html = markdown;
 
+    // 0. 특수한 원화 기호나 이스케이프 찌꺼기 제거 (₩, ₩[ 등)
+    html = html.replace(/₩/g, "");
+
     // 1. 볼드 처리 (**텍스트**)
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-    // 2. 제목 태그 변환 (#, ##, ###)
+    // 2. 가로선 (---) 변환
+    html = html.replace(/^---$/gm, "<hr style='border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0;' />");
+
+    // 3. 제목 태그 변환 (#, ##, ###)
     html = html.replace(/^### (.*?)$/gm, "<h3 style='font-size: 19px; font-weight: 800; margin-top: 24px; margin-bottom: 10px; color: #ffd43b;'>$1</h3>");
     html = html.replace(/^## (.*?)$/gm, "<h2 style='font-size: 22px; font-weight: 900; margin-top: 28px; margin-bottom: 12px; color: #ffd43b; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;'>$1</h2>");
     html = html.replace(/^# (.*?)$/gm, "<h1 style='font-size: 26px; font-weight: 950; margin-top: 32px; margin-bottom: 14px; color: #ffd43b;'>$1</h1>");
 
-    // 3. 링크 변환 ([텍스트](링크))
-    html = html.replace(/\[(.*?)\]\((.*?)\)/g, "<a href='$2' target='_blank' rel='noopener noreferrer' style='color: #ffd43b; text-decoration: underline; font-weight: 700;'>$1</a>");
+    // 4. 링크 변환 ([텍스트](링크))
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, "<a href='$2' target='_blank' rel='noopener noreferrer' style='color: #2563eb; text-decoration: underline; font-weight: 700;'>$1</a>");
 
-    // 4. 글머리 기호 변환 (* 내용)
-    html = html.replace(/^\* (.*?)$/gm, "<li style='margin-left: 20px; margin-bottom: 6px; list-style-type: disc;'>$1</li>");
+    // 5. 글머리 기호 변환 (* 내용 또는 - 내용)
+    html = html.replace(/^[\*\-] (.*?)$/gm, "<li style='margin-left: 20px; margin-bottom: 6px; list-style-type: disc;'>$1</li>");
 
-    // 5. 문단(Double Newline) 및 줄바꿈(Single Newline) 변환
+    // 6. 마크다운 테이블 구문 처리 (| 구분 | 내용 |)
+    const lines = html.split("\n");
+    let inTable = false;
+    let tableHtml = "";
+    let rowIndex = 0;
+    const processedLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith("|")) {
+        // 구분선 행 (예: |---|---|) 건너뛰기
+        if (line.includes("---") || line.includes("===")) {
+          continue;
+        }
+        if (!inTable) {
+          inTable = true;
+          rowIndex = 0;
+          tableHtml = `<div style="overflow-x: auto; margin: 24px 0; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02);"><table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">`;
+        }
+        
+        const cells = line.split("|").map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+        const isHeader = rowIndex === 0;
+        
+        // 홀짝 행에  zebra 색상 부여
+        const rowBg = isHeader 
+          ? "linear-gradient(180deg, rgba(255, 212, 59, 0.1) 0%, rgba(255, 212, 59, 0.04) 100%)" 
+          : (rowIndex % 2 === 0 ? "rgba(255, 255, 255, 0.02)" : "transparent");
+        
+        tableHtml += `<tr style="background: ${rowBg}; border-bottom: 1px solid rgba(255, 255, 255, 0.06); transition: background 0.2s;">`;
+        
+        cells.forEach(cell => {
+          const tag = isHeader ? "th" : "td";
+          const cellStyle = isHeader
+            ? "padding: 14px 16px; font-weight: 800; color: #ffd43b; font-size: 14px; border-bottom: 2px solid rgba(255, 212, 59, 0.25);"
+            : "padding: 12px 16px; color: #e5e7eb; line-height: 1.5; border-right: 1px solid rgba(255, 255, 255, 0.03);";
+          tableHtml += `<${tag} style="${cellStyle}">${cell}</${tag}>`;
+        });
+        tableHtml += "</tr>";
+        rowIndex++;
+      } else {
+        if (inTable) {
+          inTable = false;
+          tableHtml += "</table></div>";
+          processedLines.push(tableHtml);
+          tableHtml = "";
+        }
+        processedLines.push(lines[i]);
+      }
+    }
+    if (inTable) {
+      tableHtml += "</table></div>";
+      processedLines.push(tableHtml);
+    }
+    html = processedLines.join("\n");
+
+    // 7. 문단(Double Newline) 및 줄바꿈(Single Newline) 변환
     const paragraphs = html.split(/\n\n+/);
     return paragraphs
       .map(p => {
         const trimmed = p.trim();
-        if (trimmed.startsWith("<table") || trimmed.startsWith("<h") || trimmed.startsWith("<li")) {
-          if (trimmed.startsWith("<table")) {
-            // 테이블 태그 내부는 줄바꿈(<br />) 및 <p> 태그 적용을 완전히 제외하여 여백 깨짐을 방지합니다.
-            return p;
-          }
-          return p.replace(/\n/g, "<br />");
+        if (trimmed.startsWith("<table") || trimmed.startsWith("<h") || trimmed.startsWith("<li") || trimmed.startsWith("<hr")) {
+          return p;
         }
         return `<p style='margin-bottom: 16px; line-height: 1.8; font-size: 16px;'>${p.replace(/\n/g, "<br />")}</p>`;
       })
@@ -314,7 +386,11 @@ export default function WorkDetailPage() {
           {/* 하단 단추 */}
           <div style={{ marginTop: 40, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 24, textAlign: "center" }}>
             <button
-              onClick={() => router.push("/")}
+              onClick={() => {
+                const params = new URLSearchParams(window.location.search);
+                const currentTab = params.get("tab") || "도움되는글";
+                router.push(`/?tab=${encodeURIComponent(currentTab)}`);
+              }}
               style={{
                 background: "linear-gradient(135deg, #ff2a5f 0%, #ff7f00 100%)",
                 color: "white",

@@ -1,0 +1,28 @@
+{
+  "kind": "blogger#post",
+  "id": "2978400343418575959",
+  "status": "DRAFT",
+  "blog": {
+    "id": "127512538129296836"
+  },
+  "published": "2026-07-04T23:42:32-07:00",
+  "updated": "2026-07-04T23:42:52-07:00",
+  "url": "https://smart-money-home.blogspot.com/",
+  "selfLink": "https://blogger.googleapis.com/v3/blogs/127512538129296836/posts/2978400343418575959",
+  "title": "",
+  "content": "<p><br /></p>",
+  "author": {
+    "id": "03066368738216907187",
+    "displayName": "똑똑한 금융생활 가이드",
+    "url": "https://www.blogger.com/profile/03066368738216907187",
+    "image": {
+      "url": "//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhdmJSWPqJ8NRcr_TRw1X50IgBzdYNvybBX083PF9HMmPVSMWdK-WpwVMdq7XQaoFhefAgJvNTUh9RqgWUox_qclVVGkzOFdOugH3cJ2XEHW5Ik1qnuSSAX8T4RyghdBbSWxeEdHP_FsyE0n3vcdXPXB40htOU6hnZcW_keL0DUloEh-Q/s35/%EC%BA%90%EB%A6%AD%ED%84%B0.jpeg"
+    }
+  },
+  "replies": {
+    "totalItems": "0",
+    "selfLink": "https://blogger.googleapis.com/v3/blogs/127512538129296836/posts/2978400343418575959/comments"
+  },
+  "readerComments": "ALLOW",
+  "etag": "\"dGltZXN0YW1wOiAxNzgzMjMzNzcyOTM3Cm9mZnNldDogLTI1MjAwMDAwCg\""
+}

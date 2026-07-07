@@ -1,74 +1,74 @@
 {
   "trends": [
     {
-      "keyword": "장기 기증",
+      "keyword": "로보택시",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "High",
+      "profit_reason": "첨단 기술, 미래 산업 관련 키워드로 IT, 투자, 자동차 산업 등 고단가 광고가 매칭될 가능성이 높습니다.",
+      "monetization_angle": "로보택시 기술, 관련 기업 투자 정보, 상용화 시점 및 경제적 파급 효과 등 심층적인 분석 콘텐츠를 작성하여 기술/투자 관련 광고를 유도하는 것이 좋습니다."
     },
     {
-      "keyword": "new zealand vs england",
+      "keyword": "사업",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "High",
+      "profit_reason": "사업 관련 키워드는 창업, 대출, 컨설팅, 법률, 마케팅 등 고단가 비즈니스 및 금융 광고와 직접적으로 연결됩니다.",
+      "monetization_angle": "창업 자금 대출, 사업 아이템 분석, 정부 지원 사업, 법인 설립 절차, 세무/회계 정보 등 구체적인 사업 관련 정보를 제공하여 금융/비즈니스 서비스 광고를 유치하는 데 집중해야 합니다."
     },
     {
-      "keyword": "황희찬",
+      "keyword": "김수현",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "Low",
+      "profit_reason": "유명 연예인 이름으로, 주로 엔터테인먼트, 팬덤 관련 콘텐츠에 노출되며 광고 단가가 비교적 낮습니다.",
+      "monetization_angle": "인물 정보나 출연작 소개보다는, 만약 특정 브랜드 광고 모델이라면 해당 브랜드 제품 리뷰나 관련 이벤트 정보를 다루어 간접적으로 브랜드 광고를 유도할 수 있습니다."
     },
     {
-      "keyword": "구자철",
+      "keyword": "양대인",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "Low",
+      "profit_reason": "특정 인물의 이름으로, 엔터테인먼트나 인물 정보성 콘텐츠에 주로 매칭되어 광고 단가가 낮을 가능성이 높습니다.",
+      "monetization_angle": "인물 관련 이슈나 활동을 다루되, 만약 특정 분야(예: 스포츠, 정치)와 연관된다면 해당 분야의 장비, 서비스, 관련 정책 등 상업적 키워드를 함께 활용하는 방안을 고려할 수 있습니다."
     },
     {
-      "keyword": "오은영",
+      "keyword": "구급차",
       "traffic": "10,000+",
       "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_reason": "응급 서비스, 의료 관련 키워드로 건강 보험, 의료 기기, 응급 처치 용품 등 관련 광고가 매칭될 수 있습니다.",
+      "monetization_angle": "구급차 이용 방법, 응급 상황 대처법, 건강 보험 정보, 응급 의료 장비 소개 등 건강 및 안전 관련 정보를 제공하여 보험/의료 기기 광고를 유도하는 것이 좋습니다."
     },
     {
-      "keyword": "빅뱅 콘서트",
+      "keyword": "서준영",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "Low",
+      "profit_reason": "특정 인물의 이름으로, 엔터테인먼트나 인물 정보성 콘텐츠에 주로 매칭되어 광고 단가가 낮을 가능성이 높습니다.",
+      "monetization_angle": "인물 관련 이슈나 활동을 다루되, 만약 특정 분야(예: 스포츠, 연예)와 연관된다면 해당 분야의 장비, 서비스, 관련 이벤트 등 상업적 키워드를 함께 활용하는 방안을 고려할 수 있습니다."
     },
     {
-      "keyword": "규제",
+      "keyword": "김경문",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "Low",
+      "profit_reason": "특정 인물의 이름으로, 주로 인물 정보나 스포츠/정치 관련 콘텐츠에 노출되며 광고 단가가 낮을 가능성이 높습니다.",
+      "monetization_angle": "인물 관련 소식이나 업적을 다루되, 만약 스포츠 감독이라면 관련 스포츠 용품, 경기 티켓, 스포츠 분석 서비스 등 상업적 키워드를 함께 활용하여 광고를 유도할 수 있습니다."
     },
     {
-      "keyword": "kia 대 키움",
+      "keyword": "이주승",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "Low",
+      "profit_reason": "특정 인물의 이름으로, 엔터테인먼트나 인물 정보성 콘텐츠에 주로 매칭되어 광고 단가가 낮을 가능성이 높습니다.",
+      "monetization_angle": "인물 관련 이슈나 출연작 소개를 다루되, 만약 특정 브랜드 광고 모델이라면 해당 브랜드 제품 리뷰나 관련 이벤트 정보를 다루어 간접적으로 브랜드 광고를 유도할 수 있습니다."
     },
     {
-      "keyword": "임우재",
+      "keyword": "오타니 쇼헤이",
       "traffic": "10,000+",
       "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_reason": "세계적인 스포츠 스타 이름으로, 스포츠 용품, 스포츠 중계 서비스, 관련 브랜드 광고 등 비교적 높은 단가의 광고가 매칭될 수 있습니다.",
+      "monetization_angle": "오타니 선수의 경기 분석, 사용 장비, 관련 브랜드 협찬 제품 리뷰, 스포츠 베팅 정보(합법적인 경우) 등 스포츠 팬들의 구매 욕구를 자극할 수 있는 콘텐츠를 통해 광고 수익을 높일 수 있습니다."
     },
     {
-      "keyword": "노주현",
+      "keyword": "넥슨",
       "traffic": "10,000+",
-      "profit_rating": "Medium",
-      "profit_reason": "인기 상승 트렌드 키워드",
-      "monetization_angle": "트랙픽 유입 확보를 목표로 하는 글쓰기 권장"
+      "profit_rating": "High",
+      "profit_reason": "유명 게임 회사 이름으로, 게임, 게임 아이템, 게이밍 기어, 관련 투자 등 고단가 광고가 매칭될 가능성이 매우 높습니다.",
+      "monetization_angle": "넥슨 게임 신작 리뷰, 인기 게임 공략, 게임 아이템 거래 정보, 게이밍 PC/장비 추천, 넥슨 주식 투자 정보 등 상업적 가치가 높은 콘텐츠를 작성하여 게임/IT/투자 관련 광고를 유도하는 것이 효과적입니다."
     }
   ]
 }

@@ -6,39 +6,18 @@ const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function run() {
-  const { data: works, error: worksErr } = await supabase.from('works').select('*');
+  const { data: works, error: worksErr } = await supabase
+    .from('works')
+    .select('*')
+    .or('title.ilike.%상속세%,title.ilike.%동거주택%');
   if (worksErr) {
     console.error('Error fetching works:', worksErr);
     return;
   }
   
-  console.log('--- WORKS ---');
-  works.forEach(w => {
-    console.log(`ID: ${w.id} | Title: ${w.title} | Ep Count: ${w.episode_count}`);
-  });
-  
-  const targetWork = works.find(w => w.title.includes('개방의 봉황') || w.title.includes('개방'));
-  if (!targetWork) {
-    console.log('Target work not found.');
-    return;
-  }
-  
-  console.log(`\nFetching episodes for work: ${targetWork.title} (${targetWork.id})`);
-  const { data: episodes, error: epsErr } = await supabase
-    .from('episodes')
-    .select('*')
-    .eq('work_id', targetWork.id)
-    .order('id', { ascending: true });
-    
-  if (epsErr) {
-    console.error('Error fetching episodes:', epsErr);
-    return;
-  }
-  
-  console.log(`\n--- EPISODES (${episodes.length} found) ---`);
-  episodes.forEach(ep => {
-    console.log(`ID: ${ep.id} | Title: ${ep.title} | Release Date: ${ep.release_date}`);
-  });
+  console.log('--- MATCHING WORKS ---');
+  console.log(JSON.stringify(works, null, 2));
 }
 
 run().catch(console.error);
+

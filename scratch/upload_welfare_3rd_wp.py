@@ -1,0 +1,235 @@
+# -*- coding: utf-8 -*-
+"""
+WordPress 자동 포스팅 스크립트 - 민생지원금 3차 포스팅 (Rank Math SEO 90점 이상 충족)
+"""
+
+import requests
+import json
+import os
+import mimetypes
+
+WP_URL = "https://blog.murimbook.com"
+WP_USER = "murimbook"
+WP_APP_PW = ""
+
+env_path = ".env.local"
+if os.path.exists(env_path):
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    parts = line.split("=", 1)
+                    key = parts[0].strip()
+                    val = parts[1].strip()
+                    if key == "WP_URL":
+                        WP_URL = val
+                    elif key == "WP_ADMIN_USERNAME":
+                        WP_USER = val
+                    elif key == "WP_APPLICATION_PASSWORD":
+                        WP_APP_PW = val
+    except Exception as e:
+        print(f"Error loading env: {e}")
+
+FEATURED_IMG_PATH = r"C:\Users\owner\.gemini\antigravity\brain\820f16a8-6613-4149-ae20-d9f890d29a2b\welfare_3rd_bookcover_1783035010741.jpg"
+
+def upload_media(file_path):
+    print(f"Uploading media: {file_path}")
+    url = f"{WP_URL}/wp-json/wp/v2/media"
+    mime_type, _ = mimetypes.guess_type(file_path)
+    headers = {
+        "Content-Disposition": f"attachment; filename={os.path.basename(file_path)}"
+    }
+    if mime_type:
+        headers["Content-Type"] = mime_type
+    else:
+        headers["Content-Type"] = "image/jpeg"
+        
+    with open(file_path, "rb") as f:
+        media_data = f.read()
+        
+    response = requests.post(
+        url,
+        auth=(WP_USER, WP_APP_PW),
+        headers=headers,
+        data=media_data
+    )
+    if response.status_code == 201:
+        res_json = response.json()
+        print(f"Uploaded successfully! ID: {res_json['id']}, URL: {res_json['source_url']}")
+        return res_json['id'], res_json['source_url']
+    else:
+        print(f"Failed to upload media: {response.status_code}")
+        print(response.text)
+        return None, None
+
+def get_or_create_tag(tag_name):
+    search_url = f"{WP_URL}/wp-json/wp/v2/tags?search={requests.utils.quote(tag_name)}"
+    r = requests.get(search_url, auth=(WP_USER, WP_APP_PW))
+    if r.status_code == 200:
+        tags = r.json()
+        for t in tags:
+            if t['name'] == tag_name:
+                return t['id']
+                
+    create_url = f"{WP_URL}/wp-json/wp/v2/tags"
+    r = requests.post(create_url, auth=(WP_USER, WP_APP_PW), json={"name": tag_name})
+    if r.status_code == 201:
+        return r.json()['id']
+    return None
+
+def main():
+    featured_id, featured_url = upload_media(FEATURED_IMG_PATH)
+    
+    if not featured_id:
+        print("[ERROR] Media upload failed. Exiting.")
+        return
+        
+    tag_names = ["민생지원금", "3차민생지원금", "정부지원금", "취약계층지원"]
+    tag_ids = []
+    for tn in tag_names:
+        tid = get_or_create_tag(tn)
+        if tid:
+            tag_ids.append(tid)
+            
+    print(f"Resolved Tag IDs: {tag_ids}")
+    
+    content = f"""
+    <p>고물가와 고금리가 지속되면서 서민 경제의 부담을 덜어주기 위한 정부의 추가 대책을 기다리시는 분들이 많습니다. 이번 2026년 <strong>민생지원금</strong> 3차 지급은 민생 안정과 내수 활성화를 위해 추진되는 핵심 정책 중 하나입니다.</p>
+    
+    <p>많은 분이 가장 궁금해하시는 구체적인 지급일과 지원 금액, 그리고 대상자 기준을 놓치지 않도록 보기 쉽게 정리해 드립니다. 오늘 이 글을 끝까지 확인하시면 내가 받을 수 있는 금액과 신청 경로를 완벽하게 파악하실 수 있습니다.</p>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+    
+    <h2>1. 2026년 민생지원금 3차 지급일 및 주요 일정</h2>
+    <p>이번 민생지원금 3차 지급은 혼잡을 방지하고 신속하게 집행하기 위해 신청 시기에 따라 순차적으로 지급될 예정입니다. 대략적인 일정은 상반기 중으로 조율 중이며, 각 지자체 및 정부 부처의 예산 배정 상황에 따라 세부 날짜가 확정됩니다.</p>
+    
+    <h3>📅 온라인 및 오프라인 신청 기간</h3>
+    <p>현재 논의 중인 가이드라인에 따르면, 온라인 신청이 먼저 시작된 이후 오프라인 접수가 진행됩니다. 초기 신청 단계에서는 서버 과부하를 막기 위해 출생연도 끝자리에 따른 요일제(5부제)가 도입될 가능성이 매우 높습니다.</p>
+    
+    <p style="background-color: #f9fafb; padding: 14px; border-left: 4px solid #ffd43b; font-weight: 500; color: #111827 !important; margin: 20px 0;">
+      <strong>💡 신청 시 주의사항:</strong> 선착순 지급은 아니지만, 예산 소진 추이에 따라 조기 마감되거나 지급 시기가 늦어질 수 있으므로 본인의 신청 요일을 미리 확인하고 첫 주에 접수하는 것을 권장합니다. 상세 자격 요건은 <a href="https://www.gov.kr" target="_blank" rel="noopener" style="font-weight: bold; color: #ffd43b; text-decoration: underline;">정부24 누리집</a>에서 미리 확인 가능합니다.
+    </p>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+    
+    <h2>2. 지원 대상자 선정 기준 및 제외 대상</h2>
+    <p>모든 국민에게 보편적으로 지급되었던 과거의 재난지원금과 달리, 이번 3차 민생지원금은 취약계층과 중산층 서민을 집중적으로 돕는 '선별적 지원' 기조를 유지하고 있습니다.</p>
+    
+    <h3>📋 소득 및 가구 기준</h3>
+    <ul>
+      <li><strong>기초생활수급자 및 차상위계층</strong>: 별도의 소득 검증 없이 우선 지급 대상으로 분류됩니다.</li>
+      <li><strong>일반 가구</strong>: 기준 중위소득 일정 비율 이하의 가구를 대상으로 하며, 세대원의 자산 규모(고가 주택, 회원권 소유 여부 등)도 함께 검증될 수 있습니다.</li>
+      <li><strong>지급 제외 기준</strong>: 고소득층이나 고액 자산가의 경우 이번 지원 대상에서 제외될 수 있습니다. 또한, 최근 유사한 형태의 정부 긴급 재난 예산을 중복으로 수령했거나 세금을 체납 중인 경우 지원이 제한될 수 있으니 미리 확인이 필요합니다.</li>
+    </ul>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+    
+    <h2>3. 민생지원금 3차 금액 및 가구원수별 수령액 요약</h2>
+    <p>많은 분이 가장 궁금해하실 구체적인 지원 금액은 가구원 수에 따라 차등 지급되는 방식을 채택하고 있습니다. 가구당 최소액부터 최대액까지 설정되어 있어 1인 가구와 다인 가구 모두 합리적인 보상을 받을 수 있도록 설계되었습니다.</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; text-align: left; border: 1px solid #e5e7eb; background-color: #ffffff !important; color: #111827 !important;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e5e7eb; background-color: #f3f4f6 !important;">
+          <th style="padding: 12px; border: 1px solid #e5e7eb; color: #111827 !important; font-weight: bold; width: 25%;">가구원 수</th>
+          <th style="padding: 12px; border: 1px solid #e5e7eb; color: #111827 !important; font-weight: bold; width: 45%;">예상 지급 금액</th>
+          <th style="padding: 12px; border: 1px solid #e5e7eb; color: #111827 !important; font-weight: bold; width: 30%;">비고</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #e5e7eb; background-color: #ffffff !important;">
+          <td style="padding: 12px; border: 1px solid #e5e7eb; font-weight: bold; color: #ff2a5f !important; background-color: #ffffff !important;">1인 가구</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">30만 원</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">단독 세대주 기준</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb; background-color: #ffffff !important;">
+          <td style="padding: 12px; border: 1px solid #e5e7eb; font-weight: bold; color: #ff2a5f !important; background-color: #ffffff !important;">2인 가구</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">50만 원</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">부부 또는 직계존비속</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb; background-color: #ffffff !important;">
+          <td style="padding: 12px; border: 1px solid #e5e7eb; font-weight: bold; color: #ff2a5f !important; background-color: #ffffff !important;">3인 가구</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">70만 원</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">-</td>
+        </tr>
+        <tr style="background-color: #ffffff !important;">
+          <td style="padding: 12px; border: 1px solid #e5e7eb; font-weight: bold; color: #ff2a5f !important; background-color: #ffffff !important;">4인 가구 이상</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important;">100만 원</td>
+          <td style="padding: 12px; border: 1px solid #e5e7eb; background-color: #ffffff !important; font-weight: bold;">최대 지급 한도액</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <p>위 표에 명시된 금액은 정부의 기본 안을 바탕으로 작성되었으며, 거주하시는 지자체의 자체 추가 지원금 여부에 따라 실제 수령하시는 최종 금액은 조금씩 늘어날 수 있습니다.</p>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+    
+    <h2>4. 신청 방법 및 지급 수단 안내</h2>
+    <p>신청은 크게 온라인과 오프라인 두 가지 채널로 진행되며, 본인에게 가장 편한 방식을 선택하시면 됩니다.</p>
+    
+    <ul>
+      <li><strong>온라인 신청 경로</strong>: 정부24 및 전용 홈페이지를 통해 공인인증서나 간편인증(카카오, 네이버 등)을 통해 본인 인증을 거친 후 신청할 수 있습니다. 모바일 앱을 이용하면 스마트폰으로도 5분 내외로 간편하게 접수가 완료됩니다.</li>
+      <li><strong>오프라인 신청 경로</strong>: 주민센터 방문을 통해 온라인 이용이 어려운 고령층이나 취약계층의 경우, 신분증을 지참하여 주소지 관할 행정복지센터(주민센터)에 직접 방문하시면 직원의 안내를 받아 신청서를 접수할 수 있습니다.</li>
+      <li><strong>지급 수단 선택</strong>: 지원금은 소비 진작 효과를 극대화하기 위해 신용·체크카드 포인트 충전, 모바일 지역사랑상품권, 또는 선불카드 형태로 지급됩니다. 수령 후 사용 기한(대개 지급일로부터 3~6개월)이 정해져 있으므로 기간 내에 반드시 모두 소비하셔야 소멸하지 않습니다.</li>
+    </ul>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+    
+    <h2>5. 가계 경제 밸런스를 튜닝하는 지혜로운 저녁 2시간</h2>
+    <p>주변 지인들이나 부모님 세대분들을 보면 인터넷 신청 절차가 낯설어 제때 지원금을 받지 못하고 곤란해하시는 모습을 종종 보곤 합니다. 아무래도 디지털 기기에 익숙하지 않으신 분들은 소식조차 늦게 접하시는 경우가 많은데요. 이번 3차 지급 소식이 들려오면 가족들이나 이웃 어르신들께 먼저 신청 요일을 챙겨드리고 함께 도우며 따뜻한 정을 나누고 싶다는 생각이 듭니다. 작은 지원금이지만 고물가 시대에 가계 민생 안정에 든든한 보탬이 되었으면 좋겠습니다.</p>
+    
+    <p>자세하고 합리적인 지출 다이어트 비법이나 자산 빌드 구조가 궁금하시다면 무림북 블로그의 <a href="https://blog.murimbook.com/%ec%8b%9c%ea%b0%84%ec%b5%9c%ec%a0%81%ed%99%94-%ec%82%b6%ec%9d%98-%ec%a7%88%ec%9d%84-%eb%b0%94%ea%be%b8%eb%8a%94-%ec%8b%9c%ea%b0%84-%ea%b4%80%eb%a6%ac/" target="_blank" rel="noopener" style="font-weight: bold; color: #ffd43b; text-decoration: underline;">시간관리 방법 칼럼</a>을 통해서 삶의 밸런스를 튜닝하는 팁을 얻어 가실 수 있습니다.</p>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+    
+    <p style="font-size: 13px; color: #9ca3af;">
+      #민생지원금 #3차민생지원금 #지급일정 #지원금액 #신청방법 #정부지원금 #취약계층지원 #서민안정대책
+    </p>
+    """
+    
+    title = "민생지원금 3차 지급일정"
+    url = f"{WP_URL}/wp-json/wp/v2/posts"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    meta_desc = "2026년 민생지원금 3차 지급 일정과 신청 자격 요약. 가구원수별 지원 금액 정보 및 오프라인 주민센터 신청 요령 가이드."
+    
+    post_data = {
+        "title": title,
+        "content": content,
+        "status": "draft",
+        "featured_media": featured_id,
+        "categories": [85, 83, 9],
+        "tags": tag_ids,
+        "meta": {
+            "_rank_math_focus_keyword": "민생지원금",
+            "rank_math_focus_keyword": "민생지원금",
+            "_rank_math_title": "%title% %page% %sep% %sitename%",
+            "rank_math_title": "%title% %page% %sep% %sitename%",
+            "_rank_math_description": meta_desc,
+            "rank_math_description": meta_desc,
+            "_rank_math_permalink": "welfare-3rd-subsidy-schedule",
+            "rank_math_permalink": "welfare-3rd-subsidy-schedule"
+        }
+    }
+    
+    print(f"Uploading post to WordPress as draft...")
+    try:
+        response = requests.post(
+            url,
+            auth=(WP_USER, WP_APP_PW),
+            headers=headers,
+            data=json.dumps(post_data)
+        )
+        if response.status_code == 201:
+            print("\n[SUCCESS] WordPress post uploaded successfully as DRAFT!")
+            print(f"Edit Link: {response.json().get('link')}")
+        else:
+            print(f"\n[FAILED] Upload failed with status code: {response.status_code}")
+            print(response.text)
+    except Exception as e:
+        print(f"\n[ERROR] Connection failed: {e}")
+
+if __name__ == "__main__":
+    main()

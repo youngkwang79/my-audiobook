@@ -18,8 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "무림북",
-  description: "창작 무협 소설과 오디오 스토리를 감상하는 무협 오디오북 플랫폼",
+  title: "무림북 — 창작 무협 웹소설 오디오북 플랫폼",
+  description: "무림북에서 고품격 창작 무협 웹소설과 생생한 오디오 스토리를 자막과 함께 감상하세요. 생활 법률, 재테크 등 도움되는 유용한 지식 칼럼도 연재 중입니다.",
+  keywords: ["무림북", "murimbook", "무협웹소설", "무협소설", "창작무협소설", "오디오북", "도움되는글"],
   manifest: "/manifest.json",
   icons: {
     apple: "/apple-touch-icon.png",
@@ -33,8 +34,8 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    title: "무림북",
-    description: "창작 무협 소설과 오디오 스토리를 감상하는 무협 오디오북 플랫폼",
+    title: "무림북 — 창작 무협 웹소설 오디오북 플랫폼",
+    description: "무림북에서 고품격 창작 무협 웹소설과 생생한 오디오 스토리를 자막과 함께 감상하세요. 생활 법률, 재테크 등 도움되는 유용한 지식 칼럼도 연재 중입니다.",
     url: "https://www.murimbook.com",
     siteName: "무림북",
     locale: "ko_KR",
@@ -59,6 +60,7 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <head>
         <meta name="google-adsense-account" content="ca-pub-6922397955333834" />
+        <meta name="msvalidate.01" content="C367B433A4F302DDBA7950F6EF881044" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;900&display=swap" rel="stylesheet" />

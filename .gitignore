@@ -41,3 +41,9 @@ ffmpeg.exe
 next-env.d.ts
 
 .vercel
+
+# google secrets
+/scratch/blogger_token.pickle
+/scratch/client_secret.json
+/scratch/*.pickle
+

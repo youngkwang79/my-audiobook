@@ -29,6 +29,28 @@ export default function NovelRegistration({
   const [novelThumbnail, setNovelThumbnail] = useState("");
   const [freeEpisodes, setFreeEpisodes] = useState<number | "">(10);
   const [totalEpisodes, setTotalEpisodes] = useState<number | "">(50);
+  const [isMarkdownMode, setIsMarkdownMode] = useState(false);
+
+  // HTML -> Markdown 변환
+  const htmlToMarkdown = (html: string) => {
+    let md = html;
+    // <strong> 태그 변환
+    md = md.replace(/<strong>(.*?)<\/strong>/g, "**$1**");
+    md = md.replace(/<b>(.*?)<\/b>/g, "**$1**");
+    // <a> 태그 변환 (스타일 제거 및 마크다운 링크 포맷)
+    md = md.replace(/<a\s+[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g, "[$2]($1)");
+    return md;
+  };
+
+  // Markdown -> HTML 변환
+  const markdownToHtml = (md: string) => {
+    let html = md;
+    // **굵게** -> <strong> 변환
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    // [텍스트](링크) -> <a> 변환
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">$1</a>');
+    return html;
+  };
 
   // 썸네일 직접 업로드 상태
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -315,13 +337,142 @@ export default function NovelRegistration({
       </div>
 
       <div className="form-group">
-        <label className="form-label">소설 줄거리 및 시놉시스</label>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <label className="form-label" style={{ margin: 0 }}>소설 줄거리 및 시놉시스</label>
+          <div style={{ display: "flex", gap: "4px", background: "rgba(255,255,255,0.05)", padding: "2px", borderRadius: "6px" }}>
+            <button
+              type="button"
+              style={{
+                padding: "4px 10px", fontSize: "11px", fontWeight: "bold", border: "none", borderRadius: "4px", cursor: "pointer",
+                background: !isMarkdownMode ? "rgba(37,99,235,0.9)" : "transparent",
+                color: "white"
+              }}
+              onClick={() => {
+                if (isMarkdownMode) {
+                  // 마크다운 -> HTML 변환 후 기본 모드로 변경
+                  const html = markdownToHtml(novelDesc);
+                  setNovelDesc(html);
+                  setIsMarkdownMode(false);
+                }
+              }}
+            >
+              기본 모드 (HTML)
+            </button>
+            <button
+              type="button"
+              style={{
+                padding: "4px 10px", fontSize: "11px", fontWeight: "bold", border: "none", borderRadius: "4px", cursor: "pointer",
+                background: isMarkdownMode ? "rgba(37,99,235,0.9)" : "transparent",
+                color: "white"
+              }}
+              onClick={() => {
+                if (!isMarkdownMode) {
+                  // HTML -> 마크다운 변환 후 마크다운 모드로 변경
+                  const md = htmlToMarkdown(novelDesc);
+                  setNovelDesc(md);
+                  setIsMarkdownMode(true);
+                }
+              }}
+            >
+              마크다운 모드
+            </button>
+          </div>
+        </div>
+
+        {/* 링크/굵게 편집 도구 추가 */}
+        <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 8px", background: "rgba(255,255,255,0.05)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "6px" }}>
+          <span style={{ fontSize: "11px", opacity: 0.5, marginRight: "4px" }}>🔗 편집 도구 ({isMarkdownMode ? "마크다운" : "HTML"})</span>
+          <button
+            type="button"
+            title="선택한 텍스트에 링크 삽입 (Ctrl+K)"
+            style={{
+              display: "flex", alignItems: "center", gap: "4px",
+              padding: "4px 10px", background: "rgba(37,99,235,0.8)",
+              border: "1px solid rgba(37,99,235,0.5)", borderRadius: "6px",
+              color: "white", fontSize: "12px", fontWeight: "600", cursor: "pointer"
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault(); // 포커스 잃지 않고 텍스트 선택 유지
+              const ta = document.getElementById("novel-reg-desc-textarea") as HTMLTextAreaElement;
+              if (!ta) return;
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const selected = ta.value.substring(start, end);
+              const url = window.prompt("삽입할 링크 URL을 입력하세요:", "https://");
+              if (!url) return;
+              const linkText = selected || "링크 텍스트";
+              
+              // 모드에 따라 마크다운 또는 HTML 삽입
+              const linkMarkup = isMarkdownMode
+                ? `[${linkText}](${url})`
+                : `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">${linkText}</a>`;
+              
+              const newVal = ta.value.substring(0, start) + linkMarkup + ta.value.substring(end);
+              setNovelDesc(newVal);
+              setTimeout(() => {
+                ta.focus();
+                ta.selectionStart = start + linkMarkup.length;
+                ta.selectionEnd = start + linkMarkup.length;
+              }, 0);
+            }}
+          >
+            🔗 링크 삽입
+          </button>
+          <button
+            type="button"
+            title="선택한 텍스트를 굵게"
+            style={{
+              padding: "4px 10px", background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px",
+              color: "white", fontSize: "13px", fontWeight: "900", cursor: "pointer"
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const ta = document.getElementById("novel-reg-desc-textarea") as HTMLTextAreaElement;
+              if (!ta) return;
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const selected = ta.value.substring(start, end);
+              
+              // 모드에 따라 마크다운 또는 HTML 삽입
+              const boldMarkup = isMarkdownMode
+                ? `**${selected || "굵게"}**`
+                : `<strong>${selected || "굵게"}</strong>`;
+              
+              const newVal = ta.value.substring(0, start) + boldMarkup + ta.value.substring(end);
+              setNovelDesc(newVal);
+            }}
+          >
+            B
+          </button>
+        </div>
         <textarea
+          id="novel-reg-desc-textarea"
           className="form-textarea"
-          rows={6}
-          placeholder="작품 소개글을 입력하세요..."
+          rows={18}
+          placeholder={isMarkdownMode ? "작품 소개글을 마크다운으로 입력하세요... 예: [무림북 바로가기](https://blog.murimbook.com)" : "작품 소개글을 입력하세요... (일반 텍스트 또는 HTML)"}
           value={novelDesc}
           onChange={(e) => setNovelDesc(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+              e.preventDefault();
+              const ta = e.currentTarget;
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const selected = ta.value.substring(start, end);
+              const url = window.prompt("삽입할 링크 URL을 입력하세요:", "https://");
+              if (!url) return;
+              const linkText = selected || "링크 텍스트";
+              
+              const linkMarkup = isMarkdownMode
+                ? `[${linkText}](${url})`
+                : `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">${linkText}</a>`;
+              
+              const newVal = ta.value.substring(0, start) + linkMarkup + ta.value.substring(end);
+              setNovelDesc(newVal);
+            }
+          }}
+          style={{ minHeight: "360px", resize: "vertical" }}
         />
       </div>
 

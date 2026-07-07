@@ -45,10 +45,16 @@ export default function WorkPosterCard({ work }: Props) {
     firstEpId = episodes[0]?.id || null;
   }
 
-  const isBlog = work.subtitle?.includes("[블로그]") || work.subtitle?.includes("[공지사항]") || work.genre === "블로그" || work.genre === "blog";
+  const isBlog = 
+    work.subtitle?.includes("[블로그]") || 
+    work.subtitle?.includes("[공지사항]") || 
+    work.genre === "블로그" || 
+    work.genre === "blog" ||
+    work.badge?.includes("[블로그]") ||
+    work.badge?.includes("[공지사항]");
 
   const playHref = isBlog
-    ? `/work/${work.id}`
+    ? `/work/${work.id}?tab=도움되는글`
     : (resumeHref ?? (firstEpId ? `/episode/${work.id}/${firstEpId}?part=1&autoplay=1` : `/work/${work.id}`));
 
   // 배지 색상 결정
@@ -89,8 +95,8 @@ export default function WorkPosterCard({ work }: Props) {
       }}
     >
       <div className="poster-thumb-wrap">
-        {/* 배지 */}
-        {work.is_membership_only ? (
+        {/* 배지 (멤버십 표시만 제한적으로 유지하고, 일반 뱃지는 썸네일을 가리지 않도록 100% 미노출 처리) */}
+        {work.is_membership_only && (
           <div className="poster-badge" style={{
             background: "linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)",
             color: "#ffffff",
@@ -100,11 +106,7 @@ export default function WorkPosterCard({ work }: Props) {
           }}>
             멤버십
           </div>
-        ) : work.badge ? (
-          <div className="poster-badge" style={getBadgeStyle(work.badge)}>
-            {work.badge}
-          </div>
-        ) : null}
+        )}
 
 
 
@@ -131,8 +133,19 @@ export default function WorkPosterCard({ work }: Props) {
       </div>
 
       <div className="poster-info">
-        <h3 className="poster-title">{work.title}</h3>
-        <p className="poster-subtitle">{work.subtitle || work.status}</p>
+        <h3 className="poster-title">{work.title.replace("[블로그]", "").trim()}</h3>
+        <p className="poster-subtitle">
+          {(work.subtitle && !work.subtitle.includes("[블로그]") && !work.subtitle.includes("[공지사항]"))
+            ? work.subtitle 
+            : (() => {
+                // 예약 시간(created_at)이 현재 시각을 지났다면 '공개예정' 텍스트를 자동 감춤
+                const isPast = work.created_at ? (new Date(work.created_at).getTime() <= Date.now()) : false;
+                if (work.status === "공개예정" && isPast) return "";
+                if (work.status === "공개예정" || work.status === "준비중") return work.status;
+                return "";
+              })()
+          }
+        </p>
       </div>
     </Link>
   );

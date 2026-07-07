@@ -1182,6 +1182,36 @@ export default function EpisodePage() {
     window.history.replaceState(null, "", newUrl);
   };
 
+  const playNextSynchronously = (nextEpKey: string, nextPart: number): boolean => {
+    const a = audioRef.current;
+    if (!a) return false;
+
+    const cacheKey = `${nextEpKey}_p${nextPart}`;
+    const cachedUrl = signedUrlCacheRef.current[cacheKey];
+    if (cachedUrl) {
+      try {
+        a.pause();
+        a.src = cachedUrl;
+        a.load();
+        a.play()
+          .then(() => {
+            setIsPlaying(true);
+            setStatus("재생 중");
+            pendingAutoplayRef.current = false;
+          })
+          .catch((err) => {
+            console.error("Synchronous play failed:", err);
+          });
+        setSignedAudioSrc(cachedUrl);
+        navigateToEpisode(nextEpKey, nextPart, true);
+        return true;
+      } catch (err) {
+        console.error("Failed to set src synchronously:", err);
+      }
+    }
+    return false;
+  };
+
   const toggleLandscapePlayer = async () => {
     if (playerLandscapeMode) {
       await exitCinemaMode();
@@ -1279,6 +1309,9 @@ export default function EpisodePage() {
     try {
       // 다음 화가 무료이거나 멤버십이면 바로 이동
       if (!nextEpisode.locked || isSubscribed) {
+        if (playNextSynchronously(nextEpisodeKey, 1)) {
+          return;
+        }
         navigateToEpisode(nextEpisodeKey, 1, true);
         return;
       }
@@ -1308,6 +1341,9 @@ export default function EpisodePage() {
             setPointsState(nextCoinBalance);
             try { localStorage.setItem("points", String(nextCoinBalance)); } catch { }
             window.dispatchEvent(new Event("wallet-updated"));
+            if (playNextSynchronously(nextEpisodeKey, 1)) {
+              return;
+            }
             navigateToEpisode(nextEpisodeKey, 1, true);
             return;
           }
@@ -1382,6 +1418,9 @@ export default function EpisodePage() {
     }
     // 파트 단위 잠금 없음 — 모든 파트 자유롭게 이동
     const next = part + 1;
+    if (playNextSynchronously(episodeKey, next)) {
+      return;
+    }
     navigateToEpisode(episodeKey, next, true);
   };
 

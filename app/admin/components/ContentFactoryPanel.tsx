@@ -1269,6 +1269,174 @@ export default function ContentFactoryPanel() {
         </div>
       )}
 
+      {/* ✏️ 직접 원고 붙여넣기 업로드 (항상 표시) */}
+      <div className="card-panel" style={{ border: "1px solid rgba(255,215,0,0.25)", background: "rgba(255,215,0,0.03)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px" }}>
+          <div>
+            <h3 style={{ fontSize: "16px", fontWeight: "800", color: "#ffd700", margin: 0 }}>
+              ✏️ 직접 원고 붙여넣기 업로드
+            </h3>
+            <p style={{ fontSize: "12px", opacity: 0.6, marginTop: "4px", marginBottom: 0 }}>
+              원고를 직접 붙여넣고 링크를 삽입하세요. 텍스트 드래그 후 🔗 버튼 클릭!
+            </p>
+          </div>
+        </div>
+
+        {/* WP 직접 업로드 영역 */}
+        <div style={{ marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "13px", fontWeight: "700", color: "#30d158" }}>🟢 워드프레스 본문</span>
+            <span style={{ cursor: "pointer", fontSize: "11px", textDecoration: "underline", opacity: 0.6 }} onClick={() => copyToClipboard(wpMarkdown)}>복사</span>
+          </div>
+          {/* WP 링크 툴바 */}
+          <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "5px 8px", background: "rgba(48,209,88,0.07)", borderRadius: "8px", border: "1px solid rgba(48,209,88,0.2)", marginBottom: "6px" }}>
+            <span style={{ fontSize: "11px", opacity: 0.5, marginRight: "4px" }}>🔗 편집 도구</span>
+            <button
+              type="button"
+              title="텍스트 드래그 → 클릭 → URL 입력"
+              style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 12px", background: "rgba(37,99,235,0.85)", border: "1px solid rgba(37,99,235,0.5)", borderRadius: "6px", color: "white", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const ta = document.getElementById("direct-wp-textarea") as HTMLTextAreaElement;
+                if (!ta) return;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const selected = ta.value.substring(start, end);
+                const url = window.prompt("링크 URL 입력:", "https://");
+                if (!url) return;
+                const linkText = selected || "링크 텍스트";
+                const markdownLink = `[${linkText}](${url})`;
+                const newVal = ta.value.substring(0, start) + markdownLink + ta.value.substring(end);
+                setWpMarkdown(newVal);
+                saveStateToLocalStorage("cf_wpMarkdown", newVal);
+                setTimeout(() => { ta.focus(); ta.selectionStart = start + markdownLink.length; ta.selectionEnd = start + markdownLink.length; }, 0);
+              }}
+            >
+              🔗 링크 삽입
+            </button>
+            <button
+              type="button"
+              title="텍스트 드래그 → 클릭 → **굵게** 처리"
+              style={{ padding: "4px 12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px", color: "white", fontSize: "13px", fontWeight: "900", cursor: "pointer" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const ta = document.getElementById("direct-wp-textarea") as HTMLTextAreaElement;
+                if (!ta) return;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const selected = ta.value.substring(start, end);
+                const boldText = `**${selected || "굵게"}**`;
+                const newVal = ta.value.substring(0, start) + boldText + ta.value.substring(end);
+                setWpMarkdown(newVal);
+                saveStateToLocalStorage("cf_wpMarkdown", newVal);
+              }}
+            >
+              B
+            </button>
+          </div>
+          <textarea
+            id="direct-wp-textarea"
+            className="form-textarea"
+            style={{ height: "280px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
+            value={wpMarkdown}
+            onChange={(e) => { setWpMarkdown(e.target.value); saveStateToLocalStorage("cf_wpMarkdown", e.target.value); }}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+                e.preventDefault();
+                const ta = e.currentTarget;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const selected = ta.value.substring(start, end);
+                const url = window.prompt("링크 URL 입력:", "https://");
+                if (!url) return;
+                const markdownLink = `[${selected || "링크 텍스트"}](${url})`;
+                const newVal = ta.value.substring(0, start) + markdownLink + ta.value.substring(end);
+                setWpMarkdown(newVal);
+                saveStateToLocalStorage("cf_wpMarkdown", newVal);
+              }
+            }}
+            placeholder="워드프레스 본문을 여기에 붙여넣으세요... (텍스트 드래그 후 🔗 버튼으로 링크 삽입)"
+          />
+        </div>
+
+        {/* Blogger 직접 업로드 영역 */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "13px", fontWeight: "700", color: "#5856d6" }}>🔵 블로거 HTML 본문</span>
+            <span style={{ cursor: "pointer", fontSize: "11px", textDecoration: "underline", opacity: 0.6 }} onClick={() => copyToClipboard(bloggerHtml)}>복사</span>
+          </div>
+          {/* Blogger 링크 툴바 */}
+          <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "5px 8px", background: "rgba(88,86,214,0.07)", borderRadius: "8px", border: "1px solid rgba(88,86,214,0.2)", marginBottom: "6px" }}>
+            <span style={{ fontSize: "11px", opacity: 0.5, marginRight: "4px" }}>🔗 편집 도구</span>
+            <button
+              type="button"
+              title="텍스트 드래그 → 클릭 → URL 입력"
+              style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 12px", background: "rgba(88,86,214,0.85)", border: "1px solid rgba(88,86,214,0.5)", borderRadius: "6px", color: "white", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const ta = document.getElementById("direct-blogger-textarea") as HTMLTextAreaElement;
+                if (!ta) return;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const selected = ta.value.substring(start, end);
+                const url = window.prompt("링크 URL 입력:", "https://");
+                if (!url) return;
+                const linkText = selected || "링크 텍스트";
+                const htmlLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">${linkText}</a>`;
+                const newVal = ta.value.substring(0, start) + htmlLink + ta.value.substring(end);
+                setBloggerHtml(newVal);
+                saveStateToLocalStorage("cf_bloggerHtml", newVal);
+                setTimeout(() => { ta.focus(); ta.selectionStart = start + htmlLink.length; ta.selectionEnd = start + htmlLink.length; }, 0);
+              }}
+            >
+              🔗 링크 삽입
+            </button>
+            <button
+              type="button"
+              title="텍스트 드래그 → 클릭 → &lt;strong&gt; 처리"
+              style={{ padding: "4px 12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px", color: "white", fontSize: "13px", fontWeight: "900", cursor: "pointer" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const ta = document.getElementById("direct-blogger-textarea") as HTMLTextAreaElement;
+                if (!ta) return;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const selected = ta.value.substring(start, end);
+                const boldText = `<strong>${selected || "굵게"}</strong>`;
+                const newVal = ta.value.substring(0, start) + boldText + ta.value.substring(end);
+                setBloggerHtml(newVal);
+                saveStateToLocalStorage("cf_bloggerHtml", newVal);
+              }}
+            >
+              B
+            </button>
+          </div>
+          <textarea
+            id="direct-blogger-textarea"
+            className="form-textarea"
+            style={{ height: "280px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
+            value={bloggerHtml}
+            onChange={(e) => { setBloggerHtml(e.target.value); saveStateToLocalStorage("cf_bloggerHtml", e.target.value); }}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+                e.preventDefault();
+                const ta = e.currentTarget;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const selected = ta.value.substring(start, end);
+                const url = window.prompt("링크 URL 입력:", "https://");
+                if (!url) return;
+                const htmlLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">${selected || "링크 텍스트"}</a>`;
+                const newVal = ta.value.substring(0, start) + htmlLink + ta.value.substring(end);
+                setBloggerHtml(newVal);
+                saveStateToLocalStorage("cf_bloggerHtml", newVal);
+              }
+            }}
+            placeholder="블로거 HTML 본문을 여기에 붙여넣으세요... (텍스트 드래그 후 🔗 버튼으로 링크 삽입)"
+          />
+        </div>
+      </div>
+
       {/* 4. Generated Post Preview */}
       {(wpMarkdown || bloggerMarkdown || bloggerHtml) && (
         <div className="card-panel">
@@ -1593,19 +1761,95 @@ export default function ContentFactoryPanel() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", opacity: 0.6 }}>
                   <span>본문 내용 (마크다운 형식)</span>
                   <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(wpMarkdown)}>
                     복사
                   </span>
                 </div>
+                {/* 링크 삽입 툴바 */}
+                <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 8px", background: "rgba(255,255,255,0.05)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span style={{ fontSize: "11px", opacity: 0.5, marginRight: "4px" }}>🔗 편집 도구</span>
+                  <button
+                    type="button"
+                    title="선택한 텍스트에 링크 삽입 (Ctrl+K)"
+                    style={{
+                      display: "flex", alignItems: "center", gap: "4px",
+                      padding: "4px 10px", background: "rgba(37,99,235,0.8)",
+                      border: "1px solid rgba(37,99,235,0.5)", borderRadius: "6px",
+                      color: "white", fontSize: "12px", fontWeight: "600", cursor: "pointer"
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // 포커스 이탈 방지 → 선택 영역 유지
+                      const ta = document.getElementById("wp-markdown-textarea") as HTMLTextAreaElement;
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selected = ta.value.substring(start, end);
+                      const url = window.prompt("삽입할 링크 URL을 입력하세요:", "https://");
+                      if (!url) return;
+                      const linkText = selected || "링크 텍스트";
+                      const markdownLink = `[${linkText}](${url})`;
+                      const newVal = ta.value.substring(0, start) + markdownLink + ta.value.substring(end);
+                      setWpMarkdown(newVal);
+                      saveStateToLocalStorage("cf_wpMarkdown", newVal);
+                      setTimeout(() => {
+                        ta.focus();
+                        ta.selectionStart = start + markdownLink.length;
+                        ta.selectionEnd = start + markdownLink.length;
+                      }, 0);
+                    }}
+                  >
+                    🔗 링크 삽입
+                  </button>
+                  <button
+                    type="button"
+                    title="선택한 텍스트를 굵게"
+                    style={{
+                      padding: "4px 10px", background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px",
+                      color: "white", fontSize: "13px", fontWeight: "900", cursor: "pointer"
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // 포커스 이탈 방지 → 선택 영역 유지
+                      const ta = document.getElementById("wp-markdown-textarea") as HTMLTextAreaElement;
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selected = ta.value.substring(start, end);
+                      const boldText = `**${selected || "굵게"}**`;
+                      const newVal = ta.value.substring(0, start) + boldText + ta.value.substring(end);
+                      setWpMarkdown(newVal);
+                      saveStateToLocalStorage("cf_wpMarkdown", newVal);
+                    }}
+                  >
+                    B
+                  </button>
+                </div>
                 <textarea
+                  id="wp-markdown-textarea"
                   className="form-textarea"
                   style={{ height: "350px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
                   value={wpMarkdown}
                   onChange={(e) => {
                     setWpMarkdown(e.target.value);
                     saveStateToLocalStorage("cf_wpMarkdown", e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                      e.preventDefault();
+                      const ta = e.currentTarget;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selected = ta.value.substring(start, end);
+                      const url = window.prompt("삽입할 링크 URL을 입력하세요:", "https://");
+                      if (!url) return;
+                      const linkText = selected || "링크 텍스트";
+                      const markdownLink = `[${linkText}](${url})`;
+                      const newVal = ta.value.substring(0, start) + markdownLink + ta.value.substring(end);
+                      setWpMarkdown(newVal);
+                      saveStateToLocalStorage("cf_wpMarkdown", newVal);
+                    }
                   }}
                   placeholder="수정할 워드프레스 본문 마크다운 내용..."
                 />
@@ -1788,19 +2032,91 @@ export default function ContentFactoryPanel() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", opacity: 0.6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", opacity: 0.6 }}>
                   <span>본문 내용 (HTML/스핀 원고 형식)</span>
                   <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => copyToClipboard(bloggerHtml)}>
                     복사
                   </span>
                 </div>
+                {/* 링크 삽입 툴바 - Blogger */}
+                <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 8px", background: "rgba(88,86,214,0.08)", borderRadius: "8px", border: "1px solid rgba(88,86,214,0.2)" }}>
+                  <span style={{ fontSize: "11px", opacity: 0.5, marginRight: "4px" }}>🔗 편집 도구</span>
+                  <button
+                    type="button"
+                    title="선택한 텍스트에 HTML 링크 삽입 (Ctrl+K)"
+                    style={{
+                      display: "flex", alignItems: "center", gap: "4px",
+                      padding: "4px 10px", background: "rgba(88,86,214,0.8)",
+                      border: "1px solid rgba(88,86,214,0.5)", borderRadius: "6px",
+                      color: "white", fontSize: "12px", fontWeight: "600", cursor: "pointer"
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // 포커스 이탈 방지 → 선택 영역 유지
+                      const ta = document.getElementById("blogger-html-textarea") as HTMLTextAreaElement;
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selected = ta.value.substring(start, end);
+                      const url = window.prompt("삽입할 링크 URL을 입력하세요:", "https://");
+                      if (!url) return;
+                      const linkText = selected || "링크 텍스트";
+                      const htmlLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">${linkText}</a>`;
+                      const newVal = ta.value.substring(0, start) + htmlLink + ta.value.substring(end);
+                      setBloggerHtml(newVal);
+                      saveStateToLocalStorage("cf_bloggerHtml", newVal);
+                      setTimeout(() => { ta.focus(); ta.selectionStart = start + htmlLink.length; ta.selectionEnd = start + htmlLink.length; }, 0);
+                    }}
+                  >
+                    🔗 링크 삽입
+                  </button>
+                  <button
+                    type="button"
+                    title="선택한 텍스트를 굵게 (HTML bold)"
+                    style={{
+                      padding: "4px 10px", background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px",
+                      color: "white", fontSize: "13px", fontWeight: "900", cursor: "pointer"
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // 포커스 이탈 방지 → 선택 영역 유지
+                      const ta = document.getElementById("blogger-html-textarea") as HTMLTextAreaElement;
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selected = ta.value.substring(start, end);
+                      const boldText = `<strong>${selected || "굵게"}</strong>`;
+                      const newVal = ta.value.substring(0, start) + boldText + ta.value.substring(end);
+                      setBloggerHtml(newVal);
+                      saveStateToLocalStorage("cf_bloggerHtml", newVal);
+                    }}
+                  >
+                    B
+                  </button>
+                </div>
                 <textarea
+                  id="blogger-html-textarea"
                   className="form-textarea"
                   style={{ height: "350px", fontFamily: "monospace", fontSize: "13px", lineHeight: "1.6" }}
                   value={bloggerHtml}
                   onChange={(e) => {
                     setBloggerHtml(e.target.value);
                     saveStateToLocalStorage("cf_bloggerHtml", e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                      e.preventDefault();
+                      const ta = e.currentTarget;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selected = ta.value.substring(start, end);
+                      const url = window.prompt("삽입할 링크 URL을 입력하세요:", "https://");
+                      if (!url) return;
+                      const linkText = selected || "링크 텍스트";
+                      const htmlLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:bold;">${linkText}</a>`;
+                      const newVal = ta.value.substring(0, start) + htmlLink + ta.value.substring(end);
+                      setBloggerHtml(newVal);
+                      saveStateToLocalStorage("cf_bloggerHtml", newVal);
+                    }
                   }}
                   placeholder="수정할 구글 블로그 HTML 내용..."
                 />

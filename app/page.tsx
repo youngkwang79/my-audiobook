@@ -77,8 +77,11 @@ export default function Home() {
 
   // ✅ 검색어 및 탭 상태
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("추천");
+  const [activeTab, setActiveTab] = useState("도움되는글");
 
+  // ✅ 계산기 탭 관련 상태
+  const [selectedCalculator, setSelectedCalculator] = useState<null | "jongbuse" | "loan" | "brokerage">(null);
+  
   // ✅ 남은 미션 개수 상태
   const [remainingMissions, setRemainingMissions] = useState<number | null>(null);
 
@@ -166,16 +169,20 @@ export default function Home() {
     }
   };
 
-  // 수련하기 숏컷 쿼리 파라미터 처리
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("openGameModal") === "1") {
-        setActiveTab("무공 수련");
-        router.replace("/");
-      }
-    }
-  }, [router]);
+   // 수련하기 숏컷 및 뒤로가기 탭 복원 쿼리 파라미터 처리
+   useEffect(() => {
+     if (typeof window !== "undefined") {
+       const params = new URLSearchParams(window.location.search);
+       const tabParam = params.get("tab");
+       if (tabParam) {
+         // ?tab=도움되는글 등 파라미터가 있으면 해당 탭 활성화
+         setActiveTab(tabParam);
+       } else if (params.get("openGameModal") === "1") {
+         setActiveTab("무공 수련");
+         router.replace("/");
+       }
+     }
+   }, [router]);
 
   // ✅ 남은 미션 개수 불러오기
   const loadRemainingMissions = async () => {
@@ -427,8 +434,8 @@ export default function Home() {
     }
 
     // 2. 카테고리 탭 필터링 및 정렬
-    if (activeTab === "꿀TIP") {
-      // 꿀TIP 탭은 블로그/공지사항 글만 노출
+    if (activeTab === "도움되는글") {
+      // 도움되는글 탭은 블로그/공지사항 글만 노출
       result = result.filter(
         (w) =>
           w.subtitle?.includes("[블로그]") ||
@@ -1031,7 +1038,7 @@ export default function Home() {
 
       {/* 카테고리 탭 */}
       <div className="category-tabs">
-        {["추천", "신작", "인기 순위", "무공 수련", "꿀TIP"].map((tab) => (
+        {["추천", "신작", "인기 순위", "무공 수련", "도움되는글", "계산기"].map((tab) => (
           <div
             key={tab}
             className={`category-tab ${activeTab === tab ? "active" : ""}`}
@@ -1110,7 +1117,99 @@ export default function Home() {
           </div>
 
           {/* 작품 카드 그리드 */}
-          {mainGridWorks.length > 0 ? (
+          {activeTab === "계산기" ? (
+            <div style={{ width: "100%", marginTop: "16px" }}>
+              <style>{`
+                .calculator-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                  gap: 16px;
+                  margin-bottom: 30px;
+                }
+                .calculator-card {
+                  background: #141217;
+                  border: 1.5px solid rgba(255, 42, 95, 0.15);
+                  border-radius: 18px;
+                  padding: 20px;
+                  text-align: left;
+                  cursor: pointer;
+                  transition: all 0.2s;
+                  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: space-between;
+                  height: 160px;
+                }
+                .calculator-card:hover {
+                  border-color: #ff2a5f;
+                  transform: translateY(-2px);
+                  box-shadow: 0 8px 25px rgba(255, 42, 95, 0.2);
+                }
+                .calc-badge {
+                  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+                  color: #0b0f19;
+                  font-weight: 900;
+                  font-size: 10px;
+                  padding: 1px 5px;
+                  border-radius: 4px;
+                  align-self: flex-start;
+                  margin-bottom: 8px;
+                }
+                .calc-card-title {
+                  font-size: 17px;
+                  font-weight: 900;
+                  color: #ffffff;
+                  margin-bottom: 8px;
+                  line-height: 1.3;
+                }
+                .calc-card-desc {
+                  font-size: 12.5px;
+                  color: rgba(255,255,255,0.5);
+                  line-height: 1.4;
+                  margin-bottom: 12px;
+                }
+                .calc-card-btn {
+                  font-size: 13px;
+                  font-weight: 800;
+                  color: #ff2a5f;
+                  text-align: right;
+                  margin-top: auto;
+                }
+              `}</style>
+              
+              <div className="calculator-grid">
+                {/* 1. 종부세 계산기 */}
+                <div className="calculator-card" onClick={() => setSelectedCalculator("jongbuse")}>
+                  <span className="calc-badge">세무</span>
+                  <div>
+                    <div className="calc-card-title">종부세 부부 공동명의 계산기</div>
+                    <div className="calc-card-desc">공동명의와 단독 특례 혜택을 1초 만에 비교해 드립니다.</div>
+                  </div>
+                  <div className="calc-card-btn">실행하기 →</div>
+                </div>
+
+                {/* 2. 대출 이자 계산기 */}
+                <div className="calculator-card" onClick={() => setSelectedCalculator("loan")}>
+                  <span className="calc-badge">대출</span>
+                  <div>
+                    <div className="calc-card-title">무료 대출 이자 상환 계산기</div>
+                    <div className="calc-card-desc">원리금균등, 원금균등 방식별 이자와 납부액 모의 연산.</div>
+                  </div>
+                  <div className="calc-card-btn">실행하기 →</div>
+                </div>
+
+                {/* 3. 복비 계산기 */}
+                <div className="calculator-card" onClick={() => setSelectedCalculator("brokerage")}>
+                  <span className="calc-badge">부동산</span>
+                  <div>
+                    <div className="calc-card-title">부동산 중개 수수료 계산기</div>
+                    <div className="calc-card-desc">주택, 오피스텔 등 한도 요율별 복비 상한선 연산.</div>
+                  </div>
+                  <div className="calc-card-btn">실행하기 →</div>
+                </div>
+              </div>
+            </div>
+          ) : mainGridWorks.length > 0 ? (
             <div className="works-poster-grid">
               {mainGridWorks.map((work) => (
                 <WorkPosterCard key={work.id} work={work} />
@@ -1130,8 +1229,8 @@ export default function Home() {
             </>
           )}
 
-          {/* 공개 예정 섹션 (꿀TIP 탭 - 블로그) */}
-          {activeTab === "꿀TIP" && !searchQuery && (
+          {/* 공개 예정 섹션 (도움되는글 탭 - 블로그) */}
+          {activeTab === "도움되는글" && !searchQuery && (
             <>
               <ComingSoonSection comingSoonWorks={comingSoonBlogs} shouldPulse={shouldPulse} />
               <PreparingSection preparingWorks={preparingBlogs} />
@@ -1965,11 +2064,466 @@ export default function Home() {
         </div>
       )}
 
+      {/* 3대 금융/부동산 계산기 팝업 모달 레이어 */}
+      {selectedCalculator && (
+        <CalculatorModal 
+          type={selectedCalculator} 
+          onClose={() => setSelectedCalculator(null)} 
+        />
+      )}
+
       {/* 이벤트 팝업 임시 비활성화 (구글봇 크롤링 방해 제거) */}
       {/* <GrandOpenPopup /> */}
-
+ 
       {/* 모바일 하단 네비게이션 바 */}
       <BottomNav />
     </main>
+  );
+}
+
+// ==========================================
+// 팝업 내부 연산을 처리할 계산기 전용 React 서브 컴포넌트
+// ==========================================
+interface CalcProps {
+  type: "jongbuse" | "loan" | "brokerage";
+  onClose: () => void;
+}
+
+function CalculatorModal({ type, onClose }: CalcProps) {
+  // 1. 종부세 상태
+  const [housePrice, setHousePrice] = useState("");
+  const [ownerAge, setOwnerAge] = useState("59");
+  const [holdYears, setHoldYears] = useState("4");
+  const [taxResult, setTaxResult] = useState<any>(null);
+
+  // 2. 대출 계산기 상태
+  const [loanAmount, setLoanAmount] = useState("");
+  const [loanTerm, setLoanTerm] = useState("");
+  const [loanRate, setLoanRate] = useState("");
+  const [loanType, setLoanType] = useState("원리금균등");
+  const [loanResult, setLoanResult] = useState<any>(null);
+
+  // 3. 복비 계산기 상태
+  const [brokerPrice, setBrokerPrice] = useState("");
+  const [brokerType, setBrokerType] = useState("주택");
+  const [brokerResult, setBrokerResult] = useState<any>(null);
+
+  // --- 종부세 계산기 로직 ---
+  const handleJongbuse = () => {
+    const priceBillion = parseFloat(housePrice);
+    if (!priceBillion || priceBillion <= 0) {
+      alert("공시가격을 정확히 입력해 주세요!");
+      return;
+    }
+    const price = priceBillion * 1000000000;
+    
+    // 공동명의 계산 (합산 24억 공제)
+    let jointTax = 0;
+    const half = price / 2;
+    if (half > 1200000000) {
+      jointTax = calcBaseJongbuse(half - 1200000000) * 2;
+    }
+
+    // 단독 명의 계산 (12억 공제 + 최대 80% 공제)
+    let singleTax = 0;
+    if (price > 1200000000) {
+      const base = price - 1200000000;
+      let rawTax = calcBaseJongbuse(base);
+
+      let ageRate = 0;
+      const ageVal = parseInt(ownerAge);
+      if (ageVal >= 70) ageRate = 0.4;
+      else if (ageVal >= 65) ageRate = 0.3;
+      else if (ageVal >= 60) ageRate = 0.2;
+
+      let holdRate = 0;
+      const holdVal = parseInt(holdYears);
+      if (holdVal >= 15) holdRate = 0.5;
+      else if (holdVal >= 10) holdRate = 0.4;
+      else if (holdVal >= 5) holdRate = 0.2;
+
+      let totalRate = ageRate + holdRate;
+      if (totalRate > 0.8) totalRate = 0.8;
+
+      singleTax = rawTax * (1 - totalRate);
+    }
+
+    setTaxResult({
+      joint: jointTax,
+      single: singleTax,
+      saving: Math.max(0, jointTax - singleTax)
+    });
+  };
+
+  const calcBaseJongbuse = (base: number) => {
+    if (base <= 0) return 0;
+    if (base <= 300000000) return base * 0.005;
+    if (base <= 600000000) return 1500000 + (base - 300000000) * 0.007;
+    if (base <= 1200000000) return 3600000 + (base - 600000000) * 0.01;
+    if (base <= 2500000000) return 9600000 + (base - 1200000000) * 0.015;
+    return 29100000 + (base - 2500000000) * 0.02;
+  };
+
+  // --- 대출 계산기 로직 ---
+  const handleLoan = () => {
+    const principal = parseFloat(loanAmount) * 10000; // 만원 단위 변환
+    const rateMonthly = parseFloat(loanRate) / 12 / 100;
+    const months = parseInt(loanTerm);
+
+    if (!principal || !rateMonthly || !months) {
+      alert("대출 정보를 모두 정확히 입력해 주세요!");
+      return;
+    }
+
+    let monthlyRepayment = 0;
+    let totalInterest = 0;
+
+    if (loanType === "원리금균등") {
+      monthlyRepayment = (principal * rateMonthly * Math.pow(1 + rateMonthly, months)) / (Math.pow(1 + rateMonthly, months) - 1);
+      totalInterest = (monthlyRepayment * months) - principal;
+    } else {
+      // 원금균등 방식 간이 요약 (첫 달 원리금 기준)
+      const monthlyPrincipal = principal / months;
+      monthlyRepayment = monthlyPrincipal + (principal * rateMonthly);
+      totalInterest = ((principal * rateMonthly) + (monthlyPrincipal * rateMonthly)) / 2 * months; 
+    }
+
+    setLoanResult({
+      monthly: monthlyRepayment,
+      interest: totalInterest,
+      total: principal + totalInterest
+    });
+  };
+
+  // --- 부동산 복비 계산기 로직 ---
+  const handleBrokerage = () => {
+    const price = parseFloat(brokerPrice) * 100000000; // 억 단위 변환
+    if (!price || price <= 0) {
+      alert("거래 금액을 입력해 주세요!");
+      return;
+    }
+
+    let rate = 0.004;
+    let limit = 0;
+
+    if (brokerType === "주택") {
+      if (price < 50000000) { rate = 0.006; limit = 250000; }
+      else if (price < 200000000) { rate = 0.005; limit = 800000; }
+      else if (price < 900000000) { rate = 0.004; }
+      else if (price < 1200000000) { rate = 0.005; }
+      else if (price < 1500000000) { rate = 0.006; }
+      else { rate = 0.007; }
+    } else {
+      // 오피스텔/기타 부동산 상한율
+      rate = 0.009;
+    }
+
+    let fee = price * rate;
+    if (limit > 0 && fee > limit) {
+      fee = limit;
+    }
+
+    setBrokerResult({
+      fee,
+      rate: rate * 100
+    });
+  };
+
+  const formatWon = (val: number) => {
+    if (!val || val === 0) return "0 원";
+    return Math.round(val).toLocaleString("ko-KR") + " 원";
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100000,
+        background: "rgba(0, 0, 0, 0.8)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          background: "#1c1c24",
+          border: "1.5px solid rgba(255, 42, 95, 0.25)",
+          borderRadius: 24,
+          padding: 24,
+          boxShadow: "0 20px 50px rgba(0, 0, 0, 0.6)",
+          position: "relative"
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 20,
+            right: 20,
+            background: "none",
+            border: "none",
+            color: "rgba(255,255,255,0.4)",
+            fontSize: "20px",
+            cursor: "pointer",
+            outline: "none"
+          }}
+        >
+          ✕
+        </button>
+
+        {/* 1. 종부세 계산기 UI */}
+        {type === "jongbuse" && (
+          <div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: 19, fontWeight: 900, color: "#ffffff" }}>
+              📊 종부세 부부 공동명의 절세 계산기
+            </h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: 12.5, color: "rgba(255,255,255,0.5)" }}>
+              단독 1주택 특례와 공동명의 기본 과세 혜택을 즉석 대조합니다.
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>아파트 공시가격 (억원)</label>
+                <input 
+                  type="number" 
+                  value={housePrice} 
+                  onChange={(e) => setHousePrice(e.target.value)} 
+                  placeholder="예: 15"
+                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 15, fontWeight: 700 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>납세자 연령 (만 나이)</label>
+                <select 
+                  value={ownerAge} 
+                  onChange={(e) => setOwnerAge(e.target.value)}
+                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 14, fontWeight: 700 }}
+                >
+                  <option value="59">만 60세 미만 (혜택 없음)</option>
+                  <option value="60">만 60세 이상 ~ 64세 이하 (20% 공제)</option>
+                  <option value="65">만 65세 이상 ~ 69세 이하 (30% 공제)</option>
+                  <option value="70">만 70세 이상 (40% 공제)</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>주택 보유 기간</label>
+                <select 
+                  value={holdYears} 
+                  onChange={(e) => setHoldYears(e.target.value)}
+                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 14, fontWeight: 700 }}
+                >
+                  <option value="4">5년 미만 (혜택 없음)</option>
+                  <option value="5">5년 이상 ~ 10년 미만 (20% 공제)</option>
+                  <option value="10">10년 이상 ~ 15년 미만 (40% 공제)</option>
+                  <option value="15">15년 이상 (50% 공제)</option>
+                </select>
+              </div>
+
+              <button 
+                onClick={handleJongbuse}
+                style={{ height: 46, borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ff2a5f 0%, #d01c4c 100%)", color: "white", fontWeight: 900, cursor: "pointer", marginTop: 10 }}
+              >
+                절세 혜택 분석하기
+              </button>
+
+              {taxResult && (
+                <div style={{ marginTop: 14, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                    <span>공동명의 기본 과세액:</span>
+                    <strong style={{ color: "#ffffff" }}>{formatWon(taxResult.joint)}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                    <span>단독 특례 신청 과세액:</span>
+                    <strong style={{ color: "#ffffff" }}>{formatWon(taxResult.single)}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
+                    <span style={{ fontWeight: 800 }}>최종 절감 가능 세액:</span>
+                    <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(taxResult.saving)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 2. 대출 계산기 UI */}
+        {type === "loan" && (
+          <div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: 19, fontWeight: 900, color: "#ffffff" }}>
+              💵 무료 대출 이자 상환 계산기
+            </h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: 12.5, color: "rgba(255,255,255,0.5)" }}>
+              이율과 납입 기간에 따른 매월 상환 이자 부담을 모의 연산합니다.
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>대출 금액 (만원)</label>
+                <input 
+                  type="number" 
+                  value={loanAmount} 
+                  onChange={(e) => setLoanAmount(e.target.value)} 
+                  placeholder="예: 10000"
+                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 15, fontWeight: 700 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>대출 기간 (개월)</label>
+                  <input 
+                    type="number" 
+                    value={loanTerm} 
+                    onChange={(e) => setLoanTerm(e.target.value)} 
+                    placeholder="예: 24"
+                    style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 14, fontWeight: 700 }}
+                  />
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>연 이자율 (%)</label>
+                  <input 
+                    type="number" 
+                    value={loanRate} 
+                    onChange={(e) => setLoanRate(e.target.value)} 
+                    placeholder="예: 4.5"
+                    step="0.1"
+                    style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 14, fontWeight: 700 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>상환 방식 선택</label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {["원리금균등", "원금균등"].map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setLoanType(mode)}
+                      style={{
+                        flex: 1,
+                        height: 38,
+                        borderRadius: 8,
+                        border: "1.5px solid " + (loanType === mode ? "#ff2a5f" : "rgba(255,255,255,0.1)"),
+                        background: loanType === mode ? "rgba(255,42,95,0.1)" : "none",
+                        color: "white",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                onClick={handleLoan}
+                style={{ height: 46, borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ff2a5f 0%, #d01c4c 100%)", color: "white", fontWeight: 900, cursor: "pointer", marginTop: 10 }}
+              >
+                매월 이자 상환액 산정하기
+              </button>
+
+              {loanResult && (
+                <div style={{ marginTop: 14, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                    <span>첫 달 원리금 상환액:</span>
+                    <strong style={{ color: "#ffffff" }}>{formatWon(loanResult.monthly)}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                    <span>대출 총 납부 이자:</span>
+                    <strong style={{ color: "#ffffff" }}>{formatWon(loanResult.interest)}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
+                    <span style={{ fontWeight: 800 }}>총 상환 합계액:</span>
+                    <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(loanResult.total)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. 복비 계산기 UI */}
+        {type === "brokerage" && (
+          <div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: 19, fontWeight: 900, color: "#ffffff" }}>
+              🏠 부동산 중개 수수료 계산기
+            </h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: 12.5, color: "rgba(255,255,255,0.5)" }}>
+              주택 및 토지거래 한도 요율별 법정 복비 상한선을 연산합니다.
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>부동산 구분</label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {["주택", "오피스텔/기타"].map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setBrokerType(mode)}
+                      style={{
+                        flex: 1,
+                        height: 38,
+                        borderRadius: 8,
+                        border: "1.5px solid " + (brokerType === mode ? "#ff2a5f" : "rgba(255,255,255,0.1)"),
+                        background: brokerType === mode ? "rgba(255,42,95,0.1)" : "none",
+                        color: "white",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>거래 가액 (억원)</label>
+                <input 
+                  type="number" 
+                  value={brokerPrice} 
+                  onChange={(e) => setBrokerPrice(e.target.value)} 
+                  placeholder="예: 6.5"
+                  step="0.1"
+                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 15, fontWeight: 700 }}
+                />
+              </div>
+
+              <button 
+                onClick={handleBrokerage}
+                style={{ height: 46, borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ff2a5f 0%, #d01c4c 100%)", color: "white", fontWeight: 900, cursor: "pointer", marginTop: 10 }}
+              >
+                법정 한도 복비 연산하기
+              </button>
+
+              {brokerResult && (
+                <div style={{ marginTop: 14, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                    <span>적용 상한 요율:</span>
+                    <strong style={{ color: "#ffffff" }}>{brokerResult.rate} %</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
+                    <span style={{ fontWeight: 800 }}>최대 중개 수수료 한도:</span>
+                    <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(brokerResult.fee)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
