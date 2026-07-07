@@ -270,8 +270,11 @@ export default function WorkDetailPage() {
       return `<a href='${url}' target='_blank' rel='noopener noreferrer' style='color: #2563eb; text-decoration: underline; font-weight: 700;'>${text}</a>`;
     });
 
-    // 5. 글머리 기호 변환 (* 내용 또는 - 내용)
-    html = html.replace(/^[\*\-] (.*?)$/gm, "<li style='margin-left: 20px; margin-bottom: 6px; list-style-type: disc;'>$1</li>");
+    // 5. 글머리 기호 변환
+    // 순서 없는 목록 (* 내용 또는 - 내용)
+    html = html.replace(/^[\*\-] (.*?)$/gm, "<li style='margin-left: 20px; margin-bottom: 8px; list-style-type: disc;'>$1</li>");
+    // 순서 있는 목록 (1. 내용) - 목차 줄바꿈 가독성을 비약적으로 향상
+    html = html.replace(/^(\d+)\. (.*?)$/gm, "<div style='margin-left: 8px; margin-bottom: 10px; font-size: 15px; line-height: 1.6;'>$1. $2</div>");
 
     // 6. 마크다운 테이블 구문 처리 (| 구분 | 내용 |)
     const lines = html.split("\n");
