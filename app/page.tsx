@@ -1122,90 +1122,119 @@ export default function Home() {
               <style>{`
                 .calculator-grid {
                   display: grid;
-                  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
                   gap: 16px;
                   margin-bottom: 30px;
                 }
-                .calculator-card {
+                .calc-poster-card {
                   background: #141217;
-                  border: 1.5px solid rgba(255, 42, 95, 0.15);
-                  border-radius: 18px;
-                  padding: 20px;
-                  text-align: left;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  border-radius: 16px;
+                  overflow: hidden;
                   cursor: pointer;
-                  transition: all 0.2s;
-                  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                  transition: all 0.25s ease;
                   display: flex;
                   flex-direction: column;
-                  justify-content: space-between;
-                  height: 160px;
+                  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
                 }
-                .calculator-card:hover {
+                .calc-poster-card:hover {
+                  transform: translateY(-4px);
                   border-color: #ff2a5f;
-                  transform: translateY(-2px);
-                  box-shadow: 0 8px 25px rgba(255, 42, 95, 0.2);
+                  box-shadow: 0 12px 30px rgba(255, 42, 95, 0.25);
                 }
-                .calc-badge {
-                  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-                  color: #0b0f19;
-                  font-weight: 900;
-                  font-size: 10px;
-                  padding: 1px 5px;
-                  border-radius: 4px;
-                  align-self: flex-start;
-                  margin-bottom: 8px;
+                .calc-thumb-wrap {
+                  position: relative;
+                  width: 100%;
+                  aspect-ratio: 2 / 3;
+                  background: #000;
+                  overflow: hidden;
                 }
-                .calc-card-title {
-                  font-size: 17px;
-                  font-weight: 900;
-                  color: #ffffff;
-                  margin-bottom: 8px;
-                  line-height: 1.3;
+                .calc-thumb-img {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  transition: transform 0.3s ease;
                 }
-                .calc-card-desc {
-                  font-size: 12.5px;
-                  color: rgba(255,255,255,0.5);
-                  line-height: 1.4;
-                  margin-bottom: 12px;
+                .calc-poster-card:hover .calc-thumb-img {
+                  transform: scale(1.04);
                 }
-                .calc-card-btn {
-                  font-size: 13px;
+                .calc-card-info {
+                  padding: 12px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                }
+                .calc-title-text {
+                  font-size: 14.5px;
                   font-weight: 800;
-                  color: #ff2a5f;
-                  text-align: right;
-                  margin-top: auto;
+                  color: #ffffff;
+                  line-height: 1.35;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 2;
+                  -webkit-box-orient: vertical;
+                }
+                .calc-desc-text {
+                  font-size: 12px;
+                  color: rgba(255, 255, 255, 0.45);
+                  line-height: 1.3;
                 }
               `}</style>
               
               <div className="calculator-grid">
                 {/* 1. 종부세 계산기 */}
-                <div className="calculator-card" onClick={() => setSelectedCalculator("jongbuse")}>
-                  <span className="calc-badge">세무</span>
-                  <div>
-                    <div className="calc-card-title">종부세 부부 공동명의 계산기</div>
-                    <div className="calc-card-desc">공동명의와 단독 특례 혜택을 1초 만에 비교해 드립니다.</div>
+                <div className="calc-poster-card" onClick={() => setSelectedCalculator("jongbuse")}>
+                  <div className="calc-thumb-wrap">
+                    <img 
+                      src="https://r2.murimbook.com/thumbnails/jongbuse_calc_cover_1783427256565.jpg" 
+                      alt="종부세 계산기" 
+                      className="calc-thumb-img"
+                    />
+                    <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", color: "#000", fontWeight: 900, fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
+                      세무
+                    </div>
                   </div>
-                  <div className="calc-card-btn">실행하기 →</div>
+                  <div className="calc-card-info">
+                    <div className="calc-title-text">종부세 공동명의 절세 계산기</div>
+                    <div className="calc-desc-text">단독 특례 비교 1초 완성</div>
+                  </div>
                 </div>
 
                 {/* 2. 대출 이자 계산기 */}
-                <div className="calculator-card" onClick={() => setSelectedCalculator("loan")}>
-                  <span className="calc-badge">대출</span>
-                  <div>
-                    <div className="calc-card-title">무료 대출 이자 상환 계산기</div>
-                    <div className="calc-card-desc">원리금균등, 원금균등 방식별 이자와 납부액 모의 연산.</div>
+                <div className="calc-poster-card" onClick={() => setSelectedCalculator("loan")}>
+                  <div className="calc-thumb-wrap">
+                    <img 
+                      src="https://r2.murimbook.com/thumbnails/loan_calc_cover_1783427271223.jpg" 
+                      alt="대출 계산기" 
+                      className="calc-thumb-img"
+                    />
+                    <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", color: "#000", fontWeight: 900, fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
+                      대출
+                    </div>
                   </div>
-                  <div className="calc-card-btn">실행하기 →</div>
+                  <div className="calc-card-info">
+                    <div className="calc-title-text">무료 대출 이자 상환 계산기</div>
+                    <div className="calc-desc-text">상환 회차별 이자 스케줄러</div>
+                  </div>
                 </div>
 
                 {/* 3. 복비 계산기 */}
-                <div className="calculator-card" onClick={() => setSelectedCalculator("brokerage")}>
-                  <span className="calc-badge">부동산</span>
-                  <div>
-                    <div className="calc-card-title">부동산 중개 수수료 계산기</div>
-                    <div className="calc-card-desc">주택, 오피스텔 등 한도 요율별 복비 상한선 연산.</div>
+                <div className="calc-poster-card" onClick={() => setSelectedCalculator("brokerage")}>
+                  <div className="calc-thumb-wrap">
+                    <img 
+                      src="https://r2.murimbook.com/thumbnails/broker_calc_cover_1783427287270.jpg" 
+                      alt="부동산 복비 계산기" 
+                      className="calc-thumb-img"
+                    />
+                    <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", color: "#000", fontWeight: 900, fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
+                      부동산
+                    </div>
                   </div>
-                  <div className="calc-card-btn">실행하기 →</div>
+                  <div className="calc-card-info">
+                    <div className="calc-title-text">부동산 중개 수수료 계산기</div>
+                    <div className="calc-desc-text">법정 한도율 요율 즉시 연산</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2126,9 +2155,13 @@ function CalculatorModal({ type, onClose }: CalcProps) {
 
     // 단독 명의 계산 (12억 공제 + 최대 80% 공제)
     let singleTax = 0;
+    let base = 0;
+    let rawTax = 0;
+    let totalRate = 0;
+    
     if (price > 1200000000) {
-      const base = price - 1200000000;
-      let rawTax = calcBaseJongbuse(base);
+      base = price - 1200000000;
+      rawTax = calcBaseJongbuse(base);
 
       let ageRate = 0;
       const ageVal = parseInt(ownerAge);
@@ -2142,7 +2175,7 @@ function CalculatorModal({ type, onClose }: CalcProps) {
       else if (holdVal >= 10) holdRate = 0.4;
       else if (holdVal >= 5) holdRate = 0.2;
 
-      let totalRate = ageRate + holdRate;
+      totalRate = ageRate + holdRate;
       if (totalRate > 0.8) totalRate = 0.8;
 
       singleTax = rawTax * (1 - totalRate);
@@ -2151,6 +2184,9 @@ function CalculatorModal({ type, onClose }: CalcProps) {
     setTaxResult({
       joint: jointTax,
       single: singleTax,
+      base: base,
+      rawTax: rawTax,
+      rate: totalRate * 100,
       saving: Math.max(0, jointTax - singleTax)
     });
   };
@@ -2164,10 +2200,11 @@ function CalculatorModal({ type, onClose }: CalcProps) {
     return 29100000 + (base - 2500000000) * 0.02;
   };
 
-  // --- 대출 계산기 로직 ---
+  // --- 대출 계산기 로직 (회차별 리포트 스케줄러 구현) ---
   const handleLoan = () => {
     const principal = parseFloat(loanAmount) * 10000; // 만원 단위 변환
-    const rateMonthly = parseFloat(loanRate) / 12 / 100;
+    const annualRate = parseFloat(loanRate);
+    const rateMonthly = annualRate / 12 / 100;
     const months = parseInt(loanTerm);
 
     if (!principal || !rateMonthly || !months) {
@@ -2175,23 +2212,51 @@ function CalculatorModal({ type, onClose }: CalcProps) {
       return;
     }
 
-    let monthlyRepayment = 0;
+    let schedule = [];
     let totalInterest = 0;
+    let remainingPrincipal = principal;
 
     if (loanType === "원리금균등") {
-      monthlyRepayment = (principal * rateMonthly * Math.pow(1 + rateMonthly, months)) / (Math.pow(1 + rateMonthly, months) - 1);
-      totalInterest = (monthlyRepayment * months) - principal;
+      const monthlyRepayment = (principal * rateMonthly * Math.pow(1 + rateMonthly, months)) / (Math.pow(1 + rateMonthly, months) - 1);
+      
+      for (let i = 1; i <= months; i++) {
+        const interest = remainingPrincipal * rateMonthly;
+        const principalPaid = monthlyRepayment - interest;
+        remainingPrincipal -= principalPaid;
+        totalInterest += interest;
+
+        schedule.push({
+          seq: i,
+          repayment: monthlyRepayment,
+          principal: principalPaid,
+          interest: interest,
+          balance: Math.max(0, remainingPrincipal)
+        });
+      }
     } else {
-      // 원금균등 방식 간이 요약 (첫 달 원리금 기준)
+      // 원금균등 방식
       const monthlyPrincipal = principal / months;
-      monthlyRepayment = monthlyPrincipal + (principal * rateMonthly);
-      totalInterest = ((principal * rateMonthly) + (monthlyPrincipal * rateMonthly)) / 2 * months; 
+      
+      for (let i = 1; i <= months; i++) {
+        const interest = remainingPrincipal * rateMonthly;
+        remainingPrincipal -= monthlyPrincipal;
+        totalInterest += interest;
+
+        schedule.push({
+          seq: i,
+          repayment: monthlyPrincipal + interest,
+          principal: monthlyPrincipal,
+          interest: interest,
+          balance: Math.max(0, remainingPrincipal)
+        });
+      }
     }
 
     setLoanResult({
-      monthly: monthlyRepayment,
+      monthly: schedule[0].repayment,
       interest: totalInterest,
-      total: principal + totalInterest
+      total: principal + totalInterest,
+      schedule: schedule
     });
   };
 
@@ -2214,18 +2279,21 @@ function CalculatorModal({ type, onClose }: CalcProps) {
       else if (price < 1500000000) { rate = 0.006; }
       else { rate = 0.007; }
     } else {
-      // 오피스텔/기타 부동산 상한율
       rate = 0.009;
     }
 
     let fee = price * rate;
+    let overLimit = false;
     if (limit > 0 && fee > limit) {
       fee = limit;
+      overLimit = true;
     }
 
     setBrokerResult({
       fee,
-      rate: rate * 100
+      rate: rate * 100,
+      limit: limit,
+      overLimit
     });
   };
 
@@ -2252,13 +2320,18 @@ function CalculatorModal({ type, onClose }: CalcProps) {
       <div
         style={{
           width: "100%",
-          maxWidth: 480,
+          maxWidth: 620,
+          maxHeight: "90dvh",
           background: "#1c1c24",
           border: "1.5px solid rgba(255, 42, 95, 0.25)",
           borderRadius: 24,
           padding: 24,
           boxShadow: "0 20px 50px rgba(0, 0, 0, 0.6)",
-          position: "relative"
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          overflowY: "auto"
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -2273,7 +2346,8 @@ function CalculatorModal({ type, onClose }: CalcProps) {
             color: "rgba(255,255,255,0.4)",
             fontSize: "20px",
             cursor: "pointer",
-            outline: "none"
+            outline: "none",
+            zIndex: 100
           }}
         >
           ✕
@@ -2301,32 +2375,34 @@ function CalculatorModal({ type, onClose }: CalcProps) {
                 />
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>납세자 연령 (만 나이)</label>
-                <select 
-                  value={ownerAge} 
-                  onChange={(e) => setOwnerAge(e.target.value)}
-                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 14, fontWeight: 700 }}
-                >
-                  <option value="59">만 60세 미만 (혜택 없음)</option>
-                  <option value="60">만 60세 이상 ~ 64세 이하 (20% 공제)</option>
-                  <option value="65">만 65세 이상 ~ 69세 이하 (30% 공제)</option>
-                  <option value="70">만 70세 이상 (40% 공제)</option>
-                </select>
-              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>납세자 연령 (만 나이)</label>
+                  <select 
+                    value={ownerAge} 
+                    onChange={(e) => setOwnerAge(e.target.value)}
+                    style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 13, fontWeight: 700 }}
+                  >
+                    <option value="59">만 60세 미만</option>
+                    <option value="60">만 60세~64세 (20%)</option>
+                    <option value="65">만 65세~69세 (30%)</option>
+                    <option value="70">만 70세 이상 (40%)</option>
+                  </select>
+                </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>주택 보유 기간</label>
-                <select 
-                  value={holdYears} 
-                  onChange={(e) => setHoldYears(e.target.value)}
-                  style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 14, fontWeight: 700 }}
-                >
-                  <option value="4">5년 미만 (혜택 없음)</option>
-                  <option value="5">5년 이상 ~ 10년 미만 (20% 공제)</option>
-                  <option value="10">10년 이상 ~ 15년 미만 (40% 공제)</option>
-                  <option value="15">15년 이상 (50% 공제)</option>
-                </select>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>주택 보유 기간</label>
+                  <select 
+                    value={holdYears} 
+                    onChange={(e) => setHoldYears(e.target.value)}
+                    style={{ height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "white", padding: "0 12px", outline: "none", fontSize: 13, fontWeight: 700 }}
+                  >
+                    <option value="4">5년 미만</option>
+                    <option value="5">5년~10년 미만 (20%)</option>
+                    <option value="10">10년~15년 미만 (40%)</option>
+                    <option value="15">15년 이상 (50%)</option>
+                  </select>
+                </div>
               </div>
 
               <button 
@@ -2346,6 +2422,10 @@ function CalculatorModal({ type, onClose }: CalcProps) {
                     <span>단독 특례 신청 과세액:</span>
                     <strong style={{ color: "#ffffff" }}>{formatWon(taxResult.single)}</strong>
                   </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                    <span>단독 특례 공제율:</span>
+                    <strong>{taxResult.rate} % (최대 80% 한도)</strong>
+                  </div>
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
                     <span style={{ fontWeight: 800 }}>최종 절감 가능 세액:</span>
                     <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(taxResult.saving)}</strong>
@@ -2353,10 +2433,16 @@ function CalculatorModal({ type, onClose }: CalcProps) {
                 </div>
               )}
             </div>
+
+            {/* SEO 가이드 텍스트 내장 */}
+            <div style={{ marginTop: 24, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 16, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+              <h4 style={{ color: "#ffd43b", margin: "0 0 8px 0", fontSize: 14, fontWeight: 900 }}>💡 종합부동산세 부부 공동명의 특례 절세 비법 가이드</h4>
+              부부 공동명의 상태에서 아파트 1채를 지분 50:50으로 소유하면 인당 12억 원씩 총 24억 원의 기본 공제 혜택을 획득합니다. 그러나 주택 보유 기간이 5년 이상을 지나고 만 60세가 넘는 경우, 기본 공제를 12억 원으로 줄이는 대신 고령자 세액공제(최대 40%)와 장기보유 세액공제(최대 50%)를 결합하여 납부 세액을 최대 80% 깎아내는 '1세대 1주택자 단독 명의 과세 특례'가 훨씬 유리할 수 있습니다. 매년 9월 16일부터 30일 사이에 국세청 홈택스나 관할 세무서에 특례 신청서를 반드시 접수하셔야 이 혜택을 적용받을 수 있습니다.
+            </div>
           </div>
         )}
 
-        {/* 2. 대출 계산기 UI */}
+        {/* 2. 대출 계산기 UI (회차별 스케줄러 리포트 표 포함) */}
         {type === "loan" && (
           <div>
             <h3 style={{ margin: "0 0 8px 0", fontSize: 19, fontWeight: 900, color: "#ffffff" }}>
@@ -2435,21 +2521,58 @@ function CalculatorModal({ type, onClose }: CalcProps) {
               </button>
 
               {loanResult && (
-                <div style={{ marginTop: 14, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
-                    <span>첫 달 원리금 상환액:</span>
-                    <strong style={{ color: "#ffffff" }}>{formatWon(loanResult.monthly)}</strong>
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                      <span>첫 달 원리금 상환액:</span>
+                      <strong style={{ color: "#ffffff" }}>{formatWon(loanResult.monthly)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
+                      <span>대출 총 납부 이자:</span>
+                      <strong style={{ color: "#ffffff" }}>{formatWon(loanResult.interest)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
+                      <span style={{ fontWeight: 800 }}>총 상환 합계액:</span>
+                      <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(loanResult.total)}</strong>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13.5 }}>
-                    <span>대출 총 납부 이자:</span>
-                    <strong style={{ color: "#ffffff" }}>{formatWon(loanResult.interest)}</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
-                    <span style={{ fontWeight: 800 }}>총 상환 합계액:</span>
-                    <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(loanResult.total)}</strong>
+
+                  {/* 📊 회차별 디테일 상환 보고서 스케줄 표 */}
+                  <h4 style={{ margin: "10px 0 4px 0", fontSize: 14, fontWeight: 900, color: "#ffd43b" }}>
+                    📊 회차별 상세 상환 스케줄러 리포트 (상세 내역)
+                  </h4>
+                  <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                          <th style={{ padding: 8 }}>회차</th>
+                          <th style={{ padding: 8 }}>납부금액</th>
+                          <th style={{ padding: 8 }}>납부원금</th>
+                          <th style={{ padding: 8 }}>납부이자</th>
+                          <th style={{ padding: 8 }}>대출잔액</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loanResult.schedule.map((row: any) => (
+                          <tr key={row.seq} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)" }}>
+                            <td style={{ padding: 8, fontWeight: 700 }}>{row.seq}회</td>
+                            <td style={{ padding: 8, color: "#ffd43b" }}>{formatWon(row.repayment)}</td>
+                            <td style={{ padding: 8 }}>{formatWon(row.principal)}</td>
+                            <td style={{ padding: 8 }}>{formatWon(row.interest)}</td>
+                            <td style={{ padding: 8, color: "rgba(255,255,255,0.5)" }}>{formatWon(row.balance)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* SEO 가이드 텍스트 내장 */}
+            <div style={{ marginTop: 24, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 16, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+              <h4 style={{ color: "#ffd43b", margin: "0 0 8px 0", fontSize: 14, fontWeight: 900 }}>💡 대출 이자 계산 시 상환 방식(원리금균등 vs 원금균등) 필수 팁</h4>
+              원리금균등분할상환 방식은 만기까지 매달 납부해야 할 원금과 이자의 합계액이 완벽히 동일하여 가계 예산이나 점포의 고정 지출 자금 계획을 짜기에 매우 용이합니다. 반면, 원금균등분할상환 방식은 원금을 매달 균등하게 쪼개 갚으므로 회차가 거듭될수록 남아 있는 대출 잔액에 이자가 적게 붙어 최종 총 이자 납부액 측면에서는 원리금 방식보다 더 저렴하다는 절대적인 강점이 있습니다. 본 계산기의 회차별 리포트 표를 대조하여 지갑 사정에 최적화된 상환 전략을 구축해 보십시오.
             </div>
           </div>
         )}
@@ -2514,6 +2637,12 @@ function CalculatorModal({ type, onClose }: CalcProps) {
                     <span>적용 상한 요율:</span>
                     <strong style={{ color: "#ffffff" }}>{brokerResult.rate} %</strong>
                   </div>
+                  {brokerResult.overLimit && (
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "#ffd43b" }}>
+                      <span>한도액 제한 적용됨:</span>
+                      <strong>최대 {formatWon(brokerResult.limit)} 한도</strong>
+                    </div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8, fontSize: 14.5 }}>
                     <span style={{ fontWeight: 800 }}>최대 중개 수수료 한도:</span>
                     <strong style={{ color: "#ff2a5f", fontWeight: 900 }}>{formatWon(brokerResult.fee)}</strong>
