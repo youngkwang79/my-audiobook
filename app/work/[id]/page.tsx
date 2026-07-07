@@ -70,6 +70,21 @@ export default function WorkDetailPage() {
           console.error("Error fetching work:", workErr);
         } else if (workData) {
           const isOldNew = workData.badge === "신작" && workData.created_at && (new Date().getTime() - new Date(workData.created_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+          
+          // 💡 실시간 방문 카운터 증가: play_count 수치를 DB 상에서 즉시 1 증가시킴 (비관리자 진입 시 작동)
+          const currentPlayCount = Number(workData.play_count ?? 0);
+          const nextPlayCount = currentPlayCount + 1;
+          
+          if (!isAdmin) {
+            supabase
+              .from("works")
+              .update({ play_count: nextPlayCount })
+              .eq("id", workId)
+              .then(({ error }) => {
+                if (error) console.error("Failed to increment play_count:", error);
+              });
+          }
+
           setWork({
             id: workData.id,
             title: workData.title,
@@ -81,7 +96,7 @@ export default function WorkDetailPage() {
             status: workData.status,
             subtitle: workData.subtitle,
             badge: isOldNew ? "" : workData.badge,
-            views: String(workData.play_count ?? workData.views ?? "0"),
+            views: String(nextPlayCount), // 사용자에게는 실시간 반영된 수치로 노출
             exclusive: workData.exclusive,
             featured: workData.featured,
             genre: workData.genre,
