@@ -746,6 +746,9 @@ export default function WorkDetailPage() {
 
 // 💡 [실물 계산기 프로그램 내장 컴포넌트]
 function CalculatorEmbed({ id }: { id: string }) {
+  // 롱테일 예시 3개 탭 제어용 React State 추가
+  const [activeExampleTab, setActiveExampleTab] = useState<string>("ex1");
+
   const [housePrice, setHousePrice] = useState("");
   const [ownerAge, setOwnerAge] = useState("59");
   const [holdYears, setHoldYears] = useState("4");
@@ -969,6 +972,70 @@ function CalculatorEmbed({ id }: { id: string }) {
               </div>
             </div>
           )}
+
+          {/* 💡 [3대 롱테일 예시 선택 탭 스위처 UI 임베드 복원] */}
+          <div style={{ marginTop: 20, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 900, color: "#ffd43b", textAlign: "center" }}>
+              💡 원하는 세무/금융 롱테일 예시 주제 가이드 선택
+            </h3>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              {[
+                { key: "ex1", label: "예시 1) 공시가 15억 유불리 비교" },
+                { key: "ex2", label: "예시 2) 9월 홈택스 신청 절차" },
+                { key: "ex3", label: "예시 3) 고령 장기보유 중복공제" }
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveExampleTab(tab.key)}
+                  style={{
+                    flex: 1,
+                    minWidth: 140,
+                    height: 38,
+                    borderRadius: 8,
+                    border: "1.5px solid " + (activeExampleTab === tab.key ? "#ff2a5f" : "rgba(255,255,255,0.1)"),
+                    background: activeExampleTab === tab.key ? "rgba(255,42,95,0.1)" : "none",
+                    color: "white",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: "12px"
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 탭 1 본문 내용 */}
+            {activeExampleTab === "ex1" && (
+              <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.8)", lineHeight: 1.65, background: "rgba(0,0,0,0.15)", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.04)" }}>
+                <strong style={{ color: "#ffffff", fontSize: 14.5 }}>🏠 아파트 공시가격 15억 부부 공동명의 단독명의 종부세 모의 연산 비교, 나에게 유리한 선택은?</strong>
+                <p style={{ marginTop: 8, marginBottom: 0 }}>
+                  서울 및 수도권 기준인 공시가격 15억 원 주택 한 채를 소유한 부부라면, 지분을 50:50으로 나누어 가졌을 때 인당 기본 공제 12억 원(합산 24억 원)을 적용받아 종합부동산세 납부 금액은 0원이 됩니다. 반면 단독명의 특례를 선택하면 기본 공제금액이 12억 원으로 제한되므로 공제액을 초과한 3억 원에 대해 종부세가 부과됩니다. 그러나 단독 소유주는 최대 80%에 달하는 장기보유 및 고령자 공제를 중복해서 공제받을 수 있으므로, 소유주의 나이가 만 60세를 넘어가고 거주 보유 기간이 5년 이상 길어지는 순간부터 단독 특례가 훨씬 유익할 수 있으므로 면밀한 검토가 필요합니다.
+                </p>
+              </div>
+            )}
+
+            {/* 탭 2 본문 내용 */}
+            {activeExampleTab === "ex2" && (
+              <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.8)", lineHeight: 1.65, background: "rgba(0,0,0,0.15)", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.04)" }}>
+                <strong style={{ color: "#ffffff", fontSize: 14.5 }}>📝 1주택 공동명의 종부세 단독명의 특례 신청 9월 세무서 접수 방법 및 홈택스 절차 완벽 가이드</strong>
+                <p style={{ marginTop: 8, marginBottom: 0 }}>
+                  매년 9월 16일부터 9월 30일까지 2주간 국세청 홈택스나 관할 세무서를 통해 '공동명의 1주택자 세율 적용 특례 신청' 접수를 진행해야 합니다. 홈택스에 로그인한 후 공동인증서 승인을 거쳐 '공동명의 1주택자 특례 신청' 란에서 주택 공시가격과 지분율을 입력하고, 부부 중 1명을 납세의무자로 설정해 신고를 마칩니다. 접수를 놓치게 되면 사후 행정 절차가 까다로우므로 해당 기한 내에 가계 절세를 검토해 완료해야 합니다.
+                </p>
+              </div>
+            )}
+
+            {/* 탭 3 본문 내용 */}
+            {activeExampleTab === "ex3" && (
+              <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.8)", lineHeight: 1.65, background: "rgba(0,0,0,0.15)", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.04)" }}>
+                <strong style={{ color: "#ffffff", fontSize: 14.5 }}>⚖️ 부부 공동명의 종부세 고령자 공제 중복 적용 여부와 세액 절감 계산법 총정리</strong>
+                <p style={{ marginTop: 8, marginBottom: 0 }}>
+                  1세대 1주택 단독명의 특례는 소유주의 만 연령에 따른 고령자 세액 공제(만 60세 이상 20%, 만 65세 이상 30%, 만 70세 이상 40%)와 해당 주택의 장기 보유 연수에 따른 세액 공제(5년 이상 20%, 10년 이상 40%, 15년 이상 50%)를 병합 제공합니다. 두 세액 공제는 중복하여 합산 적용할 수 있으며, 법률상의 통합 공제 한도는 최대 80%로 규정되어 있습니다. 최대 공제를 받는 납세자는 원 고지 세액의 단 20%만 부담하므로 자산을 지키는 최선의 방패가 됩니다.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
