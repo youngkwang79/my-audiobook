@@ -746,6 +746,9 @@ export default function WorkDetailPage() {
 
 // 💡 [실물 계산기 프로그램 내장 컴포넌트]
 function CalculatorEmbed({ id }: { id: string }) {
+  // 롱테일 예시 3개 탭 제어용 React State 추가
+  const [activeExampleTab, setActiveExampleTab] = useState<string>("ex1");
+
   const [housePrice, setHousePrice] = useState("");
   const [ownerAge, setOwnerAge] = useState("59");
   const [holdYears, setHoldYears] = useState("4");
