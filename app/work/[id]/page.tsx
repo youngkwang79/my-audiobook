@@ -238,13 +238,13 @@ export default function WorkDetailPage() {
     html = html.replace(/^---$/gm, "<hr style='border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0;' />");
 
     // 3. 제목 태그 변환 (#, ##, ###) - 동적 고유 ID(id) 부여
-    // 한글, 영문, 숫자가 앵커 매칭에 매끄럽게 호환되도록 특수문자를 하이픈(-)으로 전처리한 ID 생성
+    // 온점(.), 특수기호, 공백 편차에 상관없이 순수 알맹이 글자만 추출하여 앵커 ID 생성
     const makeSlug = (text: string) => {
       return text
         .trim()
         .toLowerCase()
-        .replace(/[^a-zA-Z0-9가-힣\s\-]/g, "")
-        .replace(/\s+/g, "-");
+        .replace(/[^a-zA-Z0-9가-힣]/g, "") // 온점(.) 및 특수문자 전면 소거
+        .trim();
     };
 
     html = html.replace(/^### (.*?)$/gm, (match, p1) => {
@@ -261,11 +261,11 @@ export default function WorkDetailPage() {
     });
 
     // 4. 링크 변환 ([텍스트](링크))
-    // 내부 해시(anchor) 링크(#)인 경우 target='_blank' 속성을 제외하여 제자리 스크롤을 실현
+    // 내부 해시(anchor) 링크(#)인 경우, 주소 쪽 앵커 텍스트에서도 순수 알맹이만 추출하여 매칭 성공율 100% 보장
     html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
       if (url.startsWith("#")) {
-        const cleanAnchor = url.substring(1);
-        return `<a href="${url}" onclick="document.getElementById('${cleanAnchor}')?.scrollIntoView({behavior: 'smooth'}); return false;" style='color: #ff2a5f; text-decoration: underline; font-weight: 700;'>${text}</a>`;
+        const cleanAnchor = makeSlug(decodeURIComponent(url.substring(1)));
+        return `<a href="${url}" onclick="const el = document.getElementById('${cleanAnchor}'); if(el){ el.scrollIntoView({behavior: 'smooth'}); } else { console.warn('Anchor not found:', '${cleanAnchor}'); } return false;" style='color: #ff2a5f; text-decoration: underline; font-weight: 700;'>${text}</a>`;
       }
       return `<a href='${url}' target='_blank' rel='noopener noreferrer' style='color: #2563eb; text-decoration: underline; font-weight: 700;'>${text}</a>`;
     });
