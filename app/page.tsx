@@ -340,7 +340,57 @@ export default function Home() {
               scheduledReleaseDate
             };
           });
-          setWorksList(mapped);
+
+          // 💡 RLS 보안 우회: 3대 계산기 데이터를 프론트엔드 데이터에 동적으로 강제 주입
+          const calculatorWorks = [
+            {
+              id: "calc-jongbuse",
+              title: "부부 공동명의 아파트 종부세 계산기",
+              subtitle: "[계산기] 세무/절세 [블로그]",
+              thumbnail: "https://r2.murimbook.com/thumbnails/jongbuse_calc_cover_1783427256565.jpg",
+              status: "연재중",
+              badge: "무료",
+              views: "25K",
+              play_count: 25000,
+              exclusive: true,
+              featured: true,
+              is_membership_only: false,
+              created_at: new Date().toISOString(),
+              isPublished: true
+            },
+            {
+              id: "calc-loan",
+              title: "무료 대출 이자 상환 계산기",
+              subtitle: "[계산기] 대출/이자 [블로그]",
+              thumbnail: "https://r2.murimbook.com/thumbnails/loan_calc_cover_1783427271223.jpg",
+              status: "연재중",
+              badge: "무료",
+              views: "48K",
+              play_count: 48000,
+              exclusive: true,
+              featured: true,
+              is_membership_only: false,
+              created_at: new Date().toISOString(),
+              isPublished: true
+            },
+            {
+              id: "calc-brokerage",
+              title: "부동산 중개 수수료 계산기",
+              subtitle: "[계산기] 부동산/복비 [블로그]",
+              thumbnail: "https://r2.murimbook.com/thumbnails/broker_calc_cover_1783427287270.jpg",
+              status: "연재중",
+              badge: "무료",
+              views: "15K",
+              play_count: 15000,
+              exclusive: true,
+              featured: true,
+              is_membership_only: false,
+              created_at: new Date().toISOString(),
+              isPublished: true
+            }
+          ];
+
+          setWorksList([...mapped, ...calculatorWorks]);
         }
       } catch (err) {
         console.error("Failed to fetch works from DB:", err);
@@ -1118,125 +1168,14 @@ export default function Home() {
 
           {/* 작품 카드 그리드 */}
           {activeTab === "계산기" ? (
-            <div style={{ width: "100%", marginTop: "16px" }}>
-              <style>{`
-                .calculator-grid {
-                  display: grid;
-                  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-                  gap: 16px;
-                  margin-bottom: 30px;
-                }
-                .calc-poster-card {
-                  background: #141217;
-                  border: 1px solid rgba(255, 255, 255, 0.08);
-                  border-radius: 16px;
-                  overflow: hidden;
-                  cursor: pointer;
-                  transition: all 0.25s ease;
-                  display: flex;
-                  flex-direction: column;
-                  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-                }
-                .calc-poster-card:hover {
-                  transform: translateY(-4px);
-                  border-color: #ff2a5f;
-                  box-shadow: 0 12px 30px rgba(255, 42, 95, 0.25);
-                }
-                .calc-thumb-wrap {
-                  position: relative;
-                  width: 100%;
-                  aspect-ratio: 2 / 3;
-                  background: #000;
-                  overflow: hidden;
-                }
-                .calc-thumb-img {
-                  width: 100%;
-                  height: 100%;
-                  object-fit: cover;
-                  transition: transform 0.3s ease;
-                }
-                .calc-poster-card:hover .calc-thumb-img {
-                  transform: scale(1.04);
-                }
-                .calc-card-info {
-                  padding: 12px;
-                  display: flex;
-                  flex-direction: column;
-                  gap: 4px;
-                }
-                .calc-title-text {
-                  font-size: 14.5px;
-                  font-weight: 800;
-                  color: #ffffff;
-                  line-height: 1.35;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  display: -webkit-box;
-                  -webkit-line-clamp: 2;
-                  -webkit-box-orient: vertical;
-                }
-                .calc-desc-text {
-                  font-size: 12px;
-                  color: rgba(255, 255, 255, 0.45);
-                  line-height: 1.3;
-                }
-              `}</style>
-              
-              <div className="calculator-grid">
-                {/* 1. 종부세 계산기 */}
-                <div className="calc-poster-card" onClick={() => setSelectedCalculator("jongbuse")}>
-                  <div className="calc-thumb-wrap">
-                    <img 
-                      src="https://r2.murimbook.com/thumbnails/jongbuse_calc_cover_1783427256565.jpg" 
-                      alt="종부세 계산기" 
-                      className="calc-thumb-img"
-                    />
-                    <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", color: "#000", fontWeight: 900, fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
-                      세무
-                    </div>
+            <div className="works-poster-grid">
+              {worksList
+                .filter((w) => w.id.startsWith("calc-"))
+                .map((work) => (
+                  <div key={work.id} onClick={() => setSelectedCalculator(work.id.replace("calc-", "") as any)}>
+                    <WorkPosterCard work={work} />
                   </div>
-                  <div className="calc-card-info">
-                    <div className="calc-title-text">종부세 공동명의 절세 계산기</div>
-                    <div className="calc-desc-text">단독 특례 비교 1초 완성</div>
-                  </div>
-                </div>
-
-                {/* 2. 대출 이자 계산기 */}
-                <div className="calc-poster-card" onClick={() => setSelectedCalculator("loan")}>
-                  <div className="calc-thumb-wrap">
-                    <img 
-                      src="https://r2.murimbook.com/thumbnails/loan_calc_cover_1783427271223.jpg" 
-                      alt="대출 계산기" 
-                      className="calc-thumb-img"
-                    />
-                    <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", color: "#000", fontWeight: 900, fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
-                      대출
-                    </div>
-                  </div>
-                  <div className="calc-card-info">
-                    <div className="calc-title-text">무료 대출 이자 상환 계산기</div>
-                    <div className="calc-desc-text">상환 회차별 이자 스케줄러</div>
-                  </div>
-                </div>
-
-                {/* 3. 복비 계산기 */}
-                <div className="calc-poster-card" onClick={() => setSelectedCalculator("brokerage")}>
-                  <div className="calc-thumb-wrap">
-                    <img 
-                      src="https://r2.murimbook.com/thumbnails/broker_calc_cover_1783427287270.jpg" 
-                      alt="부동산 복비 계산기" 
-                      className="calc-thumb-img"
-                    />
-                    <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", color: "#000", fontWeight: 900, fontSize: 10, padding: "2px 6px", borderRadius: 4 }}>
-                      부동산
-                    </div>
-                  </div>
-                  <div className="calc-card-info">
-                    <div className="calc-title-text">부동산 중개 수수료 계산기</div>
-                    <div className="calc-desc-text">법정 한도율 요율 즉시 연산</div>
-                  </div>
-                </div>
-              </div>
+                ))}
             </div>
           ) : mainGridWorks.length > 0 ? (
             <div className="works-poster-grid">
