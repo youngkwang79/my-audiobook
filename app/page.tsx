@@ -341,56 +341,7 @@ export default function Home() {
             };
           });
 
-          // 💡 RLS 보안 우회: 3대 계산기 데이터를 프론트엔드 데이터에 동적으로 강제 주입
-          const calculatorWorks = [
-            {
-              id: "calc-jongbuse",
-              title: "부부 공동명의 아파트 종부세 계산기",
-              subtitle: "[계산기] 세무/절세 [블로그]",
-              thumbnail: "https://r2.murimbook.com/thumbnails/jongbuse_calc_cover_1783427256565.jpg",
-              status: "연재중",
-              badge: "무료",
-              views: "25K",
-              play_count: 25000,
-              exclusive: true,
-              featured: true,
-              is_membership_only: false,
-              created_at: new Date().toISOString(),
-              isPublished: true
-            },
-            {
-              id: "calc-loan",
-              title: "무료 대출 이자 상환 계산기",
-              subtitle: "[계산기] 대출/이자 [블로그]",
-              thumbnail: "https://r2.murimbook.com/thumbnails/loan_calc_cover_1783427271223.jpg",
-              status: "연재중",
-              badge: "무료",
-              views: "48K",
-              play_count: 48000,
-              exclusive: true,
-              featured: true,
-              is_membership_only: false,
-              created_at: new Date().toISOString(),
-              isPublished: true
-            },
-            {
-              id: "calc-brokerage",
-              title: "부동산 중개 수수료 계산기",
-              subtitle: "[계산기] 부동산/복비 [블로그]",
-              thumbnail: "https://r2.murimbook.com/thumbnails/broker_calc_cover_1783427287270.jpg",
-              status: "연재중",
-              badge: "무료",
-              views: "15K",
-              play_count: 15000,
-              exclusive: true,
-              featured: true,
-              is_membership_only: false,
-              created_at: new Date().toISOString(),
-              isPublished: true
-            }
-          ];
-
-          setWorksList([...mapped, ...calculatorWorks]);
+          setWorksList(mapped);
         }
       } catch (err) {
         console.error("Failed to fetch works from DB:", err);
@@ -1172,7 +1123,7 @@ export default function Home() {
               {worksList
                 .filter((w) => w.id.startsWith("calc-"))
                 .map((work) => (
-                  <div key={work.id} onClick={() => setSelectedCalculator(work.id.replace("calc-", "") as any)}>
+                  <div key={work.id} onClick={() => router.push(`/work/${work.id}?tab=계산기`)}>
                     <WorkPosterCard work={work} />
                   </div>
                 ))}
