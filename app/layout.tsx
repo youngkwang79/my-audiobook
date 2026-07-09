@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "무림북 — 창작 무협 웹소설 오디오북 플랫폼",
-  description: "무림북에서 고품격 창작 무협 웹소설과 생생한 오디오 스토리를 자막과 함께 감상하세요. 생활 법률, 재테크 등 도움되는 유용한 지식 칼럼도 연재 중입니다.",
+  description: "무림북에서 고품격 무협 웹소설 오디오북과 생활 법률, 재테크 등 유용한 지식 칼럼을 감상하세요.",
   keywords: ["무림북", "murimbook", "무협웹소설", "무협소설", "창작무협소설", "오디오북", "도움되는글"],
   manifest: "/manifest.json",
   icons: {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "무림북 — 창작 무협 웹소설 오디오북 플랫폼",
-    description: "무림북에서 고품격 창작 무협 웹소설과 생생한 오디오 스토리를 자막과 함께 감상하세요. 생활 법률, 재테크 등 도움되는 유용한 지식 칼럼도 연재 중입니다.",
+    description: "무림북에서 고품격 무협 웹소설 오디오북과 생활 법률, 재테크 등 유용한 지식 칼럼을 감상하세요.",
     url: "https://www.murimbook.com",
     siteName: "무림북",
     locale: "ko_KR",
