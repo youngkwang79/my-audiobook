@@ -16,7 +16,7 @@ export async function GET() {
     // 1. Supabase에서 모든 작품(works) 리스트 가져오기
     const { data: works, error } = await supabase
       .from("works")
-      .select("id, title, description, status, created_at, updated_at")
+      .select("id, title, description, status, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {

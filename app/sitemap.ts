@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 1. Supabase에서 모든 작품(works) 리스트 가져오기
     const { data: works } = await supabase
       .from("works")
-      .select("id, updated_at, status, created_at")
+      .select("id, status, created_at")
       .order("created_at", { ascending: false });
 
     const workUrls = (works || [])
@@ -44,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
       .map((work) => ({
         url: `${baseUrl}/work/${encodeURIComponent(work.id)}`,
-        lastModified: work.updated_at ? new Date(work.updated_at) : new Date(),
+        lastModified: work.created_at ? new Date(work.created_at) : new Date(),
         changeFrequency: "weekly" as const,
         priority: 0.7,
       }));
