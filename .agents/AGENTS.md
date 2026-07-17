@@ -1,5 +1,10 @@
 # Project Custom Rules
 
+## 🛡️ 임의 삭제 및 파일 조작 원천 금지 규칙 (Strict Zero-Deletion Without Confirmation Rule)
+* **임의 삭제 금지**: 그 어떤 파일, 디렉토리, 기존의 작업물 혹은 임시 생성 데이터도 사용자의 명시적인 사전 확인 및 허락(사전 질문) 없이 임의로 삭제하거나 롤백(삭제)하는 것을 절대 금지한다.
+* **보존 우선 원칙**: 날짜 변경, 레이아웃 개편, 코드 수정 등의 작업 시 기존 파일은 보존한 채 신규 경로에 저장하는 것을 원칙으로 삼으며, 정리 목적의 삭제나 덮어쓰기 전에는 항상 구체적인 삭제 대상을 사용자에게 질문하여 허가받은 후 실행한다.
+
+
 ## ✍️ 블로그 통합 포스팅 생성 및 업로드 규칙 (Platform Multi-Poster Rule)
 
 유저가 새로운 원고 또는 키워드로 글 업로드 패키지를 요청할 경우, 반드시 다음 상세 기준을 만족하여 수행한다.
@@ -35,7 +40,58 @@
 5. **📂 티스토리 & 네이버 블로그용**:
    * **티스토리**: 마크다운 서식 전용 카카오/스마트홈 타깃 원고 (핵심 강조 및 자연스러운 링크 매칭 반영).
    * **네이버**: 줄글이 짧고 이모티콘과 공감이 풍부한 친근한 에세이형 모바일 가독성 원고 (핵심 강조를 한국어 굵게 반영하고 특수 기호 100% 제거, 템플릿화되지 않은 자연스러운 본문 일체형 링크 삽입).
+   * **세부 소제목 위계 기호화 및 H3~H6 중복 배제 룰**: 유사 문서(스팸) 리스크를 원천 방지하고 모바일 가독성을 극대화하기 위해, 각 메인 챕터(H2) 아래에 꼬리표처럼 붙어 기계적 텍스트 복사를 유발하는 H3, H4, H5, H6 하위 제목들과 그 아래 상투적 설명단락들은 전면 배제하고 삭제한다. 본문은 오직 H2 메인 소제목과 그 아래에 위치하는 고유 팩트 및 독창적인 2~3줄의 해설(여백 줄바꿈 적용)로만 군더더기 없이 콤팩트하게 구성한다.
+   * **썸네일 프롬프트 독립 HTML 생성 룰**: 각 채널의 날짜 폴더 하위에 **오늘 자 블로그 글 3개에 관한 모든 썸네일 생성 프롬프트와 Alt 텍스트를 하나의 파일로 모아둔 통합 'thumbnail_prompts.html' 파일**을 항상 필수로 생성한다. 이 통합 파일 내부에는 예쁜 일러스트 그림체 지향 프롬프트와 각각 1회 클릭만으로 개별 복사가 완료되는 자바스크립트 스니펫을 함께 빌드하여 발행 효율성을 극대화한다.
+   * **썸네일 내 후킹 문구 합성 룰**: 썸네일 이미지 내부에 합성 인쇄되는 텍스트는 단순 제목이나 메인 키워드를 기계적으로 박지 않는다. 각 분야별 특성(돈, 건강, 경제, 재미 등)에 맞추어 독자의 클릭을 본능적으로 유도하는 **'후킹 문구(Hooking Copy)'**를 제목과 연관 지어 창작한 후, **AI 이미지 생성용 영어 프롬프트 내부에 텍스트 렌더링 지시문 형태로 직접 삽입**하여 썸네일 생성 시 텍스트가 함께 디자인되어 그려져 나오도록 설정한다.
+     * **분야별 베이스 영어 프롬프트 템플릿 규격**:
+        * *FINANCE*: `An aesthetic and beautiful detailed digital art illustration of financial growth. A cute glowing piggy bank, stacking pastel gold coins, soft warm lighting, cozy flat vector style, vibrant pastel blue and pink gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *HEALTH*: `An aesthetic and beautiful detailed digital illustration representing wellness and health protection. A cute shield with a green leaf and heart icon, blooming flowers, soft natural lighting, cozy flat graphic, vibrant light green and yellow pastel gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *BENEFIT*: `An aesthetic and beautiful detailed vector illustration of government subsidy support. A cozy home icon with a glowing heart, hands holding a gold coin, warm and friendly digital art style, soft pastel orange and purple gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *TECH*: `An aesthetic and beautiful detailed digital illustration of cyber technology optimization. A cute glowing computer monitor showing speed boost, soft futuristic lighting, clean vector graphic style, vibrant cyan and soft pink pastel gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *ENTERTAINMENT*: `An aesthetic and beautiful detailed pop art illustration of media show business. A cute retro television set, glowing stage spotlight, colorful confetti, warm soft lighting, cozy flat graphic, vibrant purple and yellow pastel gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *무림북 전용 (북커버)*: `An aesthetic Wuxia fantasy novel book cover art style, oriental watercolor painting. The image prominently features the Korean text "[후킹문구]" written clearly in dynamic, readable calligraphy at the center. --ar 2:3`
+
+ 5.2. **📝 원고 작성 세부 공통 규격 (SEO & Layout Rule)**:
+   * **분량**: 한글 기준 **공백 포함 약 2,000자 ~ 2,700자 내외**로 뜬금없는 늘리기용 유령 문장을 완벽히 배제하고 사실 관계 위주로 알차고 콤팩트하게 구성한다.
+   * **구조**: 서론(첫 100자 내 핵심 이점 및 메인 키워드가 녹아든 자연스러운 '도입부' 문장으로 시작) - 본론(H2, H3 태그 필수) - 결론(인간적인 마무리) 순서로 구성한다.
+   * **📌 HTML 앵커 목차 테이블 (Table of Contents)**: 포스트 본문 최상단(서론 뒤)에 클릭 시 본론의 소제목(H2, H3)으로 부드럽게 순간 이동(점프)하는 앵커 링크 테이블 영역을 완벽하게 조립하여 적용한다.
+   * **제목 (H1) 규칙**: 메인 포커스 키워드를 반드시 제목의 **가장 첫 단어(맨 앞)**에 배치하여 1회만 사용한다.
+   * **가독성 (줄바꿈 및 여백)**: 구글 SEO 이탈률 방지 및 모바일 가독성 극대화를 위해 모든 문장은 **2줄 이내(한글 약 50자 안팎)로 짧게** 끊어 구성한다. 하나의 단락(Paragraph)은 **최대 2~3개의 짧은 문장(최대 3~4줄)을 넘지 않아야 하며**, 단락이 끝날 때마다 확실한 빈 행(개행)을 두어 시각적 여백을 풍부하게 확보한다. 덩어리 형태의 긴 텍스트(벽돌글)는 전면 금지하며, 인용구(Blockquote), 구분선(<hr>), 리스트, 표를 적재적소에 섞어 시각적 쉼표를 만든다.
+   * **3개씩 끊어서 발행 룰**: 블로그 포스팅 패키지는 유저가 요청할 때마다 3개 단위씩 명확히 구분하여 독립적으로 생성 및 관리한다.
+   * **기계적 단락 반복 금지 및 독창적 흐름 룰**: 각 챕터(H2, H3)마다 지식 베이스 문단을 기계적으로 똑같이 반복 붙여넣는 행위를 엄격히 금지한다. 각 챕터의 하위 문맥은 중복 없이 오직 해당 소제목의 고유 주제에 맞는 독창적이고 유기적인 흐름의 글이어야 한다.
+   * **도메인 팩트 정합성 룰**: 정부 지원금, 보건/건강, IT 테크, 연예 등 각 도메인 영역에 어긋나는 용어 혼용(예: 고용노동부 지원금 포스트에 엉뚱하게 시중은행 대출, 금리 우대, 세법 적용 등의 표현을 섞는 행위)을 철저히 금지한다. 본문에 들어가는 설명, 표(Table), 필수 증빙서류 목록 등 모든 데이터는 반드시 해당 글의 키워드 및 사실 정보(facts)와 100% 부합하는 검증된 진짜 정보로만 구성해야 한다.
+   * **미디어 규칙**: HTML 코드 내에는 `<img>` 태그를 삽입하지 않는다. 대표 이미지 썸네일은 **16:9 비율**로만 생성하여 폴더에 함께 저장한다. 이때 생성된 모든 JPG/PNG 썸네일 이미지는 검색 최적화(SEO) 및 페이지 로딩 가속을 위해 **Pillow 라이브러리 등을 활용해 화질을 보존하면서 500KB 이하의 저용량으로 강력 압축하여 저장**해야 한다. 또한 이미지 대체 텍스트(Alt Text) 안내는 본문 HTML/Markdown에 포함하지 않고, 오직 독립형 'thumbnail_prompts.html' 파일 내에만 수록하여 발행 시 개별 복사해 가도록 설계한다.
+   * **본문 내 공신력 있는 외부 링크**: 본문 중간 설명 과정에서 설명하는 단어 2개에 **나무위키 또는 위키백과**의 실제 작동하는 외부 상세 정보 링크 2개를 자연스럽게 하이퍼링크 형식으로 건다.
+   * **인간적 마무리**: 마지막 결론 문단은 AI가 쓴 기계적인 어투가 나지 않도록 하되, **거짓 1인칭 경험담을 직접 지어내는 대신 "주변에서 흔히 보는 사례인데요", "아는 지인의 경우도", "직장인들이 흔히 겪는 실수 중 하나는" 과 같이 3인칭 간접 경험으로 자연스럽게 우회**하여 성의 있는 조언이나 스토리텔링을 3줄 이하로 담백하게 연결해 마무리한다. '작성자 주:' 나 괄호 같은 수식어는 절대 금지한다.
+   * **하단 공식 출처 링크**: 인간적 마무리 아래(해시태그 직전)에 글 주제와 직접적으로 긴밀한 정부 기관, 공공기관의 **실제 정상 작동하는 외부 링크 1~2개**를 안내 문구와 함께 반드시 추가 삽입한다.
+   * **해시태그**: 본문 가장 마지막에 # 표시 없이 8개의 키워드를 쉼표(,)로만 구분하여 나열한다. 단, 네이버 블로그 포스팅 원고만은 # 기호를 접두어로 붙여 띄어쓰기로 해시태그를 나열한다.
+   * **원클릭 복사 스크립트**: 생성하는 블로그 복사용 HTML 파일 최상단에는 브라우저로 실행하여 원클릭으로 하단의 순수 본문 전체를 바로 복사할 수 있는 '📋 본문 코드 전체 복사하기' 버튼 스크립트 영역을 내장하여 발행 편의성을 극대화한다.
+   * **키워드 밀도 최적화 룰**: 본문 전체에 걸쳐 메인 포커스 키워드가 인위적이지 않게 골고루 분산되도록 하며, 전체 글자 수 대비 **1.0% ~ 1.5% 수준(5,000자 기준 총 7회 ~ 10회 내외)**으로 본론의 각 H2~H6 단락에 고르게 삽입하여 검색 노출 점수를 극대화한다.
+   * **세부 소제목 위계 기호화 및 H3~H6 중복 배제 룰**: 유사 문서(스팸) 리스크를 원천 방지하고 모바일 가독성을 극대화하기 위해, 각 메인 챕터(H2) 아래에 꼬리표처럼 붙어 기계적 텍스트 복사를 유발하는 H3, H4, H5, H6 하위 제목들과 그 아래 상투적 설명단락들은 전면 배제하고 삭제한다. 본문은 오직 H2 메인 소제목과 그 아래에 위치하는 고유 팩트 및 독창적인 2~3줄의 해설(여백 줄바꿈 적용)로만 군더더기 없이 콤팩트하게 구성한다.
+   * **썸네일 프롬프트 독립 HTML 생성 룰**: 각 채널의 날짜 폴더 하위에 **오늘 자 블로그 글 3개에 관한 모든 썸네일 생성 프롬프트와 Alt 텍스트를 하나의 파일로 모아둔 통합 'thumbnail_prompts.html' 파일**을 항상 필수로 생성한다. 이 통합 파일 내부에는 예쁜 일러스트 그림체 지향 프롬프트와 각각 1회 클릭만으로 개별 복사가 완료되는 자바스크립트 스니펫을 함께 빌드하여 발행 효율성을 극대화한다.
+   * **썸네일 내 후킹 문구 합성 룰**: 썸네일 이미지 내부에 합성 인쇄되는 텍스트는 단순 제목이나 메인 키워드를 기계적으로 박지 않는다. 각 분야별 특성(돈, 건강, 경제, 재미 등)에 맞추어 독자의 클릭을 본능적으로 유도하는 **'후킹 문구(Hooking Copy)'**를 제목과 연관 지어 창작한 후, **AI 이미지 생성용 영어 프롬프트 내부에 텍스트 렌더링 지시문 형태로 직접 삽입**하여 썸네일 생성 시 텍스트가 함께 디자인되어 그려져 나오도록 설정한다.
+     * **분야별 베이스 영어 프롬프트 템플릿 규격**:
+        * *FINANCE*: `An aesthetic and beautiful detailed digital art illustration of financial growth. A cute glowing piggy bank, stacking pastel gold coins, soft warm lighting, cozy flat vector style, vibrant pastel blue and pink gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *HEALTH*: `An aesthetic and beautiful detailed digital illustration representing wellness and health protection. A cute shield with a green leaf and heart icon, blooming flowers, soft natural lighting, cozy flat graphic, vibrant light green and yellow pastel gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *BENEFIT*: `An aesthetic and beautiful detailed vector illustration of government subsidy support. A cozy home icon with a glowing heart, hands holding a gold coin, warm and friendly digital art style, soft pastel orange and purple gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *TECH*: `An aesthetic and beautiful detailed digital illustration of cyber technology optimization. A cute glowing computer monitor showing speed boost, soft futuristic lighting, clean vector graphic style, vibrant cyan and soft pink pastel gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *ENTERTAINMENT*: `An aesthetic and beautiful detailed pop art illustration of media show business. A cute retro television set, glowing stage spotlight, colorful confetti, warm soft lighting, cozy flat graphic, vibrant purple and yellow pastel gradient background. The image features the Korean text "[후킹문구]" written clearly in a beautiful, modern, readable typography at the center. --ar 16:9`
+        * *무림북 전용 (북커버)*: `An aesthetic Wuxia fantasy novel book cover art style, oriental watercolor painting. The image prominently features the Korean text "[후킹문구]" written clearly in dynamic, readable calligraphy at the center. --ar 2:3`
+   * **주의 사항**: 위의 규칙 텍스트나 번호 정보 등 메타 설명은 최종 출력물 본문에 절대 포함하지 않고, 오직 순수 포스팅용 본문만 출력한다.
 
 6. **💾 이미지 저장 경로 설정**:
    * 생성 또는 조작하는 모든 이미지 결과물은 기본적으로 **`D:\somenail`** 폴더에 저장하고 유저에게 해당 경로를 제공한다.
+
+## 🛡️ 팩트 체크 및 공신력 기반 집필 규칙 (Fact-Check & Accuracy Rule)
+
+모든 글을 작성할 때 다음 지침을 엄격히 준수해야 한다.
+
+1. **지침1. 팩트교정 체크하기**:
+   * 작성하는 모든 주제(특히 법적/행정적 혜택)는 공인된 정부 기관이나 공인 출처의 공고를 대조하여 사실관계를 철저히 검증한다. 확인되지 않은 허구 정보나 유도성 단어의 노출을 금지한다.
+2. **지침2. 증빙서류 팩트 교정**:
+   * 본문에 기재되는 신청용 필수 구비 서류 목록은 글의 주제와 관련 없는 뜬금없는 서류(예: 고용노동부 지원금 글에 엉뚱한 금융대출/거래명세서 서류 등)가 할루시네이션으로 들어가지 않도록, 실제 행정상 필요한 서류(예: 출산휴가 확인서, 급여대장 등)로 정밀하게 교정하여 수록한다.
+3. **지침3. 숫자(돈), 데이터 일치 및 팩트체크**:
+   * 본문 전체에서 언급되는 모든 수치 정보(지원 금액, 금리, 한도 등)는 글의 도입부, 상세 본론, 그리고 요약 표(Table) 내부 데이터와 100% 일치해야 하며 서로 모순이 없어야 한다. (예: 본문은 월 30만 원인데 표에는 월 20만 원인 식의 충돌 절대 금지)
+4. **지침4. 중복문단 체크 후 최적화**:
+   * 원고 내에서 기계적으로 반복되는 문장, 유사한 지식 래퍼 단락, 또는 H3~H6 하위 소제목들의 무의미한 텍스트 복사-붙여넣기 상태를 원천 금지한다. 집필이 끝나면 반드시 중복 단락 존재 여부를 체크하여 콤팩트하고 고유한 문맥으로 최적화한다.
 

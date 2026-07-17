@@ -1,0 +1,25 @@
+{
+  "count": 5,
+  "new_added": 5,
+  "keywords": [
+    "1억 재테크 굴리기",
+    "청년도약계좌 2026년 조건",
+    "직장인 소액 투자 포트폴리오",
+    "예금 금리 높은 곳 비교",
+    "개인형 IRP 세제혜택 극대화"
+  ],
+  "source_map": {
+    "1억 재테크 굴리기": {
+      "source": "manual_input",
+      "longtails": ["1억 재테크 굴리기"]
+    },
+    "청년도약계좌 2026년 조건": {
+      "source": "manual_input",
+      "longtails": ["청년도약계좌 2026년 조건"]
+    },
+    "직장인 소액 투자 포트폴리오": {
+      "source": "manual_input",
+      "longtails": ["직장인 소액 투자 포트폴리오"]
+    }
+  }
+}

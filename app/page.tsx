@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import WorkPosterCard from "@/app/components/work/WorkPosterCard";
+import Pagination from "@/app/components/Pagination";
 import BottomNav from "@/app/components/BottomNav";
 import MugongGameLauncher from "@/app/components/game/MugongGameLauncher";
 import GrandOpenPopup from "@/app/components/GrandOpenPopup";
@@ -78,6 +79,15 @@ export default function Home() {
   // ✅ 검색어 및 탭 상태
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("도움되는글");
+
+  // ✅ 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
+
+  // 검색어나 탭이 변경되면 1페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab]);
 
   // ✅ 계산기 탭 관련 상태
   const [selectedCalculator, setSelectedCalculator] = useState<null | "jongbuse" | "loan" | "brokerage">(null);
@@ -281,7 +291,9 @@ export default function Home() {
               release_date
             )
           `)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .or("episode_count.gt.10,subtitle.like.%[블로그]%,subtitle.like.%[계산기]%,subtitle.like.%[공지사항]%,subtitle.like.%[오디오 칼럼]%")
+          .not("subtitle", "like", "%[블로그-숨김]%");
 
         if (error) {
           console.error("Error fetching works:", error);
@@ -436,13 +448,14 @@ export default function Home() {
 
     // 2. 카테고리 탭 필터링 및 정렬
     if (activeTab === "도움되는글") {
-      // 도움되는글 탭은 블로그/공지사항 글만 노출
+      // 도움되는글 탭은 블로그/공지사항 글만 노출 (blog.murimbook.com 중복 제목 제외)
       result = result.filter(
         (w) =>
-          w.subtitle?.includes("[블로그]") ||
+          (w.subtitle?.includes("[블로그]") ||
           w.subtitle?.includes("[공지사항]") ||
           w.genre === "블로그" ||
-          w.genre === "blog"
+          w.genre === "blog") &&
+          !w.subtitle?.includes("[블로그-숨김]")
       );
     } else if (activeTab === "무공 수련") {
       // 무공 수련 탭은 기존 로직 유지 (아래 119라인에서 별도 처리됨)
@@ -461,7 +474,12 @@ export default function Home() {
       } else if (activeTab === "멤버십전용") {
         result = result.filter((w) => w.is_membership_only === true);
       } else if (activeTab === "인기 순위") {
-        result = result.filter((w) => w.is_membership_only !== true);
+        result = result.filter((w) =>
+          w.is_membership_only !== true &&
+          !w.subtitle?.includes("[계산기]") &&
+          !w.subtitle?.includes("[오디오 칼럼]") &&
+          (w.episodeCount ?? 0) >= 30
+        );
         const parseViews = (viewsStr?: string) => {
           if (!viewsStr) return 0;
           const s = viewsStr.toUpperCase();
@@ -491,6 +509,17 @@ export default function Home() {
       });
       return ordered;
     }, [filteredWorks]);
+
+  // 현재 페이지에 보여줄 작품 (페이지네이션 적용)
+  const currentWorks = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return mainGridWorks.slice(start, end);
+  }, [mainGridWorks, currentPage, ITEMS_PER_PAGE]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(mainGridWorks.length / ITEMS_PER_PAGE);
+  }, [mainGridWorks.length, ITEMS_PER_PAGE]);
 
   // 공개 예정 섹션용 작품 (status === "공개예정" & 오디오북만)
   const comingSoonAudiobooks = useMemo(() => {
@@ -1129,11 +1158,18 @@ export default function Home() {
                 ))}
             </div>
           ) : mainGridWorks.length > 0 ? (
-            <div className="works-poster-grid">
-              {mainGridWorks.map((work) => (
-                <WorkPosterCard key={work.id} work={work} />
-              ))}
-            </div>
+            <>
+              <div className="works-poster-grid">
+                {currentWorks.map((work) => (
+                  <WorkPosterCard key={work.id} work={work} />
+                ))}
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </>
           ) : (
             <div style={{ padding: "80px 20px", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontSize: 15 }}>
               검색 결과에 맞는 작품이 없습니다.

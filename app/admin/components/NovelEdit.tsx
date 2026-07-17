@@ -407,9 +407,11 @@ export default function NovelEdit({
                 className="form-input"
                 value={
                   editWork.created_at
-                    ? new Date(new Date(editWork.created_at).getTime() - new Date().getTimezoneOffset() * 60000)
-                        .toISOString()
-                        .slice(0, 16)
+                    ? (() => {
+                        const d = new Date(editWork.created_at);
+                        const pad = (n: number) => String(n).padStart(2, "0");
+                        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                      })()
                     : ""
                 }
                 onChange={(e) => {
